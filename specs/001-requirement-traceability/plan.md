@@ -188,6 +188,7 @@ tools/
 └── traceability/
     ├── src/
     │   ├── cli.ts         # entry point: arguments, exit codes, prints the report
+    │   ├── node-version.ts # refuses Node versions that can't block the network
     │   ├── check.ts       # one run over a root directory → Report
     │   ├── files.ts       # directory walk + shared include/exclude constants
     │   ├── specs.ts       # Status and Functional Requirements entries from spec.md

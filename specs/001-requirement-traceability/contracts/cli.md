@@ -38,7 +38,7 @@ the check and its parser from outside the sample project.
 |------|---------|
 | `0` | Pass: no problems (FR-020) |
 | `1` | Fail: at least one problem was reported (FR-020) |
-| `2` | The check itself couldn't run, e.g. an unexpected argument or an internal error. The message goes to stderr |
+| `2` | The check itself couldn't run, e.g. an unexpected argument, a Node version older than 26 (its permission model can't block the network, so FR-027 wouldn't hold) or an internal error. The message goes to stderr |
 
 A pull-request run fails on any non-zero code.
 

@@ -2,9 +2,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { REQUIRED_NODE_MAJOR, nodeVersionProblem } from '../src/node-version.ts';
 import { REPO_ROOT, makeProject, runCli } from './helpers/project.ts';
 
-const SCRIPT: string = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).scripts.traceability;
+const PACKAGE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
+const SCRIPT: string = PACKAGE.scripts.traceability;
 
 describe('001-requirement-traceability-FR-026: one local command gives the same report as a direct run', () => {
   test('npm run traceability and the CLI print the same report with the same exit code', { timeout: 30_000 }, () => {
@@ -52,6 +54,19 @@ describe('001-requirement-traceability-FR-027: the check makes no network reques
       { encoding: 'utf8' },
     );
     expect(control.stdout.trim()).toBe('ERR_ACCESS_DENIED');
+  });
+
+  // Before Node 25 the permission model doesn't cover the network, so the
+  // guard above would silently be off.
+  test('Node versions whose permission model cannot block the network are refused', () => {
+    expect(nodeVersionProblem('24.21.0')).toBe(
+      'traceability check needs Node 26 or later (see .nvmrc) to block network access, but this is Node 24.21.0',
+    );
+    expect(nodeVersionProblem('25.9.0')).not.toBeNull();
+    expect(nodeVersionProblem('26.0.0')).toBeNull();
+    expect(nodeVersionProblem('27.1.0')).toBeNull();
+    expect(fs.readFileSync(path.join(REPO_ROOT, '.nvmrc'), 'utf8').trim()).toBe(String(REQUIRED_NODE_MAJOR));
+    expect(PACKAGE.engines.node).toBe(`>=${REQUIRED_NODE_MAJOR}`);
   });
 });
 
