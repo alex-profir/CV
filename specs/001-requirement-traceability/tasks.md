@@ -560,7 +560,7 @@ assets).
   - `npm run typecheck` passes.
   - `npm test` passes.
   - `npm run traceability` exits 0, and its last line is exactly `PASS: all 29 active requirements in 1 approved spec are covered.` (Constitution III, SC-006).
-- [ ] T044 Run quickstart.md scenarios 1 to 6 and record any deviation.
+- [X] T044 Run quickstart.md scenarios 1 to 6 and record any deviation.
   - Scenario 3 temporarily changes one requirement's group to `describe.skip(`. Revert it with `git checkout -- <file>`.
   - Scenario 4 needs the owner to turn the network off.
   - Scenario 6 is the performance test.
@@ -570,6 +570,11 @@ assets).
     `specs/001-requirement-traceability/spec.md:251:5 uncovered 001-requirement-traceability-FR-009: only skipped, disabled or placeholder tests reference this requirement`,
     and was reverted. Scenario 5 gave identical runs. Scenario 6 took 115 ms against the 10 s
     budget. Scenario 4 (network off) is still the owner's to run.
+  - Scenario 4 result (2026-10-21, macOS, Node 26.12.1): the network was cut for the whole process
+    tree with `sandbox-exec -p '(version 1)(allow default)(deny network*)'`, which is stricter than
+    turning Wi-Fi off because it also blocks loopback. A `fetch` probe under that profile failed
+    with `EPERM`. `npm run --silent traceability` exited 0 both online and offline, and the two
+    reports were byte-identical.
 - [X] T045 Commit the remaining work with Conventional Commits, e.g. `feat(traceability): …`, `test(traceability): …`. Push, and mark the draft pull request from T028 ready for review (Constitution XI). If US2 was skipped or done later, open it now.
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`.
