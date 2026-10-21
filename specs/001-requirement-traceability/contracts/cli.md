@@ -83,7 +83,7 @@ src/Clock.tsx:8:21 removed-reference 002-example-FR-002: this requirement was re
 src/clock.test.ts:30:14 malformed "FR-001": not a full requirement ID of the form <feature>-FR-###
 specs/002-example/spec.md:47:5 malformed "FR-1": a requirement ID must be FR- followed by exactly three digits
 specs/002-example/spec.md:39:5 duplicate-id 002-example-FR-002: defined 2 times, on lines 39 and 52
-specs/003-other/spec.md:7:15 bad-status "Aproved": Status must be Draft or Approved
+specs/003-other/spec.md:7:13 bad-status "Aproved": Status must be Draft or Approved
 specs/004-third/spec.md:1:1 bad-status "": spec has no Status line
 specs/005-empty/spec.md:1:1 no-requirements 005-empty: approved spec defines no requirements
 src/broken.test.ts:3:7 unreadable-file "src/broken.test.ts": cannot be parsed: ')' expected

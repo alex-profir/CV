@@ -478,7 +478,7 @@ These are N/A per plan.md's Constitution Check, so they have no tasks: II (No UI
 or tokens), V (no shells or apps), VII (nothing visitor-facing), VIII (no UI) and IX (no visual
 assets).
 
-- [ ] T037 [P] Create the committed sample project `tools/traceability/test/__fixtures__/seeded/` (SC-001, research R13).
+- [X] T037 [P] Create the committed sample project `tools/traceability/test/__fixtures__/seeded/` (SC-001, research R13).
 
   Write `expected-report.txt` by hand from the cases below before running the check. When the run differs, find out whether the fixture or the check is wrong. Never copy the output over. Note each case in the fixture itself, using HTML comments in spec.md files and `//` comments in code. The check ignores both by design.
 
@@ -543,20 +543,20 @@ assets).
   | unreadable-file | 1 |
 
   The last line is `FAIL: 23 problems found.`
-- [ ] T038 Add a seeded-project test to `tools/traceability/test/cli.test.ts`, after T037 (SC-001). Its title has no FR ID, e.g. `describe('seeded sample project (SC-001)', …)`. `runCli('<REPO_ROOT>/tools/traceability/test/__fixtures__/seeded')` exits 1, and its stdout equals `expected-report.txt` byte for byte.
-- [ ] T039 [P] Write `tools/traceability/test/performance.test.ts` (SC-004). Use `makeProject` to generate 50 approved specs with 40 requirements each, and 200 test files with 10 tests each. Each test references one distinct full ID. Time `runCli` on the project: it must exit 0 in under 10,000 ms. Give the test a 60 s timeout.
-- [ ] T040 [P] Write `tools/traceability/test/self-check.test.ts`, covering 001-requirement-traceability-FR-028 (SC-006).
+- [X] T038 Add a seeded-project test to `tools/traceability/test/cli.test.ts`, after T037 (SC-001). Its title has no FR ID, e.g. `describe('seeded sample project (SC-001)', …)`. `runCli('<REPO_ROOT>/tools/traceability/test/__fixtures__/seeded')` exits 1, and its stdout equals `expected-report.txt` byte for byte.
+- [X] T039 [P] Write `tools/traceability/test/performance.test.ts` (SC-004). Use `makeProject` to generate 50 approved specs with 40 requirements each, and 200 test files with 10 tests each. Each test references one distinct full ID. Time `runCli` on the project: it must exit 0 in under 10,000 ms. Give the test a 60 s timeout.
+- [X] T040 [P] Write `tools/traceability/test/self-check.test.ts`, covering 001-requirement-traceability-FR-028 (SC-006).
   - `runCheck(REPO_ROOT)` has `result` `pass` and no problems.
   - Parsing the repository's specs with `listFiles` and `parseSpec` shows `001-requirement-traceability` as Approved.
   - The report's `approvedSpecs` and `activeRequirements` equal the counts computed from those parsed approved specs.
   - Don't hard-code 29, so later specs don't break the test.
-- [ ] T041 [P] Correct the illustrative `bad-status` line in `specs/001-requirement-traceability/contracts/cli.md` from `specs/003-other/spec.md:7:15` to `:7:13`. The value of `**Status**: Aproved` starts at column 13, per data-model.md's Location rule.
-- [ ] T042 [P] Audit Constitution X:
+- [X] T041 [P] Correct the illustrative `bad-status` line in `specs/001-requirement-traceability/contracts/cli.md` from `specs/003-other/spec.md:7:15` to `:7:13`. The value of `**Status**: Aproved` starts at column 13, per data-model.md's Location rule.
+- [X] T042 [P] Audit Constitution X:
   - `package.json` has exactly the four `devDependencies` from plan.md (`oxc-parser`, `vitest`, `typescript`, `@types/node`) and no `dependencies`.
   - `oxc-parser` has no `^` or `~`, and `package-lock.json` is committed.
   - Both actions are pinned to full SHAs.
   - No agent skill or other abstraction beyond `makeProject` (and its `runCli` companion) was added.
-- [ ] T043 Run the full verification, after T038 to T040.
+- [X] T043 Run the full verification, after T038 to T040.
   - `npm run typecheck` passes.
   - `npm test` passes.
   - `npm run traceability` exits 0, and its last line is exactly `PASS: all 29 active requirements in 1 approved spec are covered.` (Constitution III, SC-006).
@@ -564,6 +564,12 @@ assets).
   - Scenario 3 temporarily changes one requirement's group to `describe.skip(`. Revert it with `git checkout -- <file>`.
   - Scenario 4 needs the owner to turn the network off.
   - Scenario 6 is the performance test.
+  - Result (2026-10-21, macOS, Node 26.12.1): scenarios 1, 2, 3, 5 and 6 ran as expected, with no
+    deviation. Scenario 1 passed 29 of 29 with exit 0. Scenario 2's report matched
+    `expected-report.txt` with exit 1. Scenario 3 (FR-009's group skipped) exited 1 with
+    `specs/001-requirement-traceability/spec.md:251:5 uncovered 001-requirement-traceability-FR-009: only skipped, disabled or placeholder tests reference this requirement`,
+    and was reverted. Scenario 5 gave identical runs. Scenario 6 took 115 ms against the 10 s
+    budget. Scenario 4 (network off) is still the owner's to run.
 - [ ] T045 Commit the remaining work with Conventional Commits, e.g. `feat(traceability): …`, `test(traceability): …`. Push, and mark the draft pull request from T028 ready for review (Constitution XI). If US2 was skipped or done later, open it now.
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`.

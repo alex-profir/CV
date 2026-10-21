@@ -10,7 +10,7 @@ describe('001-requirement-traceability-FR-026: one local command gives the same 
   test('npm run traceability and the CLI print the same report with the same exit code', { timeout: 30_000 }, () => {
     const viaNpm = spawnSync('npm', ['run', '--silent', 'traceability'], { cwd: REPO_ROOT, encoding: 'utf8' });
     const direct = runCli(REPO_ROOT);
-    expect(direct.stdout).toMatch(/\nSummary\n/);
+    expect(direct.stdout).toMatch(/(^|\n)Summary\n/);
     expect(viaNpm.stdout).toBe(direct.stdout);
     expect(viaNpm.status).toBe(direct.status);
   });
@@ -61,5 +61,14 @@ describe('command usage', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain('usage: npm run traceability');
+  });
+});
+
+describe('seeded sample project (SC-001)', () => {
+  test('reports every seeded problem and nothing else', () => {
+    const seeded = path.join(REPO_ROOT, 'tools/traceability/test/__fixtures__/seeded');
+    const result = runCli(seeded);
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe(fs.readFileSync(path.join(seeded, 'expected-report.txt'), 'utf8'));
   });
 });
