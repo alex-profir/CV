@@ -581,14 +581,16 @@ assets).
   - Confirm both `traceability` and `test` jobs run and pass.
   - Confirm the `traceability` log shows the same report as the local run on the same commit (FR-026, quickstart scenario 5).
   - Result (2026-10-21): pull request #7 opened ready for review, after all phases were done locally, so there was no draft stage (T028). On commit 0fba0de, `traceability` and `test` passed on `ubuntu-latest` with Node 26.12.0, and the `traceability` log's report matched the local macOS run line for line.
-- [ ] T046 Owner action, needs admin rights and the open PR from T045: apply the ruleset with `gh api --method POST /repos/alex-profir/CV/rulesets --input .github/rulesets/main.json` (quickstart scenario 7).
+- [X] T046 Owner action, needs admin rights and the open PR from T045: apply the ruleset with `gh api --method POST /repos/alex-profir/CV/rulesets --input .github/rulesets/main.json` (quickstart scenario 7).
   - Confirm `current_user_can_bypass` reads `never`, and the drift diff prints `no drift`.
   - If the diff shows parameters the server added with default values, add them to `.github/rulesets/main.json` and the contracts/ci.md table. Then update `repo-settings.test.ts`, re-apply with `--method PUT /repos/alex-profir/CV/rulesets/<id>`, and push the change to the PR.
-- [ ] T047 Owner action, after T046: demonstrate enforcement (quickstart scenario 7, US2 scenarios 1 to 4, SC-003).
+  - Result (2026-10-21, approved by the owner): ruleset 25562339 was created and reads `current_user_can_bypass: never`. The first drift diff showed two `pull_request` parameters the server added: `required_reviewers: []` and `require_extra_approval_for_unattributed_changes: true`, a preview setting GitHub turns on when it's omitted. It would require an approval for changes GitHub can't attribute to a user, which a sole owner can't give while nobody can bypass, so the committed file writes it out as `false`, matching `required_approving_review_count: 0`. Both parameters were added to `.github/rulesets/main.json`, contracts/ci.md and `repo-settings.test.ts`, and the ruleset was re-applied with `PUT`. It then read back with `no drift`.
+- [X] T047 Owner action, after T046: demonstrate enforcement (quickstart scenario 7, US2 scenarios 1 to 4, SC-003).
   1. On a scratch branch based on `001-requirement-traceability`, apply scenario 3's skip change, push, and open a PR.
   2. Confirm `traceability` fails, names the uncovered requirement, and GitHub shows the merge blocked with no bypass option.
   3. Revert, push, and confirm both checks pass. Then close the PR without merging and delete the scratch branch.
   4. Run the direct-push probe from quickstart scenario 7 only after `current_user_can_bypass` reads `never`. Confirm `git push origin main` is rejected, then drop the local probe commit with `git reset --hard origin/main`.
+  - Result (2026-10-21, approved by the owner): scratch pull request #8 skipped FR-009's group. `traceability` failed with `specs/001-requirement-traceability/spec.md:251:5 uncovered 001-requirement-traceability-FR-009: only skipped, disabled or placeholder tests reference this requirement`, the same line as the local run. `test` failed too, through the self-check (FR-028). GitHub reported `mergeStateStatus: BLOCKED` and `viewerCanMergeAsAdmin: false`, so the owner had no bypass. After the revert both checks passed and the state was `CLEAN`. #8 was closed unmerged and its branch deleted. The direct push of an empty commit to `main` was refused with `GH013: Repository rule violations found` ("Changes must be made through a pull request", "2 of 2 required status checks are expected"), `origin/main` was unchanged, and the local probe commit was dropped.
 
 ---
 
