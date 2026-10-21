@@ -62,7 +62,7 @@ every FR in spec.md (FR-001 to FR-029) is covered by at least one test task.
 
 **Purpose**: The repository's first toolchain: Node 26, npm, TypeScript typecheck, Vitest
 
-- [ ] T001 Create the root toolchain files:
+- [X] T001 Create the root toolchain files:
   - `package.json`: `"private": true`, `"type": "module"`, `"engines": { "node": ">=26" }`, and these scripts:
     - `"traceability": "node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts"`
     - `"test": "vitest run"`
@@ -71,14 +71,14 @@ every FR in spec.md (FR-001 to FR-029) is covered by at least one test task.
   - `.gitignore`, containing `node_modules/`.
 
   Sources: research R1, R2 and R9, and contracts/cli.md Command.
-- [ ] T002 Install the dev dependencies with Node 26 active (`nvm use`) and its bundled npm:
+- [X] T002 Install the dev dependencies with Node 26 active (`nvm use`) and its bundled npm:
   1. `npm install --save-dev --save-exact oxc-parser` (latest release, exact pin, research R5).
   2. `npm install --save-dev vitest@5 typescript@7 @types/node@26`.
   3. Commit `package-lock.json`.
 
   `package.json` must end with exactly these four `devDependencies` and no `dependencies` (plan
   Dependencies table, Constitution X).
-- [ ] T003 [P] Create `tsconfig.json`:
+- [X] T003 [P] Create `tsconfig.json`:
   - `compilerOptions`:
     - `target: "esnext"`, `module: "nodenext"`, `moduleResolution: "nodenext"`
     - `strict: true`, `noEmit: true`, `skipLibCheck: true`
@@ -101,25 +101,25 @@ helper. Every story needs them.
 **Design gate (Constitution II)**: omitted. spec.md's Design section says "**No UI**: this feature
 adds or changes no user interface."
 
-- [ ] T004 [P] Define the shared types in `tools/traceability/src/report.ts`. Use no enums. Rendering comes in T019. The types (data-model.md Location, Problem and Report):
+- [X] T004 [P] Define the shared types in `tools/traceability/src/report.ts`. Use no enums. Rendering comes in T019. The types (data-model.md Location, Problem and Report):
   - `Location`: `{ file: string; line: number; column: number }`. `file` is relative to the root with `/` separators. Lines and columns count from 1.
   - `PROBLEM_TYPES`: an `as const` tuple in exactly this order: `uncovered`, `unknown-reference`, `removed-reference`, `malformed`, `duplicate-id`, `bad-status`, `no-requirements`, `unreadable-file`.
   - `ProblemType`: the tuple's element type.
   - `Problem`: `{ type: ProblemType; subject: string; location: Location; detail: string }`.
   - `Report`: `{ problems: Problem[]; approvedSpecs: number; activeRequirements: number; coveredRequirements: number; countsByType: Record<ProblemType, number>; result: 'pass' | 'fail' }`.
-- [ ] T005 [P] Create the shared file-selection constants in `tools/traceability/src/files.ts` (research R6). The directory walk comes in T018.
+- [X] T005 [P] Create the shared file-selection constants in `tools/traceability/src/files.ts` (research R6). The directory walk comes in T018.
   - `EXCLUDED_DIR_NAMES`: `node_modules`, `dist`, `build`, `out`, `coverage`, `__fixtures__`.
   - `isExcludedDir(name)`: true for those names and for any name that starts with `.`.
   - `TEST_FILE_PATTERN`: `/\.(test|spec)\.[cm]?[jt]sx?$/`.
   - `TEST_INCLUDE_GLOBS`: `['**/*.{test,spec}.?(c|m)[jt]s?(x)']`.
   - `TEST_EXCLUDE_GLOBS`: `**/<name>/**` for each excluded name, plus `**/.*/**`.
-- [ ] T006 Create `vitest.config.ts` at the repository root. Use `defineConfig` from `vitest/config`. Set `test.include` to `TEST_INCLUDE_GLOBS` and `test.exclude` to `TEST_EXCLUDE_GLOBS`, both imported from `./tools/traceability/src/files.ts`. Declare no `tags`, because no tag may carry `skip` or `todo` (research R3).
-- [ ] T007 [P] Create the test helper `tools/traceability/test/helpers/project.ts` (plan Dependencies table, research R13):
+- [X] T006 Create `vitest.config.ts` at the repository root. Use `defineConfig` from `vitest/config`. Set `test.include` to `TEST_INCLUDE_GLOBS` and `test.exclude` to `TEST_EXCLUDE_GLOBS`, both imported from `./tools/traceability/src/files.ts`. Declare no `tags`, because no tag may carry `skip` or `todo` (research R3).
+- [X] T007 [P] Create the test helper `tools/traceability/test/helpers/project.ts` (plan Dependencies table, research R13):
   - `REPO_ROOT`: the repository root, as a real path, computed from `import.meta.dirname`.
   - `CLI_PATH`: `<REPO_ROOT>/tools/traceability/src/cli.ts`.
   - `makeProject(files: Record<string, string>): string`. It creates a directory with `fs.mkdtempSync(path.join(os.tmpdir(), 'traceability-'))` and returns its `fs.realpathSync`. The real path matters because on macOS `/var` is a symlink to `/private/var`, and the permission grant must match. It writes every file, creating parent directories. A key ending in `/` creates an empty directory instead. It registers removal of the directory with Vitest's `onTestFinished`, so it's called inside tests only.
   - `runCli(cwd: string, args: string[] = []): { status: number | null; stdout: string; stderr: string }`. It calls `spawnSync(process.execPath, ['--permission', `--allow-fs-read=${REPO_ROOT}`, `--allow-fs-read=${cwd}`, '--allow-addons', CLI_PATH, ...args], { cwd, encoding: 'utf8' })`. These are the same grants as the `traceability` script: read and addons only, no network, no writes. The extra read grant on `REPO_ROOT` lets Node load `cli.ts` and `oxc-parser` when `cwd` is a temporary directory.
-- [ ] T008 Verify the toolchain: `npm run typecheck` passes and `npx vitest run --passWithNoTests` exits 0 with the new config.
+- [X] T008 Verify the toolchain: `npm run typecheck` passes and `npx vitest run --passWithNoTests` exits 0 with the new config.
 
 **Checkpoint**: Foundation ready. User story implementation can now begin.
 
@@ -143,7 +143,7 @@ exactly the requirements whose tests arrive in later phases (T024).
 > come from `makeProject`. Their tests use only valid references, unless a test is about invalid
 > ones. US3 adds reference problems, and they must not change these assertions.
 
-- [ ] T009 [P] [US1] Write `tools/traceability/test/specs.test.ts`. It covers 001-requirement-traceability-FR-001, 001-requirement-traceability-FR-002, 001-requirement-traceability-FR-003, 001-requirement-traceability-FR-004, 001-requirement-traceability-FR-005, 001-requirement-traceability-FR-006, 001-requirement-traceability-FR-007 and 001-requirement-traceability-FR-008. It tests `parseSpec(feature, file, text)`, `requirementsOf(spec)` and `specProblems(spec)` from `src/specs.ts`. For discovery, it uses `runCheck(root)` from `src/check.ts` on sample projects.
+- [X] T009 [P] [US1] Write `tools/traceability/test/specs.test.ts`. It covers 001-requirement-traceability-FR-001, 001-requirement-traceability-FR-002, 001-requirement-traceability-FR-003, 001-requirement-traceability-FR-004, 001-requirement-traceability-FR-005, 001-requirement-traceability-FR-006, 001-requirement-traceability-FR-007 and 001-requirement-traceability-FR-008. It tests `parseSpec(feature, file, text)`, `requirementsOf(spec)` and `specProblems(spec)` from `src/specs.ts`. For discovery, it uses `runCheck(root)` from `src/check.ts` on sample projects.
   - FR-001: every `specs/*/spec.md` is found and its Status read. These are ignored: a directory under `specs/` without `spec.md`, a `specs/README.md` file, and `specs/a/b/spec.md`.
   - FR-002: a Draft spec with no tests, a malformed entry (`FR-1`) and a duplicate ID produces no problem. Only an Approved spec's active requirements need coverage.
   - FR-003: each of these produces one `bad-status` problem:
@@ -163,8 +163,8 @@ exactly the requirements whose tests arrive in later phases (T024).
   - FR-006: `FR-1`, `FR-0001`, `fr-001`, `FR 001` and `FR.001` entries in an approved spec each produce `malformed`. The subject is the raw ID in quotes and the detail is `a requirement ID must be FR- followed by exactly three digits`. The location is the ID's line and column, e.g. column 5 for `- **FR-1**:` and column 7 for `- ~~**FR-1**~~:`.
   - FR-007: an ID defined twice, and an active plus a removed entry with the same ID, each produce one `duplicate-id`. It sits at the first definition, has the full ID as subject, and has the detail `defined 2 times, on lines A and B`. Three definitions read `defined 3 times, on lines A, B and C`.
   - FR-008: an approved spec with no entries produces `no-requirements`, and so does one with only malformed entries. The location is `1:1`, the subject is the feature and the detail is `approved spec defines no requirements`.
-- [ ] T010 [P] [US1] Write `tools/traceability/test/references.test.ts`, covering 001-requirement-traceability-FR-009. `fullId('002-example', 'FR-003')` is `002-example-FR-003`. `parseFullId` splits a full ID into feature and ID, and returns null for anything else. The same FR number in two approved specs gives two distinct IDs: with `runCheck`, a test that references `002-example-FR-001` leaves `003-other-FR-001` reported uncovered.
-- [ ] T011 [P] [US1] Write `tools/traceability/test/test-files.test.ts`. It covers 001-requirement-traceability-FR-010, 001-requirement-traceability-FR-011, 001-requirement-traceability-FR-012 and 001-requirement-traceability-FR-022. It tests `readTestFile(file, text)` and `coverageOf(nodes)` from `src/test-files.ts`. `coverageOf` returns `{ counting, skipped, unrecognized }`: the effective tokens of counting tests, of inactive tests (skipped, disabled or placeholder), and of tests inside unrecognized calls.
+- [X] T010 [P] [US1] Write `tools/traceability/test/references.test.ts`, covering 001-requirement-traceability-FR-009. `fullId('002-example', 'FR-003')` is `002-example-FR-003`. `parseFullId` splits a full ID into feature and ID, and returns null for anything else. The same FR number in two approved specs gives two distinct IDs: with `runCheck`, a test that references `002-example-FR-001` leaves `003-other-FR-001` reported uncovered.
+- [X] T011 [P] [US1] Write `tools/traceability/test/test-files.test.ts`. It covers 001-requirement-traceability-FR-010, 001-requirement-traceability-FR-011, 001-requirement-traceability-FR-012 and 001-requirement-traceability-FR-022. It tests `readTestFile(file, text)` and `coverageOf(nodes)` from `src/test-files.ts`. `coverageOf` returns `{ counting, skipped, unrecognized }`: the effective tokens of counting tests, of inactive tests (skipped, disabled or placeholder), and of tests inside unrecognized calls.
   - FR-010: IDs are found in all of these:
     - test titles;
     - group titles, at any nesting depth;
@@ -195,20 +195,20 @@ exactly the requirements whose tests arrive in later phases (T024).
 
     `vitest.config.ts`, imported directly, declares no tag with `skip` or `todo`.
   - FR-022: each token's location is the line and column of its first character. This holds after non-ASCII text earlier in the file and earlier on the same line, inside template literals that span lines, and in tags.
-- [ ] T012 [P] [US1] Write `tools/traceability/test/files.test.ts`, covering 001-requirement-traceability-FR-014. It tests `listFiles(root)` from `src/files.ts` and the config:
+- [X] T012 [P] [US1] Write `tools/traceability/test/files.test.ts`, covering 001-requirement-traceability-FR-014. It tests `listFiles(root)` from `src/files.ts` and the config:
   - Skipped at any depth: `node_modules`, `dist`, `build`, `out`, `coverage`, `__fixtures__` and every dot-directory. A root whose own name starts with `.` is still listed.
   - Symbolic links are not followed. Create them with `fs.symlinkSync` after `makeProject`.
   - Test files are selected by `TEST_FILE_PATTERN`. Yes: `a.test.ts`, `a.spec.tsx`, `a.test.mjs`, `a.test.cjs`, `a.spec.jsx`. No: `a.tests.ts`, `a.test.md`, `test.ts`.
   - Paths are relative, use `/`, and are sorted by code unit.
   - `vitest.config.ts`'s `test.include` and `test.exclude` deep-equal `TEST_INCLUDE_GLOBS` and `TEST_EXCLUDE_GLOBS`. `TEST_EXCLUDE_GLOBS` names every `EXCLUDED_DIR_NAMES` entry plus `**/.*/**`.
-- [ ] T013 [P] [US1] Write `tools/traceability/test/check.test.ts`. It covers 001-requirement-traceability-FR-015, 001-requirement-traceability-FR-020, 001-requirement-traceability-FR-021 and 001-requirement-traceability-FR-029. It tests `runCheck(root)` and `runCli` on sample projects.
+- [X] T013 [P] [US1] Write `tools/traceability/test/check.test.ts`. It covers 001-requirement-traceability-FR-015, 001-requirement-traceability-FR-020, 001-requirement-traceability-FR-021 and 001-requirement-traceability-FR-029. It tests `runCheck(root)` and `runCli` on sample projects.
   - FR-015 (US1 scenario 1): the approved spec `002-example` defines FR-001 to FR-003, and tests reference only `002-example-FR-001` and `002-example-FR-002`. The problems are exactly one `uncovered` for `002-example-FR-003`, at its spec line and column 5, with the detail `no test references this requirement`.
   - FR-020: `result` is `fail` and `runCli` exits 1 when there are problems. With full coverage, `result` is `pass` and it exits 0 (US1 scenario 2).
   - FR-021: one run over a project with `uncovered`, `malformed`, `duplicate-id`, `bad-status`, `no-requirements` and `unreadable-file` problems reports all of them.
   - FR-029:
     - A test file with a syntax error produces `unreadable-file` at its first error's line and column. The subject is the quoted path and the detail starts with `cannot be parsed: `. A requirement referenced only by that file is reported uncovered.
     - A `spec.md` created as a directory (key `specs/003-x/spec.md/`) produces `unreadable-file` with the detail `cannot be read: EISDIR`. This works as root too, unlike `chmod`.
-- [ ] T014 [P] [US1] Write `tools/traceability/test/report.test.ts`. It covers 001-requirement-traceability-FR-022, 001-requirement-traceability-FR-023 and 001-requirement-traceability-FR-024. It tests `buildReport` and `renderReport` from `src/report.ts`, and uses `runCheck` for whole runs.
+- [X] T014 [P] [US1] Write `tools/traceability/test/report.test.ts`. It covers 001-requirement-traceability-FR-022, 001-requirement-traceability-FR-023 and 001-requirement-traceability-FR-024. It tests `buildReport` and `renderReport` from `src/report.ts`, and uses `runCheck` for whole runs.
   - FR-022: problems built from every example in contracts/cli.md render to exactly those lines, in the form `<file>:<line>:<column> <type> <subject>: <detail>`. An `uncovered` problem from `runCheck` points at the requirement's definition.
   - FR-023:
     - The summary lists every type, zeros included, in `PROBLEM_TYPES` order.
@@ -224,22 +224,22 @@ exactly the requirements whose tests arrive in later phases (T024).
     - Sorting is by file with code-unit comparison, so `src/B.ts` comes before `src/a.ts`. Then by line, column, the `PROBLEM_TYPES` order, and subject.
     - Two `runCheck` runs over the same project render byte-identical text.
     - Nested paths use `/`.
-- [ ] T015 [P] [US1] Write `tools/traceability/test/cli.test.ts`, covering 001-requirement-traceability-FR-026 and 001-requirement-traceability-FR-027.
+- [X] T015 [P] [US1] Write `tools/traceability/test/cli.test.ts`, covering 001-requirement-traceability-FR-026 and 001-requirement-traceability-FR-027.
   - FR-026: in `REPO_ROOT`, `npm run --silent traceability` (via `spawnSync`) and `runCli(REPO_ROOT)` give identical stdout and exit status.
   - FR-027:
     - `package.json`'s `traceability` script contains `--permission`, an `--allow-fs-read=` grant and `--allow-addons`.
     - The script contains none of `--allow-net`, `--allow-fs-write`, `--allow-child-process`, `--allow-worker` or `--allow-wasi`.
     - `runCli` on a sample project completes with the expected report under those grants.
-    - Positive control: run `node --permission --allow-fs-read=<REPO_ROOT> --allow-addons -e "fetch('http://127.0.0.1:9/').then(() => console.log('connected'), (e) => console.log(e.code ?? e.cause?.code))"`. It must print `ERR_ACCESS_DENIED`. The loopback address means a broken guard never reaches the internet.
+    - Positive control: run `node --permission --allow-fs-read=<REPO_ROOT> --allow-addons -e "fetch('http://127.0.0.1:2/').then(() => console.log('connected'), (e) => console.log(e.code ?? e.cause?.code))"`. It must print `ERR_ACCESS_DENIED`. The loopback address means a broken guard never reaches the internet. (Implementation note: port 9 was planned, but fetch refuses it as a "bad port" before the permission model is consulted, so the control printed `undefined` and proved nothing. Port 2 isn't on that list: it prints `ERR_ACCESS_DENIED` with the guard on and `ECONNREFUSED` with it off.)
   - Add one more test, with no ID needed: any argument makes the CLI exit 2, with empty stdout and a usage message on stderr (contracts/cli.md Exit codes).
 
 ### Implementation for User Story 1
 
-- [ ] T016 [P] [US1] Implement the full-ID grammar and token finding in `tools/traceability/src/ids.ts` (research R8, data-model Reference):
+- [X] T016 [P] [US1] Implement the full-ID grammar and token finding in `tools/traceability/src/ids.ts` (research R8, data-model Reference):
   - `fullId(feature, id)` returns `<feature>-<id>`.
   - `parseFullId(text)` returns `{ feature, id }` when the whole text matches `/^([a-z0-9]+(?:-[a-z0-9]+)*)-(FR-\d{3})$/`, and null otherwise.
   - `findTokens(text)` returns `{ text, index }[]`. It examines every case-insensitive `fr-` occurrence and takes the longest run of letters, digits, `-` and `_` around it. A run that contains `fr-` more than once is still one token. Tokens come in order of position.
-- [ ] T017 [P] [US1] Implement the `oxc-parser` wrapper in `tools/traceability/src/source.ts` (research R5):
+- [X] T017 [P] [US1] Implement the `oxc-parser` wrapper in `tools/traceability/src/source.ts` (research R5):
   - `parseSource(file, text)` calls `parseSync(file, text)`, with the language inferred from the extension.
     - If `errors` is not empty, it returns an `unreadable-file` problem. The location is the first error's first label `start`, or `1:1` when there is none. The subject is `"<file>"` and the detail is `cannot be parsed: <first error message>`. On a fatal error oxc returns an empty tree, and nothing from the file is used.
     - Otherwise it returns `{ program }`.
@@ -249,13 +249,13 @@ exactly the requirements whose tests arrive in later phases (T024).
     - a template literal gives one entry per quasi, with its raw text and the offset where that text starts in the source (check it with `text.slice`);
     - any other node gives `[]`.
   - `visitAll(node, fn)` is a generic visitor over every child object that has a `type`.
-- [ ] T018 [P] [US1] Implement `listFiles(root): { specs: { feature: string; file: string }[]; testFiles: string[] }` in `tools/traceability/src/files.ts` (research R6):
+- [X] T018 [P] [US1] Implement `listFiles(root): { specs: { feature: string; file: string }[]; testFiles: string[] }` in `tools/traceability/src/files.ts` (research R6):
   - Walk with `readdirSync(dir, { withFileTypes: true })`. Sort entries by name with code-unit comparison. Skip every symbolic link.
   - Skip directories below the root for which `isExcludedDir` is true. The root itself is never excluded.
   - Specs: each directory directly under `specs/` (same exclusions) that has an entry named `spec.md` of any kind. A `spec.md` that is a directory or unreadable is still listed, and check.ts reports it.
   - Test files: every file whose name matches `TEST_FILE_PATTERN`.
   - All paths are relative to the root with `/` separators. A missing `specs/` gives `specs: []`.
-- [ ] T019 [P] [US1] Implement problem ordering and rendering in `tools/traceability/src/report.ts`. Follow contracts/cli.md exactly.
+- [X] T019 [P] [US1] Implement problem ordering and rendering in `tools/traceability/src/report.ts`. Follow contracts/cli.md exactly.
   - `sortProblems(problems)`: by file (code units), then line, column, `PROBLEM_TYPES` index, and subject.
   - `buildReport({ problems, approvedSpecs, activeRequirements, coveredRequirements })`: returns a `Report` with sorted problems, `countsByType` for every type (zeros included), and `result` `fail` exactly when there are problems.
   - `renderReport(report)` produces, in order:
@@ -271,7 +271,7 @@ exactly the requirements whose tests arrive in later phases (T024).
 
        Use singular nouns when a count is 1.
     7. A single trailing `\n`.
-- [ ] T020 [US1] Implement the spec reader in `tools/traceability/src/specs.ts`, after T016 (data-model Spec, RequirementEntry and Requirement; research R7). Split lines on `\n` and ignore a trailing `\r`.
+- [X] T020 [US1] Implement the spec reader in `tools/traceability/src/specs.ts`, after T016 (data-model Spec, RequirementEntry and Requirement; research R7). Split lines on `\n` and ignore a trailing `\r`.
   - `parseSpec(feature, file, text): Spec`:
     - First blank out HTML comments (which may start mid-line and span lines) and fenced code blocks (```` ``` ```` or `~~~` fences). Replace every character except `\n` with a space, so lines and columns stay exact.
     - Status: the first line matching `**Status**:`. `Approved` or `Draft` only when the trimmed value is exactly that word, otherwise `Invalid`. `statusText` is the trimmed value, or null when the line is missing. `statusLocation` is as described in T009 (FR-003).
@@ -290,7 +290,7 @@ exactly the requirements whose tests arrive in later phases (T024).
       - `no-requirements` when there is no well-formed entry.
 
     Subjects, details and locations are as in T009.
-- [ ] T021 [US1] Implement the test reader in `tools/traceability/src/test-files.ts`, after T016 and T017 (research R4, data-model TestNode).
+- [X] T021 [US1] Implement the test reader in `tools/traceability/src/test-files.ts`, after T016 and T017 (research R4, data-model TestNode).
   - `readTestFile(file, text)` returns `{ nodes: TestNode[]; problem: Problem | null }`. When the file fails to parse, `nodes` is empty.
   - A `TestNode` is `{ kind: 'test' | 'group'; tokens: Token[]; markedInactive: boolean; unrecognized: boolean; parent: TestNode | null }`. Its `tokens` come from `findTokens` over its title parts and literal tag strings, each located through `createLocator`.
   - Visit the statements of the program body and of each recognized group's callback: its block body, or its expression body as a single statement. Recognize an `ExpressionStatement`, optionally wrapped in `await`, whose expression is a call rooted at `test`, `it`, `describe` or `suite`.
@@ -308,7 +308,7 @@ exactly the requirements whose tests arrive in later phases (T024).
     - The body or callback is the first argument after the title that is neither the options object nor a number literal. A test without a body, or a group without a callback, is inactive.
   - A test body also marks the test inactive when it has a top-level statement calling `<ctx>.skip()` or a destructured `skip()`, with no argument or one string literal. `<ctx>` is the body's first parameter.
   - `coverageOf(nodes)`: for every `test` node, its effective tokens are its own plus those of every ancestor. They go in `counting` when neither the test nor any ancestor is inactive or unrecognized. Otherwise they go in `unrecognized` when the test or an ancestor is unrecognized, and in `skipped` when not.
-- [ ] T022 [US1] Implement `runCheck(root): Report` in `tools/traceability/src/check.ts`. It is synchronous and reads files as UTF-8.
+- [X] T022 [US1] Implement `runCheck(root): Report` in `tools/traceability/src/check.ts`. It is synchronous and reads files as UTF-8.
   1. Call `listFiles(root)`.
   2. Read each spec file. A read error gives `unreadable-file` at `1:1`, with the quoted path as subject and the detail `cannot be read: <error code>`. Never put error messages in the report: they contain absolute paths. Otherwise call `parseSpec`, then `specProblems`.
   3. Collect the active requirements of `Approved` specs, keyed by full ID.
@@ -319,13 +319,13 @@ exactly the requirements whose tests arrive in later phases (T024).
      - `only tests inside calls the check doesn't recognize reference this requirement` when only `unrecognized` tokens do;
      - `only skipped, disabled or placeholder tests, or tests inside calls the check doesn't recognize, reference this requirement` when both do.
   6. Return `buildReport` with `approvedSpecs` (readable Approved specs), `activeRequirements` and `coveredRequirements`.
-- [ ] T023 [US1] Implement the entry point `tools/traceability/src/cli.ts` (contracts/cli.md):
+- [X] T023 [US1] Implement the entry point `tools/traceability/src/cli.ts` (contracts/cli.md):
   - With any argument, write `usage: npm run traceability (takes no arguments)` to stderr and set exit code 2.
   - Otherwise write `renderReport(runCheck(process.cwd()))` to stdout and set exit code 1 or 0.
   - Catch internal errors: message to stderr, exit code 2.
   - Set `process.exitCode`. Never call `process.exit()`, because piped stdout is asynchronous on macOS and the report could be cut off.
   - Then run `npm run traceability` once. Confirm Node 26 accepts `--allow-fs-read=.` and loads `cli.ts` and `oxc-parser`'s native binding. If it rejects the relative path, change the script to `--allow-fs-read=*` and record that in research.md R9 (the R9 fallback).
-- [ ] T024 [US1] Checkpoint.
+- [X] T024 [US1] Checkpoint.
   - `npm run typecheck` and `npm test` pass.
   - `npm run traceability` exits 1 with exactly seven problems, all `uncovered`. They are 001-requirement-traceability-FR-013, -FR-016, -FR-017, -FR-018, -FR-019, -FR-025 and -FR-028, whose tests arrive in US2, US3 and Polish.
   - The summary shows 29 active requirements checked and 22 covered.
