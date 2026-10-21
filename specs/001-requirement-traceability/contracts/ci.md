@@ -54,8 +54,12 @@ Rules, with every parameter written out **[tested]**:
 |------|------------|--------|
 | `deletion` | none | `main` can't be deleted |
 | `non_fast_forward` | none | No force pushes to `main` |
-| `pull_request` | `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `require_code_owner_review: false`, `require_last_push_approval: false`, `required_review_thread_resolution: false`, `allowed_merge_methods: ["squash"]` | Changes reach `main` only through pull requests, squash-merged |
+| `pull_request` | `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `require_code_owner_review: false`, `require_last_push_approval: false`, `require_extra_approval_for_unattributed_changes: false`, `required_review_thread_resolution: false`, `required_reviewers: []`, `allowed_merge_methods: ["squash"]` | Changes reach `main` only through pull requests, squash-merged. No approval is required: with one owner and no bypass, a required approval could never be given |
 | `required_status_checks` | `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false`, `required_status_checks: [{ "context": "traceability", "integration_id": 15368 }, { "context": "test", "integration_id": 15368 }]` | Both jobs must pass on a branch that's up to date with `main`. Only GitHub Actions (app 15368) can satisfy them |
+
+GitHub fills in `require_extra_approval_for_unattributed_changes` (as `true`) and
+`required_reviewers` when a ruleset leaves them out, so both are written out here. The first
+would require an approval for changes GitHub can't attribute to a user.
 
 Consistency rules between the two files **[tested]**:
 
