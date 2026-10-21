@@ -404,7 +404,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T029 [P] [US3] Extend `tools/traceability/test/references.test.ts`. It covers 001-requirement-traceability-FR-016, 001-requirement-traceability-FR-017, 001-requirement-traceability-FR-018 and 001-requirement-traceability-FR-019, using `runCheck` on sample projects and checking each problem's exact `file:line:column`.
+- [X] T029 [P] [US3] Extend `tools/traceability/test/references.test.ts`. It covers 001-requirement-traceability-FR-016, 001-requirement-traceability-FR-017, 001-requirement-traceability-FR-018 and 001-requirement-traceability-FR-019, using `runCheck` on sample projects and checking each problem's exact `file:line:column`.
   - FR-016:
     - `002-example-FR-009`, when the spec defines no FR-009, gives `unknown-reference` with the detail `spec 002-example defines no FR-009`.
     - `099-missing-FR-001` gives `unknown-reference` with the detail `no spec directory is named 099-missing`.
@@ -419,7 +419,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
     - An empty `data-req=""` gives `malformed` with subject `""`.
     - A test with one malformed and one valid ID still covers the valid one.
   - FR-019: a reference to an active requirement in a Draft spec isn't reported, and neither is one into a spec with an invalid Status.
-- [ ] T030 [P] [US3] Write `tools/traceability/test/ui-files.test.ts`, covering 001-requirement-traceability-FR-013 and 001-requirement-traceability-FR-014. Put all sample markup in string literals.
+- [X] T030 [P] [US3] Write `tools/traceability/test/ui-files.test.ts`, covering 001-requirement-traceability-FR-013 and 001-requirement-traceability-FR-014. Put all sample markup in string literals.
   - `readUiFile(file, text)` reads JSX `data-req="…"`, `data-req={'…'}` and ``data-req={`…`}`` with no substitutions. It also reads `{ 'data-req': '…' }` object properties, including inside `createElement` calls.
   - A computed value is skipped: `data-req={ids}`, or a template with substitutions.
   - A file whose text doesn't contain `data-req` isn't parsed.
@@ -429,7 +429,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
     - a test file containing the same markup is not;
     - files under excluded directories aren't read;
     - a UI file with a syntax error gives `unreadable-file`.
-- [ ] T031 [P] [US3] Extend `tools/traceability/test/test-files.test.ts` with a group covering 001-requirement-traceability-FR-012, 001-requirement-traceability-FR-016, 001-requirement-traceability-FR-017 and 001-requirement-traceability-FR-018. Using `runCheck`, unknown, removed and malformed references are still reported in all of these places:
+- [X] T031 [P] [US3] Extend `tools/traceability/test/test-files.test.ts` with a group covering 001-requirement-traceability-FR-012, 001-requirement-traceability-FR-016, 001-requirement-traceability-FR-017 and 001-requirement-traceability-FR-018. Using `runCheck`, unknown, removed and malformed references are still reported in all of these places:
   - `.skip` and `.todo` tests;
   - tests inside skipped groups;
   - groups with no tests;
@@ -440,7 +440,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
 
 ### Implementation for User Story 3
 
-- [ ] T032 [P] [US3] Extend `tools/traceability/src/ids.ts` with reference classification (data-model Reference, the classification tree):
+- [X] T032 [P] [US3] Extend `tools/traceability/src/ids.ts` with reference classification (data-model Reference, the classification tree):
   - `SpecTargets` is `Map<feature, { readable: boolean; ids: Map<'FR-###', 'active' | 'removed'> }>`. An ID is `active` when any of its definitions is active.
   - `referenceProblem(text, location, targets): Problem | null`. The subject is the full ID without quotes, except for `malformed`:
     - `malformed` when `parseFullId` rejects the text. The subject is the quoted text.
@@ -450,19 +450,19 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
     - `removed-reference` when every definition is removed.
     - Otherwise null. Draft and invalid-Status specs are valid targets.
   - `splitDataReq(value)` returns `{ text, index }[]`, one per whitespace-separated piece. A value that is empty or only whitespace gives one empty piece at index 0.
-- [ ] T033 [P] [US3] Extend `listFiles` in `tools/traceability/src/files.ts` to also return `uiFiles`. It includes every file matching `/\.(?:[cm]?[jt]s|[jt]sx)$/` (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`) that doesn't match `TEST_FILE_PATTERN`. The exclusions and order are the same as for test files (research R6).
-- [ ] T034 [US3] Implement `readUiFile(file, text)` in `tools/traceability/src/ui-files.ts`, after T032. It returns `{ references: Token[]; problem: Problem | null }`.
+- [X] T033 [P] [US3] Extend `listFiles` in `tools/traceability/src/files.ts` to also return `uiFiles`. It includes every file matching `/\.(?:[cm]?[jt]s|[jt]sx)$/` (`.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs`) that doesn't match `TEST_FILE_PATTERN`. The exclusions and order are the same as for test files (research R6).
+- [X] T034 [US3] Implement `readUiFile(file, text)` in `tools/traceability/src/ui-files.ts`, after T032. It returns `{ references: Token[]; problem: Problem | null }`.
   - Return no references, without parsing, when `text` doesn't include `data-req`.
   - Otherwise call `parseSource` and walk every node with `visitAll`.
   - Read a `JSXAttribute` named `data-req` whose value is a string literal, or a `JSXExpressionContainer` holding a string literal or a template literal with no substitutions. Read a non-computed property whose key is the string literal `'data-req'` with the same kinds of value.
   - Split each value with `splitDataReq`, and locate each piece with `createLocator`.
   - Skip computed values (research R6).
-- [ ] T035 [US3] Wire reference checking into `runCheck` in `tools/traceability/src/check.ts`:
+- [X] T035 [US3] Wire reference checking into `runCheck` in `tools/traceability/src/check.ts`:
   - Build `SpecTargets` from every spec, of any Status. Mark specs whose `spec.md` couldn't be read as unreadable.
   - For every node of every readable test file, apply `referenceProblem` to each of its own tokens, once. That includes inactive tests, groups with no tests and unrecognized shapes.
   - Read every `uiFiles` entry, with read errors handled as in T022. Call `readUiFile` and apply `referenceProblem` to each reference.
   - Add these problems before `buildReport`.
-- [ ] T036 [US3] Checkpoint.
+- [X] T036 [US3] Checkpoint.
   - `npm run typecheck` and `npm test` pass. The US1 and US2 tests pass unchanged.
   - `npm run traceability` exits 1 with only uncovered 001-requirement-traceability-FR-028 (its test comes in T040), plus -FR-025 if US2 isn't done yet. Any other problem is a defect.
   - The check's own test titles produce no reference problems.

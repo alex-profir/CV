@@ -52,14 +52,13 @@ export function literalParts(node: Node | null | undefined, text: string): { tex
 
 // Calls `fn` on every node below `node`, in source order.
 export function visitAll(node: unknown, fn: (node: Node) => void): void {
-  if (Array.isArray(node)) {
-    for (const child of node) visitAll(child, fn);
-    return;
-  }
   if (typeof node !== 'object' || node === null) return;
-  for (const [key, child] of Object.entries(node)) {
-    if (key === 'parent' || typeof child !== 'object' || child === null) continue;
-    if (!Array.isArray(child) && typeof (child as { type?: unknown }).type === 'string') fn(child as Node);
-    visitAll(child, fn);
+  for (const [key, value] of Object.entries(node)) {
+    if (key === 'parent') continue;
+    for (const child of Array.isArray(value) ? value : [value]) {
+      if (typeof child !== 'object' || child === null) continue;
+      if (typeof (child as { type?: unknown }).type === 'string') fn(child as Node);
+      visitAll(child, fn);
+    }
   }
 }

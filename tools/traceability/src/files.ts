@@ -18,6 +18,9 @@ export const TEST_INCLUDE_GLOBS = ['**/*.{test,spec}.?(c|m)[jt]s?(x)'];
 
 export const TEST_EXCLUDE_GLOBS = [...EXCLUDED_DIR_NAMES.map((name) => `**/${name}/**`), '**/.*/**'];
 
+// JS and TS source. Those that aren't test files are UI source.
+const SOURCE_FILE_PATTERN = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+
 function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
@@ -35,9 +38,13 @@ function entries(root: string, dir: string): fs.Dirent[] {
   return found.filter((entry) => !entry.isSymbolicLink()).sort((a, b) => compare(a.name, b.name));
 }
 
-// The specs and test files under `root`, as relative paths with `/`
+// The specs, test files and UI source under `root`, as relative paths with `/`
 // separators, sorted by code unit. Symbolic links are never followed.
-export function listFiles(root: string): { specs: { feature: string; file: string }[]; testFiles: string[] } {
+export function listFiles(root: string): {
+  specs: { feature: string; file: string }[];
+  testFiles: string[];
+  uiFiles: string[];
+} {
   const specs = [];
   const hasSpecsDir = entries(root, '').some((entry) => entry.name === 'specs' && entry.isDirectory());
   for (const dir of hasSpecsDir ? entries(root, 'specs') : []) {
@@ -49,6 +56,7 @@ export function listFiles(root: string): { specs: { feature: string; file: strin
   }
 
   const testFiles: string[] = [];
+  const uiFiles: string[] = [];
   const walk = (dir: string) => {
     for (const entry of entries(root, dir)) {
       const file = dir === '' ? entry.name : `${dir}/${entry.name}`;
@@ -56,10 +64,12 @@ export function listFiles(root: string): { specs: { feature: string; file: strin
         if (!isExcludedDir(entry.name)) walk(file);
       } else if (entry.isFile() && TEST_FILE_PATTERN.test(entry.name)) {
         testFiles.push(file);
+      } else if (entry.isFile() && SOURCE_FILE_PATTERN.test(entry.name)) {
+        uiFiles.push(file);
       }
     }
   };
   walk('');
 
-  return { specs, testFiles: testFiles.sort(compare) };
+  return { specs, testFiles: testFiles.sort(compare), uiFiles: uiFiles.sort(compare) };
 }

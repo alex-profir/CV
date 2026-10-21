@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { listFiles } from './files.ts';
-import type { Token } from './ids.ts';
+import { referenceProblem } from './ids.ts';
+import type { SpecTargets, Token } from './ids.ts';
 import { buildReport } from './report.ts';
 import type { Problem, Report } from './report.ts';
 import { parseSpec, requirementsOf, specProblems } from './specs.ts';
 import type { Requirement } from './specs.ts';
 import { coverageOf, readTestFile } from './test-files.ts';
+import { readUiFile } from './ui-files.ts';
 
 // Reads a file as UTF-8. A read error is reported by its code only, because
 // error messages contain absolute paths.
@@ -40,17 +42,27 @@ export function runCheck(root: string): Report {
 
   let approvedSpecs = 0;
   const active = new Map<string, Requirement>();
+  const targets: SpecTargets = new Map();
   for (const { feature, file } of files.specs) {
     const text = readText(root, file, problems);
+    const ids = new Map<string, 'active' | 'removed'>();
+    targets.set(feature, { readable: text !== null, ids });
     if (text === null) continue;
     const spec = parseSpec(feature, file, text);
     problems.push(...specProblems(spec));
-    if (spec.status !== 'Approved') continue;
-    approvedSpecs += 1;
     for (const requirement of requirementsOf(spec)) {
-      if (requirement.state === 'active') active.set(requirement.fullId, requirement);
+      ids.set(requirement.id, requirement.state);
+      if (spec.status === 'Approved' && requirement.state === 'active') active.set(requirement.fullId, requirement);
     }
+    if (spec.status === 'Approved') approvedSpecs += 1;
   }
+
+  const checkReferences = (tokens: Token[]) => {
+    for (const token of tokens) {
+      const problem = referenceProblem(token.text, token.location, targets);
+      if (problem !== null) problems.push(problem);
+    }
+  };
 
   const covered = new Set<string>();
   const skipped = new Set<string>();
@@ -65,10 +77,20 @@ export function runCheck(root: string): Report {
     if (text === null) continue;
     const { nodes, problem } = readTestFile(file, text);
     if (problem !== null) problems.push(problem);
+    // Every node's own references are checked once, whether or not it counts.
+    for (const node of nodes) checkReferences(node.tokens);
     const coverage = coverageOf(nodes);
     note(coverage.counting, covered);
     note(coverage.skipped, skipped);
     note(coverage.unrecognized, unrecognized);
+  }
+
+  for (const file of files.uiFiles) {
+    const text = readText(root, file, problems);
+    if (text === null) continue;
+    const { references, problem } = readUiFile(file, text);
+    if (problem !== null) problems.push(problem);
+    checkReferences(references);
   }
 
   for (const [id, requirement] of active) {

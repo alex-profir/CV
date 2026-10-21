@@ -358,3 +358,32 @@ describe('001-requirement-traceability-FR-022: each reference is located at its 
     expect(found[0]!.location.column).toBe(12);
   });
 });
+
+describe('001-requirement-traceability-FR-012 001-requirement-traceability-FR-016 001-requirement-traceability-FR-017 001-requirement-traceability-FR-018: references on tests that do not count are still checked', () => {
+  test('in skipped tests, skipped groups, empty groups, unrecognized calls and nested declarations', () => {
+    const lines = [
+      "test.skip('002-example-FR-009', () => {});",
+      "test.todo('002-example-FR-002');",
+      "describe.skip('group', () => { test('099-missing-FR-001', () => {}); });",
+      "describe('fr-001', () => {});",
+      "test.describe.fixme('002-example-FR-01', () => {});",
+      "for (const n of [1]) { test('002-example-FR-008', () => {}); }",
+      "if (process.env.CI) { test('002-example-FR-002', () => {}); }",
+      "test('002-example-FR-001', () => { expect('002-example-FR-007').toBe('099-missing-FR-002'); });",
+    ];
+    const root = makeProject({
+      'specs/002-example/spec.md': approvedSpec(['- **FR-001**: One.', '- ~~**FR-002**~~: Removed 2026-10-21 - replaced.']),
+      'src/a.test.ts': lines.join('\n'),
+    });
+    const at = (line: number, text: string) => `src/a.test.ts:${line}:${lines[line - 1]!.indexOf(text) + 1}`;
+    expect(runCheck(root).problems.map((p) => `${p.location.file}:${p.location.line}:${p.location.column} ${p.type} ${p.subject}`)).toEqual([
+      `${at(1, '002')} unknown-reference 002-example-FR-009`,
+      `${at(2, '002')} removed-reference 002-example-FR-002`,
+      `${at(3, '099')} unknown-reference 099-missing-FR-001`,
+      `${at(4, 'fr-')} malformed "fr-001"`,
+      `${at(5, '002')} malformed "002-example-FR-01"`,
+      `${at(6, '002')} unknown-reference 002-example-FR-008`,
+      `${at(7, '002')} removed-reference 002-example-FR-002`,
+    ]);
+  });
+});

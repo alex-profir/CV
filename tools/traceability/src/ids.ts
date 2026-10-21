@@ -1,7 +1,11 @@
-import type { Location } from './report.ts';
+import type { Location, Problem } from './report.ts';
 
 // An ID-like piece of text found in a test file or UI source.
 export type Token = { text: string; location: Location };
+
+// Every spec of any Status, by feature, with the state of each well-formed ID.
+// A spec whose spec.md can't be read has no IDs to check against.
+export type SpecTargets = Map<string, { readable: boolean; ids: Map<string, 'active' | 'removed'> }>;
 
 const FULL_ID = /^([a-z0-9]+(?:-[a-z0-9]+)*)-(FR-\d{3})$/;
 
@@ -25,4 +29,32 @@ export function findTokens(text: string): { text: string; index: number }[] {
     if (/fr-/i.test(match[0])) tokens.push({ text: match[0], index: match.index });
   }
   return tokens;
+}
+
+// The problem with a reference, or null when it's valid (data-model.md,
+// Reference). Draft and invalid-Status specs are valid targets.
+export function referenceProblem(text: string, location: Location, targets: SpecTargets): Problem | null {
+  const parsed = parseFullId(text);
+  if (parsed === null) {
+    return { type: 'malformed', subject: `"${text}"`, location, detail: 'not a full requirement ID of the form <feature>-FR-###' };
+  }
+  const spec = targets.get(parsed.feature);
+  if (spec === undefined) {
+    return { type: 'unknown-reference', subject: text, location, detail: `no spec directory is named ${parsed.feature}` };
+  }
+  // The unreadable-file problem already fails the check.
+  if (!spec.readable) return null;
+  const state = spec.ids.get(parsed.id);
+  if (state === undefined) {
+    return { type: 'unknown-reference', subject: text, location, detail: `spec ${parsed.feature} defines no ${parsed.id}` };
+  }
+  if (state === 'removed') return { type: 'removed-reference', subject: text, location, detail: 'this requirement was removed' };
+  return null;
+}
+
+// One piece per whitespace-separated value. An empty or blank value is one
+// empty piece, so it's reported as malformed.
+export function splitDataReq(value: string): { text: string; index: number }[] {
+  const pieces = [...value.matchAll(/\S+/g)].map((match) => ({ text: match[0], index: match.index }));
+  return pieces.length > 0 ? pieces : [{ text: '', index: 0 }];
 }
