@@ -383,7 +383,7 @@ once this feature's pull request exists.
     2. `{ "type": "non_fast_forward" }`
     3. `pull_request`, with `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `require_code_owner_review: false`, `require_last_push_approval: false`, `required_review_thread_resolution: false` and `allowed_merge_methods: ["squash"]`
     4. `required_status_checks`, with `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false` and `required_status_checks: [{ "context": "traceability", "integration_id": 15368 }, { "context": "test", "integration_id": 15368 }]`
-- [ ] T028 [US2] Checkpoint.
+- [X] T028 [US2] Checkpoint.
   - `npm test` passes, including `repo-settings.test.ts`.
   - `npm run traceability` no longer lists 001-requirement-traceability-FR-025. If US3 isn't done yet, six remain uncovered: -FR-013, -FR-016, -FR-017, -FR-018, -FR-019 and -FR-028. If it is, only -FR-028 remains.
   - Commit (Conventional Commits, no AI attribution), push `001-requirement-traceability`, and open the feature's pull request to `main` as a **draft**. CI then runs on Linux from here on. `traceability` is expected to fail until T043. It's still the feature's single PR (Constitution XI).
@@ -570,11 +570,12 @@ assets).
     `specs/001-requirement-traceability/spec.md:251:5 uncovered 001-requirement-traceability-FR-009: only skipped, disabled or placeholder tests reference this requirement`,
     and was reverted. Scenario 5 gave identical runs. Scenario 6 took 115 ms against the 10 s
     budget. Scenario 4 (network off) is still the owner's to run.
-- [ ] T045 Commit the remaining work with Conventional Commits, e.g. `feat(traceability): …`, `test(traceability): …`. Push, and mark the draft pull request from T028 ready for review (Constitution XI). If US2 was skipped or done later, open it now.
+- [X] T045 Commit the remaining work with Conventional Commits, e.g. `feat(traceability): …`, `test(traceability): …`. Push, and mark the draft pull request from T028 ready for review (Constitution XI). If US2 was skipped or done later, open it now.
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`.
   - Confirm both `traceability` and `test` jobs run and pass.
   - Confirm the `traceability` log shows the same report as the local run on the same commit (FR-026, quickstart scenario 5).
+  - Result (2026-10-21): pull request #7 opened ready for review, after all phases were done locally, so there was no draft stage (T028). On commit 0fba0de, `traceability` and `test` passed on `ubuntu-latest` with Node 26.12.0, and the `traceability` log's report matched the local macOS run line for line.
 - [ ] T046 Owner action, needs admin rights and the open PR from T045: apply the ruleset with `gh api --method POST /repos/alex-profir/CV/rulesets --input .github/rulesets/main.json` (quickstart scenario 7).
   - Confirm `current_user_can_bypass` reads `never`, and the drift diff prints `no drift`.
   - If the diff shows parameters the server added with default values, add them to `.github/rulesets/main.json` and the contracts/ci.md table. Then update `repo-settings.test.ts`, re-apply with `--method PUT /repos/alex-profir/CV/rulesets/<id>`, and push the change to the PR.
