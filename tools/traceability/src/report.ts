@@ -29,12 +29,13 @@ export type Report = {
 
 const LABEL_WIDTH = 32;
 
-function compare(a: string, b: string): number {
+// Plain code-unit order. Never locale-aware, so every machine gives the same
+// order (FR-024).
+export function compare(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
 // By file in code-unit order, then line, column, type order and subject.
-// Never locale-aware, so every machine gives the same order (FR-024).
 export function sortProblems(problems: Problem[]): Problem[] {
   return [...problems].sort(
     (a, b) =>

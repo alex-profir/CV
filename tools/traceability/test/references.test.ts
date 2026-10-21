@@ -158,20 +158,23 @@ describe('001-requirement-traceability-FR-018: malformed references are reported
     ]);
   });
 
-  test('in data-req values, including an empty one', () => {
+  test('in data-req values, including an empty one and a bare attribute', () => {
     const malformed = 'export const A = () => <div data-req="002-example-FR-001 FR-003" />;';
     const empty = 'export const B = () => <div data-req="" />;';
+    const bare = 'export const C = () => <div data-req />;';
     expect(
       report({
         'specs/002-example/spec.md': EXAMPLE,
         'src/covered.test.ts': COVERAGE,
         'src/A.tsx': malformed,
         'src/B.tsx': empty,
+        'src/C.tsx': bare,
       }),
     ).toEqual([
       'specs/002-example/spec.md:9:5 duplicate-id 002-example-FR-003: defined 2 times, on lines 9 and 10',
       `src/A.tsx:1:${col(malformed, 'FR-003')} malformed "FR-003": ${detail}`,
       `src/B.tsx:1:${col(empty, '""') + 1} malformed "": ${detail}`,
+      `src/C.tsx:1:${col(bare, 'data-req')} malformed "": ${detail}`,
     ]);
   });
 

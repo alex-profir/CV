@@ -5,7 +5,7 @@
     "node": ">=26"
   },
   "scripts": {
-    "traceability": "node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts",
+    "traceability": "node --permission --allow-fs-read=. --allow-addons tools/traceability/src/main.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

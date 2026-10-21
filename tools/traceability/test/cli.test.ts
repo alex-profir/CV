@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { REQUIRED_NODE_MAJOR, nodeVersionProblem } from '../src/node-version.ts';
-import { REPO_ROOT, makeProject, runCli } from './helpers/project.ts';
+import { REQUIRED_NODE_MAJOR, nodeVersionProblem } from '../src/node-version.js';
+import { CLI_PATH, REPO_ROOT, makeProject, runCli } from './helpers/project.ts';
 
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
 const SCRIPT: string = PACKAGE.scripts.traceability;
@@ -76,6 +76,19 @@ describe('command usage', () => {
     expect(result.status).toBe(2);
     expect(result.stdout).toBe('');
     expect(result.stderr).toContain('usage: npm run traceability');
+  });
+
+  // With type stripping off, Node can load the plain JavaScript entry point
+  // but not the TypeScript check, like a Node too old for TypeScript.
+  test('a Node that cannot load the check exits with 2, not the code for problems found', () => {
+    const result = spawnSync(
+      process.execPath,
+      ['--no-strip-types', '--permission', `--allow-fs-read=${REPO_ROOT}`, '--allow-addons', CLI_PATH],
+      { cwd: REPO_ROOT, encoding: 'utf8' },
+    );
+    expect(result.status).toBe(2);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/^traceability check could not start: .*\.ts/m);
   });
 });
 

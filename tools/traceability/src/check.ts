@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { listFiles } from './files.ts';
+import { listFiles, specFeature } from './files.ts';
 import { referenceProblem } from './ids.ts';
 import type { SpecTargets, Token } from './ids.ts';
 import { buildReport } from './report.ts';
@@ -46,7 +46,7 @@ export function runCheck(root: string): Report {
   // A spec directory that can't be read is an unreadable target, like a
   // spec.md that can't be read.
   for (const { dir } of files.unreadableDirs) {
-    const feature = /^specs\/([^/]+)$/.exec(dir)?.[1];
+    const feature = specFeature(dir);
     if (feature !== undefined) targets.set(feature, { readable: false, ids: new Map() });
   }
   for (const { feature, file } of files.specs) {
@@ -55,8 +55,9 @@ export function runCheck(root: string): Report {
     targets.set(feature, { readable: text !== null, ids });
     if (text === null) continue;
     const spec = parseSpec(feature, file, text);
-    problems.push(...specProblems(spec));
-    for (const requirement of requirementsOf(spec)) {
+    const requirements = requirementsOf(spec);
+    problems.push(...specProblems(spec, requirements));
+    for (const requirement of requirements) {
       ids.set(requirement.id, requirement.state);
       if (spec.status === 'Approved' && requirement.state === 'active') active.set(requirement.fullId, requirement);
     }

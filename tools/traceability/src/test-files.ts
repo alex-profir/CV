@@ -39,11 +39,35 @@ function chainOf(expression: Expression): { root: string; links: Link[] } | null
   return null;
 }
 
+// Whether a literal is truthy, or null when the node isn't a literal. A missing
+// argument is `undefined`, so it's falsy.
+function literalTruthiness(node: Node | null | undefined): boolean | null {
+  if (node === undefined) return false;
+  if (node?.type === 'Literal') return 'regex' in node || Boolean(node.value);
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) return Boolean(node.quasis[0]!.value.cooked);
+  return null;
+}
+
+// Whether the argument of skipIf, runIf, each or for decides in the code that
+// the tests never run: skipIf(true), runIf(false), or each([]) and for([]),
+// which declare no tests. Any other argument is a runtime condition.
+function inactiveByArgument(name: string, arg: Argument | undefined): boolean {
+  if (name === 'skipIf') return literalTruthiness(arg) === true;
+  if (name === 'runIf') return literalTruthiness(arg) === false;
+  return arg?.type === 'ArrayExpression' && arg.elements.length === 0;
+}
+
 // What a chain rooted at test, it, describe or suite declares, or null when its
-// shape isn't recognized (research R4).
-function shapeOf(root: string, links: Link[]): { kind: 'test' | 'group'; markedInactive: boolean } | null {
+// shape isn't recognized (research R4). `contextParam` is the position of the
+// test body's parameter that receives the test context: `.for` passes it
+// second, and `.each` doesn't pass it at all.
+function shapeOf(
+  root: string,
+  links: Link[],
+): { kind: 'test' | 'group'; markedInactive: boolean; contextParam: number | null } | null {
   let kind: 'test' | 'group' = root === 'test' || root === 'it' ? 'test' : 'group';
   let markedInactive = false;
+  let contextParam: number | null = 0;
   for (let i = 0; i < links.length; i++) {
     const link = links[i]!;
     if (!('name' in link) || link.name === null) return null;
@@ -55,19 +79,18 @@ function shapeOf(root: string, links: Link[]): { kind: 'test' | 'group'; markedI
       const next = links[i + 1];
       if (next === undefined || !('args' in next)) return null;
       i += 1;
+      if (inactiveByArgument(link.name, next.args[0])) markedInactive = true;
+      if (link.name === 'each') contextParam = null;
+      if (link.name === 'for') contextParam = 1;
     } else if (!NO_EFFECT.has(link.name)) {
       return null;
     }
   }
-  return { kind, markedInactive };
+  return { kind, markedInactive, contextParam };
 }
 
 function isFunction(node: Argument | undefined) {
   return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression';
-}
-
-function isStringLiteral(node: Node | null | undefined): boolean {
-  return node?.type === 'Literal' && typeof node.value === 'string';
 }
 
 function keyName(key: Node): string | null {
@@ -82,10 +105,6 @@ function propertyValue(object: ObjectExpression | undefined, name: string): Expr
     (property) => property.type === 'Property' && !property.computed && keyName(property.key) === name,
   );
   return property?.type === 'Property' ? property.value : undefined;
-}
-
-function isTrue(node: Expression | undefined): boolean {
-  return node?.type === 'Literal' && node.value === true;
 }
 
 // The call a statement makes, unwrapping `await`. An arrow function's
@@ -103,12 +122,19 @@ function statementsOf(fn: Argument): (Statement | Directive | Expression)[] {
   return [];
 }
 
-// A test body that always skips: a top-level `ctx.skip()` on its first
-// parameter, or a call to `skip` destructured from it, with no argument or one
-// string note.
-function skipsUnconditionally(body: Argument): boolean {
-  if (body.type !== 'ArrowFunctionExpression' && body.type !== 'FunctionExpression') return false;
-  const param = body.params[0];
+// Whether `skip(arg, …)` on the test context always skips. Vitest skips unless
+// the condition is exactly `false`, and a string is a note, not a condition.
+function alwaysSkips(arg: Argument | undefined): boolean {
+  if (arg === undefined || arg.type === 'TemplateLiteral') return true;
+  return arg.type === 'Literal' && arg.value !== false;
+}
+
+// A test body that always skips: a top-level `ctx.skip(…)` on its context
+// parameter, or a call to `skip` destructured from it, whose argument means it
+// always skips.
+function skipsUnconditionally(body: Argument, contextParam: number | null): boolean {
+  if (contextParam === null || (body.type !== 'ArrowFunctionExpression' && body.type !== 'FunctionExpression')) return false;
+  const param = body.params[contextParam];
   let context: string | null = null;
   let skip: string | null = null;
   if (param?.type === 'Identifier') context = param.name;
@@ -121,9 +147,7 @@ function skipsUnconditionally(body: Argument): boolean {
   }
   return statementsOf(body).some((statement) => {
     const call = statementCall(statement);
-    if (call === null || call.arguments.length > 1 || (call.arguments.length === 1 && !isStringLiteral(call.arguments[0]))) {
-      return false;
-    }
+    if (call === null || !alwaysSkips(call.arguments[0])) return false;
     const callee = call.callee;
     if (callee.type === 'Identifier') return callee.name === skip;
     return (
@@ -179,10 +203,10 @@ export function readTestFile(file: string, text: string): { nodes: TestNode[]; p
     const body = rest.find((arg) => arg !== options && !(arg.type === 'Literal' && typeof arg.value === 'number'));
     const markedInactive =
       shape.markedInactive ||
-      isTrue(propertyValue(options, 'skip')) ||
-      isTrue(propertyValue(options, 'todo')) ||
+      literalTruthiness(propertyValue(options, 'skip')) === true ||
+      literalTruthiness(propertyValue(options, 'todo')) === true ||
       body === undefined ||
-      (shape.kind === 'test' && skipsUnconditionally(body));
+      (shape.kind === 'test' && skipsUnconditionally(body, shape.contextParam));
     const node: TestNode = { kind: shape.kind, tokens, markedInactive, unrecognized: false, parent };
     nodes.push(node);
     // Test bodies are never searched for tests (fail closed).

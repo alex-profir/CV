@@ -234,6 +234,73 @@ describe('001-requirement-traceability-FR-012: skipped, disabled and placeholder
     });
   });
 
+  test('context skips whose literal argument always skips, and the context of for bodies', () => {
+    const source = `
+      test('002-example-FR-001', (ctx) => {
+        ctx.skip(true);
+      });
+      test('002-example-FR-002', ({ skip }) => {
+        skip(true, 'not ready yet');
+      });
+      test('002-example-FR-003', (ctx) => {
+        ctx.skip(0);
+      });
+      test('002-example-FR-004', (ctx) => {
+        ctx.skip(\`note \${reason}\`);
+      });
+      test.for([1])('002-example-FR-005 %s', (n, { skip }) => {
+        skip();
+      });
+      test.for([1])('002-example-FR-006 %s', (n, ctx) => {
+        ctx.skip('later');
+      });
+    `;
+    expect(coverage(source)).toEqual({
+      counting: [],
+      skipped: [
+        '002-example-FR-001',
+        '002-example-FR-002',
+        '002-example-FR-003',
+        '002-example-FR-004',
+        '002-example-FR-005',
+        '002-example-FR-006',
+      ],
+      unrecognized: [],
+    });
+  });
+
+  test('conditions and tables written as literals, which decide in the code that nothing runs', () => {
+    const source = `
+      test.skipIf(true)('002-example-FR-001', () => {});
+      test.runIf(false)('002-example-FR-002', () => {});
+      test.runIf()('002-example-FR-003', () => {});
+      describe.skipIf(1)('002-example-FR-004', () => {
+        test('inside', () => {});
+      });
+      test.each([])('002-example-FR-005 %s', (n) => {});
+      test.for([])('002-example-FR-006 %s', (n) => {});
+      describe.each([])('002-example-FR-007 %s', () => {
+        test('inside', () => {});
+      });
+      test('002-example-FR-008', { skip: 1 }, () => {});
+      test.skipIf('')('002-example-FR-009', () => {});
+    `;
+    expect(coverage(source)).toEqual({
+      counting: ['002-example-FR-009'],
+      skipped: [
+        '002-example-FR-001',
+        '002-example-FR-002',
+        '002-example-FR-003',
+        '002-example-FR-004',
+        '002-example-FR-005',
+        '002-example-FR-006',
+        '002-example-FR-007',
+        '002-example-FR-008',
+      ],
+      unrecognized: [],
+    });
+  });
+
   test('a group without a callback is a placeholder', () => {
     const { nodes } = readTestFile('src/a.test.ts', "describe('placeholder');");
     expect(nodes.map((node) => [node.kind, node.markedInactive, node.unrecognized])).toEqual([['group', true, false]]);
@@ -257,6 +324,21 @@ describe('001-requirement-traceability-FR-012: skipped, disabled and placeholder
       describe.skipIf(process.env.CI)('002-example-FR-008', () => {
         test('inside', () => {});
       });
+      test('002-example-FR-009', (ctx) => {
+        ctx.skip(false);
+      });
+      test.skipIf(false)('002-example-FR-010', () => {});
+      test.runIf(true)('002-example-FR-011', () => {});
+      test.each([[1]])('002-example-FR-012 %s', (row) => {
+        row.skip();
+      });
+      test.each([{ skip }])('002-example-FR-013', ({ skip }) => {
+        skip();
+      });
+      test.for([1])('002-example-FR-014 %s', (row) => {
+        row.skip();
+      });
+      test.each(rows)('002-example-FR-015 %s', (n) => {});
     `;
     expect(coverage(source)).toEqual({
       counting: [
@@ -268,6 +350,13 @@ describe('001-requirement-traceability-FR-012: skipped, disabled and placeholder
         '002-example-FR-006',
         '002-example-FR-007',
         '002-example-FR-008',
+        '002-example-FR-009',
+        '002-example-FR-010',
+        '002-example-FR-011',
+        '002-example-FR-012',
+        '002-example-FR-013',
+        '002-example-FR-014',
+        '002-example-FR-015',
       ],
       skipped: [],
       unrecognized: [],

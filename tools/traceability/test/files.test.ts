@@ -2,13 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import config from '../../../vitest.config.ts';
-import {
-  EXCLUDED_DIR_NAMES,
-  TEST_EXCLUDE_GLOBS,
-  TEST_FILE_PATTERN,
-  TEST_INCLUDE_GLOBS,
-  listFiles,
-} from '../src/files.ts';
+import { EXCLUDED_DIR_NAMES, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, isTestFile, listFiles } from '../src/files.ts';
 import { makeProject } from './helpers/project.ts';
 
 describe('001-requirement-traceability-FR-014: only the project own files are examined', () => {
@@ -55,14 +49,14 @@ describe('001-requirement-traceability-FR-014: only the project own files are ex
     });
   });
 
-  test('selects test files by name', () => {
-    for (const name of ['a.test.ts', 'a.spec.tsx', 'a.test.mjs', 'a.test.cjs', 'a.spec.jsx', 'a.test.js', 'a.spec.mts']) {
-      expect(TEST_FILE_PATTERN.test(name)).toBe(true);
+  test('selects test files with the test runner include globs', () => {
+    for (const name of ['a.test.ts', 'a.spec.tsx', 'a.test.mjs', 'a.test.cjs', 'a.spec.jsx', 'a.test.js', 'src/deep/a.spec.mts']) {
+      expect(isTestFile(name)).toBe(true);
     }
-    for (const name of ['a.tests.ts', 'a.test.md', 'test.ts', 'a.test.ts.bak', 'a.test.d']) {
-      expect(TEST_FILE_PATTERN.test(name)).toBe(false);
+    for (const name of ['a.tests.ts', 'a.test.md', 'test.ts', 'a.test.ts.bak', 'a.test.d', '.a.test.ts', 'src/.a.test.ts']) {
+      expect(isTestFile(name)).toBe(false);
     }
-    const root = makeProject({ 'a.spec.tsx': '', 'a.tests.ts': '', 'a.test.md': '', 'test.ts': '' });
+    const root = makeProject({ 'a.spec.tsx': '', 'a.tests.ts': '', 'a.test.md': '', 'test.ts': '', '.a.test.ts': '' });
     expect(listFiles(root).testFiles).toEqual(['a.spec.tsx']);
   });
 

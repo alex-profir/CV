@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { compare } from './report.ts';
 
 // Directories skipped at any depth below the root, by both the check and the
 // test runner (research R6). Every dot-directory is skipped too.
@@ -9,21 +10,26 @@ export function isExcludedDir(name: string): boolean {
   return name.startsWith('.') || EXCLUDED_DIR_NAMES.includes(name);
 }
 
-// Vitest's default include, as a file-name pattern.
-export const TEST_FILE_PATTERN = /\.(test|spec)\.[cm]?[jt]sx?$/;
-
-// vitest.config.ts builds its include and exclude from these, so the runner
-// and the check agree on what a test file is.
+// vitest.config.ts builds its include and exclude from these, and the check
+// selects test files with the same globs, so the runner and the check agree
+// on what a test file is.
 export const TEST_INCLUDE_GLOBS = ['**/*.{test,spec}.?(c|m)[jt]s?(x)'];
 
 export const TEST_EXCLUDE_GLOBS = [...EXCLUDED_DIR_NAMES.map((name) => `**/${name}/**`), '**/.*/**'];
 
+// Whether a file, given by its path relative to the root, is a test file.
+export function isTestFile(file: string): boolean {
+  return TEST_INCLUDE_GLOBS.some((glob) => path.posix.matchesGlob(file, glob));
+}
+
+// The feature of a directory that holds a spec, `specs/<feature>`, or
+// undefined for any other directory.
+export function specFeature(dir: string): string | undefined {
+  return /^specs\/([^/]+)$/.exec(dir)?.[1];
+}
+
 // JS and TS source. Those that aren't test files are UI source.
 const SOURCE_FILE_PATTERN = /\.(?:[cm]?[jt]s|[jt]sx)$/;
-
-function compare(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
 
 // Directory entries sorted by name, without symbolic links. A missing
 // directory has no entries. One that can't be read has none either, and is
@@ -52,24 +58,18 @@ export function listFiles(root: string): {
   unreadableDirs: { dir: string; code: string }[];
 } {
   const unreadable = new Map<string, string>();
-  const specs = [];
-  const hasSpecsDir = entries(root, '', unreadable).some((entry) => entry.name === 'specs' && entry.isDirectory());
-  for (const dir of hasSpecsDir ? entries(root, 'specs', unreadable) : []) {
-    if (!dir.isDirectory() || isExcludedDir(dir.name)) continue;
-    // A spec.md of any kind counts, so one that can't be read is reported.
-    if (entries(root, `specs/${dir.name}`, unreadable).some((entry) => entry.name === 'spec.md')) {
-      specs.push({ feature: dir.name, file: `specs/${dir.name}/spec.md` });
-    }
-  }
-
+  const specs: { feature: string; file: string }[] = [];
   const testFiles: string[] = [];
   const uiFiles: string[] = [];
   const walk = (dir: string) => {
+    const feature = specFeature(dir);
     for (const entry of entries(root, dir, unreadable)) {
       const file = dir === '' ? entry.name : `${dir}/${entry.name}`;
+      // A spec.md of any kind counts, so one that can't be read is reported.
+      if (feature !== undefined && entry.name === 'spec.md') specs.push({ feature, file });
       if (entry.isDirectory()) {
         if (!isExcludedDir(entry.name)) walk(file);
-      } else if (entry.isFile() && TEST_FILE_PATTERN.test(entry.name)) {
+      } else if (entry.isFile() && isTestFile(file)) {
         testFiles.push(file);
       } else if (entry.isFile() && SOURCE_FILE_PATTERN.test(entry.name)) {
         uiFiles.push(file);
@@ -79,5 +79,10 @@ export function listFiles(root: string): {
   walk('');
 
   const unreadableDirs = [...unreadable].map(([dir, code]) => ({ dir, code })).sort((a, b) => compare(a.dir, b.dir));
-  return { specs, testFiles: testFiles.sort(compare), uiFiles: uiFiles.sort(compare), unreadableDirs };
+  return {
+    specs: specs.sort((a, b) => compare(a.feature, b.feature)),
+    testFiles: testFiles.sort(compare),
+    uiFiles: uiFiles.sort(compare),
+    unreadableDirs,
+  };
 }

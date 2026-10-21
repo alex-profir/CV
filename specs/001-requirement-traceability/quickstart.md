@@ -39,7 +39,7 @@ spec. `expected-report.txt` next to it is the exact report it must produce.
 
 ```sh
 cd tools/traceability/test/__fixtures__/seeded
-node --permission --allow-fs-read="$PWD/../../../../.." --allow-addons ../../../src/cli.ts > /tmp/seeded-report.txt
+node --permission --allow-fs-read="$PWD/../../../../.." --allow-addons ../../../src/main.js > /tmp/seeded-report.txt
 echo "exit $?"
 diff /tmp/seeded-report.txt expected-report.txt && echo "report matches"
 cd -
@@ -91,7 +91,8 @@ npx vitest run tools/traceability/test/performance.test.ts
 ```
 
 **Expected**: passes. The test generates 50 specs and 2,000 tests and requires the check to
-finish in under 10 seconds.
+finish in under 10 seconds. It checks the time only off CI: SC-004 is about the owner's
+machine.
 
 ## 7. Merging is blocked when the check fails (US2, FR-025, SC-003)
 

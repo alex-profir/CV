@@ -4,6 +4,8 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
+    "allowJs": true,
+    "checkJs": true,
     "noEmit": true,
     "skipLibCheck": true,
     "erasableSyntaxOnly": true,
@@ -11,6 +13,6 @@
     "rewriteRelativeImportExtensions": true,
     "types": ["node"]
   },
-  "include": ["tools/**/*.ts", "vitest.config.ts"],
+  "include": ["tools/**/*.ts", "tools/**/*.js", "vitest.config.ts"],
   "exclude": ["**/__fixtures__/**"]
 }

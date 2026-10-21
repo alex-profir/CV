@@ -21,7 +21,7 @@ npm run traceability
 Behind the script:
 
 ```sh
-node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts
+node --permission --allow-fs-read=. --allow-addons tools/traceability/src/main.js
 ```
 
 npm runs scripts from the repository root, so `.` is the repository. If Node doesn't accept a
@@ -38,7 +38,12 @@ the check and its parser from outside the sample project.
 |------|---------|
 | `0` | Pass: no problems (FR-020) |
 | `1` | Fail: at least one problem was reported (FR-020) |
-| `2` | The check itself couldn't run, e.g. an unexpected argument, a Node version older than 26 (its permission model can't block the network, so FR-027 wouldn't hold) or an internal error. The message goes to stderr |
+| `2` | The check itself couldn't run, e.g. an unexpected argument, a Node version older than 26 (its permission model can't block the network, so FR-027 wouldn't hold), a Node that can't load the check, or an internal error. The message goes to stderr |
+
+`main.js` is plain JavaScript, so it can give code 2 even on a Node too old to load TypeScript.
+A Node without the `--permission` flag (Node 22 before 22.13, Node 23 before 23.5, and older
+lines) rejects the command line itself, with Node's own exit code 9, before any script runs.
+That code isn't 1 either, so it can't be taken for problems found.
 
 A pull-request run fails on any non-zero code.
 

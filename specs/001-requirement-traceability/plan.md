@@ -106,7 +106,7 @@ only well-formed, existing full IDs. Sample IDs such as `FR-1`, `002-example-FR-
 | 001-requirement-traceability-FR-009 | `references.test.ts`, unit: the full ID is `<directory>-FR-###`. The same FR number in two specs gives two distinct IDs | Non-UI |
 | 001-requirement-traceability-FR-010 | `test-files.test.ts`, unit: IDs in test titles, group titles (nested), template-literal parts and `tags` options are found. A test with several IDs covers each. A group with no tests covers nothing | Non-UI |
 | 001-requirement-traceability-FR-011 | `test-files.test.ts`, unit: IDs in comments, assertions, helper strings and `test.step` titles don't count | Non-UI |
-| 001-requirement-traceability-FR-012 | `test-files.test.ts`, unit: `.skip`, `.todo`, `{ skip: true }`, a test without a body, a skipped parent group and an unconditional `ctx.skip()` don't count. `.skipIf` does count. The report says "only skipped…". References on skipped tests are still validated. The Vitest config declares no tags with `skip` or `todo` | Non-UI |
+| 001-requirement-traceability-FR-012 | `test-files.test.ts`, unit: `.skip`, `.todo`, `{ skip: true }`, a test without a body, a skipped parent group and a `ctx.skip()` that always skips, `.skipIf(true)` and `.each([])` don't count. `.skipIf` with a runtime condition does count. The report says "only skipped…". References on skipped tests are still validated. The Vitest config declares no tags with `skip` or `todo` | Non-UI |
 | 001-requirement-traceability-FR-013 | `ui-files.test.ts`, unit: `data-req` in JSX (string and expression-container literals) and in `'data-req'` object properties is read. Space-separated values are checked one by one. Test files aren't UI source | Non-UI |
 | 001-requirement-traceability-FR-014 | `files.test.ts`, unit: `node_modules`, dot-directories, `dist`, `build`, `out`, `coverage` and `__fixtures__` are skipped. `vitest.config.ts` builds its include and exclude from the same constants | Non-UI |
 | 001-requirement-traceability-FR-015 | `check.test.ts`, integration: US1 scenario 1. `002-example-FR-003` is reported uncovered at its spec line | Non-UI |
@@ -129,7 +129,8 @@ Success criteria without an FR are also tested:
 
 - SC-001: `cli.test.ts` compares the seeded sample project's report with its
   `expected-report.txt`.
-- SC-004: `performance.test.ts` runs 50 generated specs and 2,000 tests in under 10 s.
+- SC-004: `performance.test.ts` runs 50 generated specs and 2,000 tests in under 10 s. The time
+  is asserted off CI only, because SC-004 is about the owner's machine.
 - SC-003 and SC-007 are covered by FR-025 and FR-022 above, plus quickstart.md.
 
 ## Dependencies, Skills & Abstractions
@@ -187,8 +188,9 @@ vitest.config.ts         # include/exclude built from tools/traceability/src/fil
 tools/
 └── traceability/
     ├── src/
-    │   ├── cli.ts         # entry point: arguments, exit codes, prints the report
-    │   ├── node-version.ts # refuses Node versions that can't block the network
+    │   ├── main.js        # entry point, plain JS: checks the Node version, then loads cli.ts
+    │   ├── node-version.js # refuses Node versions that can't block the network
+    │   ├── cli.ts         # arguments, exit codes, prints the report
     │   ├── check.ts       # one run over a root directory → Report
     │   ├── files.ts       # directory walk + shared include/exclude constants
     │   ├── specs.ts       # Status and Functional Requirements entries from spec.md

@@ -1,16 +1,11 @@
 import { runCheck } from './check.ts';
-import { nodeVersionProblem } from './node-version.ts';
 import { renderReport } from './report.ts';
 
-const versionProblem = nodeVersionProblem(process.versions.node);
-
-// Sets process.exitCode instead of calling process.exit(): piped stdout is
-// asynchronous on macOS, and exiting early could cut the report off.
+// Loaded by main.js once the Node version is checked. Sets process.exitCode
+// instead of calling process.exit(): piped stdout is asynchronous on macOS,
+// and exiting early could cut the report off.
 if (process.argv.length > 2) {
   process.stderr.write('usage: npm run traceability (takes no arguments)\n');
-  process.exitCode = 2;
-} else if (versionProblem !== null) {
-  process.stderr.write(`${versionProblem}\n`);
   process.exitCode = 2;
 } else {
   try {

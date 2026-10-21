@@ -33,7 +33,8 @@ function entriesOf(text: string) {
 }
 
 function problemsOf(text: string) {
-  return specProblems(parseSpec('002-example', FILE, text)).map((problem) => ({
+  const spec = parseSpec('002-example', FILE, text);
+  return specProblems(spec, requirementsOf(spec)).map((problem) => ({
     type: problem.type,
     subject: problem.subject,
     at: `${problem.location.file}:${problem.location.line}:${problem.location.column}`,
@@ -206,6 +207,34 @@ describe('001-requirement-traceability-FR-004: definitions come only from Functi
       '- **FR-006**: Real.',
     ]);
     expect(entriesOf(text).map((entry) => `${entry.rawId}@${entry.at}`)).toEqual(['FR-002@10:5', 'FR-006@16:5']);
+  });
+
+  test('a comment marker inside a code span, or one never closed, hides nothing', () => {
+    const text = spec('Approved', [
+      '- **FR-001**: The reader ignores `<!--` markers.',
+      '- **FR-002**: Also ``a ` <!-- inside`` a double-backtick span.',
+      '- **FR-003**: A stray ` backtick does not hide <!-- a real comment --> from the reader.',
+      '<!-- - **FR-004**: inside a real comment -->',
+      '- **FR-005**: Real.',
+      '- **FR-006**: An unclosed <!-- is plain text.',
+      '- **FR-007**: Real.',
+    ]);
+    expect(entriesOf(text).map((entry) => entry.rawId)).toEqual(['FR-001', 'FR-002', 'FR-003', 'FR-005', 'FR-006', 'FR-007']);
+  });
+
+  test('a comment marker in a code span does not hide later requirements from the check', () => {
+    const root = makeProject({
+      'specs/002-example/spec.md': spec('Approved', [
+        '- **FR-001**: The reader ignores `<!--` markers.',
+        '- **FR-002**: Real.',
+        '',
+        '<!-- a later comment -->',
+      ]),
+      'src/example.test.ts': "test('002-example-FR-001', () => {});\n",
+    });
+    const report = runCheck(root);
+    expect(report.activeRequirements).toBe(2);
+    expect(report.problems.map((problem) => `${problem.type} ${problem.subject}`)).toEqual(['uncovered 002-example-FR-002']);
   });
 
   test('ignores IDs inside fenced code blocks of both kinds', () => {

@@ -79,3 +79,10 @@ checks them on the real repository.
 3. A pull request with a failing `traceability` check shows merging as blocked, and the owner
    has no "bypass rules" option (FR-025, SC-003).
 4. `git push origin main` with a new commit is rejected (FR-025).
+
+## Known limit
+
+A pull request runs its own copy of `ci.yml` and of the check, so it can change what the
+required checks run and still pass them. Nothing in a personal-account repository pins the
+workflow to `main`. Such a change shows in the pull request's diff, and review catches it
+(research.md, R12).

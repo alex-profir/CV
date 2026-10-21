@@ -117,11 +117,12 @@ the tests or ask the runner to list them.
 | `describe(…)`, `suite(…)`, `test.describe(…)`, `test.suite(…)` | Group. Tests lexically inside its callback belong to it |
 | Modifiers `.only`, `.concurrent`, `.fails`, `.shuffle` | No effect on coverage |
 | Modifiers `.skip`, `.todo` | Marked inactive (skipped / placeholder) |
-| Options object with literal `skip: true` or `todo: true` | Marked inactive |
+| Options object whose `skip` or `todo` is a truthy literal, such as `skip: true` | Marked inactive |
 | A test with no function body, a group with no callback | Placeholder, inactive |
-| `.skipIf(…)`, `.runIf(…)`, computed `skip` or `todo` values | Runtime condition: counts (spec Assumptions) |
-| `.each(…)(…)`, `.for(…)(…)` | Test or group. The title's literal text is read, placeholders included |
-| A top-level, unconditional `skip()` call on the test context inside a test body (`ctx.skip()`, or `skip()` destructured from the context), with no arguments or only a string note | Marked inactive. It is written in the code and always skips |
+| `.skipIf(…)` with a truthy literal, `.runIf(…)` with a falsy literal or no argument | Marked inactive. The literal decides in the code that the test never runs |
+| `.skipIf(…)` and `.runIf(…)` with any other argument, computed `skip` or `todo` values | Runtime condition: counts (spec Assumptions) |
+| `.each(…)(…)`, `.for(…)(…)` | Test or group. The title's literal text is read, placeholders included. A literal empty table, `.each([])` or `.for([])`, declares no tests, so it's marked inactive |
+| A top-level `skip(…)` call on the test context inside a test body (`ctx.skip()`, or `skip()` destructured from the context) that always skips: no argument, a string note, or any other literal except `false`, because Vitest skips unless the condition is exactly `false`. The context is the body's first parameter. In a `.for(…)` body it's the second, and an `.each(…)` body gets none | Marked inactive. It is written in the code and always skips |
 | Options `tags: 'x'` or `tags: ['x', …]` with literal strings | Tags, read for references |
 
 - Only calls whose root identifier is `test`, `it`, `describe` or `suite` are considered.
@@ -186,8 +187,8 @@ native addon (R9).
 **Decision**:
 
 - **Specs**: `specs/*/spec.md`, one level deep. A directory without `spec.md` is ignored.
-- **Test files**: files whose name matches Vitest's default include,
-  `**/*.{test,spec}.?(c|m)[jt]s?(x)`.
+- **Test files**: files whose path matches Vitest's default include,
+  `**/*.{test,spec}.?(c|m)[jt]s?(x)`, with Node's `path.matchesGlob`.
 - **UI source**: every other `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs` or `.cjs`
   file whose text contains `data-req`. Files without that text have nothing to check and aren't
   parsed. No other markup format exists in the repository yet. The plan that adds one, such as
@@ -225,7 +226,9 @@ file system (FR-024).
 **Decision**: a small line-based reader with no Markdown library. The grammar comes from the
 spec template. It is defined in [data-model.md](./data-model.md#spec):
 
-- HTML comments and fenced code blocks are blanked out first, keeping line numbers.
+- HTML comments and fenced code blocks are blanked out first, keeping line numbers. A `<!--`
+  inside an inline code span, or one that no `-->` closes, is plain text, so it can't hide the
+  rest of the spec.
 - The first `**Status**:` line gives the Status.
 - Entries are the list items in the `Functional Requirements` section whose first token looks
   like `FR-…`. They may be bold or struck through.
@@ -262,7 +265,13 @@ Classification into valid, unknown, removed or malformed follows
 ## R9. No network: the permission model
 
 **Decision**: the `npm run traceability` script runs the check under Node's permission model:
-`node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts`.
+`node --permission --allow-fs-read=. --allow-addons tools/traceability/src/main.js`.
+
+- `main.js` is plain JavaScript. It checks the Node version before it loads the TypeScript
+  check, so a Node that's too old, or can't strip types, gets a clear message and exit code 2.
+  Node versions without the `--permission` flag (Node 22 before 22.13, Node 23 before 23.5,
+  and older lines) refuse the command line themselves, with Node's exit code 9, before any
+  script runs.
 
 - `--allow-net` is not granted, so any network call fails with `ERR_ACCESS_DENIED` (FR-027).
 - `--allow-fs-write` is not granted, so the check also can't write to disk.
@@ -384,6 +393,18 @@ Comparing the live ruleset with the committed file (quickstart.md) detects any d
 `update` rule ("restrict updates") is deliberately left out, because it blocks pull-request
 merges too.
 
+**Known limit**: a pull request runs its own copy of `ci.yml`, of the check and of its tests,
+and the ruleset matches required checks by job name and app only. A pull request can therefore
+change what the required checks run, for example to `npm run traceability || true` together
+with `repo-settings.test.ts`, and still pass them. GitHub's rule that requires a workflow from a
+protected branch ("require workflows to pass before merging") exists only in organization
+rulesets, and this repository belongs to a personal account. Even that rule would still run the
+check's code from the pull request. A guard on `pull_request_target`, which runs `main`'s copy of
+the workflow, could fail any pull request that touches these files, but every legitimate change
+to the workflow or the check would then need the ruleset turned off to merge. Such a change is
+in the pull request's diff, like a change to a spec's Status or to the check itself, so review
+catches it, as it catches renumbered IDs (spec Assumptions).
+
 **Alternatives considered**: *classic branch protection*. It needs the separate "Do not allow
 bypassing" setting to bind admins, and it can't be exported as a file the way a ruleset can.
 
@@ -400,7 +421,8 @@ bypassing" setting to bind admins, and it can't be exported as a file the way a 
 - **The real repository**: a test runs the check on the repository itself and asserts it passes
   with `001-requirement-traceability` among the approved specs (FR-028, SC-006).
 - **Performance**: a test generates 50 specs and 2,000 tests in a temporary directory and
-  asserts the run takes under 10 seconds (SC-004).
+  asserts the run takes under 10 seconds (SC-004). SC-004 is about the owner's machine, so the
+  time isn't asserted on CI, where shared runners vary too much for a required check.
 - Test titles carry `001-requirement-traceability-FR-###`, so the check covers its own spec.
   The full mapping is in plan.md's Requirement Traceability table.
 

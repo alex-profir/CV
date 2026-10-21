@@ -26,13 +26,13 @@ export function readUiFile(file: string, text: string): { references: Token[]; p
   const locate = createLocator(file, text);
   const references: Token[] = [];
   visitAll(parsed.program, (node) => {
-    let value: Node | null = null;
+    let literal: { text: string; offset: number } | null = null;
     if (node.type === 'JSXAttribute' && node.name.type === 'JSXIdentifier' && node.name.name === ATTRIBUTE) {
-      value = node.value;
+      // A bare attribute has no value, so it's read as an empty one.
+      literal = node.value === null ? { text: '', offset: node.start } : literalValue(node.value, text);
     } else if (node.type === 'Property' && !node.computed && node.key.type === 'Literal' && node.key.value === ATTRIBUTE) {
-      value = node.value;
+      literal = literalValue(node.value, text);
     }
-    const literal = literalValue(value, text);
     if (literal === null) return;
     for (const piece of splitDataReq(literal.text)) {
       references.push({ text: piece.text, location: locate(literal.offset + piece.index) });

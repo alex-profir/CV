@@ -39,7 +39,8 @@ One `specs/<feature>/spec.md` file (FR-001).
 - A directory under `specs/` with no `spec.md` isn't a spec and is ignored. A `spec.md` that
   exists but can't be read produces an `unreadable-file` problem (FR-029).
 - Before parsing, HTML comments (`<!-- … -->`) and fenced code blocks are blanked out while
-  keeping line numbers. Text inside them is never a Status or a definition.
+  keeping line numbers. Text inside them is never a Status or a definition. A `<!--` inside an
+  inline code span on the same line, or one that no later `-->` closes, is plain text.
 - `status` is `Approved` or `Draft` only when the trimmed value is exactly that word. Anything
   else, including a missing line, makes it `Invalid` and produces a `bad-status` problem
   (FR-003).
@@ -127,10 +128,12 @@ running them (see research.md, R4 and R5).
 - A test counts toward coverage only when neither it nor any ancestor group is `markedInactive`
   or `unrecognized` (FR-012).
 - `markedInactive` is true when the declaration uses a `.skip` or `.todo` modifier, when its
-  options set `skip` or `todo` to `true`, when a test has no function body or a group has no
-  callback (a placeholder), or when a test body unconditionally calls the context's `skip()` as
-  a top-level statement. Runtime-conditional forms (`.skipIf(…)`, `.runIf(…)`, computed option
-  values) don't mark anything (spec Assumptions). The full table is in research.md, R4.
+  options set `skip` or `todo` to a truthy literal, when a literal decides that it never runs
+  (`.skipIf(true)`, `.runIf(false)`, `.each([])`, `.for([])`), when a test has no function body
+  or a group has no callback (a placeholder), or when a test body calls the context's `skip()`
+  as a top-level statement in a way that always skips. Runtime-conditional forms (`.skipIf(…)`
+  and `.runIf(…)` with a non-literal argument, computed option values) don't mark anything
+  (spec Assumptions). The full table is in research.md, R4.
 - A test's effective references are the references in its own `titleTexts` and `tagTexts` plus
   those of every ancestor group (FR-010). A group with no tests covers nothing.
 - Text in a test file outside a title or tag, such as comments, assertions, helper strings or
@@ -197,7 +200,8 @@ One `data-req` attribute in UI source (FR-013). It yields one Reference per valu
 - The attribute is a JSX attribute named `data-req`, or an object-literal property with the key
   `'data-req'`.
 - The value is read only when it's a literal: a string, or a template literal without
-  substitutions. A computed value can't be checked statically and is skipped. This limitation is
+  substitutions. A bare JSX attribute, `<div data-req />`, is an empty value, so it's
+  `malformed`. A computed value can't be checked statically and is skipped. This limitation is
   recorded in research.md, R6.
 
 ## Problem

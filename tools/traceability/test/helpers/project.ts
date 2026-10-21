@@ -6,7 +6,7 @@ import { onTestFinished } from 'vitest';
 
 export const REPO_ROOT = fs.realpathSync(path.resolve(import.meta.dirname, '../../../..'));
 
-export const CLI_PATH = path.join(REPO_ROOT, 'tools/traceability/src/cli.ts');
+export const CLI_PATH = path.join(REPO_ROOT, 'tools/traceability/src/main.js');
 
 // Writes a sample project to a temporary directory and returns its real path.
 // A key ending in `/` creates an empty directory. Call it inside tests only:

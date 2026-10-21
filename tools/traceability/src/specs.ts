@@ -26,12 +26,40 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 const ENTRY_START = /^fr[^A-Za-z0-9]?\d/i;
 const RAW_ID = /^fr[^A-Za-z0-9]?\d[A-Za-z0-9_-]*/i;
 
+// The index just after the code span whose opening backtick run starts at
+// `start`: after the next run of the same length on the line. A run with no
+// match is plain backticks, and ends where it does.
+function codeSpanEnd(line: string, start: number): number {
+  let open = start;
+  while (line[open] === '`') open += 1;
+  for (let at = open; at < line.length; ) {
+    const next = line.indexOf('`', at);
+    if (next === -1) break;
+    let end = next;
+    while (line[end] === '`') end += 1;
+    if (end - next === open - start) return end;
+    at = end;
+  }
+  return open;
+}
+
 // Replaces HTML comments and fenced code blocks with spaces, keeping every
 // line and column where it was. Comments may start mid-line and span lines.
+// A `<!--` inside a code span, or one that's never closed, is plain text, so
+// it can't hide the rest of the spec.
 function blankCommentsAndFences(lines: string[]): string[] {
-  let inComment = false;
   let fence: string | null = null;
-  return lines.map((line) => {
+  // Where the open comment ends: the line, and the column after its `-->`.
+  let commentEnd: { line: number; column: number } | null = null;
+  const findCommentEnd = (line: number, column: number) => {
+    for (let index = line; index < lines.length; index++) {
+      const end = lines[index]!.indexOf('-->', index === line ? column : 0);
+      if (end !== -1) return { line: index, column: end + 3 };
+    }
+    return null;
+  };
+
+  return lines.map((line, index) => {
     if (fence !== null) {
       const closing = FENCE.exec(line)?.[1];
       if (closing !== undefined && closing[0] === fence[0] && closing.length >= fence.length && line.trim() === closing) {
@@ -39,28 +67,39 @@ function blankCommentsAndFences(lines: string[]): string[] {
       }
       return ' '.repeat(line.length);
     }
-    if (!inComment) {
+    let at = 0;
+    if (commentEnd !== null) {
+      if (commentEnd.line > index) return ' '.repeat(line.length);
+      at = commentEnd.column;
+      commentEnd = null;
+    } else {
       const opening = FENCE.exec(line)?.[1];
       if (opening !== undefined) {
         fence = opening;
         return ' '.repeat(line.length);
       }
     }
-    let result = '';
-    let at = 0;
+    let result = ' '.repeat(at);
     while (at < line.length) {
-      if (inComment) {
-        const end = line.indexOf('-->', at);
-        const stop = end === -1 ? line.length : end + 3;
-        result += ' '.repeat(stop - at);
-        at = stop;
-        inComment = end === -1;
-      } else {
-        const start = line.indexOf('<!--', at);
-        const stop = start === -1 ? line.length : start;
+      const tick = line.indexOf('`', at);
+      const start = line.indexOf('<!--', at);
+      if (start === -1 || (tick !== -1 && tick < start)) {
+        const stop = tick === -1 ? line.length : codeSpanEnd(line, tick);
         result += line.slice(at, stop);
         at = stop;
-        inComment = start !== -1;
+        continue;
+      }
+      const end = findCommentEnd(index, start + 2);
+      if (end === null) {
+        result += line.slice(at, start + 4);
+        at = start + 4;
+      } else if (end.line === index) {
+        result += line.slice(at, start) + ' '.repeat(end.column - start);
+        at = end.column;
+      } else {
+        result += line.slice(at, start) + ' '.repeat(line.length - start);
+        commentEnd = end;
+        at = line.length;
       }
     }
     return result;
@@ -136,8 +175,9 @@ function listLines(lines: number[]): string {
 }
 
 // A Draft spec gets no problem. An invalid Status is the only problem its spec
-// gets, because the spec is then treated like a Draft one.
-export function specProblems(spec: Spec): Problem[] {
+// gets, because the spec is then treated like a Draft one. `requirements` is
+// requirementsOf(spec).
+export function specProblems(spec: Spec, requirements: Requirement[]): Problem[] {
   if (spec.status === 'Invalid') {
     return [
       {
@@ -158,7 +198,6 @@ export function specProblems(spec: Spec): Problem[] {
       location: entry.location,
       detail: 'a requirement ID must be FR- followed by exactly three digits',
     }));
-  const requirements = requirementsOf(spec);
   for (const requirement of requirements) {
     const { definitions } = requirement;
     if (definitions.length < 2) continue;
