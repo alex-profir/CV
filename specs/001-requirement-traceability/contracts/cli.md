@@ -138,6 +138,12 @@ Summary
 PASS: no approved specs found, so there are no requirements to cover.
 ```
 
+When that run fails, because references are still checked, the result line says both:
+
+```text
+FAIL: 2 problems found. No approved specs found.
+```
+
 The singular forms (`1 problem`, `1 approved spec`, `1 active requirement`) are used when the
 count is 1.
 

@@ -67,8 +67,10 @@ requirement ID (FR-004).
   Requirements` and ends at the next heading of the same or a higher level. Bold paragraph
   labels such as `**Finding requirements**` aren't headings and don't end it.
 - An entry is a list item (`- ` or `* ` at the start of the line) whose first token, after
-  optional `~~` and `**` markup, starts with `fr` in any letter case followed by an optional
-  separator and a digit. Other list items and indented continuation lines are ignored.
+  optional `~~` and `**` markup, starts with `fr` in any letter case, then at most one character
+  that isn't a letter or digit (such as `-`, `_`, a space or `.`), then a digit. So `FR 001`,
+  `FR.001` and `FR001` are entries, and malformed ones. Other list items and indented
+  continuation lines are ignored.
 - IDs mentioned anywhere else in the spec are never entries (FR-004).
 - In an `Approved` spec, an entry with `wellFormed = false` produces a `malformed` problem
   (FR-006). In a Draft spec it's ignored (clarification 2026-10-21).
@@ -130,8 +132,10 @@ running them (see research.md, R4 and R5).
   those of every ancestor group (FR-010). A group with no tests covers nothing.
 - Text in a test file outside a title or tag, such as comments, assertions, helper strings or
   `.step` titles, is never read (FR-011).
-- A call whose shape the reader doesn't recognize is not a test or group. It counts toward
-  nothing and isn't checked for references, so an unsupported form can never fake coverage.
+- A call rooted at `test`, `it`, `describe` or `suite` whose shape the reader doesn't recognize
+  is not a test or group, and tests nested inside it never count, so an unsupported form can
+  never fake coverage. References in its title are still checked (research.md, R4). Calls rooted
+  at any other name are ignored.
 
 ## Reference
 

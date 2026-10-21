@@ -160,7 +160,7 @@ exactly the requirements whose tests arrive in later phases (T024).
 
     A bold paragraph label such as `**Finding requirements**` doesn't end the section. The next heading of the same or a higher level does.
   - FR-005: `- ~~**FR-004**~~: Removed …` and `- **~~FR-004~~**: Removed …` are removed and need no coverage.
-  - FR-006: `FR-1`, `FR-0001` and `fr-001` entries in an approved spec each produce `malformed`. The subject is the raw ID in quotes and the detail is `a requirement ID must be FR- followed by exactly three digits`. The location is the ID's line and column, e.g. column 5 for `- **FR-1**:` and column 7 for `- ~~**FR-1**~~:`.
+  - FR-006: `FR-1`, `FR-0001`, `fr-001`, `FR 001` and `FR.001` entries in an approved spec each produce `malformed`. The subject is the raw ID in quotes and the detail is `a requirement ID must be FR- followed by exactly three digits`. The location is the ID's line and column, e.g. column 5 for `- **FR-1**:` and column 7 for `- ~~**FR-1**~~:`.
   - FR-007: an ID defined twice, and an active plus a removed entry with the same ID, each produce one `duplicate-id`. It sits at the first definition, has the full ID as subject, and has the detail `defined 2 times, on lines A and B`. Three definitions read `defined 3 times, on lines A, B and C`.
   - FR-008: an approved spec with no entries produces `no-requirements`, and so does one with only malformed entries. The location is `1:1`, the subject is the feature and the detail is `approved spec defines no requirements`.
 - [ ] T010 [P] [US1] Write `tools/traceability/test/references.test.ts`, covering 001-requirement-traceability-FR-009. `fullId('002-example', 'FR-003')` is `002-example-FR-003`. `parseFullId` splits a full ID into feature and ID, and returns null for anything else. The same FR number in two approved specs gives two distinct IDs: with `runCheck`, a test that references `002-example-FR-001` leaves `003-other-FR-001` reported uncovered.
@@ -172,7 +172,7 @@ exactly the requirements whose tests arrive in later phases (T024).
     - `.each(…)(…)` and `.for(…)(…)` titles;
     - literal `tags` options, both `tags: '…'` and `tags: ['…', …]`.
 
-    A test with several IDs covers each one. A group's ID covers every test nested inside it at any depth. A group with no tests covers nothing. A non-literal title, such as a variable, contributes nothing.
+    A test with several IDs covers each one. A group's ID covers every test nested inside it at any depth. A group with no tests covers nothing. A non-literal title, such as a variable, contributes nothing. A test inside a top-level `for` loop or `if` block is found and counts. A test inside a function declaration isn't.
   - FR-011: none of these count:
     - comments;
     - assertion arguments;
@@ -216,6 +216,7 @@ exactly the requirements whose tests arrive in later phases (T024).
     - Failing runs end `FAIL: 12 problems found.`, or `FAIL: 1 problem found.` for one.
     - Passing runs end `PASS: all 29 active requirements in 1 approved spec are covered.`, with the singular and plural forms for 1 and 2.
     - With no `specs/` folder, or only Draft specs, the run ends `PASS: no approved specs found, so there are no requirements to cover.` and shows `Approved specs checked:` 0.
+    - With no approved specs and an invalid reference, the run ends `FAIL: 1 problem found. No approved specs found.`
     - One empty line separates problems from the summary, only when there are problems.
     - The output ends with exactly one `\n`.
   - FR-024:
@@ -263,15 +264,15 @@ exactly the requirements whose tests arrive in later phases (T024).
     3. `Summary`.
     4. The rows `  Approved specs checked:`, `  Active requirements checked:`, `  Requirements covered:` and `  Problems:`, then one `    <type>` row per type. Each label is padded to 32 characters, followed by the number.
     5. An empty line.
-    6. The result line: `FAIL: N problems found.`, `PASS: all N active requirements in M approved specs are covered.`, or, with zero approved specs and no problems, `PASS: no approved specs found, so there are no requirements to cover.` Use singular nouns when a count is 1.
+    6. The result line: `FAIL: N problems found.`, `PASS: all N active requirements in M approved specs are covered.`, or, with zero approved specs, `PASS: no approved specs found, so there are no requirements to cover.` when there are no problems and `FAIL: N problems found. No approved specs found.` when there are. Use singular nouns when a count is 1.
     7. A single trailing `\n`.
 - [ ] T020 [US1] Implement the spec reader in `tools/traceability/src/specs.ts`, after T016 (data-model Spec, RequirementEntry and Requirement; research R7). Split lines on `\n` and ignore a trailing `\r`.
   - `parseSpec(feature, file, text): Spec`:
     - First blank out HTML comments (which may start mid-line and span lines) and fenced code blocks (```` ``` ```` or `~~~` fences). Replace every character except `\n` with a space, so lines and columns stay exact.
     - Status: the first line matching `**Status**:`. `Approved` or `Draft` only when the trimmed value is exactly that word, otherwise `Invalid`. `statusText` is the trimmed value, or null when the line is missing. `statusLocation` is as described in T009 (FR-003).
     - The section starts at a heading whose text is exactly `Functional Requirements`, and ends at the next heading of the same or a higher level.
-    - An entry is a `- ` or `* ` line at column 1. Skip any `~~` and `**` markup after the bullet. If the rest matches `/^fr[-_]?\d/i`, it's an entry:
-      - `rawId` is the longest run of `[A-Za-z0-9_-]` there;
+    - An entry is a `- ` or `* ` line at column 1. Skip any `~~` and `**` markup after the bullet. If the rest matches `/^fr[^A-Za-z0-9]?\d/i`, it's an entry:
+      - `rawId` is the match of `/^fr[^A-Za-z0-9]?\d[A-Za-z0-9_-]*/i` there, e.g. `FR 001` or `FR-0001`;
       - `wellFormed` is whether `rawId` matches `/^FR-\d{3}$/`;
       - `removed` is whether `~~` appears in the markup before it;
       - the location is the position of `rawId`.
@@ -287,7 +288,9 @@ exactly the requirements whose tests arrive in later phases (T024).
 - [ ] T021 [US1] Implement the test reader in `tools/traceability/src/test-files.ts`, after T016 and T017 (research R4, data-model TestNode).
   - `readTestFile(file, text)` returns `{ nodes: TestNode[]; problem: Problem | null }`. When the file fails to parse, `nodes` is empty.
   - A `TestNode` is `{ kind: 'test' | 'group'; tokens: Token[]; markedInactive: boolean; parent: TestNode | null }`. Its `tokens` come from `findTokens` over its title parts and literal tag strings, each located through `createLocator`.
-  - Visit the statements of the program body and of each recognized group's callback: its block body, or its expression body as a single statement. Recognize an `ExpressionStatement`, optionally wrapped in `await`, whose expression is a call rooted at `test`, `it`, `describe` or `suite`. Don't descend into anything else: blocks, loops, conditionals, functions or test bodies. That is fail-closed by design.
+  - Visit the statements of the program body and of each recognized group's callback: its block body, or its expression body as a single statement. Recognize an `ExpressionStatement`, optionally wrapped in `await`, whose expression is a call rooted at `test`, `it`, `describe` or `suite`.
+  - Also visit statements nested in blocks, `if`/`else` branches, loops (`for`, `for…of`, `for…in`, `while`, `do…while`), `try`/`catch`/`finally` and `switch` cases, keeping the enclosing group as parent (research R4).
+  - Never descend into function bodies other than group callbacks, or into test bodies. A test inside a helper function must not count (fail closed).
   - Read the callee chain from the root outwards.
     - `test.describe` and `test.suite` make a group. So do `describe` and `suite`. `test` and `it` make a test.
     - `.only`, `.concurrent`, `.fails` and `.shuffle` have no effect.
@@ -371,7 +374,10 @@ once this feature's pull request exists.
     2. `{ "type": "non_fast_forward" }`
     3. `pull_request`, with `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `require_code_owner_review: false`, `require_last_push_approval: false`, `required_review_thread_resolution: false` and `allowed_merge_methods: ["squash"]`
     4. `required_status_checks`, with `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false` and `required_status_checks: [{ "context": "traceability", "integration_id": 15368 }, { "context": "test", "integration_id": 15368 }]`
-- [ ] T028 [US2] Checkpoint. `npm test` passes, including `repo-settings.test.ts`. `npm run traceability` now lists six uncovered requirements: 001-requirement-traceability-FR-013, -FR-016, -FR-017, -FR-018, -FR-019 and -FR-028.
+- [ ] T028 [US2] Checkpoint.
+  - `npm test` passes, including `repo-settings.test.ts`.
+  - `npm run traceability` no longer lists 001-requirement-traceability-FR-025. If US3 isn't done yet, six remain uncovered: -FR-013, -FR-016, -FR-017, -FR-018, -FR-019 and -FR-028. If it is, only -FR-028 remains.
+  - Commit (Conventional Commits, no AI attribution), push `001-requirement-traceability`, and open the feature's pull request to `main` as a **draft**. CI then runs on Linux from here on. `traceability` is expected to fail until T043. It's still the feature's single PR (Constitution XI).
 
 **Checkpoint**: User Stories 1 and 2 both work. The live merge block is verified in Polish
 (T046, T047), because it needs the open pull request.
@@ -418,7 +424,8 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
   - `.skip` and `.todo` tests;
   - tests inside skipped groups;
   - groups with no tests;
-  - the titles of unrecognized call shapes.
+  - the titles of unrecognized call shapes;
+  - tests declared inside a top-level loop or `if` block.
 
   IDs in test bodies are still not read (FR-011).
 
@@ -448,7 +455,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
   - Add these problems before `buildReport`.
 - [ ] T036 [US3] Checkpoint.
   - `npm run typecheck` and `npm test` pass. The US1 and US2 tests pass unchanged.
-  - `npm run traceability` exits 1 with exactly one problem: uncovered 001-requirement-traceability-FR-028, whose test comes in T040.
+  - `npm run traceability` exits 1 with only uncovered 001-requirement-traceability-FR-028 (its test comes in T040), plus -FR-025 if US2 isn't done yet. Any other problem is a defect.
   - The check's own test titles produce no reference problems.
 
 **Checkpoint**: All user stories are independently functional.
@@ -483,8 +490,12 @@ assets).
   - `specs/006-empty/spec.md` (Approved): an empty Functional Requirements section.
   - `specs/007-twin/spec.md` (Approved): FR-001, covered only by a `test.skipIf(process.env.CI)(…)` test.
   - `specs/notes/notes.md`: a directory with no `spec.md`.
-  - `src/clock.test.ts`, with these titles:
-    - one with `002-example-FR-001` in the title and `tags: ['002-example-FR-006']`;
+  - `src/clock.test.ts`, containing exactly these:
+    - a comment naming `002-example-FR-003`;
+    - `describe('… 002-example-FR-005', …)`, containing a `describe` that contains one `test`;
+    - one with `002-example-FR-001` in the title and `tags: ['002-example-FR-006']`. Its body asserts `expect('002-example-FR-003')`;
+    - `test.skip('… 002-example-FR-004', …)`;
+    - `test.skipIf(process.env.CI)('… 007-twin-FR-001', …)`;
     - one with `002-example-FR-002`;
     - one with `002-example-FR-009`;
     - one with `099-missing-FR-001`;
@@ -541,10 +552,10 @@ assets).
   - `npm test` passes.
   - `npm run traceability` exits 0, and its last line is exactly `PASS: all 29 active requirements in 1 approved spec are covered.` (Constitution III, SC-006).
 - [ ] T044 Run quickstart.md scenarios 1 to 6 and record any deviation.
-  - Scenario 3 temporarily changes one test to `test.skip(`. Revert it with `git checkout -- <file>`.
+  - Scenario 3 temporarily changes one requirement's group to `describe.skip(`. Revert it with `git checkout -- <file>`.
   - Scenario 4 needs the owner to turn the network off.
   - Scenario 6 is the performance test.
-- [ ] T045 Commit the work with Conventional Commits, e.g. `chore: add Node 26, npm and Vitest toolchain`, `feat(traceability): …`, `test(traceability): …`, `ci: …`. Push `001-requirement-traceability` and open one pull request to `main` (Constitution XI).
+- [ ] T045 Commit the remaining work with Conventional Commits, e.g. `feat(traceability): …`, `test(traceability): …`. Push, and mark the draft pull request from T028 ready for review (Constitution XI). If US2 was skipped or done later, open it now.
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`.
   - Confirm both `traceability` and `test` jobs run and pass.
@@ -661,6 +672,7 @@ Task: "uiFiles in listFiles, tools/traceability/src/files.ts"
 1. Setup + Foundational: the toolchain is ready.
 2. US1: the check runs locally, offline and deterministically. 7 requirements remain uncovered.
 3. US2: the CI workflow and ruleset are committed and statically verified. 6 remain uncovered.
+   The draft PR opens here, so CI runs on Linux from now on.
 4. US3: reference validation and `data-req` reading. 1 remains uncovered (FR-028).
 5. Polish: the seeded project, performance and self-check tests. The repository passes its own
    check (29 of 29). Then the PR is opened and enforcement verified live.

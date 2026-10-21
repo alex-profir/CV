@@ -50,8 +50,9 @@ cd -
 
 ## 3. Skipped tests don't count (US1 scenario 7, FR-012)
 
-Temporarily mark one of the check's own tests as skipped. Change one `test(` that references
-an ID to `test.skip(`, preferably the only test for that ID. Then run:
+Temporarily skip every test for one requirement. Pick one that a single `describe` group covers,
+such as `001-requirement-traceability-FR-009` in `references.test.ts`, and change that group's
+`describe(` to `describe.skip(`. Then run:
 
 ```sh
 npm run traceability; echo "exit $?"

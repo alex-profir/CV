@@ -389,6 +389,9 @@ and `/cv` remains a plain server-rendered page.
     platform". The code doesn't mark them as skipped, so they count as coverage. The normal test
     run reports those skips.
   - Checking that every UI requirement has a `data-req` element.
+  - Checking `data-req` values that are computed when the site runs instead of written in the
+    source, such as a value one element passes on to another. Only values written literally, as
+    Constitution III asks, are checked. A value passed on is checked where it is written.
   - The visitor-facing requirement inspector, which is a later feature.
   - Listing which tests cover each requirement, or saving that map for other features. The
     requirement inspector's spec decides how it gets the map.

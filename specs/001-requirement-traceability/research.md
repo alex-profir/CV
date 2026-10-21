@@ -137,6 +137,10 @@ the tests or ask the runner to list them.
   tests. That's why a new runner and its reader support ship in the same pull request (R3,
   Appendix A).
 - Test bodies aren't searched for tests, and nothing outside titles and tags is read (FR-011).
+- Tests declared inside blocks, `if`/`else`, loops, `try` and `switch`, at file level or inside a
+  group callback, are read like any other, with the enclosing group as their parent. Whether they
+  run is a runtime condition, so they count. Tests inside any other function, such as a helper
+  that declares tests, aren't read: it may never be called, so counting them could fake coverage.
 - A title that is a template literal is read part by part. Each literal part is scanned and
   substitutions are skipped. A title that isn't a literal at all, such as a variable or a
   function reference, contributes no references.
