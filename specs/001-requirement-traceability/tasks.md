@@ -347,7 +347,7 @@ once this feature's pull request exists.
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T025 [P] [US2] Write `tools/traceability/test/repo-settings.test.ts`, covering 001-requirement-traceability-FR-025 and 001-requirement-traceability-FR-026. It asserts every **[tested]** point of contracts/ci.md.
+- [X] T025 [P] [US2] Write `tools/traceability/test/repo-settings.test.ts`, covering 001-requirement-traceability-FR-025 and 001-requirement-traceability-FR-026. It asserts every **[tested]** point of contracts/ci.md.
 
   It reads `.github/workflows/ci.yml` as text. There is no YAML dependency (Constitution X; the plan adds none). A comment at the top of the test documents the layout it relies on: two-space indentation, one command per `run:` line, and no `run: |` or `run: >` blocks, which the test rejects. It reads `.github/rulesets/main.json` with `JSON.parse`.
   - Trigger: the `on:` block has `pull_request:` with `branches: [main]`. No line has a `paths:`, `paths-ignore:` or `branches-ignore:` key.
@@ -366,7 +366,7 @@ once this feature's pull request exists.
 
 ### Implementation for User Story 2
 
-- [ ] T026 [P] [US2] Create `.github/workflows/ci.yml` (contracts/ci.md Workflow, research R11):
+- [X] T026 [P] [US2] Create `.github/workflows/ci.yml` (contracts/ci.md Workflow, research R11):
   - Workflow `name: CI`, `on: pull_request: branches: [main]`, `permissions: contents: read`.
   - Jobs `traceability` and `test`. Each has `name:` equal to its id and `runs-on: ubuntu-latest`.
   - Steps:
@@ -374,7 +374,7 @@ once this feature's pull request exists.
     - `test`: the same first three steps, then `npm run typecheck`, then `npm test`.
   - Pin each action to the full commit SHA of its latest v7 release tag, with the version in a trailing comment, e.g. `uses: actions/checkout@<sha> # v7.x.y`. Find the SHA with `git ls-remote --tags https://github.com/actions/checkout 'v7*'`, and use the peeled `^{}` entry for annotated tags. Do the same for `actions/setup-node`.
   - No `if:`, `strategy`, `matrix`, `continue-on-error` or path filters.
-- [ ] T027 [P] [US2] Create `.github/rulesets/main.json` with exactly the fields in contracts/ci.md, formatted with two-space indentation:
+- [X] T027 [P] [US2] Create `.github/rulesets/main.json` with exactly the fields in contracts/ci.md, formatted with two-space indentation:
   - `name: "main"`, `target: "branch"`, `enforcement: "active"`
   - `conditions.ref_name`: `include: ["refs/heads/main"]`, `exclude: []`
   - `bypass_actors: []`
