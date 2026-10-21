@@ -21,12 +21,16 @@ npm run traceability
 Behind the script:
 
 ```sh
-node --permission --allow-fs-read=<repository> --allow-addons tools/traceability/src/cli.ts
+node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts
 ```
 
+npm runs scripts from the repository root, so `.` is the repository. If Node doesn't accept a
+relative path there, the script uses `*` instead (research.md, R9).
+
 The permission flags grant no network and no disk writes, so Node itself refuses any network
-call (research.md, R9). Tests run the same file with the same flags, with a sample project as
-the working directory.
+call (research.md, R9). Tests run the same file with the same permission grants, with a sample
+project as the working directory. Their read scope also covers the repository, so Node can load
+the check and its parser from outside the sample project.
 
 ## Exit codes
 
@@ -43,6 +47,10 @@ A pull-request run fails on any non-zero code.
 - The report goes to **stdout**, and only the report.
 - **stderr** carries usage errors, internal errors and any runtime warnings. Nothing on stderr
   is part of the report, so FR-024 and FR-026 apply to stdout.
+- These rules describe the check itself. `npm run traceability` also prints npm's own banner
+  (`> traceability` and the command) before the report, unless it's run with `--silent`. The
+  banner isn't part of the report, so tests compare the report from
+  `npm run --silent traceability`.
 
 ## Report format
 
@@ -80,6 +88,17 @@ specs/004-third/spec.md:1:1 bad-status "": spec has no Status line
 specs/005-empty/spec.md:1:1 no-requirements 005-empty: approved spec defines no requirements
 src/broken.test.ts:3:7 unreadable-file "src/broken.test.ts": cannot be parsed: ')' expected
 ```
+
+An `uncovered` detail is one of four sentences, depending on which tests reference the
+requirement:
+
+- none: `no test references this requirement`
+- only skipped, disabled or placeholder tests:
+  `only skipped, disabled or placeholder tests reference this requirement`
+- only tests inside calls the check doesn't recognize (research.md, R4):
+  `only tests inside calls the check doesn't recognize reference this requirement`
+- both kinds, and no counting test:
+  `only skipped, disabled or placeholder tests, or tests inside calls the check doesn't recognize, reference this requirement`
 
 ### Summary
 
@@ -144,8 +163,14 @@ When that run fails, because references are still checked, the result line says 
 FAIL: 2 problems found. No approved specs found.
 ```
 
-The singular forms (`1 problem`, `1 approved spec`, `1 active requirement`) are used when the
-count is 1.
+The singular forms (`1 problem`, `1 approved spec`) are used when the count is 1. The passing
+line depends on N, the number of active requirements in M approved specs:
+
+- N of 2 or more: `PASS: all N active requirements in M approved specs are covered.`
+- N of 1: `PASS: the 1 active requirement in M approved specs is covered.`
+- N of 0, when the approved specs define only removed requirements:
+  `PASS: M approved specs define no active requirements, so there are none to cover.`, or
+  `PASS: 1 approved spec defines no active requirements, so there are none to cover.`
 
 ## Stability guarantees
 

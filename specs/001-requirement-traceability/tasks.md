@@ -164,7 +164,7 @@ exactly the requirements whose tests arrive in later phases (T024).
   - FR-007: an ID defined twice, and an active plus a removed entry with the same ID, each produce one `duplicate-id`. It sits at the first definition, has the full ID as subject, and has the detail `defined 2 times, on lines A and B`. Three definitions read `defined 3 times, on lines A, B and C`.
   - FR-008: an approved spec with no entries produces `no-requirements`, and so does one with only malformed entries. The location is `1:1`, the subject is the feature and the detail is `approved spec defines no requirements`.
 - [ ] T010 [P] [US1] Write `tools/traceability/test/references.test.ts`, covering 001-requirement-traceability-FR-009. `fullId('002-example', 'FR-003')` is `002-example-FR-003`. `parseFullId` splits a full ID into feature and ID, and returns null for anything else. The same FR number in two approved specs gives two distinct IDs: with `runCheck`, a test that references `002-example-FR-001` leaves `003-other-FR-001` reported uncovered.
-- [ ] T011 [P] [US1] Write `tools/traceability/test/test-files.test.ts`. It covers 001-requirement-traceability-FR-010, 001-requirement-traceability-FR-011, 001-requirement-traceability-FR-012 and 001-requirement-traceability-FR-022. It tests `readTestFile(file, text)` and `coverageOf(nodes)` from `src/test-files.ts`. `coverageOf` returns `{ counting, inactive }`: the effective tokens of counting tests, and those of inactive tests.
+- [ ] T011 [P] [US1] Write `tools/traceability/test/test-files.test.ts`. It covers 001-requirement-traceability-FR-010, 001-requirement-traceability-FR-011, 001-requirement-traceability-FR-012 and 001-requirement-traceability-FR-022. It tests `readTestFile(file, text)` and `coverageOf(nodes)` from `src/test-files.ts`. `coverageOf` returns `{ counting, skipped, unrecognized }`: the effective tokens of counting tests, of inactive tests (skipped, disabled or placeholder), and of tests inside unrecognized calls.
   - FR-010: IDs are found in all of these:
     - test titles;
     - group titles, at any nesting depth;
@@ -189,7 +189,7 @@ exactly the requirements whose tests arrive in later phases (T024).
 
     These still count: `.skipIf(…)`, `.runIf(…)`, a computed `skip` value, and `ctx.skip(condition)`.
 
-    A call rooted at `test`, `it`, `describe` or `suite` whose shape isn't recognized, such as `test.describe.fixme(…)` or `test.foo(…)`, makes its nested tests non-counting.
+    A call rooted at `test`, `it`, `describe` or `suite` whose shape isn't recognized, such as `test.describe.fixme(…)` or `test.foo(…)`, makes its nested tests non-counting. With `runCheck`, a requirement referenced only there is reported with the detail `only tests inside calls the check doesn't recognize reference this requirement`. One referenced by both kinds, and by no counting test, gets `only skipped, disabled or placeholder tests, or tests inside calls the check doesn't recognize, reference this requirement`.
 
     With `runCheck`, a requirement referenced only by inactive tests is reported `uncovered`, with the detail `only skipped, disabled or placeholder tests reference this requirement`.
 
@@ -214,7 +214,7 @@ exactly the requirements whose tests arrive in later phases (T024).
     - The summary lists every type, zeros included, in `PROBLEM_TYPES` order.
     - Each row is its label padded with spaces to 32 characters, then the number. Copy the rows from contracts/cli.md.
     - Failing runs end `FAIL: 12 problems found.`, or `FAIL: 1 problem found.` for one.
-    - Passing runs end `PASS: all 29 active requirements in 1 approved spec are covered.`, with the singular and plural forms for 1 and 2.
+    - Passing runs end `PASS: all 29 active requirements in 1 approved spec are covered.`. Also test the N = 1 line (`PASS: the 1 active requirement in 2 approved specs is covered.`), the N = 0 line (`PASS: 1 approved spec defines no active requirements, so there are none to cover.`), and the singular and plural forms of `problem` and `approved spec`.
     - With no `specs/` folder, or only Draft specs, the run ends `PASS: no approved specs found, so there are no requirements to cover.` and shows `Approved specs checked:` 0.
     - With no approved specs and an invalid reference, the run ends `FAIL: 1 problem found. No approved specs found.`
     - One empty line separates problems from the summary, only when there are problems.
@@ -264,7 +264,12 @@ exactly the requirements whose tests arrive in later phases (T024).
     3. `Summary`.
     4. The rows `  Approved specs checked:`, `  Active requirements checked:`, `  Requirements covered:` and `  Problems:`, then one `    <type>` row per type. Each label is padded to 32 characters, followed by the number.
     5. An empty line.
-    6. The result line: `FAIL: N problems found.`, `PASS: all N active requirements in M approved specs are covered.`, or, with zero approved specs, `PASS: no approved specs found, so there are no requirements to cover.` when there are no problems and `FAIL: N problems found. No approved specs found.` when there are. Use singular nouns when a count is 1.
+    6. The result line, worded exactly as in contracts/cli.md:
+       - with problems: `FAIL: N problems found.`, followed by ` No approved specs found.` when there are no approved specs;
+       - with no problems and no approved specs: `PASS: no approved specs found, so there are no requirements to cover.`;
+       - otherwise, the passing line for N of 2 or more, N of 1, or N of 0 active requirements.
+
+       Use singular nouns when a count is 1.
     7. A single trailing `\n`.
 - [ ] T020 [US1] Implement the spec reader in `tools/traceability/src/specs.ts`, after T016 (data-model Spec, RequirementEntry and Requirement; research R7). Split lines on `\n` and ignore a trailing `\r`.
   - `parseSpec(feature, file, text): Spec`:
@@ -287,7 +292,7 @@ exactly the requirements whose tests arrive in later phases (T024).
     Subjects, details and locations are as in T009.
 - [ ] T021 [US1] Implement the test reader in `tools/traceability/src/test-files.ts`, after T016 and T017 (research R4, data-model TestNode).
   - `readTestFile(file, text)` returns `{ nodes: TestNode[]; problem: Problem | null }`. When the file fails to parse, `nodes` is empty.
-  - A `TestNode` is `{ kind: 'test' | 'group'; tokens: Token[]; markedInactive: boolean; parent: TestNode | null }`. Its `tokens` come from `findTokens` over its title parts and literal tag strings, each located through `createLocator`.
+  - A `TestNode` is `{ kind: 'test' | 'group'; tokens: Token[]; markedInactive: boolean; unrecognized: boolean; parent: TestNode | null }`. Its `tokens` come from `findTokens` over its title parts and literal tag strings, each located through `createLocator`.
   - Visit the statements of the program body and of each recognized group's callback: its block body, or its expression body as a single statement. Recognize an `ExpressionStatement`, optionally wrapped in `await`, whose expression is a call rooted at `test`, `it`, `describe` or `suite`.
   - Also visit statements nested in blocks, `if`/`else` branches, loops (`for`, `for…of`, `for…in`, `while`, `do…while`), `try`/`catch`/`finally` and `switch` cases, keeping the enclosing group as parent (research R4).
   - Never descend into function bodies other than group callbacks, or into test bodies. A test inside a helper function must not count (fail closed).
@@ -296,19 +301,23 @@ exactly the requirements whose tests arrive in later phases (T024).
     - `.only`, `.concurrent`, `.fails` and `.shuffle` have no effect.
     - `.skip` and `.todo` mark the node inactive.
     - `.skipIf(…)`, `.runIf(…)`, `.each(…)` and `.for(…)` must each be called. They have no effect on coverage.
-    - Any other name, a computed member, or a call shape that doesn't match is an unrecognized call. Treat it as a group marked inactive. Its title is still read, and its first function argument is visited as a group callback.
+    - Any other name, a computed member, or a call shape that doesn't match is an unrecognized call. Treat it as a group with `unrecognized: true` (not `markedInactive`). Its title is still read, and its first function argument is visited as a group callback.
   - Arguments:
     - The title is argument 0, read with `literalParts`.
     - The options are the first object literal after the title. Literal `skip: true` or `todo: true` marks the node inactive. Read `tags` as a string literal, or as an array of string literals and templates without substitutions.
     - The body or callback is the first argument after the title that is neither the options object nor a number literal. A test without a body, or a group without a callback, is inactive.
   - A test body also marks the test inactive when it has a top-level statement calling `<ctx>.skip()` or a destructured `skip()`, with no argument or one string literal. `<ctx>` is the body's first parameter.
-  - `coverageOf(nodes)`: for every `test` node, its effective tokens are its own plus those of every ancestor. They go in `counting` when neither the test nor any ancestor is inactive, and in `inactive` otherwise.
+  - `coverageOf(nodes)`: for every `test` node, its effective tokens are its own plus those of every ancestor. They go in `counting` when neither the test nor any ancestor is inactive or unrecognized. Otherwise they go in `unrecognized` when the test or an ancestor is unrecognized, and in `skipped` when not.
 - [ ] T022 [US1] Implement `runCheck(root): Report` in `tools/traceability/src/check.ts`. It is synchronous and reads files as UTF-8.
   1. Call `listFiles(root)`.
   2. Read each spec file. A read error gives `unreadable-file` at `1:1`, with the quoted path as subject and the detail `cannot be read: <error code>`. Never put error messages in the report: they contain absolute paths. Otherwise call `parseSpec`, then `specProblems`.
   3. Collect the active requirements of `Approved` specs, keyed by full ID.
-  4. Read each test file, with read errors handled as in step 2, then call `readTestFile` and `coverageOf`. A token covers a requirement when `parseFullId` accepts it and it names one of those active requirements. Note which requirements are referenced only by inactive tests.
-  5. For every active requirement not covered, add `uncovered` at its first active definition. The detail is `no test references this requirement` or `only skipped, disabled or placeholder tests reference this requirement`.
+  4. Read each test file, with read errors handled as in step 2, then call `readTestFile` and `coverageOf`. A token covers a requirement when `parseFullId` accepts it and it names one of those active requirements. Also note which requirements the `skipped` tokens reference, and which the `unrecognized` tokens reference.
+  5. For every active requirement not covered, add `uncovered` at its first active definition. Its detail is one of the four sentences in contracts/cli.md:
+     - `no test references this requirement` when neither list references it;
+     - `only skipped, disabled or placeholder tests reference this requirement` when only `skipped` tokens do;
+     - `only tests inside calls the check doesn't recognize reference this requirement` when only `unrecognized` tokens do;
+     - `only skipped, disabled or placeholder tests, or tests inside calls the check doesn't recognize, reference this requirement` when both do.
   6. Return `buildReport` with `approvedSpecs` (readable Approved specs), `activeRequirements` and `coveredRequirements`.
 - [ ] T023 [US1] Implement the entry point `tools/traceability/src/cli.ts` (contracts/cli.md):
   - With any argument, write `usage: npm run traceability (takes no arguments)` to stderr and set exit code 2.
@@ -433,7 +442,7 @@ requirement, a removed one and a malformed ID. Each is reported with its file an
 
 - [ ] T032 [P] [US3] Extend `tools/traceability/src/ids.ts` with reference classification (data-model Reference, the classification tree):
   - `SpecTargets` is `Map<feature, { readable: boolean; ids: Map<'FR-###', 'active' | 'removed'> }>`. An ID is `active` when any of its definitions is active.
-  - `referenceProblem(text, location, targets): Problem | null`:
+  - `referenceProblem(text, location, targets): Problem | null`. The subject is the full ID without quotes, except for `malformed`:
     - `malformed` when `parseFullId` rejects the text. The subject is the quoted text.
     - `unknown-reference` when no feature matches. The detail is `no spec directory is named <feature>`.
     - null when the spec is unreadable.

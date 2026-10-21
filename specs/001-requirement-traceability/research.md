@@ -262,13 +262,14 @@ Classification into valid, unknown, removed or malformed follows
 ## R9. No network: the permission model
 
 **Decision**: the `npm run traceability` script runs the check under Node's permission model:
-`node --permission --allow-fs-read=<repository> --allow-addons tools/traceability/src/cli.ts`.
+`node --permission --allow-fs-read=. --allow-addons tools/traceability/src/cli.ts`.
 
 - `--allow-net` is not granted, so any network call fails with `ERR_ACCESS_DENIED` (FR-027).
 - `--allow-fs-write` is not granted, so the check also can't write to disk.
 - `--allow-addons` is needed to load `oxc-parser`'s native binary.
-- The read scope is the repository. If Node turns out not to accept a relative path for it, the
-  scope widens to `*`. Reads aren't what FR-027 is about.
+- The read scope is `.`, the repository root, because npm runs scripts from there. If Node turns
+  out not to accept a relative path for it, the scope widens to `*`. Reads aren't what FR-027 is
+  about.
 
 **Rationale**:
 
@@ -338,6 +339,9 @@ Further details:
 - No job has an `if:` condition, a matrix or `continue-on-error`. A skipped required job reports
   success on GitHub, a path-filtered workflow leaves the check pending forever, and a matrix
   changes the check's name.
+- The test for FR-025 reads `ci.yml` as plain text with a few line rules, because a YAML parser
+  would be a new dependency for one test (Constitution X). The workflow therefore keeps a simple
+  layout: two-space indentation and one command per `run:` line.
 
 **Rationale**: GitHub Actions is the repository host's own CI, so nothing else is added. The
 required check names are the job names: `traceability` and `test`.

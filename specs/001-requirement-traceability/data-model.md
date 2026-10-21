@@ -98,9 +98,11 @@ A well-formed ID defined in a spec. Derived from the spec's entries.
 **Coverage state** (for an active requirement in an approved spec)
 
 ```text
-                ┌─ at least one counting test references it ───────▶ covered
-requirement ────┼─ only skipped/disabled/placeholder tests do ─────▶ uncovered (note: "only skipped…")
-                └─ no test references it ──────────────────────────▶ uncovered
+                ┌─ at least one counting test references it ────────────▶ covered
+                ├─ only skipped/disabled/placeholder tests do ──────────▶ uncovered (note: "only skipped…")
+requirement ────┼─ only tests inside unrecognized calls do ─────────────▶ uncovered (note: "only tests inside calls…")
+                ├─ both kinds do, and no counting test ─────────────────▶ uncovered (note names both)
+                └─ no test references it ───────────────────────────────▶ uncovered
 ```
 
 ## TestNode
@@ -115,6 +117,7 @@ running them (see research.md, R4 and R5).
 | `titleTexts` | TextSpan[] | Literal text of the title. A template literal gives one span per literal part. A non-literal title gives none |
 | `tagTexts` | TextSpan[] | Each literal tag value from the declaration's options |
 | `markedInactive` | boolean | Statically marked skipped, disabled or placeholder in the code (see rules) |
+| `unrecognized` | boolean | A call rooted at `test`, `it`, `describe` or `suite` whose shape isn't recognized. It's kept only so its title is checked and its nested tests are known not to count |
 | `parent` | TestNode \| null | The enclosing group, if the declaration is lexically inside a group's callback |
 
 `TextSpan` is a piece of literal source text plus the Location of its first character.
@@ -122,7 +125,7 @@ running them (see research.md, R4 and R5).
 **Validation rules**
 
 - A test counts toward coverage only when neither it nor any ancestor group is `markedInactive`
-  (FR-012).
+  or `unrecognized` (FR-012).
 - `markedInactive` is true when the declaration uses a `.skip` or `.todo` modifier, when its
   options set `skip` or `todo` to `true`, when a test has no function body or a group has no
   callback (a placeholder), or when a test body unconditionally calls the context's `skip()` as
