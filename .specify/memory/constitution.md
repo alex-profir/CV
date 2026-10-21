@@ -1,50 +1,203 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# CV Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Spec First
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+- No production code is written for a feature until `specs/<feature>/spec.md` exists and its
+  `Status` field reads `Approved`. The project owner sets that status.
+- Specs state **what** the feature does and **why**. They MUST NOT name frameworks, libraries,
+  file layouts, or APIs.
+- Plans (`plan.md`) state **how**. Implementation choices are made and justified there, never
+  in the spec.
+- A change in behavior means updating the spec first. Code that does something its spec does not
+  describe is a defect.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+**Rationale**: the spec-driven process is part of what this site shows. A visitor reading
+`specs/` should see the reasoning before the code, and see that the code followed it.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### II. Design Gate
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+No UI task starts until `specs/<feature>/design/` contains all of:
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+1. An ASCII wireframe of every screen or state the feature adds or changes.
+2. PNG exports of the approved Penpot mockup, plus a link to the Penpot file.
+3. A `review.md` sign-off from the project owner. It names the reviewed mockup version and
+   gives the date.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- The gate covers both shells. Each shell the feature supports needs its own wireframe and
+  mockup exports.
+- Features with no UI change MUST say so in `spec.md` ("No UI"). Only then are they exempt.
+- If the approved design changes, the PNGs and `review.md` are updated before the code changes.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: it makes the visual decision explicit and reviewable before implementation.
+It also keeps the published design artifacts in sync with what ships.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Traceable Requirements
+
+- Every functional requirement in a spec has a stable ID of the form `FR-###`. IDs are never
+  reused or renumbered. A dropped requirement is marked as removed, not deleted.
+- Every UI element that implements a requirement carries
+  `data-req="<feature>-FR-###"`. An element serving several requirements lists them separated
+  by spaces.
+- Every requirement maps to at least one automated test. The test MUST reference
+  `<feature>-FR-###` in its name or tags, so the mapping can be checked by a machine.
+- CI MUST fail when any requirement in an approved spec has no test that references it.
+
+**Rationale**: anyone can follow a requirement from spec to UI to test. That makes the
+process visible and verifiable, not just claimed.
+
+### IV. One Source of Truth
+
+- All CV data lives in `packages/content`. That covers experience, education, skills, projects,
+  contact details and any other biographical text. No app, shell or page hardcodes it.
+  Each one reads it from that package.
+- Design tokens come from Penpot. That covers color, typography, spacing, radii, shadows and
+  motion. Code consumes tokens only through the token output exported from Penpot. Literal
+  token values in components or styles are violations.
+- Changing a CV fact or a design token takes exactly one edit, at its source.
+
+**Rationale**: the CV changes over time. Keeping one source means the desktop shell, the
+mobile shell and `/cv` can never drift apart.
+
+### V. Shared Core, Per-Shell Scope
+
+- The desktop shell (macOS-style) and the mobile shell (iOS-style) share `os-core` and
+  `packages/content`. Shell-specific code stays inside its shell.
+- Every app declares which shells it supports. The declaration lives with the app, not in
+  the shell.
+- Every spec has a per-shell scope statement. For each shell it says whether the feature is
+  supported, and what the other shell shows instead (a fallback, a link, or an explicit
+  "not shown").
+
+**Rationale**: two shells double the surface area. Explicit scope stops features from
+silently missing on one shell, or being half-built there.
+
+### VI. Offline by Default
+
+- Every app spec states its offline behavior.
+- Anything that can work offline MUST work offline. That includes all CV content and every
+  app that does not need the network.
+- An app that truly needs the network MUST say why in its spec. Offline, it shows a clear
+  state that it is offline, never a blank or broken view.
+
+**Rationale**: a browser OS should behave like an OS. Recruiters often open links on weak
+connections, and an offline CV is still a working CV.
+
+### VII. Recruiter First
+
+- From first load, the CV is at most one click (desktop) or one tap (mobile) away.
+  This holds on both shells.
+- `/cv` is a plain server-rendered page. Its full content is in the server-rendered HTML,
+  so it reads without JavaScript and without the OS shell.
+- No feature may add steps or interruptions in front of the CV, such as splash screens, forced
+  onboarding or modals.
+
+**Rationale**: the OS is the showcase, but the CV is the product. Whoever just needs the CV
+gets it immediately.
+
+### VIII. Accessible and Fast
+
+- Both shells and `/cv` conform to WCAG 2.2 Level AA.
+- The desktop shell is fully operable by keyboard. That includes opening, focusing, moving
+  and closing windows, using the dock and menus, and leaving every app, with visible focus
+  throughout.
+- When `prefers-reduced-motion` is set, non-essential animation is removed or replaced with a
+  non-moving transition.
+- Lighthouse scores are 90 or higher in every category, on both mobile and desktop profiles.
+
+**Rationale**: an inaccessible or slow CV site undercuts the skills it is meant to show.
+
+### IX. Original Design
+
+- Interaction patterns MAY be inspired by macOS and iOS. Examples are windows, a dock, a
+  menu bar, a home screen and sheets.
+- The visual identity MUST be original. No Apple icons, glyphs, fonts (such as SF Pro or
+  New York), wallpapers, logos or other Apple assets, copied or traced.
+
+**Rationale**: it avoids trademark and licensing problems. The design is also part of the
+portfolio, so it has to be the author's own work.
+
+### X. Simple and Vetted
+
+- No dependency, agent skill or abstraction is added unless its plan gives a written reason:
+  what problem it solves, and why something simpler was not enough.
+- Vendor-maintained tools are preferred, meaning those published by the platform or library
+  vendor, over community forks or wrappers.
+- Unjustified complexity found in review is removed, not grandfathered in.
+
+**Rationale**: a small, explainable stack is easier to maintain and easier for a reviewer
+to trust.
+
+### XI. One Feature, One PR
+
+- Each feature ships in exactly one pull request. Its description links the feature's
+  `spec.md` and `tasks.md`.
+- Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
+  `chore:` and so on).
+- Unrelated changes go in their own PR.
+
+**Rationale**: one PR per feature keeps history readable. Spec, tasks and code can be
+reviewed together.
+
+## Product Scope & Architecture
+
+- **Product**: a public CV site presented as a browser OS. Desktop visitors get a macOS-style
+  shell, phone visitors an iOS-style shell. The site also shows spec-driven development in
+  practice. Product context, audience and goals live in `docs/vision.md`, and specs MUST stay
+  consistent with it.
+- **Shared packages**: `os-core` (OS behavior shared by both shells) and `packages/content`
+  (all CV data, Principle IV).
+- **Shells**: desktop and mobile. Apps declare the shells they support (Principle V).
+- **Recruiter route**: `/cv`, server-rendered and independent of the shells (Principle VII).
+- **Design source**: Penpot holds the approved mockups (Principle II) and the design tokens
+  (Principle IV).
+- **Public process**: everything under `specs/` is public and part of the showcase. Spec
+  artifacts are kept current, are readable by an outside reviewer, and contain no secrets or
+  private data.
+
+## Development Workflow & Quality Gates
+
+Every feature moves through these gates in order. A gate that has not passed blocks the
+next one.
+
+1. **Specify**: `/speckit-specify` produces `spec.md`, with `FR-###` IDs, per-shell scope and
+   offline behavior. Open questions are resolved with `/speckit-clarify`. The owner then sets
+   `Status: Approved` (Principle I).
+2. **Design** (UI features only): the wireframe, Penpot PNG exports, Penpot link and
+   `review.md` sign-off go in `specs/<feature>/design/` (Principle II).
+3. **Plan**: `/speckit-plan` produces `plan.md`. Its Constitution Check covers every
+   principle. New dependencies, skills and abstractions get written reasons (Principle X).
+4. **Tasks**: `/speckit-tasks` produces `tasks.md`. UI tasks list the design gate as a
+   prerequisite.
+5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
+   `data-req` attributes (Principle III).
+6. **Pull request**: one PR per feature, linking its spec and tasks (Principle XI).
+
+Merge requirements:
+
+- CI MUST enforce requirement-to-test traceability (Principle III).
+- Accessibility (WCAG 2.2 AA, keyboard operation, reduced motion), Lighthouse 90+, offline
+  behavior and the one-click/one-tap CV path MUST be verified before merge. They are
+  automated in CI wherever tooling allows.
+- Hardcoded CV data or literal design-token values block merge (Principle IV).
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution overrides every other practice, template or guide in the repository. When
+  it conflicts with any of them, it wins, and the other document is updated to match.
+- **Amendments** are made in a dedicated PR with a `docs:` commit. The PR updates the version
+  and `Last Amended` date, explains what changed and why, and lists any dependent templates or
+  specs that need updating.
+- **Versioning** follows semantic versioning:
+  - MAJOR: a principle is removed or redefined in a way that breaks compatibility.
+  - MINOR: a principle or section is added, or guidance is materially expanded.
+  - PATCH: clarifications, wording and typo fixes with no change in meaning.
+- **Compliance review** happens at three points:
+  - Each plan's Constitution Check.
+  - `/speckit-analyze` before implementation. It treats constitution conflicts as CRITICAL.
+  - PR review.
+- A justified exception is recorded in the plan's Complexity Tracking table, with the
+  simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
