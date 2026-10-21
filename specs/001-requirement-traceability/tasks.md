@@ -707,3 +707,20 @@ checkpoints within it. The PR can't merge until the repository passes its own ch
 - Commit after each task or logical group, using Conventional Commits and no AI attribution
   (CLAUDE.md).
 - T046 and T047 change GitHub state. The owner runs them or explicitly approves them.
+
+---
+
+## Phase 7: Convergence
+
+**Purpose**: Gaps found by `/speckit-converge` on 2026-10-21. The open owner tasks T044 (scenario
+4), T046 and T047 still stand and aren't repeated here.
+
+- [X] T048 Report unreadable directories as `unreadable-file` problems instead of aborting the run per FR-029 (partial)
+  - Today `entries()` in `tools/traceability/src/files.ts` rethrows every `readdirSync` error except `ENOENT` and `ENOTDIR`. A directory the check can't read, such as `src/locked` with mode `000` or an unreadable `specs/<feature>`, makes the CLI exit 2 with `traceability check failed: EACCES: …` and an absolute path on stderr. No report is printed, so every other problem is lost (FR-021) and the path isn't relative (FR-022).
+  - Have `listFiles` also return each directory it couldn't read, as a relative path with the error code, and carry on with the rest of the walk. `runCheck` reports each one like T022's file read errors: `unreadable-file` at `1:1`, the quoted path as subject, and the detail `cannot be read: <code>`.
+  - An unreadable `specs/<feature>` directory also makes `<feature>` an unreadable reference target, so references into it aren't classified (data-model.md, Reference).
+  - Add a test to the 001-requirement-traceability-FR-029 group in `tools/traceability/test/check.test.ts`. Make a directory unreadable with `fs.chmodSync(dir, 0o000)` after `makeProject`, and restore its mode in a `finally` so cleanup can remove it. Root ignores file modes, so use `test.skipIf(process.getuid?.() === 0)`. The existing EISDIR test keeps FR-029 covered when it's skipped.
+- [X] T049 Make the CLI refuse to run on a Node version whose permission model can't block the network per plan: R9 no-network guard (partial)
+  - R9 says the guard "holds in every run", but it only holds on Node 25 and later. In the owner's default shell (Node 24.21.0), `npm run traceability` passes with no warning while network calls stay allowed: the FR-027 positive control prints `ECONNREFUSED`, not `ERR_ACCESS_DENIED`. `engines` doesn't stop `npm run`.
+  - In `tools/traceability/src/cli.ts`, before reading any file, write a message naming the required version (Node 26, as in `.nvmrc`) to stderr and set exit code 2 when the Node major version is below 26. Exit code 2 already means the check couldn't run (contracts/cli.md). Add this case to that table.
+  - Keep the version comparison in a side-effect-free function outside `cli.ts`, because importing `cli.ts` runs the check. Test it with values such as `'24.21.0'` and `'26.0.0'` in the 001-requirement-traceability-FR-027 group in `tools/traceability/test/cli.test.ts`.
