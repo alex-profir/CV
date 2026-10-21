@@ -1,0 +1,39 @@
+specs/002-example/spec.md:26:5 uncovered 002-example-FR-003: no test references this requirement
+specs/002-example/spec.md:28:5 uncovered 002-example-FR-004: only skipped, disabled or placeholder tests reference this requirement
+specs/002-example/spec.md:32:5 duplicate-id 002-example-FR-006: defined 2 times, on lines 32 and 33
+specs/002-example/spec.md:35:7 duplicate-id 002-example-FR-007: defined 2 times, on lines 35 and 36
+specs/002-example/spec.md:38:5 malformed "FR-1": a requirement ID must be FR- followed by exactly three digits
+specs/002-example/spec.md:39:5 malformed "FR-0001": a requirement ID must be FR- followed by exactly three digits
+specs/002-example/spec.md:40:5 malformed "fr-008": a requirement ID must be FR- followed by exactly three digits
+specs/004-typo/spec.md:3:13 bad-status "Aproved": Status must be Draft or Approved
+specs/005-nostatus/spec.md:1:1 bad-status "": spec has no Status line
+specs/006-empty/spec.md:1:1 no-requirements 006-empty: approved spec defines no requirements
+src/Clock.tsx:8:20 removed-reference 002-example-FR-002: this requirement was removed
+src/Clock.tsx:10:20 malformed "FR-005": not a full requirement ID of the form <feature>-FR-###
+src/Clock.tsx:12:20 unknown-reference 099-missing-FR-002: no spec directory is named 099-missing
+src/Clock.tsx:14:20 malformed "": not a full requirement ID of the form <feature>-FR-###
+src/Clock.tsx:22:37 unknown-reference 002-example-FR-012: spec 002-example defines no FR-012
+src/broken.test.ts:3:7 unreadable-file "src/broken.test.ts": cannot be parsed: Unexpected token
+src/clock.test.ts:25:20 removed-reference 002-example-FR-002: this requirement was removed
+src/clock.test.ts:28:17 unknown-reference 002-example-FR-009: spec 002-example defines no FR-009
+src/clock.test.ts:31:20 unknown-reference 099-missing-FR-001: no spec directory is named 099-missing
+src/clock.test.ts:34:12 malformed "FR-001": not a full requirement ID of the form <feature>-FR-###
+src/clock.test.ts:37:34 malformed "002-example-fr-005": not a full requirement ID of the form <feature>-FR-###
+src/clock.test.ts:40:17 malformed "002-example-FR-01": not a full requirement ID of the form <feature>-FR-###
+src/clock.test.ts:46:18 unknown-reference 002-example-FR-011: spec 002-example defines no FR-011
+
+Summary
+  Approved specs checked:       3
+  Active requirements checked:  7
+  Requirements covered:         5
+  Problems:                     23
+    uncovered                   2
+    unknown-reference           5
+    removed-reference           2
+    malformed                   8
+    duplicate-id                2
+    bad-status                  2
+    no-requirements             1
+    unreadable-file             1
+
+FAIL: 23 problems found.
