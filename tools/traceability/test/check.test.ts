@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { makeProject, runCli } from './helpers/project.ts';
@@ -100,5 +102,30 @@ describe('001-requirement-traceability-FR-029: files the check cannot read are r
     const report = runCheck(root);
     expect(lines(root)).toEqual(['specs/003-x/spec.md:1:1 unreadable-file "specs/003-x/spec.md": cannot be read: EISDIR']);
     expect(report.approvedSpecs).toBe(1);
+  });
+
+  // Root ignores file modes, so this can't run as root. The EISDIR test above
+  // still covers unreadable files then.
+  test.skipIf(process.getuid?.() === 0)('a directory that cannot be read is reported, and the run carries on', () => {
+    const root = makeProject({
+      'specs/002-example/spec.md': THREE,
+      'specs/003-locked/spec.md': THREE,
+      'src/example.test.ts': "test('002-example-FR-001 002-example-FR-002 003-locked-FR-001', () => {});\n",
+      'src/locked/a.test.ts': "test('002-example-FR-003', () => {});\n",
+    });
+    const locked = ['specs/003-locked', 'src/locked'].map((dir) => path.join(root, dir));
+    for (const dir of locked) fs.chmodSync(dir, 0o000);
+    try {
+      // The reference into the unreadable spec directory isn't classified.
+      expect(lines(root)).toEqual([
+        'specs/002-example/spec.md:9:5 uncovered 002-example-FR-003: no test references this requirement',
+        'specs/003-locked:1:1 unreadable-file "specs/003-locked": cannot be read: EACCES',
+        'src/locked:1:1 unreadable-file "src/locked": cannot be read: EACCES',
+      ]);
+      expect(runCli(root).status).toBe(1);
+    } finally {
+      // Restored so the project can be removed after the test.
+      for (const dir of locked) fs.chmodSync(dir, 0o755);
+    }
   });
 });

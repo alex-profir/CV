@@ -10,18 +10,18 @@ import type { Requirement } from './specs.ts';
 import { coverageOf, readTestFile } from './test-files.ts';
 import { readUiFile } from './ui-files.ts';
 
-// Reads a file as UTF-8. A read error is reported by its code only, because
-// error messages contain absolute paths.
+// A file or directory that can't be read. It's reported by its error code
+// only, because error messages contain absolute paths.
+function unreadableFile(file: string, code: string): Problem {
+  return { type: 'unreadable-file', subject: `"${file}"`, location: { file, line: 1, column: 1 }, detail: `cannot be read: ${code}` };
+}
+
+// Reads a file as UTF-8.
 function readText(root: string, file: string, problems: Problem[]): string | null {
   try {
     return fs.readFileSync(path.join(root, file), 'utf8');
   } catch (error) {
-    problems.push({
-      type: 'unreadable-file',
-      subject: `"${file}"`,
-      location: { file, line: 1, column: 1 },
-      detail: `cannot be read: ${(error as NodeJS.ErrnoException).code ?? 'unknown error'}`,
-    });
+    problems.push(unreadableFile(file, (error as NodeJS.ErrnoException).code ?? 'unknown error'));
     return null;
   }
 }
@@ -38,11 +38,17 @@ function uncoveredDetail(skipped: boolean, unrecognized: boolean): string {
 // One run of the check over the files under `root`.
 export function runCheck(root: string): Report {
   const files = listFiles(root);
-  const problems: Problem[] = [];
+  const problems: Problem[] = files.unreadableDirs.map(({ dir, code }) => unreadableFile(dir, code));
 
   let approvedSpecs = 0;
   const active = new Map<string, Requirement>();
   const targets: SpecTargets = new Map();
+  // A spec directory that can't be read is an unreadable target, like a
+  // spec.md that can't be read.
+  for (const { dir } of files.unreadableDirs) {
+    const feature = /^specs\/([^/]+)$/.exec(dir)?.[1];
+    if (feature !== undefined) targets.set(feature, { readable: false, ids: new Map() });
+  }
   for (const { feature, file } of files.specs) {
     const text = readText(root, file, problems);
     const ids = new Map<string, 'active' | 'removed'>();
