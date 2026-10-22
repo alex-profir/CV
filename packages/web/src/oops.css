@@ -1,0 +1,7 @@
+.card {
+  color: var(--token-color-text-primary);
+  background: var(--token-color-text-primray);
+  --card-gap: var(--token-space-4);
+  --token-card-pad: 4px;
+  gap: var(--card-gap);
+}
