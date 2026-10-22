@@ -116,7 +116,8 @@ import { resume } from '@cv/content';
 export const ok = resume.basics?.name ?? 'Unnamed';
 export const nick = resume.basics?.nickname;
 export const shout = resume.basics?.name.toUpperCase();
-export const year = resume.work?.[0]?.endDate.slice(0, 4);
+const job = resume.work?.[0];
+export const year = job?.endDate.slice(0, 4);
 ```
 
 ```sh
@@ -124,12 +125,14 @@ npm run typecheck
 ```
 
 **Expected**: three errors in `packages/content/src/oops.ts`, none on line 3: `nickname` does not
-exist on `ResumeBasics` (line 4), `name` is possibly undefined (line 5), and `endDate` is
-possibly undefined (line 6). Each error names the field, the file, the line and the column
+exist on `ResumeBasics` (line 4), `name` is possibly undefined (line 5), and `job.endDate` is
+possibly undefined (line 7). Each error names the field, the file, the line and the column
 (FR-027). Delete the file afterwards.
 
-Line 6 uses `endDate` directly on purpose. An assignment such as
-`const end: string = resume.work?.[0]?.endDate` fails too, but its message only says
+Line 7 reads `endDate` from a named entry on purpose. TypeScript 7 names the field only when the
+expression is a plain reference: `resume.work?.[0]?.endDate.slice(0, 4)` fails too, but is reported
+as `Object is possibly 'undefined'`. An assignment such as
+`const end: string = resume.work?.[0]?.endDate` fails as well, but its message only says
 `string | undefined` isn't assignable to `string`, without naming the field.
 
 ## 7. Offline (US1 scenario 6, FR-035, SC-006)

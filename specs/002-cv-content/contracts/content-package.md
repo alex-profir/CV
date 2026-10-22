@@ -31,8 +31,12 @@ The package is an npm workspace, linked by `npm ci`. Its `package.json` declares
    ```ts
    const name = resume.basics?.name ?? '';                 // passes
    const shout = resume.basics?.name.toUpperCase();        // fails: possibly undefined
-   const year = resume.work?.[0]?.endDate.slice(0, 4);     // fails: 'endDate' is possibly undefined
+   const job = resume.work?.[0];
+   const year = job?.endDate.slice(0, 4);                  // fails: 'job.endDate' is possibly undefined
    ```
+
+   `resume.work?.[0]?.endDate.slice(0, 4)` fails too, but TypeScript 7 reports it as
+   `Object is possibly 'undefined'`, at `resume`, without naming the field.
 
    An assignment such as `const end: string = resume.work?.[0]?.endDate` fails too, but its
    message only says `string | undefined` isn't assignable to `string`, without naming the field.

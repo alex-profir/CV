@@ -517,14 +517,15 @@ scenario 6).
 
 ### Tests for User Story 4 (REQUIRED) ⚠️
 
-- [ ] T043 [P] [US4] Create the fixture project `tools/content-check/test/__fixtures__/shape/` (research R14). It sits outside the root typecheck (`exclude` has `**/__fixtures__/**`).
+- [X] T043 [P] [US4] Create the fixture project `tools/content-check/test/__fixtures__/shape/` (research R14). It sits outside the root typecheck (`exclude` has `**/__fixtures__/**`).
   - `tsconfig.json`: `extends` the root `../../../../../tsconfig.json`, sets `include: ["*.ts"]` and `exclude: []`, and keeps every compiler option.
   - Four files, each importing `{ resume }` from `'@cv/content'`:
     - `handles-absence.ts`: `export const name = resume.basics?.name ?? 'Unnamed';`
     - `reads-nickname.ts`: `export const nick = resume.basics?.nickname;`
     - `assumes-name.ts`: `export const shout = resume.basics?.name.toUpperCase();`
-    - `assumes-end-date.ts`: `export const year = resume.work?.[0]?.endDate.slice(0, 4);` This form makes `tsc` name the field. The assignment form `const end: string = …` reports only `string | undefined`.
-- [ ] T044 [P] [US4] Write `tools/content-check/test/shape.test.ts`. It covers 002-cv-content-FR-026 and 002-cv-content-FR-027.
+    - `assumes-end-date.ts`: `const job = resume.work?.[0];` then `export const year = job?.endDate.slice(0, 4);` This form makes `tsc` name the field (`'job.endDate' is possibly 'undefined'`). The assignment form `const end: string = …` reports only `string | undefined`.
+    - Deviation (2026-10-22, during implementation): the one-line form `resume.work?.[0]?.endDate.slice(0, 4)` was planned here, but TypeScript 7.0.2 reports it as `Object is possibly 'undefined'` (TS2532) without naming the field. The fixture, quickstart scenario 6 and contracts/content-package.md now use the bound form.
+- [X] T044 [P] [US4] Write `tools/content-check/test/shape.test.ts`. It covers 002-cv-content-FR-026 and 002-cv-content-FR-027.
   - FR-026:
     - `generateShape(...)` (from `src/shape.ts`), run on the derived official schema and the real rules, equals the committed `packages/content/src/shape.generated.ts` byte for byte. On failure the message says to run `npm run content-shape`;
     - parsing the generated text, every property line inside an `interface Resume*` block is optional (`?:`), and no interface contains an index signature (`[key: string]`);
@@ -538,7 +539,7 @@ scenario 6).
 
 ### Implementation for User Story 4
 
-- [ ] T045 [US4] Implement the shape generator `generateShape({ resume, site }): string` in `tools/content-check/src/shape.ts`, after T022 (research R10, contracts/site-data-rules.md, contracts/content-package.md Generated file). It takes the two derived schemas.
+- [X] T045 [US4] Implement the shape generator `generateShape({ resume, site }): string` in `tools/content-check/src/shape.ts`, after T022 (research R10, contracts/site-data-rules.md, contracts/content-package.md Generated file). It takes the two derived schemas.
   - Supported keywords are exactly the contract's table. Also accept `additionalItems` beside a single `items` schema, ignored, if the official schema uses it (research R2). Any other keyword throws `Error('unsupported keyword "<k>" at <schema path>')`. First run it on the official schema. If another keyword turns up, stop and record it in research.md R10 before going on.
   - Types:
     - `string`, `number`, `boolean` and `null` map to themselves, and `integer` to `number`;
@@ -556,14 +557,14 @@ scenario 6).
     - property names that aren't identifiers in single quotes (`'$schema'?: string;`);
     - two-space indentation, `\n` line endings, one empty line between interfaces, and a final `\n`;
     - no timestamps.
-- [ ] T046 [US4] Implement `tools/content-check/src/generate-shape.ts`, after T045. It loads and derives the official schema and the rules from the current directory (it stops with exit code 2 and a message if the rules can't be read or used), calls `generateShape`, and writes `SHAPE_FILE`. Run `npm run content-shape` and commit `packages/content/src/shape.generated.ts`.
-- [ ] T047 [US4] Type the exports in `packages/content/src/index.ts`, after T046:
+- [X] T046 [US4] Implement `tools/content-check/src/generate-shape.ts`, after T045. It loads and derives the official schema and the rules from the current directory (it stops with exit code 2 and a message if the rules can't be read or used), calls `generateShape`, and writes `SHAPE_FILE`. Run `npm run content-shape` and commit `packages/content/src/shape.generated.ts`.
+- [X] T047 [US4] Type the exports in `packages/content/src/index.ts`, after T046:
   - `import type { Resume, SiteData } from './shape.generated.ts'`;
   - `export type * from './shape.generated.ts'`;
   - `export const resume: Resume = resumeJson` and `export const siteData: SiteData = siteJson`.
 
   `npm run typecheck` must pass (contracts/content-package.md Guarantee 5).
-- [ ] T048 [US4] Checkpoint.
+- [X] T048 [US4] Checkpoint.
   - `npm run typecheck` and `npm test` pass (001's self-check still excepted).
   - Quickstart scenario 6 gives the three expected errors in `packages/content/src/oops.ts` and none on line 3. Delete the file afterwards.
   - `npm run content-check` still passes (`shape.generated.ts` isn't searched).
