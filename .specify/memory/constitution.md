@@ -53,12 +53,19 @@ process visible and verifiable, not just claimed.
   contact details and any other biographical text. No app, shell or page hardcodes it.
   Each one reads it from that package.
 - Design tokens come from Penpot. That covers color, typography, spacing, radii, shadows and
-  motion. Code consumes tokens only through the token output exported from Penpot. Literal
-  token values in components or styles are violations.
+  every other kind of token Penpot can hold.
+- Motion (durations and easing curves) is the one exception, because Penpot has no token type
+  for it. Motion tokens live in a single motion token source in the repository, in the same
+  format as Penpot's token export. That source holds only token types Penpot can't hold. Once
+  Penpot can hold one, those tokens move to Penpot under the same names.
+- Code consumes tokens only through the token output produced from these two sources, and reads
+  both the same way. A token name is defined in only one of them. Literal token values in
+  components or styles are violations.
 - Changing a CV fact or a design token takes exactly one edit, at its source.
 
 **Rationale**: the CV changes over time. Keeping one source means the desktop shell, the
-mobile shell and `/cv` can never drift apart.
+mobile shell and `/cv` can never drift apart. Motion is judged by watching it run, which Penpot
+can't show, so its tokens stay where they can be changed and previewed directly.
 
 ### V. Shared Core, Per-Shell Scope
 
@@ -150,8 +157,9 @@ reviewed together.
   (all CV data, Principle IV).
 - **Shells**: desktop and mobile. Apps declare the shells they support (Principle V).
 - **Recruiter route**: `/cv`, server-rendered and independent of the shells (Principle VII).
-- **Design source**: Penpot holds the approved mockups (Principle II) and the design tokens
-  (Principle IV).
+- **Design source**: Penpot holds the approved mockups (Principle II) and the design tokens,
+  except motion tokens, which live in the repository's motion token source until Penpot can
+  hold them (Principle IV).
 - **Public process**: everything under `specs/` is public and part of the showcase. Spec
   artifacts are kept current, are readable by an outside reviewer, and contain no secrets or
   private data.
@@ -200,4 +208,4 @@ Merge requirements:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-21
+**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-22
