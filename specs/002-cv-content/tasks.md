@@ -665,7 +665,13 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
     - 8: two runs give identical reports. The CI half is checked in T064.
     - 9: `resumed validate` passes, and `jsonresume-theme-even` renders every section with `Timișoara` and "strength training" intact.
     - One deviation, in scenario 6: TypeScript 7.0.2 doesn't name the field in `resume.work?.[0]?.endDate.slice(0, 4)`, so the scenario now reads `endDate` from a bound entry (see T043).
-- [ ] T063 Owner action: review the converted `packages/content/resume.json` against the source CV (spec Assumptions: "The owner reviews the result before merge"). Confirm every change is one R15 lists, the phone, photo and address are absent, and the wording is otherwise unchanged. Record the approval here.
+- [X] T063 Owner action: review the converted `packages/content/resume.json` against the source CV (spec Assumptions: "The owner reviews the result before merge"). Confirm every change is one R15 lists, the phone, photo and address are absent, and the wording is otherwise unchanged. Record the approval here.
+  - Result (2026-10-22): approved by the owner. During the review, the owner asked for three content updates beyond R15, made in separate commits:
+    - the SC MoreDevs SRL role and the Cybersecurity Mobile Platform project end in October 2026;
+    - a new, unnamed part-time project, "Faith-Based Social Network Mobile App", ongoing since December 2025, listed first;
+    - every date written as year and month.
+
+    The phone, photo and address are absent.
 - [ ] T064 Commit the remaining work with Conventional Commits, e.g. `feat(content): …`, `test(content-check): …`. Push `002-cv-content` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/002-cv-content/spec.md` and `specs/002-cv-content/tasks.md`.
