@@ -77,6 +77,12 @@
 - Q: Should the check require dated entries to be listed newest first in the CV document? →
   A: Yes. In every dated section, ongoing entries come first, then the rest by start date,
   latest first. The check reports any entry out of order (FR-036).
+- Q: Which version of the JSON Resume standard does the CV document follow? → A: The latest
+  release, 1.3.1, not 1.0.0, which the owner's current CV declares. Both define the same fields,
+  so the move changes no content, and 1.3.1 also accepts partial dates for certificates
+  (FR-001, FR-007).
+- Q: Should the CV's spelling slips be fixed in this feature? → A: Yes. Obvious typos are
+  corrected while the CV is converted, without changing any fact.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -264,7 +270,7 @@ references `002-cv-content-FR-###`. UI implementing a requirement carries
 
 **The CV document**
 
-- **FR-001**: All CV data MUST live in one CV document that follows version 1.0.0 of the JSON
+- **FR-001**: All CV data MUST live in one CV document that follows version 1.3.1 of the JSON
   Resume standard.
 - **FR-002**: The CV document MUST hold the owner's real CV, with at least these sections
   filled in: basics (name, label, summary, location and profiles), work, education, skills,
@@ -288,7 +294,7 @@ references `002-cv-content-FR-###`. UI implementing a requirement carries
 **Checking the CV document**
 
 - **FR-007**: The check MUST validate the CV document against the official JSON Resume schema
-  for version 1.0.0.
+  for version 1.3.1.
 - **FR-008**: The check MUST report a problem for every field, at any depth, that the standard
   does not define, including where the official schema itself would accept unknown fields.
 - **FR-009**: The check MUST accept a date written as a year, a year and month, or a full date,
@@ -299,7 +305,8 @@ references `002-cv-content-FR-###`. UI implementing a requirement carries
   entry.
 - **FR-012**: The check MUST report a problem for a country code that isn't a two-letter
   ISO 3166-1 code, an email address that isn't well formed, and a URL that isn't an absolute
-  web address, as the standard describes them.
+  web address. A well-formed email address is one that a web browser's email field accepts. An
+  absolute web address uses `http` or `https` and names a host.
 - **FR-013**: The check MUST accept an optional section that is empty or left out.
 - **FR-014**: The check MUST report a problem when a section lists the same entry more than
   once, and MUST name the path of every occurrence. Entries are the same when their identifying
@@ -367,8 +374,8 @@ references `002-cv-content-FR-###`. UI implementing a requirement carries
   not run. A passing run MUST say that both documents are valid and no key facts are hardcoded.
 - **FR-031**: Two runs over the same files MUST produce the same report, with problems listed in
   the same order.
-- **FR-032**: The check MUST report a problem when either document is missing, and MUST fail
-  when it reports at least one problem.
+- **FR-032**: The check MUST report a problem when either document, or the site data rules, is
+  missing, and MUST fail when it reports at least one problem.
 
 **Running**
 
@@ -381,7 +388,7 @@ references `002-cv-content-FR-###`. UI implementing a requirement carries
 
 ### Key Entities
 
-- **CV document**: the owner's CV in JSON Resume 1.0.0 form. It is the only source of CV facts.
+- **CV document**: the owner's CV in JSON Resume 1.3.1 form. It is the only source of CV facts.
   Its sections are basics, work, volunteer, education, awards, certificates, publications,
   skills, languages, interests, references, projects and meta.
 - **Site data document**: data only the site needs. It holds no CV facts, only references to CV
@@ -442,12 +449,17 @@ one tap (mobile) from first load, and `/cv` remains a plain server-rendered page
 
 ### Measurable Outcomes
 
-- **SC-001**: On a sample seeded with at least one case of every problem type and edge case in
-  this spec, the check reports 100% of the seeded problems and no others.
+- **SC-001**: On seeded samples that together hold at least one case of every problem type and
+  edge case in this spec, the check reports 100% of the seeded problems and no others. More than
+  one sample is needed, because a missing or unreadable document stops the checks that need it.
 - **SC-002**: The CV document is read without errors by at least two independent JSON Resume
-  tools, used unchanged.
-- **SC-003**: Changing any CV fact, such as the email address, takes exactly one edit, in the CV
-  document, and every check still passes with no other change.
+  tools, used unchanged. Independent means published separately, each reading the document
+  itself: for example, JSON Resume's own validator and a separately published theme that renders
+  the CV.
+- **SC-003**: Changing any CV fact that site data doesn't refer to, such as the email address,
+  takes exactly one edit, in the CV document, and every check still passes with no other change.
+  Renaming or removing an entry that site data refers to also takes an edit in site data, which
+  SC-004 enforces.
 - **SC-004**: Renaming or removing a CV entry that site data refers to fails the check every
   time, until site data is updated.
 - **SC-005**: For the same files, the local run and the pull-request run give the same result
@@ -463,26 +475,31 @@ one tap (mobile) from first load, and `/cv` remains a plain server-rendered page
 
 - **Users**: the owner is the only author of the content. Reviewers read results on pull
   requests. Visitors see nothing from this feature until the `/cv` feature.
-- **Standard version**: JSON Resume 1.0.0, the latest release and the version the owner's
-  current CV declares. Moving to a later version is a change to this spec.
+- **Standard version**: JSON Resume 1.3.1, the latest release. The owner's current CV declares
+  1.0.0, which defines the same fields, so only its schema link changes. Moving to a later
+  version is a change to this spec.
 - **Starting content**: the owner's current CV, as attached, is the starting point. Where it
   doesn't meet the standard, it is converted without changing any fact. For example, `picture`
-  is not a 1.0.0 field (the standard calls it `image`), work entries name the organization in
-  `name` rather than `company`, and the country is the code `RO`, not `Romania`. Entries are reordered newest first,
-  as FR-036 requires. Placeholder
-  values in it are removed: the sample photo URL goes, as no photo is published, and the sample
-  `meta` values are removed or replaced with real ones. The owner reviews the result before merge.
+  is not a field of the standard (the standard calls it `image`), work entries name the
+  organization in `name` rather than `company`, and the country is the code `RO`, not
+  `Romania`. Entries are reordered newest first, as FR-036 requires. Placeholder values in it
+  are removed: the sample photo URL goes, as no photo is published, and the sample `meta`
+  values are removed or replaced with real ones. Obvious spelling slips are corrected. The owner
+  reviews the result before merge.
 - **Initial site data**: this feature creates the site data document and its rules. It holds
   only what this feature needs, which may be no more than its structure. Later features add
   their fields and rules. Reference checking is proven with test fixtures until real references
   exist.
-- **Documentation** includes the README, license files and everything under `docs/`.
+- **Documentation** includes the project's readme, its license files and its documentation
+  folder.
 - **Tests and test fixtures** are files that exist only to test the project's checks and code.
   They never ship with the site, so they may write out the owner's real facts or use made-up
   ones.
 - **Files that make up the site** are the source of the site's pages, apps, shells and shared
   packages, plus the site data document. The project's own tooling, such as the checks, is not
-  part of the site.
+  part of the site. The tooling is a fixed list. Any other file that isn't a spec, documentation,
+  a test, third-party, generated or version-control data counts as site source until it's added
+  to that list, so a new file is searched rather than missed.
 - **Site name**: the vision lists "Alex Profir" as a possible site name. If chosen, wherever the
   site shows it, it is read from the content source like any other key fact.
 - **Unlisted facts**: other CV facts, such as profile handles or employer names, are not searched
@@ -497,6 +514,6 @@ one tap (mobile) from first load, and `/cv` remains a plain server-rendered page
   - Translations, a non-goal in the vision.
   - How the Contact app works, including whether contact details beyond those in the CV document
     are offered.
-  - Spelling and wording of the CV text. The owner reviews that.
+  - Rewording the CV text, beyond fixing obvious typos. The owner reviews the wording.
 - **Depends on**: Constitution IV, the requirement traceability check (001), and the official
-  JSON Resume 1.0.0 schema.
+  JSON Resume 1.3.1 schema.

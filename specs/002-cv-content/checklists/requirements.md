@@ -35,7 +35,7 @@
 - FR-003 resolved by the owner on 2026-10-21 (Q1: B): the CV document publishes the email
   address only. The phone number is left out.
 - All items pass. The spec is ready for `/speckit-clarify` or `/speckit-plan`.
-- The spec names JSON Resume 1.0.0, its field names, ISO 3166-1, `specs/` and pull requests.
+- The spec names JSON Resume 1.3.1, its field names, ISO 3166-1, `specs/` and pull requests.
   The standard was chosen by the owner as part of the feature, and the rest are project
   conventions or external standards, not implementation choices, so they don't count as
   implementation details.
