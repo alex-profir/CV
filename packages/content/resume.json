@@ -22,6 +22,7 @@
       "name": "SC MoreDevs SRL",
       "position": "Software Developer",
       "startDate": "2018-07-29",
+      "endDate": "2026-10",
       "summary": "Software developer building web and mobile applications, designing REST APIs, and maintaining scalable cloud infrastructure.",
       "highlights": [
         "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
@@ -159,8 +160,20 @@
   ],
   "projects": [
     {
+      "name": "Faith-Based Social Network Mobile App",
+      "startDate": "2025-12",
+      "description": "Part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
+      "highlights": [
+        "Built core features across iOS and Android, including prayer requests, groups, organisation pages and the home feed",
+        "Developed HLS video playback with an offline mode for cached feeds and downloaded videos",
+        "Upgraded the app to Expo SDK 55 and React Native 0.83",
+        "Set up crash and error monitoring with Sentry and Firebase Crashlytics"
+      ]
+    },
+    {
       "name": "Cybersecurity Mobile Platform",
       "startDate": "2022-01-01",
+      "endDate": "2026-10",
       "description": "Cross-platform cybersecurity solution featuring a React Native mobile app, an Admin UI, and a cloud-based backend infrastructure for secure device management and threat detection.",
       "highlights": [
         "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
