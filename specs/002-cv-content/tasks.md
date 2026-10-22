@@ -678,11 +678,13 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
   - Confirm `traceability`, `test` and `content` all run and pass.
   - Confirm the `content` log shows the same report as the local run on the same commit (FR-034, quickstart scenario 8).
   - Result (2026-10-22): pushed and opened https://github.com/alex-profir/CV/pull/10. On commit `cf45865`, `traceability`, `test` and `content` all passed, and the `content` job's report matched the local run line for line.
-- [ ] T065 Owner action, needs admin rights and the open PR from T064: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart scenario 10). Confirm the contexts read back as `traceability`, `test` and `content`, and that a drift diff against the committed file shows only server-added fields.
-- [ ] T066 Owner action, after T065: demonstrate enforcement (quickstart scenario 10, FR-033).
+- [X] T065 Owner action, needs admin rights and the open PR from T064: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart scenario 10). Confirm the contexts read back as `traceability`, `test` and `content`, and that a drift diff against the committed file shows only server-added fields.
+  - Result (2026-10-22, approved by the owner): applied to ruleset 25562339. The contexts read back as `traceability`, `test` and `content`. Every field in `.github/rulesets/main.json` matches the live ruleset. The only other fields are the ones the server adds (`id`, `node_id`, `source`, `source_type`, `created_at`, `updated_at`, `_links`, `current_user_can_bypass`), and `current_user_can_bypass` is `never`.
+- [X] T066 Owner action, after T065: demonstrate enforcement (quickstart scenario 10, FR-033).
   1. Push a scratch branch with scenario 3's edit, and open a draft PR.
   2. Confirm `content` fails, naming `basics.picture` and `work[0].featured`, and that merging is blocked with no bypass option.
   3. Close the PR unmerged and delete the branch. Record the result here.
+  - Result (2026-10-22): draft PR #11 from `scratch/content-enforcement` added `basics.picture` and `work[0].featured`. The `content` check failed, naming both fields as `undefined-field`. `test` failed too, because the CV tests need a valid CV. After the branch was brought up to date with `main`, GitHub reported the merge state `BLOCKED`, with `viewerCanMergeAsAdmin` `false`. The PR was closed unmerged and the branch deleted.
 
 ---
 
