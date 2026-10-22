@@ -672,11 +672,12 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
     - every date written as year and month.
 
     The phone, photo and address are absent.
-- [ ] T064 Commit the remaining work with Conventional Commits, e.g. `feat(content): …`, `test(content-check): …`. Push `002-cv-content` and open one pull request to `main` (Constitution XI).
+- [X] T064 Commit the remaining work with Conventional Commits, e.g. `feat(content): …`, `test(content-check): …`. Push `002-cv-content` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/002-cv-content/spec.md` and `specs/002-cv-content/tasks.md`.
   - Confirm `traceability`, `test` and `content` all run and pass.
   - Confirm the `content` log shows the same report as the local run on the same commit (FR-034, quickstart scenario 8).
+  - Result (2026-10-22): pushed and opened https://github.com/alex-profir/CV/pull/10. On commit `cf45865`, `traceability`, `test` and `content` all passed, and the `content` job's report matched the local run line for line.
 - [ ] T065 Owner action, needs admin rights and the open PR from T064: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart scenario 10). Confirm the contexts read back as `traceability`, `test` and `content`, and that a drift diff against the committed file shows only server-added fields.
 - [ ] T066 Owner action, after T065: demonstrate enforcement (quickstart scenario 10, FR-033).
   1. Push a scratch branch with scenario 3's edit, and open a draft PR.
