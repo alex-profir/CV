@@ -63,4 +63,16 @@ describe('002-cv-content-FR-021: text is compared after Unicode normalization', 
     });
     expect(runCheck(root).problems).toEqual([]);
   });
+
+  test('a key fact written in NFD is found, at the column of its first character', () => {
+    const name = `Ioana ${NFC_CITY}`;
+    const root = sample((r) => (r.basics.name = name), {
+      files: { 'packages/web/src/a.ts': `// ${NFD_CITY} and ${name.normalize('NFD')}\n` },
+    });
+    const facts = runCheck(root).problems.filter((problem) => problem.type === 'hardcoded-fact');
+    const column = `// ${NFD_CITY} and `.length + 1;
+    expect(facts.map((problem) => [problem.subject, problem.location])).toEqual([
+      ['name', { file: 'packages/web/src/a.ts', line: 1, column }],
+    ]);
+  });
 });

@@ -1,7 +1,8 @@
+import { findFacts, keyFacts, searchFiles } from './facts.ts';
 import { readDocument } from './json.ts';
 import { RESUME_FILE, RULES_FILE, SITE_FILE } from './paths.ts';
 import { sortProblems } from './report.ts';
-import type { DocumentState, Part, Problem, Report } from './report.ts';
+import type { DocumentState, FactKind, Part, Problem, Report } from './report.ts';
 import { resumeRules } from './resume-rules.ts';
 import { deriveSchema, instancePatterns, loadOfficialSchema, schemaProblems, validate } from './schema.ts';
 import { loadRules, resolveReferences, siteDataRules } from './site-data.ts';
@@ -10,11 +11,13 @@ import type { Reference } from './site-data.ts';
 const STATES = { ok: 'checked', missing: 'missing', unreadable: 'unreadable' } as const satisfies Record<string, DocumentState>;
 
 // One field gets at most one problem of each type, whichever part found it
-// first (data-model.md, Problem rules).
+// first (data-model.md, Problem rules). Separate occurrences, such as a key
+// fact written out twice in one file, stay separate problems.
 function unique(problems: Problem[]): Problem[] {
   const seen = new Set<string>();
   return problems.filter((problem) => {
-    const key = JSON.stringify([problem.location.file, problem.type, problem.subject]);
+    const { file, line, column } = problem.location;
+    const key = JSON.stringify([file, line, column, problem.type, problem.subject]);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -62,7 +65,33 @@ export function runCheck(root: string): Report {
   if (resume.state === 'ok' && references !== undefined) problems.push(...resolveReferences(references, site, resume));
   else checksNotRun.push('references');
 
-  if (resume.state !== 'ok') checksNotRun.push('key facts search');
+  // The key facts search (FR-022 to FR-025).
+  let factKinds: FactKind[] | null = null;
+  let filesSearched = 0;
+  let filesSkipped = 0;
+  if (resume.state === 'ok') {
+    const facts = keyFacts(resume.value);
+    factKinds = facts.map((fact) => fact.kind);
+    const search = searchFiles(root, RESUME_FILE);
+    for (const searched of search.files) {
+      if (searched.state === 'searched') {
+        filesSearched += 1;
+        problems.push(...findFacts(searched.file, searched.text, facts, searched.file === SITE_FILE));
+      } else {
+        filesSkipped += 1;
+      }
+    }
+    for (const { path: unreadablePath, code } of search.unreadable) {
+      problems.push({
+        type: 'unreadable-document',
+        subject: unreadablePath,
+        location: { file: unreadablePath, line: 1, column: 1 },
+        detail: `cannot be read: ${code}`,
+      });
+    }
+  } else {
+    checksNotRun.push('key facts search');
+  }
 
   const sorted = sortProblems(unique(problems));
   return {
@@ -72,9 +101,9 @@ export function runCheck(root: string): Report {
       { label: 'Site data document', file: SITE_FILE, state: STATES[site.state] },
       { label: 'Site data rules', file: RULES_FILE, state: rulesState },
     ],
-    factKinds: resume.state === 'ok' ? [] : null,
-    filesSearched: 0,
-    filesSkipped: 0,
+    factKinds,
+    filesSearched,
+    filesSkipped,
     checksNotRun,
     result: sorted.length > 0 ? 'fail' : 'pass',
   };

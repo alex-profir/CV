@@ -77,6 +77,23 @@ describe('002-cv-content-FR-028: every problem is reported in one run', () => {
     expect(report.documents.find((document) => document.file === RESUME_FILE)?.state).toBe('checked');
     expect(report.checksNotRun).not.toContain('CV rules');
   });
+
+  test('an unreadable site data document still lets the key facts search run', () => {
+    const files = { 'packages/web/src/a.ts': `export const email = '${SAMPLE_RESUME.basics.email}';\n` };
+    const report = runCheck(makeProject(contentFiles({ site: '{\n  "a": 1,\n}\n', files })));
+    expect(report.problems.map((problem) => [problem.type, problem.location.file])).toEqual([
+      ['unreadable-document', SITE_FILE],
+      ['hardcoded-fact', 'packages/web/src/a.ts'],
+    ]);
+    expect(report.checksNotRun).not.toContain('key facts search');
+  });
+
+  test('an unreadable CV document stops the key facts search', () => {
+    const report = runCheck(makeProject(contentFiles({ resume: '{ "basics": ', files: { 'packages/web/src/a.ts': 'export {};\n' } })));
+    expect(report.checksNotRun).toContain('key facts search');
+    expect(report.factKinds).toBeNull();
+    expect(report.filesSearched).toBe(0);
+  });
 });
 
 describe('002-cv-content-FR-032: a missing document fails the check', () => {

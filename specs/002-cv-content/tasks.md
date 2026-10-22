@@ -449,7 +449,7 @@ reported (spec US3, quickstart scenario 5).
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T037 [P] [US3] Write `tools/content-check/test/facts.test.ts`. It covers 002-cv-content-FR-022, 002-cv-content-FR-023, 002-cv-content-FR-024 and 002-cv-content-FR-025, through `runCheck` on samples built from `SAMPLE_RESUME` (made-up facts).
+- [X] T037 [P] [US3] Write `tools/content-check/test/facts.test.ts`. It covers 002-cv-content-FR-022, 002-cv-content-FR-023, 002-cv-content-FR-024 and 002-cv-content-FR-025, through `runCheck` on samples built from `SAMPLE_RESUME` (made-up facts).
   - FR-022 (US2 scenario 5, US3 scenario 1):
     - the email, the name and (with a phone in the sample CV) the phone in `packages/web/src/footer.tsx` each give `hardcoded-fact`, subject `email`, `name` or `phone`, at the match's line and column, detail `the owner's <kind> is written out; read it from @cv/content instead`;
     - the email in `packages/content/site.json` gives detail `the owner's email is written out in site data; refer to the CV document instead`.
@@ -466,12 +466,12 @@ reported (spec US3, quickstart scenario 5).
   - FR-025 (US3 scenarios 2 and 3):
     - `IOANA TESTESCU`, `Ioana  Testescu` (two spaces) and `IOANA@CV.TEST` are reported;
     - with `+44 20 7946 0958` in the sample CV, `+442079460958`, `0044 20-7946-0958`, `(020) 7946.0958` and `20 7946 0958` are each reported, and `20 7946 09581` isn't.
-- [ ] T038 [P] [US3] Extend the 002-cv-content-FR-021 group in `tools/content-check/test/text.test.ts`: with a sample CV name containing `ș` in NFC, the same name written in NFD in a site source file is reported, at the column of its first character in the original line.
-- [ ] T039 [P] [US3] Extend the 002-cv-content-FR-028 group in `tools/content-check/test/check.test.ts`: with an unreadable `site.json`, the key facts search still runs and reports a hardcoded email in `packages/web/src/a.ts`. With an unreadable CV, `checksNotRun` lists `key facts search` and `factKinds` is `null`.
+- [X] T038 [P] [US3] Extend the 002-cv-content-FR-021 group in `tools/content-check/test/text.test.ts`: with a sample CV name containing `ș` in NFC, the same name written in NFD in a site source file is reported, at the column of its first character in the original line.
+- [X] T039 [P] [US3] Extend the 002-cv-content-FR-028 group in `tools/content-check/test/check.test.ts`: with an unreadable `site.json`, the key facts search still runs and reports a hardcoded email in `packages/web/src/a.ts`. With an unreadable CV, `checksNotRun` lists `key facts search` and `factKinds` is `null`.
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Implement `tools/content-check/src/facts.ts` (research R9, data-model.md KeyFact and SearchedFile):
+- [X] T040 [US3] Implement `tools/content-check/src/facts.ts` (research R9, data-model.md KeyFact and SearchedFile):
   - `keyFacts(resume): { kind; pattern: RegExp }[]`. Read `basics.name`, `basics.email` and `basics.phone`, each only when a non-empty string, in that order, each NFC-normalized. Escape regex metacharacters.
     - name: its words split on whitespace, joined by `\s+`, flags `iu`;
     - email: the address, flags `iu`;
@@ -491,11 +491,11 @@ reported (spec US3, quickstart scenario 5).
     - split lines on `\n`, normalize each to NFC, and run every pattern globally;
     - when NFC changed the line, map a match index back to the original column: the smallest prefix of the original line whose NFC form is at least that long;
     - each match is a `hardcoded-fact` with the detail for site source or for site data (T037).
-- [ ] T041 [US3] Wire the search into `runCheck` in `tools/content-check/src/check.ts`, after T040:
+- [X] T041 [US3] Wire the search into `runCheck` in `tools/content-check/src/check.ts`, after T040:
   - when the CV is `ok`, set `factKinds`, run `searchFiles` and `findFacts` over every searched file, and set `filesSearched` and `filesSkipped`;
   - each unreadable path is an `unreadable-document` at `1:1` with `cannot be read: <code>`;
   - otherwise add `key facts search` to `checksNotRun`.
-- [ ] T042 [US3] Checkpoint.
+- [X] T042 [US3] Checkpoint.
   - `npm test` passes (001's self-check still excepted).
   - `npm run content-check` passes on the real repository, with `Key facts searched for: name, email` (US3 scenario 4).
   - Quickstart scenario 5 gives exactly the two expected lines, both in `packages/content/src/oops.ts`. Delete the three files afterwards.
