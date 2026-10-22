@@ -1245,7 +1245,7 @@ apply: the spec says No UI.
   - Writing the US2 and US3 tests found that `@media` and `@container` conditions were never
     read: css-tree keeps a media query's features under `condition`, not `children`. `css.ts`
     now walks it.
-- [ ] T093 Owner action, in Penpot, on `packages/tokens/penpot/tokens.json`, after T091. Record both results here and in the PR:
+- [X] T093 Owner action, in Penpot, on `packages/tokens/penpot/tokens.json`, after T091. Record both results here and in the PR:
   - **Quickstart scenario 4** (US1 scenario 6, FR-002, SC-003): change `color.base.ink`, add `color.accent`, export, run `npm run token-output`, and confirm `git status` lists only the export and the two generated files. Keep it or revert it.
   - **Quickstart scenario 11** (SC-002, FR-003):
     - import `packages/tokens/penpot/tokens.json` into an empty Penpot file;
@@ -1258,8 +1258,16 @@ apply: the spec says No UI.
   theme `mode/light`, with the same id, active and enabling exactly those two sets. No set was
   switched on outside the theme. The comparison script prints `same`. The re-export is in
   Penpot's written form with no final newline, and differs from the committed file only in key
-  order: Penpot doesn't keep key order stable between exports. **Scenario 4** hasn't been run in
-  Penpot yet. `self-check.test.ts` runs the same flow on a scripted copy (FR-002, SC-003).
+  order: Penpot doesn't keep key order stable between exports.
+
+  **Scenario 4, done on 2026-10-22** (`self-check.test.ts` also runs this flow on a scripted
+  copy, FR-002, SC-003): a copy of the export with `color.base.ink` changed to
+  `#2a2723` and `color.accent` added to `light` as `{color.base.ink}` was imported into a Penpot
+  file and exported again with the Single file tab. Saved over the export, it gave `stale-output`
+  for both generated files. After `npm run token-output`, the check and the typecheck passed,
+  `cssVar('color.accent')` type-checked, and `git status` listed only the export and the two
+  generated files. The CSS held `--token-color-accent: #2a2723;` and
+  `--token-color-base-ink: #2a2723;`. The change was reverted with `git checkout`.
 - [X] T094 Commit the remaining work under `packages/tokens/`, `tools/` and `.github/` with Conventional Commits, e.g. `feat(tokens): …`, `test(token-check): …`, `ci: …`. Push `003-design-tokens` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description:
@@ -1280,10 +1288,18 @@ apply: the spec says No UI.
   `traceability`, `test`, `content` and `tokens`. The only fields that differ from the committed
   file are the ones the server adds: `id`, `node_id`, `_links`, `source`, `source_type`,
   `created_at`, `updated_at` and `current_user_can_bypass`.
-- [ ] T096 Owner action, after T095: demonstrate enforcement with a scratch `packages/web/src/oops.css` (quickstart scenario 12, FR-039).
+- [X] T096 Owner action, after T095: demonstrate enforcement with a scratch `packages/web/src/oops.css` (quickstart scenario 12, FR-039).
   1. Push a scratch branch with scenario 5's CSS file, and open a draft PR.
   2. Confirm `tokens` fails and that merging is blocked, with no bypass option.
   3. Close the PR unmerged, delete the branch, and record the result here.
+
+  **Done on 2026-10-22**: draft [PR #14](https://github.com/alex-profir/CV/pull/14), from
+  `scratch/token-check-enforcement` (branched from `003-design-tokens`, because `main` doesn't
+  have the `tokens` job yet), added scenario 5's `packages/web/src/oops.css`. The required
+  `tokens` check failed with `unknown-token --token-color-text-primray` at `oops.css:3:19`,
+  `local-in-token-namespace --token-card-pad` at `5:3` and `literal-value length "4px"` at
+  `5:21`. The merge state was `BLOCKED`, and the ruleset has no bypass actors
+  (`current_user_can_bypass: never`). The PR was closed unmerged and the branch deleted.
 
 ---
 
