@@ -1,0 +1,29 @@
+packages/content/schemas/site.schema.json:1:1 missing-document packages/content/schemas/site.schema.json: file not found
+packages/content/site.json:3:1 unreadable-document packages/content/site.json: invalid JSON: property name expected
+packages/web/src/contact.ts:1:25 hardcoded-fact email: the owner's email is written out; read it from @cv/content instead
+
+Summary
+  CV document:                  packages/content/resume.json (checked)
+  Site data document:           packages/content/site.json (unreadable)
+  Site data rules:              packages/content/schemas/site.schema.json (missing)
+  Key facts searched for:       name, email
+  Files searched for key facts: 3
+  Files skipped (not text):     0
+  Checks not run:               site data rules, references
+  Problems:                     3
+    unreadable-document         1
+    missing-document            1
+    schema-violation            0
+    undefined-field             0
+    invalid-date                0
+    end-before-start            0
+    invalid-format              0
+    duplicate-entry             0
+    out-of-order                0
+    untrimmed-text              0
+    placeholder                 0
+    dangling-reference          0
+    ambiguous-reference         0
+    hardcoded-fact              1
+
+FAIL: 3 problems found. Some checks could not run.

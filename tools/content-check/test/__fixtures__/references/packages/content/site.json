@@ -1,0 +1,6 @@
+{
+  "$schema": "./schemas/site.schema.json",
+  "featuredProjects": [
+    "Guided Tours System"
+  ]
+}

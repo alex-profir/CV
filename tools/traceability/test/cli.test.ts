@@ -59,12 +59,12 @@ describe('001-requirement-traceability-FR-027: the check makes no network reques
   // Before Node 25 the permission model doesn't cover the network, so the
   // guard above would silently be off.
   test('Node versions whose permission model cannot block the network are refused', () => {
-    expect(nodeVersionProblem('24.21.0')).toBe(
+    expect(nodeVersionProblem('24.21.0', 'traceability check')).toBe(
       'traceability check needs Node 26 or later (see .nvmrc) to block network access, but this is Node 24.21.0',
     );
-    expect(nodeVersionProblem('25.9.0')).not.toBeNull();
-    expect(nodeVersionProblem('26.0.0')).toBeNull();
-    expect(nodeVersionProblem('27.1.0')).toBeNull();
+    expect(nodeVersionProblem('25.9.0', 'traceability check')).not.toBeNull();
+    expect(nodeVersionProblem('26.0.0', 'traceability check')).toBeNull();
+    expect(nodeVersionProblem('27.1.0', 'traceability check')).toBeNull();
     expect(fs.readFileSync(path.join(REPO_ROOT, '.nvmrc'), 'utf8').trim()).toBe(String(REQUIRED_NODE_MAJOR));
     expect(PACKAGE.engines.node).toBe(`>=${REQUIRED_NODE_MAJOR}`);
   });

@@ -11,8 +11,9 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true,
-    "types": ["node"]
+    "types": ["node"],
+    "resolveJsonModule": true
   },
-  "include": ["tools/**/*.ts", "tools/**/*.js", "vitest.config.ts"],
+  "include": ["tools/**/*.ts", "tools/**/*.js", "packages/**/*.ts", "vitest.config.ts"],
   "exclude": ["**/__fixtures__/**"]
 }
