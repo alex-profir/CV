@@ -21,7 +21,7 @@
     {
       "name": "SC MoreDevs SRL",
       "position": "Software Developer",
-      "startDate": "2018-07-29",
+      "startDate": "2018-07",
       "endDate": "2026-10",
       "summary": "Software developer building web and mobile applications, designing REST APIs, and maintaining scalable cloud infrastructure.",
       "highlights": [
@@ -38,8 +38,8 @@
       "institution": "Politehnica University of Timișoara",
       "area": "Computer and Software Engineering",
       "studyType": "Bachelor's Degree",
-      "startDate": "2018-09-24",
-      "endDate": "2022-09-11",
+      "startDate": "2018-09",
+      "endDate": "2022-09",
       "courses": [
         "Computer Networks",
         "Operating Systems",
@@ -172,7 +172,7 @@
     },
     {
       "name": "Cybersecurity Mobile Platform",
-      "startDate": "2022-01-01",
+      "startDate": "2022-01",
       "endDate": "2026-10",
       "description": "Cross-platform cybersecurity solution featuring a React Native mobile app, an Admin UI, and a cloud-based backend infrastructure for secure device management and threat detection.",
       "highlights": [
@@ -186,8 +186,8 @@
     },
     {
       "name": "Guided Tours System",
-      "startDate": "2021-10-01",
-      "endDate": "2022-09-01",
+      "startDate": "2021-10",
+      "endDate": "2022-09",
       "description": "Mobile application developed with React Native, TypeScript, and Fastify for creating and managing guided city tours.",
       "highlights": [
         "Built mobile app enabling users to create and search for city tours",
@@ -197,8 +197,8 @@
     },
     {
       "name": "3ndy Job Management App",
-      "startDate": "2021-04-01",
-      "endDate": "2021-07-01",
+      "startDate": "2021-04",
+      "endDate": "2021-07",
       "description": "Mobile application built with Xamarin for job posting and tracking.",
       "highlights": [
         "Implemented job creation workflow including data entry, media uploads, and job type selection",
@@ -208,8 +208,8 @@
     },
     {
       "name": "Accessibility Management Platform",
-      "startDate": "2020-09-01",
-      "endDate": "2021-12-01",
+      "startDate": "2020-09",
+      "endDate": "2021-12",
       "description": "Accessibility management web platform built with React, TypeScript, and Tailwind CSS.",
       "highlights": [
         "Developed responsive layouts and optimized frontend performance",
@@ -219,8 +219,8 @@
     },
     {
       "name": "Video Content Management System",
-      "startDate": "2020-08-01",
-      "endDate": "2020-12-01",
+      "startDate": "2020-08",
+      "endDate": "2020-12",
       "description": "Content management platform for handling video metadata and assets, built with React, TypeScript, and Fastify.",
       "highlights": [
         "Implemented content CRUD functionality with RESTful API integration",
@@ -230,8 +230,8 @@
     },
     {
       "name": "Incident Response and Management System",
-      "startDate": "2020-01-01",
-      "endDate": "2020-09-01",
+      "startDate": "2020-01",
+      "endDate": "2020-09",
       "description": "React and TypeScript-based platform for managing incidents and real-time vehicle tracking.",
       "highlights": [
         "Developed user and account management modules",
@@ -241,8 +241,8 @@
     },
     {
       "name": "Sales Management Platform",
-      "startDate": "2019-06-01",
-      "endDate": "2020-02-01",
+      "startDate": "2019-06",
+      "endDate": "2020-02",
       "description": "Web platform for managing sales data across organizations using React, TypeScript, and Fastify.",
       "highlights": [
         "Created Admin module for CRUD operations with organization-level sales tracking",
@@ -252,8 +252,8 @@
     },
     {
       "name": "Fitness Administration Platform",
-      "startDate": "2019-06-01",
-      "endDate": "2021-10-01",
+      "startDate": "2019-06",
+      "endDate": "2021-10",
       "description": "Web application built with React, TypeScript, Material UI, and Fastify for managing fitness courses.",
       "highlights": [
         "Led project initialization and architecture design",
@@ -263,8 +263,8 @@
     },
     {
       "name": "Art Gallery Management Platform",
-      "startDate": "2018-08-01",
-      "endDate": "2019-08-01",
+      "startDate": "2018-08",
+      "endDate": "2019-08",
       "description": "Web platform built with React, TypeScript, and Material UI for managing art galleries and artworks.",
       "highlights": [
         "Developed an Admin Interface enabling complete CRUD operations for gallery items and user management",
@@ -274,8 +274,8 @@
     },
     {
       "name": "Retail Dashboard",
-      "startDate": "2018-07-01",
-      "endDate": "2018-11-01",
+      "startDate": "2018-07",
+      "endDate": "2018-11",
       "description": "Angular-based web dashboard for real-time retail analytics and performance visualization.",
       "highlights": [
         "Implemented analytics pages with real-time graphs and filters",
