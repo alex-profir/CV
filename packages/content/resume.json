@@ -15,7 +15,8 @@
         "username": "alex-profir",
         "url": "https://github.com/alex-profir"
       }
-    ]
+    ],
+    "picture": "https://cdn.test/me.jpg"
   },
   "work": [
     {
@@ -30,7 +31,8 @@
         "Designed and implemented RESTful APIs powering multiple services.",
         "Optimized and maintained website infrastructure for reliability and performance.",
         "Engineered scalable cloud solutions using GCP, AWS, and proprietary cloud platforms."
-      ]
+      ],
+      "featured": true
     }
   ],
   "education": [
