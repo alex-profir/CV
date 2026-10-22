@@ -153,12 +153,12 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
 > in-process and assert on `report.problems` (type, subject, location and detail). Site data,
 > references and key facts arrive in later stories and must not change these assertions.
 
-- [ ] T010 [P] [US1] Write `packages/content/test/content.test.ts`. It reads the real CV through `import { resume } from '@cv/content'` and covers 002-cv-content-FR-001, 002-cv-content-FR-002, 002-cv-content-FR-003 and 002-cv-content-FR-020.
+- [X] T010 [P] [US1] Write `packages/content/test/content.test.ts`. It reads the real CV through `import { resume } from '@cv/content'` and covers 002-cv-content-FR-001, 002-cv-content-FR-002, 002-cv-content-FR-003 and 002-cv-content-FR-020.
   - FR-001: `packages/content/resume.json` exists, its `$schema` is `https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json`, and `runCheck(REPO_ROOT)` has no problem whose `location.file` is the CV document.
   - FR-002: `basics.name`, `basics.label`, `basics.summary` are non-empty strings. `basics.location` is a non-empty object. `basics.profiles`, `work`, `education`, `skills`, `projects`, `languages` and `interests` are non-empty arrays.
   - FR-003: `basics.email` is a non-empty string. `basics.phone`, `basics.image` and `basics.location.address` are `undefined`. A recursive walk finds no string value equal to `''` anywhere.
   - FR-020 (US1 scenario 5): `resume.basics?.location?.city` is `'Timișoara'`, and `Buffer.from(value)` equals the bytes of that value in the file as read with `fs.readFileSync`. The same holds for `education[0].institution`, `'Politehnica University of Timișoara'`. Nothing is trimmed or normalized.
-- [ ] T011 [P] [US1] Write `tools/content-check/test/schema.test.ts`. It covers 002-cv-content-FR-001, 002-cv-content-FR-007 and 002-cv-content-FR-008. It tests `loadOfficialSchema()` and `deriveSchema(schema)` from `src/schema.ts`, and `runCheck` on samples.
+- [X] T011 [P] [US1] Write `tools/content-check/test/schema.test.ts`. It covers 002-cv-content-FR-001, 002-cv-content-FR-007 and 002-cv-content-FR-008. It tests `loadOfficialSchema()` and `deriveSchema(schema)` from `src/schema.ts`, and `runCheck` on samples.
   - FR-001: `loadOfficialSchema()` reads `schema.json` from the installed `@jsonresume/schema`, whose `package.json` `version` is exactly `1.3.1`. The schema's top-level `properties` are exactly `$schema`, `basics`, `work`, `volunteer`, `education`, `awards`, `certificates`, `publications`, `skills`, `languages`, `interests`, `references`, `projects` and `meta` (spec Key Entities).
   - FR-007: walk the official schema and `deriveSchema(official).schema` side by side. The only differences are an added or changed `additionalProperties: false` on every object schema that lists `properties`, and removed `format` keywords. Every removed `format` is listed in the result's `formats`, with its instance path pattern and format name. The input schema object is unchanged (deep-equal to a copy taken before).
   - FR-008 (US1 scenarios 2 and 3): each of these gives exactly one `undefined-field`, located at the property key's line and column, with detail `not a field defined by JSON Resume 1.3.1`:
@@ -166,14 +166,14 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - `work[0].featured: true` (subject `work[0].featured`), which the official schema alone would accept;
     - an unknown field in `basics.location`, in `meta` and in `projects[0]`;
     - an unknown top-level field `theme`.
-- [ ] T012 [P] [US1] Write `tools/content-check/test/json.test.ts`, covering 002-cv-content-FR-029. It tests `readDocument(root, file)`, `locate(read, path, target)` and `formatPath(path)` from `src/json.ts`.
+- [X] T012 [P] [US1] Write `tools/content-check/test/json.test.ts`, covering 002-cv-content-FR-029. It tests `readDocument(root, file)`, `locate(read, path, target)` and `formatPath(path)` from `src/json.ts`.
   - A missing comma, a trailing comma and an unclosed string each give `unreadable-document` with subject the file, the line and column of the first syntax error, and a detail starting `invalid JSON: ` (e.g. `invalid JSON: comma expected`).
   - A file starting with a byte order mark gives `unreadable-document` at `1:1`, detail `starts with a byte order mark`.
   - A file with an invalid UTF-8 byte (`Buffer.from([0x7b, 0x0a, 0xff, 0x7d])`) gives `unreadable-document` at the first invalid byte's line and column (here `2:1`), detail `not valid UTF-8`.
   - A missing file gives state `missing` and `missing-document` at `1:1`, detail `file not found`.
   - `locate` returns the key's position for `'key'`, the value's for `'value'`, and the array item's opening brace for `'entry'`. Lines count `\n`, and a column after `ș` or an emoji counts UTF-16 code units.
   - `formatPath`: `['basics', 'picture']` → `basics.picture`, `['work', 0, 'featured']` → `work[0].featured`, `['basics', 'odd key']` → `basics["odd key"]`, `['1x']` → `["1x"]`, `[]` → `(document)`.
-- [ ] T013 [P] [US1] Write `tools/content-check/test/dates.test.ts`. It covers 002-cv-content-FR-009, 002-cv-content-FR-010, 002-cv-content-FR-011 and 002-cv-content-FR-036, through `runCheck` on samples.
+- [X] T013 [P] [US1] Write `tools/content-check/test/dates.test.ts`. It covers 002-cv-content-FR-009, 002-cv-content-FR-010, 002-cv-content-FR-011 and 002-cv-content-FR-036, through `runCheck` on samples.
   - FR-009: `2018`, `2018-07` and `2018-07-29` pass, in `work[].startDate` and in `certificates[].date`. `2024-02-29` passes. These each give exactly one `invalid-date` and no `schema-violation`:
     - `2018/07`, `July 2018` and `18-07`, with detail `"<value>" is not a date of the form YYYY, YYYY-MM or YYYY-MM-DD`;
     - `2020-13`, `2021-02-30` and `2023-02-29`, with detail `"<value>" is not a real date`.
@@ -186,7 +186,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - entries with no date, or an invalid one, are not checked for order;
     - the start dates `2020-01`, `2020`, `2020-05` in that order give exactly one problem, for `projects[2]`, naming `projects[0]`;
     - order is also checked in `awards` (`date`), `certificates` (`date`) and `publications` (`releaseDate`), and in `volunteer` and `education`.
-- [ ] T014 [P] [US1] Write `tools/content-check/test/resume-rules.test.ts`. It covers 002-cv-content-FR-012, 002-cv-content-FR-013, 002-cv-content-FR-014, 002-cv-content-FR-015 and 002-cv-content-FR-016, through `runCheck` on samples.
+- [X] T014 [P] [US1] Write `tools/content-check/test/resume-rules.test.ts`. It covers 002-cv-content-FR-012, 002-cv-content-FR-013, 002-cv-content-FR-014, 002-cv-content-FR-015 and 002-cv-content-FR-016, through `runCheck` on samples.
   - FR-012: each of these gives one `invalid-format` at the value, with the detail from contracts/cli.md:
     - `basics.location.countryCode` of `Romania`, `ro` or `XK`;
     - `basics.email` of `alex@` or `a b@c.d`;
@@ -204,10 +204,10 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
   - FR-016:
     - URLs on `example.com`, `www.example.org` and `example.net` give `placeholder`, detail `"<value>" is on a reserved example domain`. `https://example.community/` doesn't;
     - the owner's original `meta` values each give `placeholder` with detail `"<value>" is copied from the JSON Resume sample CV`: `canonical` `https://raw.githubusercontent.com/jsonresume/resume-schema/master/sample.resume.json`, `version` `v1.0.0` and `lastModified` `2017-12-24T15:53:00`.
-- [ ] T015 [P] [US1] Write `tools/content-check/test/text.test.ts`. It covers 002-cv-content-FR-020 and 002-cv-content-FR-021. US2 and US3 add cases to the FR-021 group.
+- [X] T015 [P] [US1] Write `tools/content-check/test/text.test.ts`. It covers 002-cv-content-FR-020 and 002-cv-content-FR-021. US2 and US3 add cases to the FR-021 group.
   - FR-020: a sample CV full of non-ASCII text (`Timișoara`, `Magyar`, `Ελληνικά`, `日本語`, an emoji) gives no problems. A sample whose `basics.location.city` is written in NFD (`'Timișoara'`) reads back through `readDocument` with the same code points, not NFC.
   - FR-021: two projects named `Timișoara Guide`, one in NFC and one in NFD, give one `duplicate-entry`.
-- [ ] T016 [P] [US1] Write `tools/content-check/test/report.test.ts`. It covers 002-cv-content-FR-029, 002-cv-content-FR-030 and 002-cv-content-FR-031. It tests `sortProblems` and `renderReport` from `src/report.ts` on hand-built reports, and `runCheck` for determinism.
+- [X] T016 [P] [US1] Write `tools/content-check/test/report.test.ts`. It covers 002-cv-content-FR-029, 002-cv-content-FR-030 and 002-cv-content-FR-031. It tests `sortProblems` and `renderReport` from `src/report.ts` on hand-built reports, and `runCheck` for determinism.
   - FR-029: every problem line matches `/^[^\s:]+:\d+:\d+ [a-z-]+ .+: .+$/`, carrying file, line, column, type, subject and detail.
   - FR-030: compare whole rendered strings with contracts/cli.md:
     - the passing summary exactly as in the contract;
@@ -219,7 +219,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - every problem type listed with its count, zeros included, in `PROBLEM_TYPES` order;
     - no problems: the report starts at `Summary`. With problems: problem lines, one empty line, then the summary. The report ends with exactly one `\n`.
   - FR-031: `sortProblems` orders by file in code-unit order (`Z.json` before `a.json`), then line, column, type order and subject. Shuffling the input doesn't change the result. Two `runCheck` runs on the same sample render identical strings.
-- [ ] T017 [P] [US1] Write `tools/content-check/test/check.test.ts`. It covers 002-cv-content-FR-007, 002-cv-content-FR-028 and 002-cv-content-FR-032. US3 adds a case to the FR-028 group.
+- [X] T017 [P] [US1] Write `tools/content-check/test/check.test.ts`. It covers 002-cv-content-FR-007, 002-cv-content-FR-028 and 002-cv-content-FR-032. US3 adds a case to the FR-028 group.
   - FR-007: a sample with `work` as an object gives `schema-violation` with subject `work`, at the value, detail `must be an array, not an object`. `basics.name: 42` gives `must be a string, not a number`.
   - FR-028: a sample with an undefined field, an invalid date, an end before start, an invalid email, a duplicate project, an out-of-order entry, untrimmed text and a placeholder URL reports all eight in one run. A sample whose `site.json` has a syntax error still reports the CV's problems, and its summary shows the site data document `unreadable`.
   - FR-032:
@@ -227,7 +227,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - with the CV missing, `checksNotRun` lists `CV rules`, `references` and `key facts search`;
     - any problem gives `fail`, none gives `pass`;
     - the CLI exits 1 and 0 for those (via `runCli`).
-- [ ] T018 [P] [US1] Write `tools/content-check/test/cli.test.ts`, covering 002-cv-content-FR-034 and 002-cv-content-FR-035.
+- [X] T018 [P] [US1] Write `tools/content-check/test/cli.test.ts`, covering 002-cv-content-FR-034 and 002-cv-content-FR-035.
   - FR-034:
     - in the repository root, `npm run --silent content-check` and `runCli(REPO_ROOT)` print the same stdout and exit with the same code (run npm as `spawnSync(process.execPath, [process.env.npm_execpath, 'run', '--silent', 'content-check'], { cwd: REPO_ROOT, encoding: 'utf8' })`. When `npm_execpath` isn't set, because Vitest was started without npm, use `npm-cli.js` beside `process.execPath` (`../lib/node_modules/npm/bin/npm-cli.js`));
     - `package.json`'s `content-check` script is exactly `node --permission --allow-fs-read=. tools/content-check/src/main.js`;
@@ -237,11 +237,11 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - `runCli` on a sample whose CV `$schema` is `https://json-resume.invalid/schema.json` passes, with exit 0;
     - a positive-control script in a temporary directory, run with `--permission --allow-fs-read=<that directory>` and no network grant, calls `fetch('http://127.0.0.1:9/')` and prints the error code, which is `ERR_ACCESS_DENIED`, as 001's FR-027 test does;
     - `nodeVersionProblem('24.21.0', 'content check')` is `content check needs Node 26 or later (see .nvmrc) to block network access, but this is Node 24.21.0`, and `'26.0.0'` gives `null`.
-- [ ] T019 [P] [US1] Write `tools/content-check/test/portability.test.ts` (SC-002). Its title has no FR ID, e.g. `describe('the CV is valid for JSON Resume\'s own validator (SC-002)', …)`. Load `@jsonresume/schema`'s `validator.js` with `createRequire(import.meta.url)`. Call its `validate` on the parsed real CV and assert it reports no error.
+- [X] T019 [P] [US1] Write `tools/content-check/test/portability.test.ts` (SC-002). Its title has no FR ID, e.g. `describe('the CV is valid for JSON Resume\'s own validator (SC-002)', …)`. Load `@jsonresume/schema`'s `validator.js` with `createRequire(import.meta.url)`. Call its `validate` on the parsed real CV and assert it reports no error.
 
 ### Implementation for User Story 1
 
-- [ ] T020 [P] [US1] Convert the owner's current CV into `packages/content/resume.json` (research R15, spec Assumptions). The source is the JSON Resume file the owner attached to the spec. Ask the owner for its location: it stays outside the repository. Change exactly what R15's table lists and nothing else:
+- [X] T020 [P] [US1] Convert the owner's current CV into `packages/content/resume.json` (research R15, spec Assumptions). The source is the JSON Resume file the owner attached to the spec. Ask the owner for its location: it stays outside the repository. Change exactly what R15's table lists and nothing else:
   - `$schema` becomes `https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json`.
   - Remove `basics.picture`, `basics.image`, `basics.phone`, and `basics.location.address`, `postalCode` and `region`. **Never copy the phone number anywhere.**
   - `basics.location.countryCode` `Romania` becomes `RO`.
@@ -262,7 +262,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     10. Retail Dashboard (2018-07-01)
 
   Keep every other key and value, and the source's key order (`$schema`, `basics`, `work`, `education`, `skills`, `languages`, `interests`, `projects`). Write it as `JSON.stringify(doc, null, 2)` plus a final `\n`, in UTF-8 without a byte order mark. Diff the result against the source and confirm only the listed changes appear.
-- [ ] T021 [P] [US1] Implement `tools/content-check/src/json.ts` (research R5, data-model.md DocumentRead, Location and Field path):
+- [X] T021 [P] [US1] Implement `tools/content-check/src/json.ts` (research R5, data-model.md DocumentRead, Location and Field path):
   - `readDocument(root, file): DocumentRead`. `DocumentRead` is `{ file; state: 'ok' | 'missing' | 'unreadable'; value?; tree?; lineStarts?; problem? }`.
     - `ENOENT` → `missing`, with `missing-document` at `1:1`, detail `file not found`.
     - Any other read error → `unreadable`, detail `cannot be read: <code>`.
@@ -274,7 +274,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
   - `locate(read, path, target: 'key' | 'value' | 'entry'): Location`, using `findNodeAtLocation`. `'key'` is the property's key node, `'value'` the value node, `'entry'` the array item node's offset (its opening brace). When the path doesn't exist, fall back to the nearest existing ancestor's value. The root is `1:1` if absent.
   - `offsetToLocation(file, lineStarts, offset)`: binary search over line starts. Column is `offset - lineStart + 1` in UTF-16 code units.
   - `formatPath(path: (string | number)[])`: names matching `/^[A-Za-z_$][A-Za-z0-9_$]*$/` join with `.`. Other names are `[<JSON string>]`, indexes `[n]`. An empty path is `(document)`.
-- [ ] T022 [P] [US1] Implement `tools/content-check/src/schema.ts` (research R2, R3, R4, R6):
+- [X] T022 [P] [US1] Implement `tools/content-check/src/schema.ts` (research R2, R3, R4, R6):
   - `loadOfficialSchema(): { schema: object; version: string }`. Resolve `@jsonresume/schema/package.json` with `createRequire(import.meta.url)`, from the check's own location, never the run root, so sample projects need no `node_modules`. Read `schema.json` beside it. Throw `Error('@jsonresume/schema 1.3.1 is not installed (run npm ci)')` when either is missing or the version isn't `OFFICIAL_SCHEMA_VERSION`.
   - `deriveSchema(schema): { schema: object; formats: { pattern: string[]; format: string }[] }`. Pure, and it works on a deep copy. Every object schema with `properties` gets `additionalProperties: false`. Every `format` keyword is removed, and its instance path pattern is recorded. Walk `properties`, `items`, `additionalProperties` schemas and `definitions`. Patterns use `*` for array items, and are found through each `$ref`'s use sites.
   - `instancePatterns(schema, test: (node) => boolean): string[][]`: walks `properties` and `items` from the root, following `$ref`s to `#/definitions/<name>` (with a guard against cycles), and returns the instance path pattern of every node where `test` holds. Date fields are `instancePatterns(official, (node) => node.$ref === '#/definitions/iso8601')`. Format locations reuse the same walk.
@@ -292,20 +292,20 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
       - `minLength`, `maxLength`, `minimum`, `maximum`, `minItems`, `maxItems`, `uniqueItems`: `breaks the rule <keyword>: <JSON argument>`;
       - otherwise `breaks the rule <keyword>`.
     - One field gets at most one problem of each type (dedupe by type and subject).
-- [ ] T023 [P] [US1] Implement the format rules (research R4):
+- [X] T023 [P] [US1] Implement the format rules (research R4):
   - `tools/content-check/src/countries.ts`: `COUNTRY_CODES`, a frozen array of the 249 officially assigned ISO 3166-1 alpha-2 codes, uppercase and sorted. No user-assigned or reserved codes (`XK`, `EU`, `UK`).
   - `tools/content-check/src/formats.ts`:
     - `isEmail(value)`: the WHATWG valid email address pattern, verbatim: ``/^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/``.
     - `isWebAddress(value)`: no whitespace (`/\s/`), `URL.parse(value)` isn't null, protocol is `http:` or `https:`, and hostname is non-empty.
     - `isCountryCode(value)`: membership in `COUNTRY_CODES`.
     - `FORMAT_RULES`: maps a schema `format` name to its test and its detail: `email` → `"<value>" is not a well-formed email address`; `uri` → `"<value>" is not an absolute web address (http or https)`. The country detail is `"<value>" is not a two-letter ISO 3166-1 country code`.
-- [ ] T024 [P] [US1] Implement entry kinds in `tools/content-check/src/entries.ts` (data-model.md Entry and entry kinds, research R8):
+- [X] T024 [P] [US1] Implement entry kinds in `tools/content-check/src/entries.ts` (data-model.md Entry and entry kinds, research R8):
   - `ENTRY_KINDS`: for each of the 12 kinds, its list path (`profile` is `['basics', 'profiles']`, `work` is `['work']`, …), its identifying fields, its dating (`range` for `work`, `volunteer`, `education` and `project`; the single field `date` for `award` and `certificate`, `releaseDate` for `publication`; `null` for the rest), and its singular and plural nouns for details:
     - `profile`/`profiles`, `work entry`/`work entries`, `volunteer entry`/`volunteer entries`, `education entry`/`education entries`;
     - `project`, `skill`, `interest`, `language`, `award`, `certificate`, `publication`, `reference`, each with a plural in `s`.
   - `identityKey(entry, kind)`: `JSON.stringify` of the identifying field values in order. A missing field is `null`, a string is `.normalize('NFC')`, and any other value is kept as is. Comparison stays case-sensitive.
   - `entriesOf(resume, kind)`: `{ path, entry }[]` for the kind's list, or `[]` when it's absent or not an array.
-- [ ] T025 [P] [US1] Implement problem ordering and rendering in `tools/content-check/src/report.ts`, following contracts/cli.md exactly:
+- [X] T025 [P] [US1] Implement problem ordering and rendering in `tools/content-check/src/report.ts`, following contracts/cli.md exactly:
   - `sortProblems(problems)`: by `location.file` with 001's `compare`, then `line`, `column`, the index in `PROBLEM_TYPES`, and `subject` with `compare`.
   - `renderReport(report)`:
     1. One line per sorted problem: `<file>:<line>:<column> <type> <subject>: <detail>`.
@@ -323,7 +323,7 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
        - `PASS: both documents are valid and no key facts are hardcoded.`;
        - or `FAIL: N problems found.` (`1 problem`), with ` Some checks could not run.` when any part didn't run.
     8. A single trailing `\n`.
-- [ ] T026 [US1] Implement the CV rules in `tools/content-check/src/resume-rules.ts`, after T021 to T024 (research R6, data-model.md DateValue and Entry rules). `resumeRules(read, { datePatterns, formats }): Problem[]`. Every rule skips values of the wrong type (the schema reported those) and dates already reported as invalid.
+- [X] T026 [US1] Implement the CV rules in `tools/content-check/src/resume-rules.ts`, after T021 to T024 (research R6, data-model.md DateValue and Entry rules). `resumeRules(read, { datePatterns, formats }): Problem[]`. Every rule skips values of the wrong type (the schema reported those) and dates already reported as invalid.
   - `parseDate(text)`: `/^([12]\d{3})(?:-(\d{2})(?:-(\d{2}))?)?$/` (years 1000 to 2999). Returns `{ parts }` when the date exists (month 01 to 12, day within the month, 29 February only in leap years), `'not-real'` when the form matches but the date doesn't exist, or `'bad-form'`. Bad forms come from the schema's `pattern` error (T022). This rule adds `"<value>" is not a real date` for `not-real`, at the value.
   - `compareDates(a, b)`: compares the parts both have. Returns `-1`, `0` or `1`.
   - **End before start** for `range` kinds (FR-010): `end-before-start`, subject `<entry>.endDate`, at the end date's value.
@@ -337,13 +337,13 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - any string value where `URL.parse` gives a hostname equal to `example.com`, `example.org` or `example.net`, or ending in `.` plus one of them;
     - `meta.canonical` starting `https://raw.githubusercontent.com/jsonresume/resume-schema/`, `meta.version` `v1.0.0`, and `meta.lastModified` `2017-12-24T15:53:00`.
   - **Formats** (FR-012): the `FORMAT_RULES` test at each recorded format pattern, `isWebAddress` at `basics.image`, and `isCountryCode` at `basics.location.countryCode`. Each failure is an `invalid-format` at the value.
-- [ ] T027 [US1] Implement `runCheck(root): Report` in `tools/content-check/src/check.ts`, after T005, T021, T022, T025 and T026 (data-model.md Check):
+- [X] T027 [US1] Implement `runCheck(root): Report` in `tools/content-check/src/check.ts`, after T005, T021, T022, T025 and T026 (data-model.md Check):
   - Load and derive the official schema once per run, and compute `datePatterns` and `formats`.
   - Read the CV document, the site data document and the rules with `readDocument`. Each document's state in the report is `checked`, `missing` or `unreadable`, and each `missing` or `unreadable` read adds its problem.
   - If the CV is `ok`: validate it against the derived schema, add `schemaProblems` (with the JSON Resume undefined-field detail) and `resumeRules`. Otherwise add `CV rules` to `checksNotRun`.
   - Add `references` and `key facts search` to `checksNotRun` when their inputs aren't `ok` (data-model.md Check table). Their implementations come in US2 and US3. Until then, `factKinds` is `[]` when the CV is readable and `null` when it isn't, and the file counts are 0.
   - `result` is `fail` exactly when there's a problem. Problems are sorted with `sortProblems`.
-- [ ] T028 [US1] Implement the entry points, after T027 (contracts/cli.md, research R11):
+- [X] T028 [US1] Implement the entry points, after T027 (contracts/cli.md, research R11):
   - `tools/content-check/src/cli.ts`:
     - with any argument, write `usage: npm run content-check (takes no arguments)` to stderr and set exit code 2;
     - otherwise write `renderReport(runCheck(process.cwd()))` to stdout and set exit code 1 or 0;
@@ -351,8 +351,8 @@ CV document as checked. Add `"picture"` under `basics` and the check fails, nami
     - set `process.exitCode` and never call `process.exit()`.
   - `tools/content-check/src/main.js`: plain JavaScript, as 001's `main.js`. Call `nodeVersionProblem(process.versions.node, 'content check')`. If it returns a message, write it to stderr and exit 2. Otherwise `await import('./cli.ts')`, and on a load failure write `content check could not start: <message>` and exit 2.
   - Then run `npm run content-check` once and confirm Node 26 accepts the permission flags and loads `jsonschema`, `jsonc-parser` and the official schema.
-- [ ] T029 [US1] Create `packages/content/src/index.ts`, after T020. Import `../resume.json` and `../site.json` with `with { type: 'json' }`, and export them as `resume` and `siteData`. No types yet: US4 adds them in T047. The file must not contain any CV fact. Confirm `npm run typecheck` passes and that a test importing `@cv/content` resolves through the workspace link.
-- [ ] T030 [US1] Checkpoint.
+- [X] T029 [US1] Create `packages/content/src/index.ts`, after T020. Import `../resume.json` and `../site.json` with `with { type: 'json' }`, and export them as `resume` and `siteData`. No types yet: US4 adds them in T047. The file must not contain any CV fact. Confirm `npm run typecheck` passes and that a test importing `@cv/content` resolves through the workspace link.
+- [X] T030 [US1] Checkpoint.
   - `npm run typecheck` passes. `npm test` passes, except 001's self-check (expected until T061).
   - `npm run content-check` exits 0. It shows the three documents `checked`, `Problems: 0`, and the `PASS` line.
   - Quickstart scenario 3 (add `picture` and `featured`) gives exactly two `undefined-field` lines. Revert with `git checkout -- packages/content/resume.json`.

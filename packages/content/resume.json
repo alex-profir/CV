@@ -1,0 +1,274 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json",
+  "basics": {
+    "name": "Alex Profir",
+    "label": "Software Engineer",
+    "email": "alexprofir512@gmail.com",
+    "summary": "I'm a frontend and mobile-focused full stack developer with solid backend experience. I build applications from the ground up with a strong emphasis on usability, client satisfaction, and product quality. I'm highly collaborative, enjoy working in team environments, and remain flexible when exploring new opportunities.",
+    "location": {
+      "city": "Timișoara",
+      "countryCode": "RO"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "username": "alex-profir",
+        "url": "https://github.com/alex-profir"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "SC MoreDevs SRL",
+      "position": "Software Developer",
+      "startDate": "2018-07-29",
+      "summary": "Software developer building web and mobile applications, designing REST APIs, and maintaining scalable cloud infrastructure.",
+      "highlights": [
+        "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
+        "Built and maintained responsive web applications using modern frameworks.",
+        "Designed and implemented RESTful APIs powering multiple services.",
+        "Optimized and maintained website infrastructure for reliability and performance.",
+        "Engineered scalable cloud solutions using GCP, AWS, and proprietary cloud platforms."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Politehnica University of Timișoara",
+      "area": "Computer and Software Engineering",
+      "studyType": "Bachelor's Degree",
+      "startDate": "2018-09-24",
+      "endDate": "2022-09-11",
+      "courses": [
+        "Computer Networks",
+        "Operating Systems",
+        "Object-oriented programming",
+        "Algorithms and Data Structures",
+        "Hardware design and circuit analysis"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Web Frameworks & Libraries",
+      "level": "Master",
+      "keywords": [
+        "React",
+        "Angular",
+        "Vue.js",
+        "Next.js",
+        "Nuxt.js"
+      ]
+    },
+    {
+      "name": "Mobile Development",
+      "level": "Master",
+      "keywords": [
+        "React Native",
+        "Xamarin",
+        "Kotlin",
+        "Swift",
+        "Objective-C",
+        "iOS",
+        "Android"
+      ]
+    },
+    {
+      "name": "Backend Development",
+      "level": "Advanced",
+      "keywords": [
+        "Node.js",
+        "Express.js",
+        "Fastify",
+        "Java",
+        "Spring Boot"
+      ]
+    },
+    {
+      "name": "Databases",
+      "level": "Advanced",
+      "keywords": [
+        "PostgreSQL",
+        "MariaDB",
+        "MySQL",
+        "MongoDB"
+      ]
+    },
+    {
+      "name": "Programming Languages",
+      "level": "Master",
+      "keywords": [
+        "JavaScript",
+        "TypeScript",
+        "C++",
+        "C#",
+        "Java"
+      ]
+    },
+    {
+      "name": "Version Control",
+      "level": "Expert",
+      "keywords": [
+        "Git"
+      ]
+    },
+    {
+      "name": "Cloud Platforms",
+      "level": "Intermediate",
+      "keywords": [
+        "GCP",
+        "AWS"
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "language": "Romanian",
+      "fluency": "Native Speaker"
+    },
+    {
+      "language": "English",
+      "fluency": "B2"
+    },
+    {
+      "language": "Hungarian",
+      "fluency": "A2"
+    }
+  ],
+  "interests": [
+    {
+      "name": "R&D / Innovation",
+      "keywords": [
+        "Exploring emerging technologies",
+        "Tech Meetups",
+        "Curious about AI-driven design"
+      ]
+    },
+    {
+      "name": "Music",
+      "keywords": [
+        "Playing piano and enjoying folk music with techno harmonies"
+      ]
+    },
+    {
+      "name": "Sports",
+      "keywords": [
+        "Running and strength training"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Cybersecurity Mobile Platform",
+      "startDate": "2022-01-01",
+      "description": "Cross-platform cybersecurity solution featuring a React Native mobile app, an Admin UI, and a cloud-based backend infrastructure for secure device management and threat detection.",
+      "highlights": [
+        "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
+        "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
+        "Designed and implemented two backend microservices powering core security and data synchronization features",
+        "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
+        "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
+        "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
+      ]
+    },
+    {
+      "name": "Guided Tours System",
+      "startDate": "2021-10-01",
+      "endDate": "2022-09-01",
+      "description": "Mobile application developed with React Native, TypeScript, and Fastify for creating and managing guided city tours.",
+      "highlights": [
+        "Built mobile app enabling users to create and search for city tours",
+        "Implemented CRUD operations and guided workflows on both frontend and backend",
+        "Integrated AI-based image moderation for content safety"
+      ]
+    },
+    {
+      "name": "3ndy Job Management App",
+      "startDate": "2021-04-01",
+      "endDate": "2021-07-01",
+      "description": "Mobile application built with Xamarin for job posting and tracking.",
+      "highlights": [
+        "Implemented job creation workflow including data entry, media uploads, and job type selection",
+        "Designed intuitive summary and editing screens for better user experience",
+        "Streamlined data handling and form validation on mobile"
+      ]
+    },
+    {
+      "name": "Accessibility Management Platform",
+      "startDate": "2020-09-01",
+      "endDate": "2021-12-01",
+      "description": "Accessibility management web platform built with React, TypeScript, and Tailwind CSS.",
+      "highlights": [
+        "Developed responsive layouts and optimized frontend performance",
+        "Fixed memory leaks and removed inefficient code to improve system stability",
+        "Built an embeddable data visualization widget displaying accessibility data for hotels"
+      ]
+    },
+    {
+      "name": "Video Content Management System",
+      "startDate": "2020-08-01",
+      "endDate": "2020-12-01",
+      "description": "Content management platform for handling video metadata and assets, built with React, TypeScript, and Fastify.",
+      "highlights": [
+        "Implemented content CRUD functionality with RESTful API integration",
+        "Customized table components to match design system standards",
+        "Improved frontend responsiveness and UI consistency"
+      ]
+    },
+    {
+      "name": "Incident Response and Management System",
+      "startDate": "2020-01-01",
+      "endDate": "2020-09-01",
+      "description": "React and TypeScript-based platform for managing incidents and real-time vehicle tracking.",
+      "highlights": [
+        "Developed user and account management modules",
+        "Integrated real-time maps with vehicle location tracking",
+        "Resolved performance bottlenecks and optimized frontend rendering, resolving some memory leaks"
+      ]
+    },
+    {
+      "name": "Sales Management Platform",
+      "startDate": "2019-06-01",
+      "endDate": "2020-02-01",
+      "description": "Web platform for managing sales data across organizations using React, TypeScript, and Fastify.",
+      "highlights": [
+        "Created Admin module for CRUD operations with organization-level sales tracking",
+        "Implemented custom data tables to highlight key sales metrics",
+        "Enhanced frontend usability and user engagement through responsive UI design"
+      ]
+    },
+    {
+      "name": "Fitness Administration Platform",
+      "startDate": "2019-06-01",
+      "endDate": "2021-10-01",
+      "description": "Web application built with React, TypeScript, Material UI, and Fastify for managing fitness courses.",
+      "highlights": [
+        "Led project initialization and architecture design",
+        "Implemented full-stack CRUD operations on both frontend and backend",
+        "Collaborated with backend engineers for seamless data synchronization"
+      ]
+    },
+    {
+      "name": "Art Gallery Management Platform",
+      "startDate": "2018-08-01",
+      "endDate": "2019-08-01",
+      "description": "Web platform built with React, TypeScript, and Material UI for managing art galleries and artworks.",
+      "highlights": [
+        "Developed an Admin Interface enabling complete CRUD operations for gallery items and user management",
+        "Implemented autocomplete fields fetching real-time data from backend APIs",
+        "Optimized inter-gallery item transfer workflows for art placement"
+      ]
+    },
+    {
+      "name": "Retail Dashboard",
+      "startDate": "2018-07-01",
+      "endDate": "2018-11-01",
+      "description": "Angular-based web dashboard for real-time retail analytics and performance visualization.",
+      "highlights": [
+        "Implemented analytics pages with real-time graphs and filters",
+        "Enabled CSV export for data analysis and reporting",
+        "Optimized dashboard performance for high data throughput"
+      ]
+    }
+  ]
+}
