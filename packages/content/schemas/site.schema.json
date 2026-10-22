@@ -1,0 +1,11 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Site data",
+  "description": "Data only the site needs. CV facts belong in resume.json.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    }
+  }
+}

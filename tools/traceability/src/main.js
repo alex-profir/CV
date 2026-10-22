@@ -5,7 +5,7 @@
 // code for problems found.
 import { nodeVersionProblem } from './node-version.js';
 
-const versionProblem = nodeVersionProblem(process.versions.node);
+const versionProblem = nodeVersionProblem(process.versions.node, 'traceability check');
 
 if (versionProblem !== null) {
   process.stderr.write(`${versionProblem}\n`);

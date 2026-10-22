@@ -106,12 +106,12 @@ test helper, and the starting site data files. Every story needs them.
 **Design gate (Constitution II)**: omitted. spec.md's Design section says "**No UI**: this feature
 adds or changes no user interface."
 
-- [ ] T004 [P] Give 001's Node version gate a check-name parameter (research R11, plan Shared helpers):
+- [X] T004 [P] Give 001's Node version gate a check-name parameter (research R11, plan Shared helpers):
   - In `tools/traceability/src/node-version.js`, change the signature to `nodeVersionProblem(version, check)` (JSDoc `@param {string} check`), and the message to `` `${check} needs Node ${REQUIRED_NODE_MAJOR} or later (see .nvmrc) to block network access, but this is Node ${version}` ``.
   - In `tools/traceability/src/main.js`, call it with `'traceability check'`, so 001's message is unchanged.
   - In `tools/traceability/test/cli.test.ts`, pass `'traceability check'` in the existing calls. The expected strings stay the same.
-- [ ] T005 [P] Create `tools/content-check/src/paths.ts` (contracts/cli.md fixed paths): `RESUME_FILE = 'packages/content/resume.json'`, `SITE_FILE = 'packages/content/site.json'`, `RULES_FILE = 'packages/content/schemas/site.schema.json'`, `SHAPE_FILE = 'packages/content/src/shape.generated.ts'`, and `OFFICIAL_SCHEMA_VERSION = '1.3.1'`. All are relative to the run root, with `/` separators.
-- [ ] T006 [P] Define the shared types in `tools/content-check/src/report.ts`. Rendering comes in T025. Use no enums. The types follow data-model.md:
+- [X] T005 [P] Create `tools/content-check/src/paths.ts` (contracts/cli.md fixed paths): `RESUME_FILE = 'packages/content/resume.json'`, `SITE_FILE = 'packages/content/site.json'`, `RULES_FILE = 'packages/content/schemas/site.schema.json'`, `SHAPE_FILE = 'packages/content/src/shape.generated.ts'`, and `OFFICIAL_SCHEMA_VERSION = '1.3.1'`. All are relative to the run root, with `/` separators.
+- [X] T006 [P] Define the shared types in `tools/content-check/src/report.ts`. Rendering comes in T025. Use no enums. The types follow data-model.md:
   - `Location`: import the type from `tools/traceability/src/report.ts`.
   - `PROBLEM_TYPES`: the 14 types as a readonly array, in data-model.md's table order: `unreadable-document`, `missing-document`, `schema-violation`, `undefined-field`, `invalid-date`, `end-before-start`, `invalid-format`, `duplicate-entry`, `out-of-order`, `untrimmed-text`, `placeholder`, `dangling-reference`, `ambiguous-reference`, `hardcoded-fact`. `ProblemType` is its element type.
   - `Problem = { type: ProblemType; subject: string; location: Location; detail: string }`.
@@ -119,16 +119,16 @@ adds or changes no user interface."
   - `PARTS = ['CV rules', 'site data rules', 'references', 'key facts search']` and `Part`, in that order (contracts/cli.md Summary).
   - `FactKind = 'name' | 'email' | 'phone'`.
   - `Report = { problems: Problem[]; documents: { label: 'CV document' | 'Site data document' | 'Site data rules'; file: string; state: DocumentState }[]; factKinds: FactKind[] | null; filesSearched: number; filesSkipped: number; checksNotRun: Part[]; result: 'pass' | 'fail' }`. `factKinds` is `null` when the CV document couldn't be read. Counts by type are computed when rendering.
-- [ ] T007 [P] Create the test helper `tools/content-check/test/helpers/cli.ts` (research R14):
+- [X] T007 [P] Create the test helper `tools/content-check/test/helpers/cli.ts` (research R14):
   - Re-export `REPO_ROOT` and `makeProject` from `../../../traceability/test/helpers/project.ts`.
   - `CLI_PATH = path.join(REPO_ROOT, 'tools/content-check/src/main.js')`.
   - `runCli(cwd, args = [])`: `spawnSync(process.execPath, ['--permission', `--allow-fs-read=${REPO_ROOT}`, `--allow-fs-read=${cwd}`, CLI_PATH, ...args], { cwd, encoding: 'utf8' })`, returning `{ status, stdout, stderr }`. No addons, write or network grant: the same grants as the `content-check` script, plus the repository so Node can load the check and its packages.
   - `SAMPLE_RESUME`: a small valid JSON Resume 1.3.1 object with made-up facts and no phone: `basics.name` `"Ioana Testescu"`, `basics.email` `"ioana@cv.test"`, a `location` with `city` and `countryCode: "RO"`, one GitHub profile, one ongoing work entry, two projects newest first. It passes every rule in this spec.
   - `contentFiles({ resume, site, rules, files })`: returns the `Record<string, string>` for `makeProject`. `resume`, `site` and `rules` default to `SAMPLE_RESUME` and the starting `site.json` and rules from contracts/site-data-rules.md. An object value is written as `JSON.stringify(value, null, 2) + '\n'` at its fixed path, a string is written as is (for syntax errors), and `null` leaves the file out (for missing documents). `files` adds any other files.
-- [ ] T008 [P] Create the starting site data files exactly as in contracts/site-data-rules.md Starting rules, two-space indentation and a final newline:
+- [X] T008 [P] Create the starting site data files exactly as in contracts/site-data-rules.md Starting rules, two-space indentation and a final newline:
   - `packages/content/schemas/site.schema.json`: draft-07, `title` `"Site data"`, `description` `"Data only the site needs. CV facts belong in resume.json."`, `type: "object"`, and `properties` with only `"$schema": { "type": "string" }`.
   - `packages/content/site.json`: `{ "$schema": "./schemas/site.schema.json" }`.
-- [ ] T009 Verify the toolchain, after T001 to T008: `npm run typecheck` passes. `npm test` passes, except 001's `tools/traceability/test/self-check.test.ts`, which fails until T061 because 002's spec is Approved and its requirements aren't covered yet. That failure is expected. Any other failure is a defect.
+- [X] T009 Verify the toolchain, after T001 to T008: `npm run typecheck` passes. `npm test` passes, except 001's `tools/traceability/test/self-check.test.ts`, which fails until T061 because 002's spec is Approved and its requirements aren't covered yet. That failure is expected. Any other failure is a defect.
 
 **Checkpoint**: Foundation ready. User story implementation can now begin.
 
