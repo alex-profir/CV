@@ -1,0 +1,22 @@
+{
+  "$schema": "./schemas/site.schema.json",
+  "featuredProjects": [
+    "Ghid Timișoara",
+    "Missing Project"
+  ],
+  "contact": {
+    "profile": "GitLab",
+    "email": "ioana@cv.test"
+  },
+  "highlight": {
+    "name": "Testing Works",
+    "position": "Developer",
+    "startDate": "2021-03"
+  },
+  "pastHighlight": {
+    "name": "Side Gig",
+    "position": "Contractor",
+    "startDate": "2017-06"
+  },
+  "extra": true
+}

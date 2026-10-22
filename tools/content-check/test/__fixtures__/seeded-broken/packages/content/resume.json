@@ -1,0 +1,11 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json",
+  "basics": {
+    "name": "Ioana Testescu",
+    "email": "ioana@cv.test",
+    "location": {
+      "city": "Cluj-Napoca",
+      "countryCode": "RO"
+    }
+  }
+}

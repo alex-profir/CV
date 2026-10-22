@@ -1,0 +1,140 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json",
+  "basics": {
+    "name": "Ioana Testescu",
+    "label": "Software Engineer ",
+    "email": "ioana@cv.test",
+    "phone": "+44 20 7946 0958",
+    "picture": "https://cdn.test/me.jpg",
+    "url": "ioana.cv.test",
+    "location": {
+      "city": "Timișoara",
+      "countryCode": "Romania"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "username": "ioana-testescu",
+        "url": "https://github.com/ioana-testescu"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Testing Works",
+      "position": "Engineer",
+      "startDate": "2021-03",
+      "endDate": "2023-01",
+      "featured": true
+    },
+    {
+      "name": "Testing Works",
+      "position": "Engineer",
+      "startDate": "2019-01",
+      "endDate": "2020-12"
+    },
+    {
+      "name": "Brightline Labs",
+      "position": "Lead Engineer",
+      "startDate": "2023-02"
+    },
+    {
+      "name": "Old Shop",
+      "position": "Intern",
+      "startDate": "2018",
+      "endDate": "2018",
+      "highlights": "Kept the shelves tidy"
+    },
+    {
+      "name": "Side Gig",
+      "startDate": "2017-06",
+      "endDate": "2017-09"
+    }
+  ],
+  "volunteer": [],
+  "education": [
+    {
+      "institution": "Universitatea de Vest din Timișoara",
+      "area": "Computer Science",
+      "studyType": "Master",
+      "startDate": "2020-05",
+      "endDate": "2020"
+    },
+    {
+      "institution": "Universitatea Babeș-Bolyai",
+      "area": "Informatics",
+      "startDate": "2016",
+      "endDate": "2015-06"
+    },
+    {
+      "institution": "Universitatea Babeș-Bolyai",
+      "area": "Informatics",
+      "startDate": "2016",
+      "endDate": "2019"
+    },
+    {
+      "institution": "Liceul Teoretic",
+      "area": "Sciences",
+      "startDate": "2012",
+      "endDate": "2016"
+    },
+    {
+      "institution": "Liceul Teoretic",
+      "studyType": "Baccalaureate",
+      "startDate": "2012",
+      "endDate": "2016"
+    }
+  ],
+  "languages": [
+    {
+      "language": "Română"
+    },
+    {
+      "language": "Magyar"
+    },
+    {
+      "language": "Ελληνικά"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Ghid Timișoara",
+      "startDate": "2022",
+      "endDate": "2022-08",
+      "url": "https://example.com/ghid"
+    },
+    {
+      "name": "Ghid Timișoara",
+      "startDate": "2021-07",
+      "endDate": "2021-09"
+    },
+    {
+      "name": "Route Planner",
+      "startDate": "2021-02-30",
+      "endDate": "2021-04"
+    },
+    {
+      "name": "Recipe Box",
+      "startDate": "2020/05"
+    },
+    {
+      "name": "Undated Notes"
+    },
+    {
+      "name": "Weekend Hack",
+      "startDate": "2019-06-01",
+      "endDate": "2019-06-02"
+    },
+    {
+      "name": "Weather Board",
+      "startDate": "2019-06",
+      "endDate": "2019-08"
+    }
+  ],
+  "meta": {
+    "canonical": "https://raw.githubusercontent.com/jsonresume/resume-schema/master/sample.resume.json",
+    "version": "v1.0.0",
+    "lastModified": "2017-12-24T15:53:00"
+  },
+  "theme": "even"
+}

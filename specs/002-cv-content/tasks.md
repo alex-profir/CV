@@ -596,7 +596,7 @@ ruleset makes it required (contracts/ci.md, research R13)
 **Purpose**: The seeded samples, self-check and performance tests, the full verification, the
 owner's review, and the single PR. Constitution VII, VIII and IX don't apply: the spec says No UI.
 
-- [ ] T054 [P] Create the committed sample `tools/content-check/test/__fixtures__/seeded/` (SC-001, research R14). Every part of the check runs on it, so it holds every problem type except the two that stop a part. Made-up facts only: name `Ioana Testescu`, email `ioana@cv.test`, phone `+44 20 7946 0958`.
+- [X] T054 [P] Create the committed sample `tools/content-check/test/__fixtures__/seeded/` (SC-001, research R14). Every part of the check runs on it, so it holds every problem type except the two that stop a part. Made-up facts only: name `Ioana Testescu`, email `ioana@cv.test`, phone `+44 20 7946 0958`.
   - `packages/content/resume.json` seeds at least one of each:
     - `schema-violation` (`work` item `highlights` as a string);
     - `undefined-field` (`basics.picture`, `work[0].featured`, a top-level `theme`);
@@ -623,14 +623,14 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
   - Site source `packages/web/src/footer.tsx` has the email in upper case, the name with two spaces, and the phone as `(020) 7946.0958`. `packages/web/public/pixel.bin` holds a NUL byte (skipped, not text).
   - The same facts appear in `specs/x/spec.md`, `docs/x.md`, `README.md`, `packages/web/src/footer.test.ts`, `packages/web/__fixtures__/x.ts`, `tools/x.ts` and `packages/web/src/x.generated.ts`, none of which may be reported. Third-party code (`node_modules/`) and version-control data (`.git/`) can't be committed inside a sample, so T056 adds them to a copy.
   - `expected-report.txt`: from the sample, run `node --permission --allow-fs-read=<REPO_ROOT> <REPO_ROOT>/tools/content-check/src/main.js > expected-report.txt`, redirecting straight into the file. It's a root file of the sample, so it's searched for key facts and counts in `Files searched`, and the redirect creates it before the run. Run the same command a second time and confirm the file doesn't change. Check every line against the seeded cases by hand before committing. It must not contain the made-up facts.
-- [ ] T055 [P] Create the committed sample `tools/content-check/test/__fixtures__/seeded-broken/` for the two problem types that stop a part (SC-001, spec Edge Cases):
+- [X] T055 [P] Create the committed sample `tools/content-check/test/__fixtures__/seeded-broken/` for the two problem types that stop a part (SC-001, spec Edge Cases):
   - a valid `packages/content/resume.json` with made-up facts;
   - a `packages/content/site.json` with a trailing comma (`unreadable-document`);
   - no rules file (`missing-document`);
   - a site source file with the email.
 
   Its `expected-report.txt` shows the CV `checked`, the key facts search run with one `hardcoded-fact`, `Checks not run: site data rules, references`, and ends `FAIL: 3 problems found. Some checks could not run.` Create it as in T054.
-- [ ] T056 Add a seeded-samples test to `tools/content-check/test/cli.test.ts`, after T054 and T055. Its title has no FR ID, e.g. `describe('seeded samples (SC-001)', …)`.
+- [X] T056 Add a seeded-samples test to `tools/content-check/test/cli.test.ts`, after T054 and T055. Its title has no FR ID, e.g. `describe('seeded samples (SC-001)', …)`.
   - For each sample, `runCli(<sample dir>)` exits 1 and its stdout equals `expected-report.txt` byte for byte.
   - Across the two reports, each of the 14 problem types has a non-zero count.
   - A copy of `seeded/` made with `makeProject`, plus `node_modules/x/index.js` and `.git/x` both holding the made-up email, gives the same stdout as `expected-report.txt` (spec Edge Cases: third-party code and version-control data aren't searched).
@@ -640,15 +640,15 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
   - `specs/002-cv-content/research.md` R14;
   - `specs/002-cv-content/quickstart.md` scenario 2, which runs and diffs both samples and expects each type non-zero across the two.
   - Result (2026-10-22, during the `/speckit-analyze` fixes, approved by the owner): spec.md SC-001 now says "seeded samples that together hold…". plan.md, research.md R14 and quickstart scenario 2 describe both samples. The same pass also aligned FR-012, FR-032 and SC-002 in spec.md, the details catalogue in contracts/cli.md, the rules-file conditions in data-model.md and contracts/site-data-rules.md, and the `endDate` example in quickstart scenario 6 and contracts/content-package.md.
-- [ ] T058 [P] Write `tools/content-check/test/self-check.test.ts` (SC-003, SC-008). Titles have no FR ID.
+- [X] T058 [P] Write `tools/content-check/test/self-check.test.ts` (SC-003, SC-008). Titles have no FR ID.
   - SC-008: `runCheck(REPO_ROOT)` has `result` `pass`, no problems, the three documents `checked`, and `factKinds` `['name', 'email']`.
   - SC-003: copy `packages/content/` from the repository into a `makeProject` sample, change only `basics.email` in its `resume.json`, and `runCheck` on it still passes.
-- [ ] T059 [P] Write `tools/content-check/test/performance.test.ts` (SC-006). Its title has no FR ID. Time `runCli(REPO_ROOT)`: it exits 0. The under-10,000 ms assertion uses `test.skipIf(process.env.CI)`, as in 001. Give it a 60 s timeout.
-- [ ] T060 [P] Audit Constitution X and IV.
+- [X] T059 [P] Write `tools/content-check/test/performance.test.ts` (SC-006). Its title has no FR ID. Time `runCli(REPO_ROOT)`: it exits 0. The under-10,000 ms assertion uses `test.skipIf(process.env.CI)`, as in 001. Give it a 60 s timeout.
+- [X] T060 [P] Audit Constitution X and IV.
   - `package.json` has exactly the seven `devDependencies` from T002 and no `dependencies`. The three new ones have no `^` or `~`. `packages/content/package.json` has no dependencies.
   - The only abstractions added are those in plan.md's Dependencies table: the `@cv/content` workspace, `deriveSchema`, the shape generator, the reused 001 helpers, and the test helper `helpers/cli.ts` (`runCli`, `SAMPLE_RESUME`, `contentFiles`) with nothing beyond its row. No agent skill was added.
   - No CV fact appears in `packages/` outside `resume.json`, tests and the generated file (the content check's own search confirms it).
-- [ ] T061 Run the full verification, after T053 to T060:
+- [X] T061 Run the full verification, after T053 to T060:
   - `npm run typecheck` passes;
   - `npm test` passes, now including 001's self-check;
   - `npm run content-check` exits 0 with the `PASS` line;

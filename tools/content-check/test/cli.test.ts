@@ -68,3 +68,78 @@ describe('002-cv-content-FR-035: the check makes no network requests', () => {
     expect(nodeVersionProblem('26.0.0', 'content check')).toBeNull();
   });
 });
+
+// The seeded samples (SC-001). Each seeded case and the line it produces in
+// expected-report.txt:
+//
+// seeded/ (every part runs):
+//   basics.label "Software Engineer "        → untrimmed-text basics.label
+//   basics.picture                            → undefined-field basics.picture
+//   basics.url "ioana.cv.test"                → invalid-format basics.url
+//   countryCode "Romania"                     → invalid-format basics.location.countryCode
+//   work[0].featured                          → undefined-field work[0].featured
+//   ongoing work[2] after finished work[0]    → out-of-order work[2]
+//   work[3].highlights as a string            → schema-violation work[3].highlights
+//   education[1] and [2], both no studyType   → duplicate-entry education[1]
+//   education[1] ends 2015-06, starts 2016    → end-before-start education[1].endDate
+//   project "Ghid Timișoara" in NFC and NFD   → duplicate-entry projects[0]
+//   projects[0].url on example.com            → placeholder projects[0].url
+//   2021-02-30                                → invalid-date projects[2].startDate (not real)
+//   2020/05                                   → invalid-date projects[3].startDate (form)
+//   meta canonical, version, lastModified     → placeholder meta.* (three lines)
+//   top-level theme                           → undefined-field theme
+//   site: reference to the duplicated project → ambiguous-reference featuredProjects[0]
+//   site: "Missing Project"                   → dangling-reference featuredProjects[1]
+//   site: profile "GitLab"                    → dangling-reference contact.profile
+//   site: the email written out               → hardcoded-fact email (site data detail)
+//   site: work reference, wrong position      → dangling-reference highlight
+//   site: work reference to an entry with no position → dangling-reference pastHighlight
+//   site: extra                               → undefined-field extra
+//   footer.tsx: name with two spaces, email in capitals, (020) phone → hardcoded-fact name, email, phone
+// Silent: volunteer [], year and year-month dates, start 2020-05 with end
+// 2020, an ongoing role, NFD and non-ASCII text, two roles at one company,
+// education entries missing different fields, equal dates at shared precision,
+// an undated project, the remote $schema link, pixel.bin (skipped, not text),
+// and the facts in specs/, docs/, README.md, a test, a fixture, tools/ and a
+// generated file.
+//
+// seeded-broken/ (the two types that stop a part):
+//   no rules file                             → missing-document
+//   site.json with a trailing comma           → unreadable-document
+//   contact.ts with the email                 → hardcoded-fact email
+describe('seeded samples (SC-001)', () => {
+  const FIXTURES = path.join(REPO_ROOT, 'tools/content-check/test/__fixtures__');
+  const SAMPLES = ['seeded', 'seeded-broken'];
+  const expected = (sample: string) => fs.readFileSync(path.join(FIXTURES, sample, 'expected-report.txt'), 'utf8');
+
+  for (const sample of SAMPLES) {
+    test(`${sample} gives exactly its expected report`, () => {
+      const result = runCli(path.join(FIXTURES, sample));
+      expect(result.stderr).toBe('');
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe(expected(sample));
+    });
+  }
+
+  test('together the samples hold every problem type', () => {
+    const counts = new Map<string, number>();
+    for (const sample of SAMPLES) {
+      for (const [, type, count] of expected(sample).matchAll(/^ {4}([a-z-]+) +(\d+)$/gm)) {
+        counts.set(type!, (counts.get(type!) ?? 0) + Number(count));
+      }
+    }
+    expect(counts.size).toBe(14);
+    for (const [type, count] of counts) expect(count, type).toBeGreaterThan(0);
+  });
+
+  test('third-party code and version-control data are not searched', () => {
+    const root = makeProject({});
+    fs.cpSync(path.join(FIXTURES, 'seeded'), root, { recursive: true });
+    const email = 'ioana@cv.test';
+    fs.mkdirSync(path.join(root, 'node_modules/x'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'node_modules/x/index.js'), `module.exports = '${email}';\n`);
+    fs.mkdirSync(path.join(root, '.git'));
+    fs.writeFileSync(path.join(root, '.git/x'), `${email}\n`);
+    expect(runCli(root).stdout).toBe(expected('seeded'));
+  });
+});
