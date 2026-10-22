@@ -1,0 +1,9 @@
+{
+  "name": "@cv/tokens",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./tokens.css": "./src/tokens.generated.css"
+  }
+}

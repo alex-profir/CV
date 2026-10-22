@@ -1,0 +1,38 @@
+packages/tokens/motion/tokens.json:1:1 missing-file packages/tokens/motion/tokens.json: file not found
+packages/tokens/penpot/tokens.json:8:11 unreadable-file packages/tokens/penpot/tokens.json: invalid JSON: comma expected
+packages/web/src/a.css:2:12 literal-value length: "12px" is written out; use a token
+
+Summary
+  Token export:                 packages/tokens/penpot/tokens.json (unreadable)
+  Motion token source:          packages/tokens/motion/tokens.json (missing)
+  Active themes:                not known
+  Derived output:               not checked
+  Site files searched:          1
+  Site files without styles:    1
+  Checks not run:               export rules, motion rules, cross-source rules, derived output, token names in site files
+  Problems:                     3
+    unreadable-file             1
+    missing-file                1
+    unsupported-content         0
+    invalid-value               0
+    missing-reference           0
+    reference-loop              0
+    cross-source-reference      0
+    missing-set                 0
+    unused-set                  0
+    theme-without-sets          0
+    theme-without-group         0
+    invalid-active-themes       0
+    duplicate-token             0
+    wrong-source                0
+    conflicting-types           0
+    unusable-name               0
+    name-collision              0
+    token-used-as-group         0
+    theme-mismatch              0
+    stale-output                0
+    unknown-token               0
+    local-in-token-namespace    0
+    literal-value               1
+
+FAIL: 3 problems found. Some checks could not run.

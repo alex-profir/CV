@@ -1,0 +1,37 @@
+packages/tokens/src/tokens.generated.css:1:1 stale-output packages/tokens/src/tokens.generated.css: doesn't match the token sources; run npm run token-output
+packages/tokens/src/tokens.generated.ts:1:1 stale-output packages/tokens/src/tokens.generated.ts: is missing; run npm run token-output
+
+Summary
+  Token export:                 packages/tokens/penpot/tokens.json (checked): 2 sets, 1 theme, 8 tokens
+  Motion token source:          packages/tokens/motion/tokens.json (checked): 1 set, 1 theme, 2 tokens
+  Active themes:                mode/light + motion/standard
+  Derived output:               stale
+  Site files searched:          0
+  Site files without styles:    1
+  Checks not run:               none
+  Problems:                     2
+    unreadable-file             0
+    missing-file                0
+    unsupported-content         0
+    invalid-value               0
+    missing-reference           0
+    reference-loop              0
+    cross-source-reference      0
+    missing-set                 0
+    unused-set                  0
+    theme-without-sets          0
+    theme-without-group         0
+    invalid-active-themes       0
+    duplicate-token             0
+    wrong-source                0
+    conflicting-types           0
+    unusable-name               0
+    name-collision              0
+    token-used-as-group         0
+    theme-mismatch              0
+    stale-output                2
+    unknown-token               0
+    local-in-token-namespace    0
+    literal-value               0
+
+FAIL: 2 problems found.

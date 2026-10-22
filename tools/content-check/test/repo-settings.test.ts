@@ -47,11 +47,12 @@ describe('002-cv-content-FR-033: every pull request runs the content check, and 
     expect(job('content').lines.filter((line) => /^\s*(?:-\s+)?(if|strategy|matrix|continue-on-error):/.test(line))).toEqual([]);
   });
 
-  test('the ruleset requires traceability, test and content', () => {
+  test('the ruleset requires traceability, test, content and tokens', () => {
     expect(REQUIRED).toEqual([
       { context: 'traceability', integration_id: 15368 },
       { context: 'test', integration_id: 15368 },
       { context: 'content', integration_id: 15368 },
+      { context: 'tokens', integration_id: 15368 },
     ]);
   });
 

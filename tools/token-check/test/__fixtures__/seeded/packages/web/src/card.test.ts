@@ -1,0 +1,1 @@
+export const ink = '#1a1a1a';

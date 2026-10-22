@@ -65,8 +65,13 @@ export function keyFacts(resume: unknown): KeyFact[] {
 }
 
 // Every file that makes up the site, in code-unit order, never following
-// symbolic links (FR-022, FR-024).
-export function searchFiles(root: string, resumeFile: string): { files: SearchedFile[]; unreadable: { path: string; code: string }[] } {
+// symbolic links (FR-022, FR-024). `excluded` holds paths relative to the
+// root: a directory listed there isn't visited, and a file isn't read. The
+// token check shares this walk with its own exclusions (003 research R13).
+export function searchFiles(
+  root: string,
+  excluded: readonly string[],
+): { files: SearchedFile[]; unreadable: { path: string; code: string }[] } {
   const files: SearchedFile[] = [];
   const unreadable: { path: string; code: string }[] = [];
   const fatal = new TextDecoder('utf-8', { fatal: true });
@@ -85,11 +90,11 @@ export function searchFiles(root: string, resumeFile: string): { files: Searched
       const file = dir === '' ? name : `${dir}/${name}`;
       if (name.startsWith('.')) continue;
       if (entry.isDirectory()) {
-        if (isExcludedDir(name) || TEST_DIRS.includes(name) || (dir === '' && ROOT_SKIPPED_DIRS.includes(name))) continue;
+        if (isExcludedDir(name) || TEST_DIRS.includes(name) || (dir === '' && ROOT_SKIPPED_DIRS.includes(name)) || excluded.includes(file)) continue;
         visit(file);
       } else if (entry.isFile()) {
         if (isTestFile(file) || NOTICE.test(name) || name.includes('.generated.') || name === 'package-lock.json') continue;
-        if ((dir === '' && ROOT_TOOLING.includes(name)) || file === resumeFile) continue;
+        if ((dir === '' && ROOT_TOOLING.includes(name)) || excluded.includes(file)) continue;
         let bytes: Buffer;
         try {
           bytes = fs.readFileSync(path.join(root, file));

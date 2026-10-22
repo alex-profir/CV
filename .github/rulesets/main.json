@@ -46,6 +46,10 @@
           {
             "context": "content",
             "integration_id": 15368
+          },
+          {
+            "context": "tokens",
+            "integration_id": 15368
           }
         ]
       }

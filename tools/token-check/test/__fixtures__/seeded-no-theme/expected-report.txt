@@ -1,0 +1,36 @@
+packages/tokens/penpot/tokens.json:2:14 theme-without-sets $themes: the export has no theme; at least one theme with at least one set is needed
+
+Summary
+  Token export:                 packages/tokens/penpot/tokens.json (checked): 0 sets, 0 themes, 0 tokens
+  Motion token source:          packages/tokens/motion/tokens.json (checked): 1 set, 1 theme, 2 tokens
+  Active themes:                motion/standard
+  Derived output:               not checked
+  Site files searched:          0
+  Site files without styles:    1
+  Checks not run:               derived output
+  Problems:                     1
+    unreadable-file             0
+    missing-file                0
+    unsupported-content         0
+    invalid-value               0
+    missing-reference           0
+    reference-loop              0
+    cross-source-reference      0
+    missing-set                 0
+    unused-set                  0
+    theme-without-sets          1
+    theme-without-group         0
+    invalid-active-themes       0
+    duplicate-token             0
+    wrong-source                0
+    conflicting-types           0
+    unusable-name               0
+    name-collision              0
+    token-used-as-group         0
+    theme-mismatch              0
+    stale-output                0
+    unknown-token               0
+    local-in-token-namespace    0
+    literal-value               0
+
+FAIL: 1 problem found. Some checks could not run.
