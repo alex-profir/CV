@@ -72,7 +72,7 @@ export function runCheck(root: string): Report {
   if (resume.state === 'ok') {
     const facts = keyFacts(resume.value);
     factKinds = facts.map((fact) => fact.kind);
-    const search = searchFiles(root, RESUME_FILE);
+    const search = searchFiles(root, [RESUME_FILE]);
     for (const searched of search.files) {
       if (searched.state === 'searched') {
         filesSearched += 1;
