@@ -56,7 +56,7 @@
 | I | Spec First | spec.md `Status: Approved`; this plan holds the "how", the spec holds none | [ ] | |
 | II | Design Gate | design/ has wireframe, PNGs, Penpot link, signed review.md; or spec says "No UI" | [ ] | |
 | III | Traceable Requirements | Every FR has a planned test and, if UI, a `data-req` target (see Requirement Traceability) | [ ] | |
-| IV | One Source of Truth | CV data read only from `packages/content`; styles use Penpot tokens only | [ ] | |
+| IV | One Source of Truth | CV data read only from `packages/content`; styles use tokens only, from Penpot or the motion token source | [ ] | |
 | V | Shared Core, Per-Shell Scope | Apps declare shells; shared logic in `os-core`; matches spec Shell Scope | [ ] | |
 | VI | Offline by Default | Offline Approach delivers everything the spec lists as offline | [ ] | |
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | [ ] | |
@@ -124,7 +124,7 @@ packages/
 [desktop shell path]/    # macOS-style shell
 [mobile shell path]/     # iOS-style shell
 [apps path]/             # Apps, each declaring its supported shells
-[token output path]/     # Design tokens exported from Penpot
+[token output path]/     # Design tokens from Penpot and the motion token source
 [cv route path]/         # /cv, server-rendered
 
 tests/
