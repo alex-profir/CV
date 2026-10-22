@@ -653,10 +653,18 @@ owner's review, and the single PR. Constitution VII, VIII and IX don't apply: th
   - `npm test` passes, now including 001's self-check;
   - `npm run content-check` exits 0 with the `PASS` line;
   - `npm run traceability` exits 0, and its last line is exactly `PASS: all 65 active requirements in 2 approved specs are covered.` (29 from 001 plus 36 from 002; Constitution III, SC-008).
-- [ ] T062 Run quickstart.md scenarios 1 to 9 and record any deviation here.
+- [X] T062 Run quickstart.md scenarios 1 to 9 and record any deviation here.
   - Scenarios 3, 5 and 6 edit files: revert each before the next.
   - Scenario 7 needs the network off: cut it for the process tree with `sandbox-exec -p '(version 1)(allow default)(deny network*)'`, as 001 did, or have the owner turn it off.
   - Scenario 9 needs the network for `npx`. The theme render is SC-002's second, independent tool. `resumed validate` alone doesn't count, because it uses the same validator as `portability.test.ts`.
+  - Result (2026-10-22): scenarios 1 to 9 behave as expected, with outputs written to a scratch directory instead of `/tmp`.
+    - 1: exit 0, `PASS`, key facts `name, email`. Traceability passes with all 65 requirements.
+    - 2: both samples exit 1 and match `expected-report.txt`.
+    - 3 to 6: run at checkpoints T030, T036, T042 and T048.
+    - 7: run under `sandbox-exec` with the network denied: exit 0 in 0.14 s, report identical to scenario 1.
+    - 8: two runs give identical reports. The CI half is checked in T064.
+    - 9: `resumed validate` passes, and `jsonresume-theme-even` renders every section with `Timișoara` and "strength training" intact.
+    - One deviation, in scenario 6: TypeScript 7.0.2 doesn't name the field in `resume.work?.[0]?.endDate.slice(0, 4)`, so the scenario now reads `endDate` from a bound entry (see T043).
 - [ ] T063 Owner action: review the converted `packages/content/resume.json` against the source CV (spec Assumptions: "The owner reviews the result before merge"). Confirm every change is one R15 lists, the phone, photo and address are absent, and the wording is otherwise unchanged. Record the approval here.
 - [ ] T064 Commit the remaining work with Conventional Commits, e.g. `feat(content): …`, `test(content-check): …`. Push `002-cv-content` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
