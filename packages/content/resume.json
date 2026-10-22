@@ -164,10 +164,10 @@
       "startDate": "2025-12",
       "description": "Part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
       "highlights": [
-        "Built core features across iOS and Android, including prayer requests, groups, organisation pages and the home feed",
-        "Developed HLS video playback with an offline mode for cached feeds and downloaded videos",
-        "Upgraded the app to Expo SDK 55 and React Native 0.83",
-        "Set up crash and error monitoring with Sentry and Firebase Crashlytics"
+        "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
+        "Maintained Expo and React Native on the latest package versions",
+        "Set up CI/CD for automated builds and releases",
+        "Set up crash reporting and error monitoring"
       ]
     },
     {
