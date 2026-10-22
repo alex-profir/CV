@@ -81,18 +81,18 @@ the stories.
 **Purpose**: The `@cv/content` workspace, the three pinned packages, and the scripts and
 TypeScript settings the feature needs
 
-- [ ] T001 Create the workspace and scripts (research R1, R10, R12; contracts/cli.md Command):
+- [X] T001 Create the workspace and scripts (research R1, R10, R12; contracts/cli.md Command):
   - In the root `package.json`, add `"workspaces": ["packages/*"]` and two scripts, keeping the existing three:
     - `"content-check": "node --permission --allow-fs-read=. tools/content-check/src/main.js"` (no network, write or addons grant)
     - `"content-shape": "node tools/content-check/src/generate-shape.ts"`
   - Create `packages/content/package.json`: `"name": "@cv/content"`, `"private": true`, `"type": "module"`, `"exports": { ".": "./src/index.ts" }`, and no `dependencies`, `devDependencies`, `author` or `scripts` (contracts/content-package.md Import). It must not contain the owner's name: it's site source, searched for key facts (research R9).
-- [ ] T002 Install the dev dependencies, after T001, with Node 26 active and its bundled npm:
+- [X] T002 Install the dev dependencies, after T001, with Node 26 active and its bundled npm:
   1. `npm install --save-dev --save-exact @jsonresume/schema@1.3.1 jsonschema@1.5.0 jsonc-parser@3.3.1`.
   2. Confirm `package-lock.json` has a single `node_modules/jsonschema` at 1.5.0 (it satisfies `@jsonresume/schema`'s `^1.4.1`), a `node_modules/@cv/content` link to `packages/content`, and no nested `node_modules` under `@jsonresume/schema`.
   3. Commit `package-lock.json`.
 
   `package.json` must end with exactly seven `devDependencies` (the four from 001 plus these three, each with no `^` or `~`) and no `dependencies` (plan Dependencies table, Constitution X).
-- [ ] T003 [P] Update `tsconfig.json` (research R10): add `"packages/**/*.ts"` to `include` and `"resolveJsonModule": true` to `compilerOptions`. Change nothing else. `strict` stays on, `noUncheckedIndexedAccess` stays off, and `exclude` keeps `**/__fixtures__/**`.
+- [X] T003 [P] Update `tsconfig.json` (research R10): add `"packages/**/*.ts"` to `include` and `"resolveJsonModule": true` to `compilerOptions`. Change nothing else. `strict` stays on, `noUncheckedIndexedAccess` stays off, and `exclude` keeps `**/__fixtures__/**`.
 
 ---
 
