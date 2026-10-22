@@ -3,7 +3,7 @@ import { runCheck } from '../src/check.ts';
 import { readDocument } from '../src/json.ts';
 import { RESUME_FILE } from '../src/paths.ts';
 import type { Problem } from '../src/report.ts';
-import { SAMPLE_RESUME, contentFiles, makeProject } from './helpers/cli.ts';
+import { SAMPLE_RESUME, STARTING_RULES, contentFiles, makeProject } from './helpers/cli.ts';
 
 type Json = Record<string, any>;
 
@@ -51,5 +51,16 @@ describe('002-cv-content-FR-021: text is compared after Unicode normalization', 
     expect(brief(runCheck(root).problems)).toEqual([
       { type: 'duplicate-entry', subject: 'projects[0]', detail: 'the same entry is listed 2 times: projects[0], projects[1]' },
     ]);
+  });
+
+  test('a reference written in NFD resolves to a name written in NFC', () => {
+    const root = sample((r) => (r.projects = [{ name: `${NFC_CITY} Guide`, startDate: '2022' }]), {
+      site: { $schema: './schemas/site.schema.json', featuredProjects: [`${NFD_CITY} Guide`] },
+      rules: {
+        ...STARTING_RULES,
+        properties: { ...STARTING_RULES.properties, featuredProjects: { type: 'array', items: { type: 'string', 'x-cv-reference': 'project' } } },
+      },
+    });
+    expect(runCheck(root).problems).toEqual([]);
   });
 });

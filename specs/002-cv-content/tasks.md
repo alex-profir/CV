@@ -374,7 +374,7 @@ missing project (spec US2, quickstart scenario 4).
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T031 [P] [US2] Write `tools/content-check/test/site-data.test.ts`. It covers 002-cv-content-FR-004, 002-cv-content-FR-005, 002-cv-content-FR-006, 002-cv-content-FR-017, 002-cv-content-FR-018 and 002-cv-content-FR-019, through `runCheck` on samples whose rules extend the starting rules.
+- [X] T031 [P] [US2] Write `tools/content-check/test/site-data.test.ts`. It covers 002-cv-content-FR-004, 002-cv-content-FR-005, 002-cv-content-FR-006, 002-cv-content-FR-017, 002-cv-content-FR-018 and 002-cv-content-FR-019, through `runCheck` on samples whose rules extend the starting rules.
   - FR-004:
     - the report lists `packages/content/site.json` as its own document;
     - a site-only field `featuredProjects` added to the sample CV gives `undefined-field` on the CV;
@@ -395,8 +395,8 @@ missing project (spec US2, quickstart scenario 4).
     - a string where the work reference needs an object gives `a work reference needs name, position and startDate`;
     - a work reference to an entry with no `position` in the CV gives `dangling-reference`, even when its `name` and `startDate` match: an entry can't be referred to by a field it doesn't have (spec Edge Cases).
   - FR-019: a reference to a project listed twice gives `ambiguous-reference`, detail `"<name>" matches 2 projects in the CV document: projects[i], projects[j]`, and the CV gets its `duplicate-entry`.
-- [ ] T032 [P] [US2] Extend the 002-cv-content-FR-021 group in `tools/content-check/test/text.test.ts`: a site data reference written in NFD resolves to a project whose name is in NFC, with no problem.
-- [ ] T033 [P] [US2] Create the committed sample `tools/content-check/test/__fixtures__/references/` (quickstart scenario 4):
+- [X] T032 [P] [US2] Extend the 002-cv-content-FR-021 group in `tools/content-check/test/text.test.ts`: a site data reference written in NFD resolves to a project whose name is in NFC, with no problem.
+- [X] T033 [P] [US2] Create the committed sample `tools/content-check/test/__fixtures__/references/` (quickstart scenario 4):
   - `packages/content/resume.json`: a valid CV with made-up facts that lists `Guided Tours System` among its projects.
   - `packages/content/schemas/site.schema.json`: the starting rules plus `featuredProjects`, an array of `{ "type": "string", "x-cv-reference": "project" }`.
   - `packages/content/site.json`: `$schema` and `"featuredProjects": ["Guided Tours System"]`.
@@ -405,7 +405,7 @@ missing project (spec US2, quickstart scenario 4).
 
 ### Implementation for User Story 2
 
-- [ ] T034 [US2] Implement `tools/content-check/src/site-data.ts`, after T022 and T024 (research R7, data-model.md Reference, contracts/site-data-rules.md):
+- [X] T034 [US2] Implement `tools/content-check/src/site-data.ts`, after T022 and T024 (research R7, data-model.md Reference, contracts/site-data-rules.md):
   - `loadRules(read): { schema: object | null; problem: Problem | null }`. Derive the rules with `deriveSchema`. They're unusable, giving `unreadable-document` on the rules file with a `cannot be used as rules: <reason>` detail at the offending value, when:
     - an `x-cv-reference` names a kind not in `ENTRY_KINDS` (`unknown reference kind "<kind>"`);
     - a one-field kind's reference schema isn't `type: "string"`, or a several-field kind's isn't an object whose `properties` are exactly its identifying fields (`a/an <kind> reference must be <a string | an object with <fields>>`, e.g. `an education reference must be an object with institution, area, studyType and startDate`);
@@ -423,11 +423,11 @@ missing project (spec US2, quickstart scenario 4).
     - no match gives `dangling-reference`, detail `no <noun> with <field> "<value>"[, … and <field> "<value>"] exists in the CV document`;
     - two or more give `ambiguous-reference`, detail `<value text> matches <n> <plural> in the CV document: <paths joined by ", ">`. The value text is the JSON string for one-field kinds, and the field list for others;
     - located at the reference's value in `site.json`.
-- [ ] T035 [US2] Wire site data into `runCheck` in `tools/content-check/src/check.ts`, after T034:
+- [X] T035 [US2] Wire site data into `runCheck` in `tools/content-check/src/check.ts`, after T034:
   - when the site data document and the rules are `ok`, run `loadRules`. An unusable rules file reports its problem and counts as `unreadable` in the summary;
   - with usable rules, run `siteDataRules`. Otherwise add `site data rules` to `checksNotRun`;
   - when the CV is also `ok`, run `resolveReferences`. Otherwise add `references`.
-- [ ] T036 [US2] Checkpoint.
+- [X] T036 [US2] Checkpoint.
   - `npm test` passes (001's self-check still excepted).
   - Quickstart scenario 4 gives the expected `PASS`, then the `dangling-reference` line.
   - `npm run content-check` on the real repository still passes.

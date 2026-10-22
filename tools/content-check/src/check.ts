@@ -4,6 +4,8 @@ import { sortProblems } from './report.ts';
 import type { DocumentState, Part, Problem, Report } from './report.ts';
 import { resumeRules } from './resume-rules.ts';
 import { deriveSchema, instancePatterns, loadOfficialSchema, schemaProblems, validate } from './schema.ts';
+import { loadRules, resolveReferences, siteDataRules } from './site-data.ts';
+import type { Reference } from './site-data.ts';
 
 const STATES = { ok: 'checked', missing: 'missing', unreadable: 'unreadable' } as const satisfies Record<string, DocumentState>;
 
@@ -41,8 +43,25 @@ export function runCheck(root: string): Report {
     checksNotRun.push('CV rules');
   }
 
-  if (site.state !== 'ok' || rules.state !== 'ok') checksNotRun.push('site data rules');
-  if (resume.state !== 'ok' || site.state !== 'ok' || rules.state !== 'ok') checksNotRun.push('references');
+  // Rules that can't be used count as unreadable (data-model.md, DocumentRead).
+  let rulesState: DocumentState = STATES[rules.state];
+  let references: Reference[] | undefined;
+  const loaded = site.state === 'ok' && rules.state === 'ok' ? loadRules(rules) : undefined;
+  if (loaded?.problem) {
+    problems.push(loaded.problem);
+    rulesState = 'unreadable';
+  }
+  if (loaded?.rules) {
+    const result = siteDataRules(site, loaded.rules);
+    problems.push(...result.problems);
+    references = result.references;
+  } else {
+    checksNotRun.push('site data rules');
+  }
+
+  if (resume.state === 'ok' && references !== undefined) problems.push(...resolveReferences(references, site, resume));
+  else checksNotRun.push('references');
+
   if (resume.state !== 'ok') checksNotRun.push('key facts search');
 
   const sorted = sortProblems(unique(problems));
@@ -51,7 +70,7 @@ export function runCheck(root: string): Report {
     documents: [
       { label: 'CV document', file: RESUME_FILE, state: STATES[resume.state] },
       { label: 'Site data document', file: SITE_FILE, state: STATES[site.state] },
-      { label: 'Site data rules', file: RULES_FILE, state: STATES[rules.state] },
+      { label: 'Site data rules', file: RULES_FILE, state: rulesState },
     ],
     factKinds: resume.state === 'ok' ? [] : null,
     filesSearched: 0,
