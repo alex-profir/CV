@@ -1252,7 +1252,15 @@ apply: the spec says No UI.
     - confirm the active themes are `mode/light` and that `activeSets` equals the sets of the active themes (research R3);
     - export again, and run the comparison script. It prints `same`;
     - record the Penpot version.
-- [ ] T094 Commit the remaining work under `packages/tokens/`, `tools/` and `.github/` with Conventional Commits, e.g. `feat(tokens): …`, `test(token-check): …`, `ci: …`. Push `003-design-tokens` and open one pull request to `main` (Constitution XI).
+
+  **Scenario 11, done on 2026-10-22** on Penpot 2.18.4: the export was imported into a new, empty
+  Penpot file ("New File 1"). It came back with sets `base` (21 tokens) and `light` (3), and
+  theme `mode/light`, with the same id, active and enabling exactly those two sets. No set was
+  switched on outside the theme. The comparison script prints `same`. The re-export is in
+  Penpot's written form with no final newline, and differs from the committed file only in key
+  order: Penpot doesn't keep key order stable between exports. **Scenario 4** hasn't been run in
+  Penpot yet. `self-check.test.ts` runs the same flow on a scripted copy (FR-002, SC-003).
+- [X] T094 Commit the remaining work under `packages/tokens/`, `tools/` and `.github/` with Conventional Commits, e.g. `feat(tokens): …`, `test(token-check): …`, `ci: …`. Push `003-design-tokens` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description:
     - links `specs/003-design-tokens/spec.md` and `specs/003-design-tokens/tasks.md`;
@@ -1260,9 +1268,18 @@ apply: the spec says No UI.
     - records the round-trip result from T093.
   - Confirm `traceability`, `test`, `content` and `tokens` all run and pass.
   - Confirm the `tokens` log shows the same report as the local run on the same commit (FR-040, quickstart scenario 10).
-- [ ] T095 Owner action, needs admin rights and the open PR from T094: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart scenario 12).
+
+  **Done on 2026-10-22**: [PR #13](https://github.com/alex-profir/CV/pull/13), seven commits, no
+  attribution. On commit `66c96d1`, `traceability`, `test`, `content` and `tokens` all passed, and
+  the `tokens` job's report is identical to the local run's, all 34 lines.
+- [X] T095 Owner action, needs admin rights and the open PR from T094: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart scenario 12).
   - Confirm the contexts read back as `traceability`, `test`, `content` and `tokens`.
   - Confirm a drift diff against the committed file shows only server-added fields.
+
+  **Done on 2026-10-22**: ruleset `main` (id 25562339) was updated. It reads back with the contexts
+  `traceability`, `test`, `content` and `tokens`. The only fields that differ from the committed
+  file are the ones the server adds: `id`, `node_id`, `_links`, `source`, `source_type`,
+  `created_at`, `updated_at` and `current_user_can_bypass`.
 - [ ] T096 Owner action, after T095: demonstrate enforcement with a scratch `packages/web/src/oops.css` (quickstart scenario 12, FR-039).
   1. Push a scratch branch with scenario 5's CSS file, and open a draft PR.
   2. Confirm `tokens` fails and that merging is blocked, with no bypass option.
