@@ -579,15 +579,15 @@ scenario 6).
 **Purpose**: A `content` CI job runs `npm run content-check` on every pull request, and the
 ruleset makes it required (contracts/ci.md, research R13)
 
-- [ ] T049 [P] Write `tools/content-check/test/repo-settings.test.ts`, covering 002-cv-content-FR-033. It asserts every **[tested]** point of contracts/ci.md, reading `.github/workflows/ci.yml` as text with the same layout rules and `block`/`job` approach as 001's `tools/traceability/test/repo-settings.test.ts`, with no YAML dependency.
+- [X] T049 [P] Write `tools/content-check/test/repo-settings.test.ts`, covering 002-cv-content-FR-033. It asserts every **[tested]** point of contracts/ci.md, reading `.github/workflows/ci.yml` as text with the same layout rules and `block`/`job` approach as 001's `tools/traceability/test/repo-settings.test.ts`, with no YAML dependency.
   - The `content` job has `name: content`, and its steps are exactly `actions/checkout`, `actions/setup-node`, `npm ci`, `npm run content-check`.
   - The job's lines have no `if:`, `strategy:`, `matrix:` or `continue-on-error:` key.
   - The ruleset's `required_status_checks` deep-equals the three entries in contracts/ci.md, each with `integration_id: 15368`.
   - Every `context` is a job id in `ci.yml`, and `content-check` is a `package.json` script whose command the `content` job runs (FR-034).
-- [ ] T050 [P] Update 001's exact-match assertion in `tools/traceability/test/repo-settings.test.ts` so the `required_status_checks` rule lists `traceability`, `test` and `content`. Keep its other assertions unchanged.
-- [ ] T051 [P] Add the `content` job to `.github/workflows/ci.yml` after `test`: `name: content`, `runs-on: ubuntu-latest`, and the same `actions/checkout` and `actions/setup-node` steps (same SHAs and comments, `node-version-file: .nvmrc`, `cache: npm`) as the other jobs, then `- run: npm ci` and `- run: npm run content-check`. No `if:`, `strategy`, `matrix` or `continue-on-error`.
-- [ ] T052 [P] Add `{ "context": "content", "integration_id": 15368 }` as the third entry of `required_status_checks` in `.github/rulesets/main.json`, in the existing two-space format. Change nothing else.
-- [ ] T053 Checkpoint, after T049 to T052: `npm test` passes, including both `repo-settings.test.ts` files (001's self-check still excepted until every 002 requirement is covered). `npm run traceability` no longer lists FR-033.
+- [X] T050 [P] Update 001's exact-match assertion in `tools/traceability/test/repo-settings.test.ts` so the `required_status_checks` rule lists `traceability`, `test` and `content`. Keep its other assertions unchanged.
+- [X] T051 [P] Add the `content` job to `.github/workflows/ci.yml` after `test`: `name: content`, `runs-on: ubuntu-latest`, and the same `actions/checkout` and `actions/setup-node` steps (same SHAs and comments, `node-version-file: .nvmrc`, `cache: npm`) as the other jobs, then `- run: npm ci` and `- run: npm run content-check`. No `if:`, `strategy`, `matrix` or `continue-on-error`.
+- [X] T052 [P] Add `{ "context": "content", "integration_id": 15368 }` as the third entry of `required_status_checks` in `.github/rulesets/main.json`, in the existing two-space format. Change nothing else.
+- [X] T053 Checkpoint, after T049 to T052: `npm test` passes, including both `repo-settings.test.ts` files (001's self-check still excepted until every 002 requirement is covered). `npm run traceability` no longer lists FR-033.
 
 ---
 

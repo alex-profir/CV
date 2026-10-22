@@ -102,6 +102,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
           required_status_checks: [
             { context: 'traceability', integration_id: 15368 },
             { context: 'test', integration_id: 15368 },
+            { context: 'content', integration_id: 15368 },
           ],
         },
       },
