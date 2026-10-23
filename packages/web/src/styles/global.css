@@ -1,0 +1,12 @@
+@import "@cv/tokens/tokens.css";
+
+body {
+  margin: 0;
+  background: var(--token-color-surface);
+  color: var(--token-color-text-primary);
+  font-family: var(--token-typography-body-font-family);
+  font-size: var(--token-typography-body-font-size);
+  font-weight: var(--token-typography-body-font-weight);
+  letter-spacing: var(--token-typography-body-letter-spacing);
+  line-height: var(--token-typography-body-line-height);
+}
