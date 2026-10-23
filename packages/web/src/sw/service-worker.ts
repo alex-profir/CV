@@ -99,11 +99,11 @@ function withinLimit(request: Request): Promise<Response> {
 }
 
 // The stored answer to a navigation, by the route table. The query string
-// is ignored.
+// doesn't choose the page, and a redirect keeps it, as the server's does.
 async function storedAnswer(url: URL): Promise<Response> {
   const page = ROUTES.pages.find((route) => route.path === url.pathname || route.aliases.includes(url.pathname));
   const redirect = ROUTES.redirects.find((route) => route.from === url.pathname);
-  if (redirect !== undefined && page === undefined) return Response.redirect(new URL(redirect.to, url.origin).href, redirect.status);
+  if (redirect !== undefined && page === undefined) return Response.redirect(new URL(`${redirect.to}${url.search}`, url.origin).href, redirect.status);
   const stored = await fromCache(page === undefined ? notFoundKey() : page.path);
   return stored ?? Response.error();
 }

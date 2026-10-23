@@ -208,11 +208,13 @@ const settled = (page: Page) =>
     return registration !== undefined && registration.installing === null && registration.waiting === null && registration.active !== null;
   });
 
-// Every page, opened offline, shows what it shows online.
+// Every page, opened offline, shows what it shows online. The root
+// redirects to /cv keeping its query string, as the server does.
 async function expectOfflineCopy(context: BrowserContext, url: string, fields: readonly ExpectedField[], notFoundText: string): Promise<void> {
-  for (const target of ['/cv', '/cv/', '/cv?utm_source=x', '/']) {
+  for (const target of ['/cv', '/cv/', '/cv?utm_source=x', '/', '/?utm_source=x']) {
     const page = await visit(context, `${url}${target}`);
-    if (target === '/') expect(new URL(page.url()).pathname, target).toBe('/cv');
+    const shown = new URL(page.url());
+    if (target.startsWith('/?') || target === '/') expect(`${shown.pathname}${shown.search}`, target).toBe(`/cv${target.slice(1)}`);
     expect(await cvPageProblems(page, fields), target).toEqual([]);
   }
   const page = await visit(context, `${url}/nope`);
@@ -222,7 +224,7 @@ async function expectOfflineCopy(context: BrowserContext, url: string, fields: r
 describe('004-cv-page-FR-038: after one visit, every page opens with no network', () => {
   const fields = expectedFields(resume);
 
-  test('after one visit to /cv, with the server stopped, /cv, /cv/, /cv with a query, / and an unknown path show their full pages', async () => {
+  test('after one visit to /cv, with the server stopped, /cv, /cv/, /cv with a query, / with and without a query and an unknown path show their full pages', async () => {
     const site = builtSite();
     const notFoundText = await builtNotFoundText(site);
     const server = await switchableServer();
