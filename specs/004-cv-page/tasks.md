@@ -704,7 +704,7 @@ not here (see "Not in this feature").
   **Deferred on 2026-10-23** by the owner to a later, final testing phase that covers several
   specs together. Until then FR-042's visual comparison, SC-004 and SC-005 rest on their automated
   tests (T029, T081) and the site check, and this task stays open.
-- [ ] T106 Commit the remaining work with Conventional Commits, e.g. `feat(web): …`, `feat(site-check): …`, `test(web): …`, `ci: …`, `chore(tokens): …`. Push `004-cv-page` and open one pull request to `main` (Constitution XI).
+- [X] T106 Commit the remaining work with Conventional Commits, e.g. `feat(web): …`, `feat(site-check): …`, `test(web): …`, `ci: …`, `chore(tokens): …`. Push `004-cv-page` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description:
     - links `specs/004-cv-page/spec.md` and `specs/004-cv-page/tasks.md`;
@@ -712,6 +712,14 @@ not here (see "Not in this feature").
     - records T008's change to 003's tests, for the owner to accept;
     - records the results of T104 and T105.
   - Confirm `traceability`, `test`, `content`, `tokens` and `site` all run and pass, and that the `site` job summary gives the same result as a local run on the same commit (FR-049, contracts/cli.md Determinism).
+
+  **Done on 2026-10-23**: pull request #16. The first CI run failed `site` and `test` only in the
+  Lighthouse part: on the Ubuntu 24.04 runner, chrome-launcher's Chromium couldn't start its
+  renderer sandbox and never opened its debugging port. Commit `328a9ee` starts it with
+  `--no-sandbox`, as Playwright's launches already do (research R13). On `328a9ee` all five jobs
+  pass, and the `site` job's report equals a local `npm run site-check` on the same commit byte
+  for byte, including the site version `4b3e1a0a2795fe7f` and the Lighthouse scores. The seeded
+  sample's report matched on Linux apart from the Lighthouse lines of the failed run.
 - [ ] T107 Owner action, needs admin rights and the open PR from T106: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart 12). Confirm the contexts read back as `traceability`, `test`, `content`, `tokens` and `site`, and that a drift diff shows only server-added fields.
 - [ ] T108 Owner action, after T107: demonstrate enforcement (quickstart 12, FR-048). Push a scratch branch from `004-cv-page` that removes the focus outline from links, and open a draft PR. Confirm `site` fails, naming every link in the `keyboard` part, and that merging is blocked with no bypass option. Close the PR unmerged, delete the branch, and record the result here.
 
