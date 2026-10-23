@@ -29,6 +29,8 @@ No UI task starts until `specs/<feature>/design/` contains all of:
   mockup exports.
 - Features with no UI change MUST say so in `spec.md` ("No UI"). Only then are they exempt.
 - If the approved design changes, the PNGs and `review.md` are updated before the code changes.
+- Until the interim provision on local mockups ends, an interim local mockup can stand in for
+  the Penpot mockup and its link (see that section).
 
 **Rationale**: it makes the visual decision explicit and reviewable before implementation.
 It also keeps the published design artifacts in sync with what ships.
@@ -62,6 +64,8 @@ process visible and verifiable, not just claimed.
   both the same way. A token name is defined in only one of them. Literal token values in
   components or styles are violations.
 - Changing a CV fact or a design token takes exactly one edit, at its source.
+- Until the interim provision on local mockups ends, the token export may be written by hand in
+  Penpot's export form (see that section).
 
 **Rationale**: the CV changes over time. Keeping one source means the desktop shell, the
 mobile shell and `/cv` can never drift apart. Motion is judged by watching it run, which Penpot
@@ -159,7 +163,8 @@ reviewed together.
 - **Recruiter route**: `/cv`, server-rendered and independent of the shells (Principle VII).
 - **Design source**: Penpot holds the approved mockups (Principle II) and the design tokens,
   except motion tokens, which live in the repository's motion token source until Penpot can
-  hold them (Principle IV).
+  hold them (Principle IV). The interim provision on local mockups temporarily allows local
+  mockups and a hand-written token export.
 - **Public process**: everything under `specs/` is public and part of the showcase. Spec
   artifacts are kept current, are readable by an outside reviewer, and contain no secrets or
   private data.
@@ -173,7 +178,8 @@ next one.
    offline behavior. Open questions are resolved with `/speckit-clarify`. The owner then sets
    `Status: Approved` (Principle I).
 2. **Design** (UI features only): the wireframe, Penpot PNG exports, Penpot link and
-   `review.md` sign-off go in `specs/<feature>/design/` (Principle II).
+   `review.md` sign-off go in `specs/<feature>/design/` (Principle II), or an interim local
+   mockup under the interim provision.
 3. **Plan**: `/speckit-plan` produces `plan.md`. Its Constitution Check covers every
    principle. New dependencies, skills and abstractions get written reasons (Principle X).
 4. **Tasks**: `/speckit-tasks` produces `tasks.md`. UI tasks list the design gate as a
@@ -189,6 +195,42 @@ Merge requirements:
   behavior and the one-click/one-tap CV path MUST be verified before merge. They are
   automated in CI wherever tooling allows.
 - Hardcoded CV data or literal design-token values block merge (Principle IV).
+
+## Interim Provision: Local Mockups
+
+The site's Penpot file can't be reached from 2026-10-23 until at least 2026-10-26. So work
+doesn't stop, this provision temporarily changes what Principles II and IV accept. It ends only
+through the steps under **Ending the provision**.
+
+While it applies:
+
+- **Design gate (Principle II)**: a local mockup can stand in for the Penpot mockup. A local
+  mockup is a static HTML and CSS page in `specs/<feature>/design/mockup/` that reads the site's
+  tokens, with PNG exports rendered from it at every width the gate needs. The wireframes and
+  the owner's `review.md` sign-off are still required. `review.md` says the design is an interim
+  local mockup and names the reviewed commit and date. No Penpot link is required.
+- **Design tokens (Principle IV)**: the token export may be written by hand, in exactly the form
+  Penpot exports, so the token check accepts it and Penpot can import it. Code still reads tokens
+  only through the token output, and a token is still defined in one place. Only who writes the
+  export changes.
+- **Merging**: a feature may merge with an interim local mockup and a hand-written export. Every
+  other gate and merge requirement still applies.
+- A design that already exists in Penpot keeps its exports and sign-off. Only its Penpot link
+  may be added later.
+
+Ending the provision, once the Penpot file can be reached again:
+
+1. The hand-written token export is imported into the site's Penpot file and exported again. The
+   new export replaces the committed one. Any difference is reviewed, and the token output is
+   regenerated.
+2. For every feature whose `review.md` names an interim local mockup, its design is rebuilt in
+   Penpot to match. Its PNG exports are replaced by Penpot's, and its Penpot link and an updated
+   `review.md` sign-off are added. A Penpot link that was missing is added too.
+3. Steps 1 and 2 are done in follow-up pull requests, one per feature, with `docs:` commits for
+   design artifacts. The Penpot design matches the approved local mockup. If the owner changes
+   the design while rebuilding it, that is a design change under Principle II: the spec, the
+   artifacts and the code follow in that feature's follow-up pull request.
+4. A further amendment removes this section once steps 1 to 3 are done for every feature.
 
 ## Governance
 
@@ -208,4 +250,4 @@ Merge requirements:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-22
+**Version**: 1.2.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-23

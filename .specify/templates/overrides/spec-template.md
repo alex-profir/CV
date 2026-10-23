@@ -157,8 +157,9 @@ references `[###-feature-name]-FR-###`. UI implementing a requirement carries
 **UI change**: design artifacts live in `specs/[###-feature-name]/design/`:
 
 - [ ] ASCII wireframe of every new or changed screen or state, per supported shell
-- [ ] PNG exports of the approved Penpot mockup, per supported shell
-- [ ] Penpot file link: [URL]
+- [ ] PNG exports of the approved Penpot mockup, per supported shell (or of the interim local
+  mockup, under the constitution's interim provision)
+- [ ] Penpot file link: [URL] (not needed for an interim local mockup until the provision ends)
 - [ ] `review.md` sign-off by the project owner, naming the mockup version and date
 
 ## Success Criteria *(mandatory)*

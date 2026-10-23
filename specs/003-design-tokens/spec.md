@@ -767,3 +767,9 @@ one tap (mobile) from first load, and `/cv` remains a plain server-rendered page
 - **Depends on**: Constitution IV as amended in 1.1.0 (the motion token source), Constitution IX,
   the requirement traceability check (001), and Penpot's token export. The spec can't be
   approved before the amendment is merged.
+- **Interim hand-written export** (Constitution 1.2.0, added 2026-10-23): while the
+  constitution's interim provision on local mockups applies, the export may be written by hand
+  in the form Penpot exports. FR-001 and FR-002 are then met once Penpot can be reached again,
+  by importing the file into the site's Penpot file and exporting it again, as the provision's
+  ending steps say. FR-007 is unaffected: the starter tokens were made in Penpot. The check
+  doesn't change, because it reads only the file.
