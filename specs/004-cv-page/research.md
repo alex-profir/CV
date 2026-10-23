@@ -490,7 +490,10 @@ runs a subset of axe, at one width, and reports a score, not every element.
 
 - Lighthouse 13.5.0 (Google's Chrome team), as a Node module, with Chromium from Playwright
   (`chromium.executablePath()`) started by `chrome-launcher` (a Lighthouse dependency) with
-  `--headless=new` and the isolation flags of R17.
+  `--headless=new`, `--no-sandbox` and the isolation flags of R17. `--no-sandbox` matches
+  Playwright's own launches (`chromiumSandbox: false` by default): Ubuntu 24.04 CI runners
+  restrict the user namespaces Chromium's renderer sandbox needs, so with the sandbox on,
+  Chromium never opens its debugging port.
 - Categories: whatever Lighthouse reports, which today is Performance, Accessibility, Best
   Practices and SEO (spec Assumptions). Profiles: Lighthouse's default mobile config and its
   desktop config (`lighthouse/core/config/desktop-config.js`). Throttling: simulated (the

@@ -3,8 +3,10 @@
 // and its desktop config, and each category's score is the median of the
 // three. A category under 90 fails. Chromium is Playwright's, started by
 // chrome-launcher with the isolation flags, so Lighthouse can reach only
-// 127.0.0.1 (research R17). Lighthouse clears the page's storage before each
-// run, so a service worker never answers a measured load.
+// 127.0.0.1 (research R17). Like Playwright's own launches, it runs without
+// Chromium's renderer sandbox, which Linux CI runners and sandbox-exec can't
+// provide. Lighthouse clears the page's storage before each run, so a service
+// worker never answers a measured load.
 import * as chromeLauncher from 'chrome-launcher';
 import lighthouse from 'lighthouse';
 import desktopConfig from 'lighthouse/core/config/desktop-config.js';
@@ -27,7 +29,7 @@ export type LighthouseResult = { scores: Record<string, { median: number; runs: 
 
 // `runs` runs of one page on one profile, in one Chromium.
 export async function lighthouseRuns(url: string, profile: Profile, runs = RUNS): Promise<LighthouseRun[]> {
-  const chrome = await chromeLauncher.launch({ chromePath: chromiumPath(), chromeFlags: [...ISOLATION_ARGS, '--headless=new'], logLevel: 'silent' });
+  const chrome = await chromeLauncher.launch({ chromePath: chromiumPath(), chromeFlags: [...ISOLATION_ARGS, '--headless=new', '--no-sandbox'], logLevel: 'silent' });
   try {
     const results: LighthouseRun[] = [];
     for (let run = 0; run < runs; run += 1) {

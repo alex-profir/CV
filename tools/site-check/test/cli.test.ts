@@ -77,7 +77,7 @@ describe('004-cv-page-FR-057: the checks need no network beyond the machine', ()
     const launcherUsers = files.filter((file) => /from 'chrome-launcher'/.test(fs.readFileSync(file, 'utf8')));
     expect(launcherUsers.map((file) => path.relative(SOURCE_DIR, file))).toEqual(['parts/lighthouse.ts']);
     const lighthouse = fs.readFileSync(path.join(SOURCE_DIR, 'parts/lighthouse.ts'), 'utf8');
-    expect(lighthouse).toMatch(/chromeLauncher\.launch\(\{[^}]*chromeFlags: \[\.\.\.ISOLATION_ARGS, '--headless=new'\]/);
+    expect(lighthouse).toMatch(/chromeLauncher\.launch\(\{[^}]*chromeFlags: \[\.\.\.ISOLATION_ARGS, '--headless=new', '--no-sandbox'\]/);
   });
 });
 
