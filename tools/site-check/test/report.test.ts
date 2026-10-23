@@ -34,8 +34,8 @@ const EXAMPLE: Report = {
   siteDir: 'packages/web/dist/site',
   version: '1a2b3c4d5e6f7a8b',
   pages: [
-    { path: '/cv', status: 200 },
-    { path: '/missing-page', status: 404 },
+    { path: '/cv', status: 200, notFound: false },
+    { path: '/missing-page', status: 404, notFound: true },
   ],
   results: [
     pass('content', '-', '-'),

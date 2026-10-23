@@ -4,12 +4,7 @@
 // stopped before it leaves the browser. `data:` addresses are the page's own.
 import type { BrowserContext, Request } from 'playwright';
 import type { Problem } from '../report.ts';
-
-// How long to wait for a page to register a service worker, and for it to
-// install, so its requests are recorded too.
-const REGISTRATION_WAIT_MS = 2_000;
-
-const WORKER_WAIT_MS = 10_000;
+import { waitForWorker } from './offline.ts';
 
 const local = (address: string, origin: string) => address.startsWith('data:') || address.startsWith('blob:') || address.startsWith(`${origin}/`) || address === origin;
 
@@ -41,19 +36,9 @@ export async function recordRequests(context: BrowserContext, origin: string): P
 export async function otherSiteProblems(context: BrowserContext, foreign: Map<string, string>, url: string, pageLabel: string, variant: string): Promise<Problem[]> {
   const page = await context.newPage();
   await page.goto(url, { waitUntil: 'load' });
-  await page.evaluate(
-    async ({ registrationWait, workerWait }) => {
-      if (!('serviceWorker' in navigator)) return;
-      // Pages register their worker after `load`.
-      const end = Date.now() + registrationWait;
-      while ((await navigator.serviceWorker.getRegistrations()).length === 0) {
-        if (Date.now() > end) return;
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
-      await Promise.race([navigator.serviceWorker.ready, new Promise((resolve) => setTimeout(resolve, workerWait))]);
-    },
-    { registrationWait: REGISTRATION_WAIT_MS, workerWait: WORKER_WAIT_MS },
-  );
+  // Pages register their worker after `load`. Once it controls the page,
+  // it has installed, so its requests are recorded too.
+  await waitForWorker(page);
   await page.waitForLoadState('networkidle');
   return [...foreign].map(([address, from]) => ({ part: 'other-sites' as const, page: pageLabel, variant, type: 'other-site-request', subject: address, detail: `requested by ${from}` }));
 }

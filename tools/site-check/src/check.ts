@@ -118,8 +118,8 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
   try {
     const status = async (pagePath: string) => (await fetch(`${server.url}${pagePath}`, { redirect: 'manual' })).status;
     const pages: Report['pages'] = [];
-    for (const page of routes.pages) pages.push({ path: page.path, status: await status(page.path) });
-    pages.push({ path: NOT_FOUND_PATH, status: await status(NOT_FOUND_PATH) });
+    for (const page of routes.pages) pages.push({ path: page.path, status: await status(page.path), notFound: false });
+    pages.push({ path: NOT_FOUND_PATH, status: await status(NOT_FOUND_PATH), notFound: true });
     const allPaths = pages.map((page) => page.path);
     const okPaths = pages.filter((page) => page.status === 200).map((page) => page.path);
     const url = (pagePath: string) => `${server.url}${pagePath}`;

@@ -46,7 +46,9 @@ export type CheckResult = {
 export type Report = {
   siteDir: string;
   version: string;
-  pages: { path: string; status: number }[];
+  // Each page the check visits, with its status. `notFound` marks the
+  // unknown path the check requests to reach the not-found page.
+  pages: { path: string; status: number; notFound: boolean }[];
   results: CheckResult[];
   problems: Problem[];
   result: 'pass' | 'fail';
@@ -121,8 +123,8 @@ function resultLines(part: Part, results: readonly CheckResult[]): string[] {
   return lines.map((line, index) => (index < lines.length - 1 ? `${line},` : line));
 }
 
-function pageLine(pages: Report['pages'], notFoundStatus: number): string {
-  return pages.map(({ path, status }) => (status === notFoundStatus ? `${path} (${status}, the not-found page)` : `${path} (${status})`)).join(', ');
+function pageLine(pages: Report['pages']): string {
+  return pages.map(({ path, status, notFound }) => (notFound ? `${path} (${status}, the not-found page)` : `${path} (${status})`)).join(', ');
 }
 
 // The report text of contracts/cli.md: the problem lines, sorted, an empty
@@ -135,7 +137,7 @@ export function renderReport(report: Report): string {
     `Site check: ${report.result === 'pass' ? 'PASSED' : 'FAILED'}`,
     '',
     `  Site:   ${report.siteDir} (version ${report.version})`,
-    `  Pages:  ${pageLine(report.pages, 404)}`,
+    `  Pages:  ${pageLine(report.pages)}`,
     '',
   );
   let passed = 0;

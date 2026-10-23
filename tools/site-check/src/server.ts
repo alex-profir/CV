@@ -44,13 +44,23 @@ function chooseEncoding(header: string | undefined): 'br' | 'gzip' | null {
   return null;
 }
 
-function compress(body: Buffer, encoding: 'br' | 'gzip'): Buffer {
-  return encoding === 'br' ? zlib.brotliCompressSync(body) : zlib.gzipSync(body);
-}
-
 export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; manifest: SiteManifest; port?: number }): Promise<RunningServer> {
   const files = new Map(manifest.files.map((file) => [file.path, file]));
-  const read = (file: string) => fs.readFileSync(path.join(siteDir, file));
+  // The manifest's files don't change while the server runs, so each is
+  // read, and compressed in each encoding, once.
+  const bodies = new Map<string, Buffer>();
+  const read = (file: string) => {
+    let body = bodies.get(file);
+    if (body === undefined) bodies.set(file, (body = fs.readFileSync(path.join(siteDir, file))));
+    return body;
+  };
+  // By the body `read` returned, which is the same buffer for each file.
+  const compressed = new WeakMap<Buffer, Partial<Record<'br' | 'gzip', Buffer>>>();
+  const compress = (body: Buffer, encoding: 'br' | 'gzip') => {
+    let forBody = compressed.get(body);
+    if (forBody === undefined) compressed.set(body, (forBody = {}));
+    return (forBody[encoding] ??= encoding === 'br' ? zlib.brotliCompressSync(body) : zlib.gzipSync(body));
+  };
   const notFound = (): Answer => ({
     status: manifest.routes.notFound.status,
     headers: { 'Content-Type': HTML_TYPE, 'Cache-Control': NO_CACHE },

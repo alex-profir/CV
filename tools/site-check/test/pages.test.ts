@@ -10,9 +10,9 @@ describe('004-cv-page-FR-056: every page the site serves is checked, with no cha
   test('second-page/: /about answers 200 and is checked by every page part and by Lighthouse', async () => {
     const report = await runCheck(fixture('second-page'));
     expect(report.pages).toEqual([
-      { path: '/cv', status: 200 },
-      { path: '/about', status: 200 },
-      { path: '/missing-page', status: 404 },
+      { path: '/cv', status: 200, notFound: false },
+      { path: '/about', status: 200, notFound: false },
+      { path: '/missing-page', status: 404, notFound: true },
     ]);
     for (const part of ['accessibility', 'lighthouse', 'keyboard', 'other-sites', 'fonts', 'layout', 'modes'] as const) {
       expect(report.results.some((result) => result.part === part && result.page === '/about'), part).toBe(true);
