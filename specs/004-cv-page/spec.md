@@ -108,8 +108,8 @@
 A recruiter opens the link on a phone, or a hiring manager opens it on a wide desktop monitor.
 Either way, the whole CV is there as soon as the page arrives: the owner's name and role,
 contact links, work, projects, education, skills, languages and interests. It reads top to
-bottom without horizontal scrolling, at any text size the visitor picks, and works the same
-with JavaScript turned off. A screen reader user can jump from section to section by heading
+bottom without horizontal scrolling, at any zoom or text zoom the visitor picks, and works the
+same with JavaScript turned off. A screen reader user can jump from section to section by heading
 and hears dates as words.
 
 **Why this priority**: Constitution VII says the CV is the product. This story is the page
@@ -133,8 +133,9 @@ section.
    **Then** nothing needs horizontal scrolling and no text is cut off.
 4. **Given** a desktop browser zoomed to 400% on a window 1280 px wide, **When** the visitor
    reads the page, **Then** the content reflows into one column with no horizontal scrolling.
-5. **Given** the visitor's text size is set to 200%, **When** they read the page, **Then** all
-   text is larger and nothing overlaps, is cut off or is hidden.
+5. **Given** the visitor zooms the page to 200%, or uses the browser's text-only zoom at 200%,
+   **When** they read the page, **Then** all text is larger and nothing overlaps, is cut off or
+   is hidden.
 6. **Given** a screen reader user lists the page's headings, **When** they look at the list,
    **Then** it holds exactly one main heading, `Alex Profir`, then one heading per shown
    section, with entry headings below their section's heading.
@@ -428,7 +429,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   uses, and the checks MUST fail, naming the character and where it appears, when a font can't
   draw one.
 - **FR-008**: The location MUST be shown as the city, the region if present, and the country's
-  English name, taken from its country code using the ISO 3166-1 list.
+  common English name for its ISO 3166-1 alpha-2 code, such as "United States" or "South Korea",
+  rather than ISO's formal short name.
 
 **Dates**
 
@@ -481,9 +483,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 
 - **FR-020**: The page MUST read without horizontal scrolling at every width from 320 px to at
   least 2560 px, with line lengths kept readable on wide screens as the design sets.
-- **FR-021**: The page MUST keep all content and function when text is resized to 200%, when
-  the page is zoomed to 400% on a window 1280 px wide, and when text spacing is overridden as
-  WCAG 2.2 success criterion 1.4.12 describes.
+- **FR-021**: The page MUST keep all content and function when text is resized to 200% with the
+  browser's zoom or text-only zoom, when the page is zoomed to 400% on a window 1280 px wide, and
+  when text spacing is overridden as WCAG 2.2 success criterion 1.4.12 describes.
 - **FR-022**: A long word or URL MUST wrap within its column at every width, and never overflow
   the screen or be cut off.
 
@@ -726,6 +728,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **Dates**: English month names, as translations are a non-goal. The exact format, such as
   "Jul 2018 – Oct 2026", and the word for an ongoing entry, such as "Present", are set by the
   design within FR-009 to FR-011.
+- **Text size**: text is resized with the browser's zoom or text-only zoom, as WCAG 2.2 success
+  criterion 1.4.4 allows. Following the browser's default font size setting is a later change to
+  the design tokens (003), not part of this feature.
 - **Country names**: the country's English name is derived from its code (FR-008). That is a
   standard list, not a CV fact, so it doesn't break Constitution IV.
 - **Share description**: the description is the CV document's summary, because it is the
