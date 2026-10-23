@@ -184,7 +184,7 @@ until it's done.
   - In `site.json`, add `"repository": "https://github.com/alex-profir/CV"` after `$schema`.
   - Run `npm run content-shape`, then confirm `SiteData` has `repository?: string`.
   - `npm run content-check` passes, and 002's tests pass. If one asserts the old site data shape, update it to the new one and keep its title.
-- [ ] T007 [P] Write the design's token export by hand, in Penpot's form, at `packages/tokens/penpot/tokens.json` (FR-043, research R6, data-model.md Token roles). Then run `npm run token-output`.
+- [X] T007 [P] Write the design's token export by hand, in Penpot's form, at `packages/tokens/penpot/tokens.json` (FR-043, research R6, data-model.md Token roles). Then run `npm run token-output`.
   - **Form**, exactly as Penpot 2.18.3 writes (003 R2, R3):
     - sets `base` then `light`;
     - one theme, keeping the starter's `id` `96b08a0d-67e9-80a1-8008-d40116ee9d06`, `name` `light`, `group` `mode`, `description` `""`, `isSource` `false`, `selectedTokenSets` `{ "base": "enabled", "light": "enabled" }`;
