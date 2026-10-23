@@ -2,6 +2,7 @@
 // table). The build copies the table into the site manifest, and the local
 // server, the service worker and the checks all answer from it. Pure: no
 // Node or DOM import.
+import { deepFreeze } from './freeze.ts';
 
 export type PageRoute = { path: string; aliases: string[]; file: string };
 
@@ -25,14 +26,6 @@ export type RouteMatch =
   | { kind: 'page'; file: string }
   | { kind: 'redirect'; to: string; status: number }
   | { kind: 'not-found'; file: string; status: number };
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const child of Object.values(value)) deepFreeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
 
 export const ROUTES: Routes = deepFreeze({
   pages: [{ path: '/cv', aliases: ['/cv/'], file: 'cv.html' }],

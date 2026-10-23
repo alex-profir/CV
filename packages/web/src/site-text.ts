@@ -2,14 +2,7 @@
 // design sets it (FR-006, data-model.md Site text). Changing a word is one
 // edit here. It holds no CV fact: the content check searches it like any
 // site file.
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const child of Object.values(value)) deepFreeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
+import { deepFreeze } from './freeze.ts';
 
 export const siteText = deepFreeze({
   // The h1 and the title when the CV document has no name (FR-023, FR-037).

@@ -202,9 +202,17 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     await build(ssrConfig(ssrDir));
     const render: RenderModule = await import(pathToFileURL(path.join(ssrDir, 'render.mjs')).href);
 
-    // 3. Every route's page.
+    // 3. Every route's page, each by its own render function. A route with
+    // none fails the build, rather than getting a copy of another page.
+    const renderers: Record<string, () => string> = {
+      '/cv': () => render.renderCv({ resume, siteData, assets }),
+    };
     const pages: Record<string, string> = {};
-    for (const page of ROUTES.pages) pages[page.file] = render.renderCv({ resume, siteData, assets });
+    for (const page of ROUTES.pages) {
+      const renderPage = renderers[page.path];
+      if (renderPage === undefined) throw new Error(`no render function for the route ${page.path}`);
+      pages[page.file] = renderPage();
+    }
     pages[ROUTES.notFound.file] = render.renderNotFound({ siteData, assets });
     for (const [file, html] of Object.entries(pages)) fs.writeFileSync(path.join(siteDir, file), html);
   } finally {

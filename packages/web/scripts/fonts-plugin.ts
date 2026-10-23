@@ -76,9 +76,9 @@ export function fontsProblems(fonts: FontsDescription, fontsDir: string, tokens:
 }
 
 // Throws when the fonts don't match the font tokens, with every problem in
-// one message. build-site.ts calls it before Vite runs, so the message
-// reaches `site build failed: <message>` unwrapped; the plugin calls it again
-// for any other Vite run.
+// one message. build-site.ts calls it once, before both Vite builds, so the
+// message reaches `site build failed: <message>` unwrapped. The site's Vite
+// config is only run by build-site.ts, so the plugin doesn't check again.
 export function checkFonts(fontsFile: string = FONTS_FILE): void {
   const problems = fontsProblems(readFonts(fontsFile), path.dirname(fontsFile));
   if (problems.length > 0) throw new Error(problems.join('; '));
@@ -129,9 +129,6 @@ export function cvFonts(fontsFile: string = FONTS_FILE): Plugin {
   return {
     name: 'cv:fonts',
     enforce: 'pre',
-    buildStart() {
-      checkFonts(fontsFile);
-    },
     transform(code, id) {
       if (!id.endsWith('.css') || !IMPORT.test(code)) return null;
       this.addWatchFile(fontsFile);
