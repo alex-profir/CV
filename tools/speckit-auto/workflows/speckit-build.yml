@@ -1,0 +1,148 @@
+schema_version: "1.0"
+workflow:
+  id: "speckit-build"
+  name: "Plan and build an approved spec"
+  version: "1.0.0"
+  author: "Alex Profir"
+  description: "Owner gates, then plan, tasks, analyze and an implement/converge loop, one fresh session per context budget"
+
+requires:
+  speckit_version: ">=1.2.2"
+  integrations:
+    any: ["claude"]
+
+inputs:
+  feature:
+    type: string
+    required: true
+    prompt: "Feature directory, e.g. specs/005-example"
+  plan_verdict:
+    type: string
+    default: "approve"
+    prompt: "Leave empty to pause for review after plan and tasks"
+  from:
+    type: string
+    default: "plan"
+    enum: ["plan", "implement"]
+    prompt: "Start from plan, or from implement with the existing plan and tasks"
+  guidance:
+    type: string
+    default: ""
+    prompt: "Optional guidance passed to plan and implement"
+
+steps:
+  # Constitution I and II: the spec is Approved and, for UI, the design is signed off.
+  - id: gates
+    type: shell
+    run: "tools/speckit-auto/gates.sh '{{ inputs.feature }}'"
+
+  # from=implement skips planning, for a plan and tasks the owner already
+  # reviewed or edited. A handoff left by the previous run is kept then.
+  - id: planning
+    type: if
+    condition: "{{ inputs.from == 'plan' }}"
+    then:
+      # A handoff or report left by an earlier run would mislead this one.
+      - id: clear_state
+        type: shell
+        run: "rm -f .specify/handoff.md .specify/analysis.md"
+
+      - id: plan
+        command: speckit.plan
+        integration: claude
+        input:
+          args: "{{ inputs.guidance }}"
+
+      # An agent step that exits cleanly can still have written nothing.
+      - id: expect_plan
+        type: shell
+        run: "tools/speckit-auto/expect.sh plan '{{ inputs.feature }}'"
+
+      - id: tasks
+        command: speckit.tasks
+        integration: claude
+
+      - id: expect_tasks
+        type: shell
+        run: "tools/speckit-auto/expect.sh tasks '{{ inputs.feature }}'"
+
+      # /speckit-analyze is read-only and would ask before fixing anything, so a
+      # free prompt runs it and applies the fixes the run may make on its own.
+      - id: analyze
+        type: prompt
+        integration: claude
+        prompt: >-
+          Run /speckit-analyze for {{ inputs.feature }}. Write the full report to
+          .specify/analysis.md. Then fix every CRITICAL and HIGH finding by editing
+          plan.md and tasks.md only. Never edit spec.md or the constitution: list
+          findings that need either under a "Needs the owner" heading in the report.
+          Do not commit.
+
+      - id: commit_plan
+        type: shell
+        run: "git add -- '{{ inputs.feature }}' && { git diff --cached --quiet || git commit -q -m \"docs: add the plan and tasks ($(basename '{{ inputs.feature }}'))\"; }"
+
+      - id: review_plan
+        type: gate
+        message: "Review plan.md, tasks.md and .specify/analysis.md before the build starts."
+        show_file: ".specify/analysis.md"
+        options: [approve, reject]
+        on_reject: abort
+        verdict_input: plan_verdict
+    else:
+      - id: expect_existing
+        type: shell
+        run: "tools/speckit-auto/expect.sh plan '{{ inputs.feature }}' && tools/speckit-auto/expect.sh tasks '{{ inputs.feature }}'"
+
+  - id: progress_baseline
+    type: shell
+    run: "tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}' --reset"
+    output_format: json
+
+  # One implement session per iteration. context-budget.sh ends a session at
+  # CONTEXT_BUDGET_PCT of the window; the next iteration starts a fresh one.
+  # When every task is ticked, converge checks the code against the spec and
+  # adds tasks for anything missing. The loop ends when nothing is left, when
+  # two sessions in a row tick no task, or after max_iterations.
+  - id: build
+    type: do-while
+    max_iterations: 12
+    condition: "{{ steps.after_implement.output.data.stalled == false and steps.after_converge.output.data.remaining > 0 }}"
+    steps:
+      - id: implement
+        command: speckit.implement
+        integration: claude
+        input:
+          args: >-
+            {{ inputs.guidance }}
+            Unattended run. Read .specify/handoff.md first if it exists, then
+            continue with the unticked tasks in order. Run the relevant tests as
+            you go. Commit after each completed phase with a Conventional Commit
+            message. If a task is blocked, add "BLOCKED: <reason>" under it in
+            tasks.md, leave it unticked and move on. Node 26 is already on PATH;
+            do not load nvm.
+
+      - id: after_implement
+        type: shell
+        run: "tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}'"
+        output_format: json
+
+      - id: maybe_converge
+        type: if
+        condition: "{{ steps.after_implement.output.data.remaining == 0 }}"
+        then:
+          - id: converge
+            command: speckit.converge
+            integration: claude
+            input:
+              args: "Unattended run: append any missing work to tasks.md; do not ask questions."
+
+      - id: after_converge
+        type: shell
+        run: "tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}' --peek"
+        output_format: json
+
+  - id: checks
+    type: shell
+    timeout: 1800
+    run: "tools/speckit-auto/checks.sh"

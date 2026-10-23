@@ -1,0 +1,16 @@
+{
+  "model": "opus",
+  "effortLevel": "high",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/tools/speckit-auto/context-budget.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
