@@ -38,6 +38,7 @@ describe('004-cv-page-FR-009: dates keep the precision the CV document gives', (
   test('a string that is not a date in JSON Resume form is refused', () => {
     expect(() => dateValue('July 2018')).toThrow();
     expect(() => dateValue('2018-13')).toThrow();
+    expect(() => dateValue('2024-02-31')).toThrow();
   });
 });
 

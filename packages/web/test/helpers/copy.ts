@@ -16,8 +16,9 @@ export { REPO_ROOT };
 // The root files the workspace is made of.
 const ROOT_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.nvmrc'];
 
-// Outside `packages/`, the build reads only 001's shared sort.
-const TOOL_DIRS = ['tools/traceability/src'];
+// Outside `packages/`, the build reads only 001's shared sort and 002's
+// date form.
+const TOOL_PATHS = ['tools/traceability/src', 'tools/content-check/src/dates.ts'];
 
 // What a copy leaves out: dependencies (linked instead) and build output.
 const SKIPPED_DIRS = new Set(['node_modules', 'dist']);
@@ -33,7 +34,7 @@ export function repoCopy(): string {
   const filter = (source: string) => !SKIPPED_DIRS.has(path.basename(source));
   fs.cpSync(path.join(REPO_ROOT, 'packages'), path.join(root, 'packages'), { recursive: true, filter });
   for (const file of ROOT_FILES) fs.copyFileSync(path.join(REPO_ROOT, file), path.join(root, file));
-  for (const dir of TOOL_DIRS) fs.cpSync(path.join(REPO_ROOT, dir), path.join(root, dir), { recursive: true });
+  for (const tool of TOOL_PATHS) fs.cpSync(path.join(REPO_ROOT, tool), path.join(root, tool), { recursive: true });
 
   const modules = path.join(root, 'node_modules');
   fs.mkdirSync(path.join(modules, '@cv'), { recursive: true });

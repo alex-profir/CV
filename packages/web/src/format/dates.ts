@@ -1,6 +1,8 @@
 // CV dates as the page shows and speaks them (FR-009 to FR-011, research R7,
 // data-model.md Date value and Date range). Month names and words come from
-// site text, never Intl, so output can't change with the ICU version.
+// site text, never Intl, so output can't change with the ICU version. Dates
+// are read by the content check's own rules, so the two can't disagree.
+import { parseDate } from '../../../../tools/content-check/src/dates.ts';
 import { siteText } from '../site-text.ts';
 
 export type Precision = 'year' | 'month' | 'day';
@@ -15,20 +17,15 @@ export type DateRange = {
   spoken: string;
 };
 
-const DATE = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
-
 const RANK: Record<Precision, number> = { year: 0, month: 1, day: 2 };
 
 // One CV date string, `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, at its own
 // precision. Nothing is added: a year stays a year.
 export function dateValue(raw: string): DateValue {
-  const match = DATE.exec(raw);
-  const month = match?.[2] === undefined ? undefined : Number(match[2]);
-  const day = match?.[3] === undefined ? undefined : Number(match[3]);
-  if (match === null || (month !== undefined && (month < 1 || month > 12)) || (day !== undefined && (day < 1 || day > 31))) {
-    throw new Error(`${JSON.stringify(raw)} is not a date of the form YYYY, YYYY-MM or YYYY-MM-DD`);
-  }
-  const year = match[1]!;
+  const parsed = parseDate(raw);
+  if (typeof parsed === 'string') throw new Error(`${JSON.stringify(raw)} is not a real date of the form YYYY, YYYY-MM or YYYY-MM-DD`);
+  const [yearPart, month, day] = parsed.parts as [number, number?, number?];
+  const year = String(yearPart);
   if (month === undefined) return { raw, precision: 'year', visible: year, spoken: year };
   const short = `${siteText.monthsShort[month - 1]} ${year}`;
   const long = `${siteText.monthsLong[month - 1]} ${year}`;
