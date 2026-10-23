@@ -4,47 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { resume } from '@cv/content';
-import type { Resume } from '@cv/content';
-import { dateRange } from '../src/format/dates.ts';
-import { locationLine } from '../src/format/location.ts';
-import { siteText } from '../src/site-text.ts';
+import { expectedFields } from '../../../tools/site-check/src/expected.ts';
+import { fieldProblems, mainSequence, unstyledDetail } from '../../../tools/site-check/src/parts/no-script.ts';
 import { openHtml, openPage } from './helpers/browser.ts';
 import { builtSite, serveBuilt } from './helpers/site.ts';
 
 vi.setConfig({ testTimeout: 60_000 });
-
-// Every shown field of a CV document as the page shows it, in page order.
-// The no-script part's expectedFields (T068) replaces this list once it
-// exists.
-function shownFields(cv: Resume): string[] {
-  const basics = cv.basics ?? {};
-  const range = (entry: { startDate?: string; endDate?: string }) => dateRange(entry.startDate, entry.endDate)?.visible;
-  const fields: (string | undefined)[] = [
-    basics.label,
-    basics.name,
-    basics.summary,
-    basics.location ? (locationLine(basics.location) ?? undefined) : undefined,
-    basics.email,
-    basics.url?.replace(/^https?:\/\//, ''),
-    ...(basics.profiles ?? []).map((profile) => profile.username ?? profile.network),
-    ...(cv.work ?? []).flatMap((work) => [range(work), work.position, work.name, work.location, work.summary, work.description, ...(work.highlights ?? [])]),
-    ...(cv.projects ?? []).flatMap((project) => [
-      range(project),
-      project.name,
-      project.entity,
-      project.type,
-      ...(project.roles ?? []),
-      project.description,
-      ...(project.highlights ?? []),
-      ...(project.keywords ?? []),
-    ]),
-    ...(cv.skills ?? []).flatMap((skill) => [skill.name, skill.level, ...(skill.keywords ?? [])]),
-    ...(cv.education ?? []).flatMap((entry) => [range(entry), [entry.studyType, entry.area].filter(Boolean).join(siteText.listSeparator), entry.institution, entry.score, ...(entry.courses ?? [])]),
-    ...(cv.languages ?? []).flatMap((language) => [language.language, language.fluency]),
-    ...(cv.interests ?? []).flatMap((interest) => [interest.name, ...(interest.keywords ?? [])]),
-  ];
-  return fields.filter((field): field is string => field !== undefined && field !== '');
-}
 
 const builtFiles = () => {
   const { dir, manifest } = builtSite();
@@ -55,18 +20,13 @@ describe('004-cv-page-FR-014: the full content of /cv is in the page the server 
   test('cv.html, loaded with scripting off, holds every shown field of the real CV in order', async () => {
     const { url } = await serveBuilt();
     const page = await openPage(`${url}/cv`, { width: 1440, javaScriptEnabled: false });
-    const text = (await page.locator('body').textContent())!.replace(/\s+/g, ' ');
-    let from = 0;
-    const fields = shownFields(resume);
+    // The fields come from the CV document, as the site check's no-script
+    // part reads them, and are found in the same way.
+    const fields = expectedFields(resume);
     expect(fields.length).toBeGreaterThan(100);
-    for (const field of fields) {
-      const at = text.indexOf(field.replace(/\s+/g, ' '), from);
-      expect(at, `"${field}" is missing or out of order`).toBeGreaterThanOrEqual(0);
-      from = at;
-    }
+    expect(fieldProblems(await mainSequence(page), fields)).toEqual([]);
     // The style sheet applied with no script running.
-    const background = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(background).not.toBe('rgba(0, 0, 0, 0)');
+    expect(await unstyledDetail(page)).toBeNull();
   });
 });
 
