@@ -700,6 +700,10 @@ not here (see "Not in this feature").
   - **SC-004, quickstart 6**: VoiceOver on macOS with Safari, and VoiceOver on iOS or TalkBack on Android: the heading list, moving by heading, dates read as words, and the GitHub link announced with network and username.
   - **SC-005, quickstart 7**: print to PDF on A4 and US Letter, in Chrome and in Firefox or Safari, with headers and footers on and background graphics off.
   - **Off-scale values**: the places data-model.md's Token roles lists as snapped to the scale or derived with `calc()` (the phone timeline indent, chip padding, the dot's offset), checked against the exports.
+
+  **Deferred on 2026-10-23** by the owner to a later, final testing phase that covers several
+  specs together. Until then FR-042's visual comparison, SC-004 and SC-005 rest on their automated
+  tests (T029, T081) and the site check, and this task stays open.
 - [ ] T106 Commit the remaining work with Conventional Commits, e.g. `feat(web): …`, `feat(site-check): …`, `test(web): …`, `ci: …`, `chore(tokens): …`. Push `004-cv-page` and open one pull request to `main` (Constitution XI).
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description:
