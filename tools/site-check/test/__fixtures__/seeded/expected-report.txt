@@ -1,0 +1,73 @@
+content - - unsupported-field basics.phone: /cv doesn't show this field
+content - - unsupported-section certificates: the CV document has 2 certificates entries, which /cv doesn't show yet
+accessibility /cv 1440px axe:color-contrast .summary: Element has insufficient color contrast of 2.16 (foreground color: #a8a8a0, background color: #f4f4ef, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1
+accessibility /cv 320px axe:color-contrast .summary: Element has insufficient color contrast of 2.16 (foreground color: #a8a8a0, background color: #f4f4ef, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1
+accessibility /cv 375px axe:color-contrast .summary: Element has insufficient color contrast of 2.16 (foreground color: #a8a8a0, background color: #f4f4ef, font size: 12.0pt (16px), font weight: normal). Expected contrast ratio of 4.5:1
+accessibility /missing-page 1440px axe:link-name footer > a: Links must have discernible text
+accessibility /missing-page 320px axe:link-name footer > a: Links must have discernible text
+accessibility /missing-page 375px axe:link-name footer > a: Links must have discernible text
+lighthouse /cv desktop low-score agentic-browsing: <n> (runs <n>, <n>, <n>); needs 90
+lighthouse /cv desktop low-score performance: <n> (runs <n>, <n>, <n>); needs 90
+lighthouse /cv mobile low-score agentic-browsing: <n> (runs <n>, <n>, <n>); needs 90
+lighthouse /cv mobile low-score performance: <n> (runs <n>, <n>, <n>); needs 90
+no-script /cv 1440px missing-field projects[0].name: "Guided Tours System" is not in the page with scripting off
+no-script /cv 1440px out-of-order education[0].institution: appears before skills[0].keywords[0]
+no-script /cv 320px missing-field projects[0].name: "Guided Tours System" is not in the page with scripting off
+no-script /cv 320px out-of-order education[0].institution: appears before skills[0].keywords[0]
+offline / 375px no-redirect /: did not lead to /cv with the network off (got a browser error page)
+offline /missing-page 375px not-available /missing-page: did not open with the network off (got a browser error page)
+keyboard /cv 1440px covered a[href="https://github.com/ada-example/site"]: covered by div.cover when focused
+keyboard /cv 1440px no-focus-indicator a[href="mailto:ada@example.com"] "ada@example.com": no visible change when focused
+keyboard /cv 1440px out-of-order a[href="https://github.com/ada-example"]: focus reached it 1st, its reading position is 2nd
+keyboard /cv 1440px out-of-order a[href="mailto:ada@example.com"]: focus reached it 2nd, its reading position is 1st
+keyboard /cv 375px covered a[href="https://github.com/ada-example/site"]: covered by div.cover when focused
+keyboard /cv 375px no-focus-indicator a[href="mailto:ada@example.com"] "ada@example.com": no visible change when focused
+keyboard /cv 375px out-of-order a[href="https://github.com/ada-example"]: focus reached it 1st, its reading position is 2nd
+keyboard /cv 375px out-of-order a[href="mailto:ada@example.com"]: focus reached it 2nd, its reading position is 1st
+keyboard /missing-page 1440px not-reached a[href="/cv"]: never received focus
+keyboard /missing-page 375px not-reached a[href="/cv"]: never received focus
+other-sites /cv 1440px other-site-request https://www.googletagmanager.com/gtag/js?id=G-X: requested by the page
+other-sites /cv 375px other-site-request https://www.googletagmanager.com/gtag/js?id=G-X: requested by the page
+fonts /missing-page 1440px missing-glyph U+0219 ș: in main (p.hint), drawn in a fallback font
+fonts /missing-page 375px missing-glyph U+0219 ș: in main (p.hint), drawn in a fallback font
+layout /cv 320px horizontal-scroll document: 360px wide in a 320px viewport
+layout /cv 400%-zoom horizontal-scroll document: 360px wide in a 320px viewport
+layout /cv text-spacing clipped p.role: content 30px tall in a 24px box with overflow hidden
+print /cv A4 heading-at-page-end h2 "Skills": last line of page 1
+print /cv A4 missing-address a "GitHub: ada-example": https://github.com/ada-example is not printed
+print /cv A4 site-element-printed footer: "How this page was built" is printed
+print /cv Letter heading-at-page-end h2 "Skills": last line of page 1
+print /cv Letter missing-address a "GitHub: ada-example": https://github.com/ada-example is not printed
+print /cv Letter site-element-printed footer: "How this page was built" is printed
+modes /cv 1440px motion p.date: transition-duration 200ms
+modes /cv 375px motion p.date: transition-duration 200ms
+modes /cv forced-colors invisible-separator hr.rule: no border in forced colors
+modes /cv reduced-motion motion p.date: transition-duration 200ms
+
+Site check: FAILED
+
+  Site:   packages/web/dist/site (version dc26d7bcc0cc6f49)
+  Pages:  /cv (200), /missing-page (404, the not-found page)
+
+  content         fail    fail (2)
+  accessibility   fail    /cv 320px fail (1), /cv 375px fail (1), /cv 1440px fail (1),
+                          /missing-page 320px fail (1), /missing-page 375px fail (1), /missing-page 1440px fail (1)
+  lighthouse      fail    /cv mobile:  performance <n>, accessibility <n>, best-practices <n>, seo <n>, agentic-browsing <n>
+                          /cv desktop: performance <n>, accessibility <n>, best-practices <n>, seo <n>, agentic-browsing <n>
+  no-script       fail    /cv 320px fail (2), /cv 1440px fail (2)
+  offline         fail    /cv pass,
+                          / fail (1),
+                          /missing-page fail (1)
+  keyboard        fail    /cv 375px fail (4), /cv 1440px fail (4),
+                          /missing-page 375px fail (1), /missing-page 1440px fail (1)
+  other-sites     fail    /cv 375px fail (1), /cv 1440px fail (1),
+                          /missing-page 375px pass, /missing-page 1440px pass
+  fonts           fail    /cv 375px pass, /cv 1440px pass,
+                          /missing-page 375px fail (1), /missing-page 1440px fail (1)
+  layout          fail    /cv 320px fail (1), /cv 375px pass, /cv 768px pass, /cv 1024px pass, /cv 1440px pass, /cv 2560px pass, /cv 200%-zoom pass, /cv 400%-zoom fail (1), /cv text-spacing fail (1),
+                          /missing-page 320px pass, /missing-page 375px pass, /missing-page 768px pass, /missing-page 1024px pass, /missing-page 1440px pass, /missing-page 2560px pass, /missing-page 200%-zoom pass, /missing-page 400%-zoom pass, /missing-page text-spacing pass
+  print           fail    /cv A4 fail (3), /cv Letter fail (3)
+  modes           fail    /cv 375px fail (1), /cv 1440px fail (1), /cv forced-colors fail (1), /cv reduced-motion fail (1),
+                          /missing-page 375px pass, /missing-page 1440px pass, /missing-page forced-colors pass, /missing-page reduced-motion pass
+
+  45 problems in 11 parts. 0 of 11 parts passed.

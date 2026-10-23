@@ -148,15 +148,56 @@ describe('004-cv-page-FR-058: the check exits 2 with one stderr line when it can
   }, 120_000);
 });
 
-describe('004-cv-page-FR-058: stdout holds only the report', () => {
-  test.skipIf(process.env.CI)(
-    'npm run --silent site-check on the real repository prints nothing before the report',
-    () => {
-      const result = spawnSync('npm', ['run', '--silent', 'site-check'], { cwd: REPO_ROOT, encoding: 'utf8' });
-      expect(result.status === 0 || result.status === 1).toBe(true);
-      expect(result.stdout).toMatch(/^(?:Site check: |[a-z-]+ (?:\/\S*|-) \S+ \S+ )/);
-      expect(result.stdout).toMatch(/\n {2}(?:No problems|\d+ problems? in \d+ parts?)\. \d+ of 11 parts passed\.\n$/);
-    },
-    300_000,
-  );
+// The seeded sample, `__fixtures__/seeded/` (research R21): one site with at
+// least one problem in every part. Each seeded case, and the lines it gives:
+// - content: `basics.phone` in resume.json -> `unsupported-field
+//   basics.phone`; two `certificates` entries -> `unsupported-section
+//   certificates`.
+// - accessibility: `.summary` is `#a8a8a0` on `#f4f4ef` on screen ->
+//   `axe:color-contrast .summary` on /cv at 320, 375 and 1440 px; the
+//   not-found page's footer link holds only a hidden SVG -> `axe:link-name
+//   footer > a` on /missing-page at the same widths.
+// - lighthouse: /cv loads `assets/big.js`, a 2 MB classic script in the
+//   head -> `low-score performance` on mobile and desktop; the GitHub link's
+//   `tabindex="1"` fails Lighthouse's `tabindex` audit, so `low-score
+//   agentic-browsing` on both profiles too. Scores are masked as `<n>`.
+// - no-script: `assets/enhance.js` inserts the projects section and moves
+//   the education section after the skills section, so with scripting off
+//   -> `missing-field projects[0].name` and `out-of-order
+//   education[0].institution` at 320 and 1440 px.
+// - offline: sw.js answers `/` with a network error -> `no-redirect /`; it
+//   doesn't store the not-found page -> `not-available /missing-page`.
+// - keyboard: `tabindex="1"` on the GitHub link -> `out-of-order` for it and
+//   for the email link; `.contact a:focus-visible` has a transparent outline
+//   -> `no-focus-indicator` for the email link; `div.cover` lies over the
+//   footer -> `covered` for the footer link (each on /cv at 375 and
+//   1440 px); "Go to the CV" has `tabindex="-1"` -> `not-reached a[href="/cv"]`
+//   on /missing-page at 375 and 1440 px.
+// - other-sites: /cv loads `https://www.googletagmanager.com/gtag/js?id=G-X`
+//   -> `other-site-request` at 375 and 1440 px.
+// - fonts: the not-found page's hint holds `ș` (U+0219), outside every
+//   served subset -> `missing-glyph U+0219 ș` on /missing-page at 375 and
+//   1440 px. The worker doesn't store that page, so the offline part never
+//   draws it, and no line names a fallback font, which differs by system.
+// - layout: `div.wide` is 340 px wide -> `horizontal-scroll document` at
+//   320px and 400%-zoom; the role line is 24 px tall with `overflow: hidden`
+//   -> `clipped p.role` with text spacing (30 px lines).
+// - print: `#section-skills` breaks the page after it -> `heading-at-page-end
+//   h2 "Skills"`; the GitHub link's address isn't printed -> `missing-address`;
+//   the footer is printed -> `site-element-printed footer` (each on A4 and
+//   Letter).
+// - modes: `hr.rule` is drawn with a background and no border ->
+//   `invisible-separator hr.rule` in forced colors; `.date` has a 200 ms
+//   transition -> `motion p.date` at 375 px, 1440 px and with reduced motion.
+// The offline part's `missing-font` isn't seeded: its detail names the
+// system's fallback font, which differs between macOS and Linux.
+describe('seeded sample (SC-009)', () => {
+  test('the check on seeded/ exits 1 and its report, scores masked, is expected-report.txt byte for byte', () => {
+    const root = fixture('seeded');
+    const expected = fs.readFileSync(path.join(root, 'expected-report.txt'), 'utf8');
+    const result = runCli(root);
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(1);
+    expect(maskScores(result.stdout)).toBe(expected);
+  }, 300_000);
 });

@@ -10,7 +10,7 @@ says otherwise, and each manifest's files and version are computed by `siteManif
 `minimal/` passes every part. Every other fixture is `minimal/` with one change, and seeds the
 problem its name says. Font files are copied, unchanged, from the `latin` subset files of
 `packages/web/src/fonts/` into the fixtures whose cases need fonts: `minimal/`,
-`fonts-not-stored/`, `root-not-offline/` and `missing-glyph/`. Their `@font-face` rules give each
+`fonts-not-stored/`, `root-not-offline/`, `missing-glyph/` and `seeded/`. Their `@font-face` rules give each
 file the `latin` subset's `unicode-range` from `fonts.json`, as the real build does. The others
 declare no `@font-face`. Each family's license is copied with the files, into
 `font-licenses/<family>/OFL.txt`.
@@ -37,6 +37,14 @@ assets with `cache.addAll`, and the two pages by their routes (`/cv`, and `/miss
 | `certificates/` | `resume.json` has 2 `certificates` entries, `basics.phone` and `work[0].contact` | `content` |
 | `empty-unsupported/` | `resume.json` holds only `$schema`, `meta` and `"awards": []` | `content` |
 | `second-page/` | The manifest lists a second page, `/about` (`about.html`), beside `/cv` | every page part, `lighthouse` |
+| `seeded/` | The seeded sample: at least one problem in every part, listed in the comment above its test in `cli.test.ts`. Its worker doesn't store the not-found page and answers `/` offline with a network error | all |
 
-The Lighthouse case of a page with a 2 MB blocking script isn't committed: the test makes it with
-`siteProject` from `test/helpers/sites.ts`.
+The Lighthouse part's own test makes its page with a 2 MB blocking script with `siteProject` from
+`test/helpers/sites.ts`. The seeded sample commits one, `seeded/packages/web/dist/site/assets/big.js`,
+written the same way.
+
+`seeded/expected-report.txt` is the check's report on the sample, with every Lighthouse score
+replaced by `<n>` (contracts/cli.md Determinism). To make it again after changing the sample,
+recompute the manifest with `siteManifest`, run `node ../../../src/main.js > expected-report.txt`
+from `seeded/`, then replace the scores with `maskScores` from `test/helpers/sites.ts`. Run it twice
+and check that the file doesn't change.
