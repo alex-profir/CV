@@ -720,8 +720,24 @@ not here (see "Not in this feature").
   pass, and the `site` job's report equals a local `npm run site-check` on the same commit byte
   for byte, including the site version `4b3e1a0a2795fe7f` and the Lighthouse scores. The seeded
   sample's report matched on Linux apart from the Lighthouse lines of the failed run.
-- [ ] T107 Owner action, needs admin rights and the open PR from T106: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart 12). Confirm the contexts read back as `traceability`, `test`, `content`, `tokens` and `site`, and that a drift diff shows only server-added fields.
-- [ ] T108 Owner action, after T107: demonstrate enforcement (quickstart 12, FR-048). Push a scratch branch from `004-cv-page` that removes the focus outline from links, and open a draft PR. Confirm `site` fails, naming every link in the `keyboard` part, and that merging is blocked with no bypass option. Close the PR unmerged, delete the branch, and record the result here.
+- [X] T107 Owner action, needs admin rights and the open PR from T106: apply the updated ruleset with `gh api -X PUT repos/alex-profir/CV/rulesets/<id> --input .github/rulesets/main.json` (quickstart 12). Confirm the contexts read back as `traceability`, `test`, `content`, `tokens` and `site`, and that a drift diff shows only server-added fields.
+
+  **Done on 2026-10-23**, with the owner's approval: ruleset 25562339 (`main`) applied from
+  `.github/rulesets/main.json`. Before, the only difference from the file was the missing `site`
+  check. Read back, the contexts are `traceability`, `test`, `content`, `tokens` and `site`; the
+  name, target, enforcement, conditions, bypass actors and rules equal the file, and the other
+  fields (`id`, `node_id`, `source`, `source_type`, `created_at`, `updated_at`, `_links`,
+  `current_user_can_bypass: never`) are the server's.
+- [X] T108 Owner action, after T107: demonstrate enforcement (quickstart 12, FR-048). Push a scratch branch from `004-cv-page` that removes the focus outline from links, and open a draft PR. Confirm `site` fails, naming every link in the `keyboard` part, and that merging is blocked with no bypass option. Close the PR unmerged, delete the branch, and record the result here.
+
+  **Done on 2026-10-23**: draft pull request #17, from `scratch/t108-no-focus-outline`, set
+  `a:focus-visible` to `outline: none`. `site` failed: `keyboard` reported
+  `no-focus-indicator` for every link, the GitHub profile, the email and the footer link on `/cv`,
+  and the footer link and "Go to the CV" on `/missing-page`, at 375 and 1440 px; `modes` reported
+  the same links with no focus outline in forced colors. 15 problems in 2 parts, 9 of 11 parts
+  passed. `test` failed too. GitHub reported the merge state as blocked, with no bypass actors
+  and `current_user_can_bypass: never`. The pull request was closed unmerged and the branch
+  deleted.
 
 ---
 
