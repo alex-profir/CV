@@ -516,8 +516,8 @@ address is printed, no text is cut off, and no heading is the last line of a pag
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T080 [P] [US3] Create `packages/web/test/__fixtures__/print-spacer.json` and a helper in `packages/web/test/helpers/site.ts` (research R18): the real CV, rendered with a spacer of a given height before Projects (`serveFixture(resume, siteData, { spacerBefore: 'projects', height })`). The spacer is test-only markup injected by the helper, never in site source.
-- [ ] T081 [US3] Write `packages/web/test/print.test.ts`, covering 004-cv-page-FR-032, 004-cv-page-FR-033, 004-cv-page-FR-034 and 004-cv-page-FR-035, using `pdfText` from the print part (T074):
+- [X] T080 [P] [US3] Create `packages/web/test/__fixtures__/print-spacer.json` and a helper in `packages/web/test/helpers/site.ts` (research R18): the real CV, rendered with a spacer of a given height before Projects (`serveFixture(resume, siteData, { spacerBefore: 'projects', height })`). The spacer is test-only markup injected by the helper, never in site source.
+- [X] T081 [US3] Write `packages/web/test/print.test.ts`, covering 004-cv-page-FR-032, 004-cv-page-FR-033, 004-cv-page-FR-034 and 004-cv-page-FR-035, using `pdfText` from the print part (T074):
   - FR-032: on A4 and Letter, the footer's text is absent and every text item is inside the page box (US3 scenarios 1 and 6); the built CSS has no `@page` rule (scenario 7).
   - FR-033: `https://github.com/alex-profir` appears in the PDF text (scenario 2); the email address appears exactly once (scenario 3); every external link whose text isn't its address is followed by its address.
   - FR-034: with the spacer stepped one line at a time across one page height, no page's last line is a section or entry heading (scenario 4).
@@ -525,8 +525,8 @@ address is printed, no text is cut off, and no heading is the last line of a pag
 
 ### Implementation for User Story 3
 
-- [ ] T082 [US3] Write `packages/web/src/styles/print.css` and import it from `global.css` (research R9, contracts/page.md Print): inside `@media print`, one column; `footer` and `[data-site-element]` not displayed; text and links in `color.text.primary`; `a[href^="http"]::after { content: " (" attr(href) ")"; }` except where the text is the address; `overflow-wrap: anywhere`; `break-after: avoid` on `h2` and `h3`; `break-inside: avoid` on each entry's date, heading and organization; no `@page` rule; no `print-color-adjust`.
-- [ ] T083 [US3] Checkpoint, after T080 to T082: `print.test.ts` passes, and `npm run site-check` shows `print pass /cv A4, /cv Letter`.
+- [X] T082 [US3] Write `packages/web/src/styles/print.css` and import it from `global.css` (research R9, contracts/page.md Print): inside `@media print`, one column; `footer` and `[data-site-element]` not displayed; text and links in `color.text.primary`; `a[href^="http"]::after { content: " (" attr(href) ")"; }` except where the text is the address; `overflow-wrap: anywhere`; `break-after: avoid` on `h2` and `h3`; `break-inside: avoid` on each entry's date, heading and organization; no `@page` rule; no `print-color-adjust`.
+- [X] T083 [US3] Checkpoint, after T080 to T082: `print.test.ts` passes, and `npm run site-check` shows `print pass /cv A4, /cv Letter`.
 
 **Checkpoint**: User Stories 1 to 3 work independently.
 

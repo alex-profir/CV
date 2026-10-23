@@ -5,6 +5,7 @@
 @import "virtual:cv-fonts.css";
 @import "@cv/tokens/tokens.css";
 @import "./cv.css";
+@import "./print.css";
 
 *,
 *::before,
