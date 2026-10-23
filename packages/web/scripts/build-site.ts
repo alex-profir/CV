@@ -4,13 +4,16 @@
 //   2. a Vite SSR build of `src/render.tsx` into a temporary directory;
 //   3. each route rendered to `<out>/site/<file>`, with asset links from
 //      Vite's manifest;
-//   4. `<out>/site-manifest.json`: the routes and every served file.
+//   4. the service worker, `<out>/site/sw.js`, with its precache list,
+//      version and route table;
+//   5. `<out>/site-manifest.json`: the routes and every served file.
 //
 // `--out <dir>` (default `packages/web/dist`) lets tests build into a
 // temporary directory. Any failure prints `site build failed: <message>` to
 // stderr and exits 2. A successful build prints nothing.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import module from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -33,7 +36,15 @@ export const DEFAULT_OUT = path.join(WEB_ROOT, 'dist');
 // keys it.
 const STYLE_ENTRY = 'src/styles/global.css';
 
+// The client build's entry for the service worker's registration script.
+const REGISTER_ENTRY = 'src/client/register-sw.ts';
+
 const SSR_ENTRY = 'src/render.tsx';
+
+// The service worker's source, and where its built copy is served.
+const WORKER_SOURCE = path.join(WEB_ROOT, 'src/sw/service-worker.ts');
+
+const WORKER_FILE = 'sw.js';
 
 // Served content types, by extension. A file of any other kind fails the
 // build, so nothing is served with a guessed type.
@@ -91,8 +102,8 @@ function ssrConfig(ssrDir: string): UserConfig {
 
 // The page's asset links, from Vite's manifest: the style sheet, and the
 // `latin` file of each family to preload (research R5). The manifest lists
-// every font file the style sheet refers to, by its source path. US4 adds
-// the registration script.
+// every font file the style sheet refers to, by its source path. The
+// registration script is the page's only script.
 function pageAssets(manifest: Manifest): PageAssets {
   const entry = manifest[STYLE_ENTRY];
   if (entry === undefined) throw new Error(`Vite's manifest has no entry for ${STYLE_ENTRY}`);
@@ -103,7 +114,9 @@ function pageAssets(manifest: Manifest): PageAssets {
     if (font === undefined) throw new Error(`Vite's manifest has no entry for the font ${source}`);
     return `/${font.file}`;
   });
-  return { css, scripts: [], preloadFonts };
+  const register = manifest[REGISTER_ENTRY];
+  if (register === undefined) throw new Error(`Vite's manifest has no entry for ${REGISTER_ENTRY}`);
+  return { css, scripts: [`/${register.file}`], preloadFonts };
 }
 
 function listFiles(dir: string, base = dir): string[] {
@@ -115,16 +128,54 @@ function listFiles(dir: string, base = dir): string[] {
 
 const sha256 = (data: string | Buffer) => crypto.createHash('sha256').update(data).digest('hex');
 
-export function siteManifest(siteDir: string): SiteManifest {
-  const files = listFiles(siteDir)
+// Every file under `siteDir`, with its hash and content type, sorted by
+// path.
+function servedFiles(siteDir: string): SiteManifest['files'] {
+  return listFiles(siteDir)
     .map((file) => {
       const type = CONTENT_TYPES[path.extname(file)];
       if (type === undefined) throw new Error(`no content type for ${file}`);
       return { path: `/${file}`, hash: sha256(fs.readFileSync(path.join(siteDir, file))), type };
     })
     .sort((a, b) => compare(a.path, b.path));
-  const version = sha256(files.map((file) => `${file.path} ${file.hash}\n`).join('')).slice(0, 16);
-  return { version, routes: ROUTES, files };
+}
+
+const filesDigest = (files: SiteManifest['files']) => sha256(files.map((file) => `${file.path} ${file.hash}\n`).join(''));
+
+export function siteManifest(siteDir: string): SiteManifest {
+  const files = servedFiles(siteDir);
+  return { version: filesDigest(files).slice(0, 16), routes: ROUTES, files };
+}
+
+// Node's type stripping, without the warning it prints because it is still
+// experimental: a successful build prints nothing.
+function stripTypes(source: string): string {
+  const emitWarning = process.emitWarning;
+  process.emitWarning = () => undefined;
+  try {
+    return module.stripTypeScriptTypes(source);
+  } finally {
+    process.emitWarning = emitWarning;
+  }
+}
+
+// Writes `<siteDir>/sw.js` (research R4): the worker's code with its types
+// stripped, after the constants it reads. The precache list is every other
+// served file. The version is a hash over those files and the worker's
+// code, so a change to either gives the worker a new cache. Call it after
+// every other file is written, and before `siteManifest`, which lists
+// `sw.js` too.
+export function writeServiceWorker(siteDir: string): void {
+  const workerPath = `/${WORKER_FILE}`;
+  const files = servedFiles(siteDir).filter((file) => file.path !== workerPath);
+  const code = stripTypes(fs.readFileSync(WORKER_SOURCE, 'utf8'));
+  const version = sha256(`${filesDigest(files)}${code}`).slice(0, 16);
+  const header = [
+    `const PRECACHE = ${JSON.stringify(files.map((file) => file.path))};`,
+    `const VERSION = ${JSON.stringify(version)};`,
+    `const ROUTES = ${JSON.stringify(ROUTES)};`,
+  ].join('\n');
+  fs.writeFileSync(path.join(siteDir, WORKER_FILE), `${header}\n${code}`);
 }
 
 export async function buildSite(out: string): Promise<SiteManifest> {
@@ -154,7 +205,10 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     fs.rmSync(ssrDir, { recursive: true, force: true });
   }
 
-  // 4. The site manifest, outside what's served.
+  // 4. The service worker.
+  writeServiceWorker(siteDir);
+
+  // 5. The site manifest, outside what's served.
   const manifest = siteManifest(siteDir);
   fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;

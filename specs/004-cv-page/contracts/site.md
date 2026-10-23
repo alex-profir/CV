@@ -63,11 +63,17 @@ to `127.0.0.1` only.
 
 | Event | Behavior |
 |-------|----------|
-| install | Opens `cv-<version>`, adds every manifest file except `/sw.js` with `cache: 'reload'`. All or nothing. Then `skipWaiting()` |
+| install | Opens `cv-<version>`, adds every manifest file except `/sw.js` with `cache: 'reload'`: each asset at its path, each page at its route (`cv.html` at `/cv`, since `/cv.html` answers 404), and the not-found page at its own path `/404.html`, which answers it with status 404. Each must answer with that status and no redirect. All or nothing: every file is downloaded before any is stored, and a cache left half written is deleted. Then `skipWaiting()` |
 | activate | Deletes every cache whose name starts with `cv-` except its own. Then `clients.claim()` |
 | fetch, navigation | Network first, 3 second limit. On failure or timeout: `/` → `Response.redirect('/cv', 307)`; `/cv`, `/cv/` → cached `cv.html`, 200; anything else → cached `404.html` with status 404. Query strings ignored |
 | fetch, same-origin `GET` | Own cache first, then network |
 | fetch, anything else | Not handled |
+
+The build writes `sw.js` as the worker's code with its types stripped, after three constants:
+`PRECACHE` (every manifest file except `/sw.js`, by path), `ROUTES` (the route table) and
+`VERSION`. `VERSION`, the `<version>` in the cache name, is a hash over every other file's path
+and hash and the worker's code, first 16 hex characters. It can't be the site manifest's
+`version`, which covers `sw.js` itself, so the two differ.
 
 **Guarantees** (spec FR-038 to FR-041):
 

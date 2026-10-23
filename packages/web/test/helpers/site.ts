@@ -12,7 +12,7 @@ import { siteData as realSiteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { startServer } from '../../../../tools/site-check/src/server.ts';
 import type { RunningServer } from '../../../../tools/site-check/src/server.ts';
-import { siteManifest } from '../../scripts/build-site.ts';
+import { siteManifest, writeServiceWorker } from '../../scripts/build-site.ts';
 import { renderCv } from '../../src/render.tsx';
 import type { PageAssets } from '../../src/render.tsx';
 import type { SiteManifest } from '../../src/routes.ts';
@@ -109,7 +109,8 @@ export function withSpacer(html: string, { spacerBefore, height }: SpacerOptions
 
 // A copy of the built site whose `cv.html` is rendered from a fixture CV,
 // optionally with a spacer before a section, in a temporary directory. The
-// manifest is recomputed for the copy. `remove` deletes it.
+// service worker and the manifest are written again for the copy, so its
+// precache list and version match its files. `remove` deletes it.
 export function fixtureSite(resume: Resume, siteData: SiteData = realSiteData, spacer?: SpacerOptions): BuiltSite & { remove: () => void } {
   const site = builtSite();
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-fixture-'));
@@ -117,6 +118,7 @@ export function fixtureSite(resume: Resume, siteData: SiteData = realSiteData, s
   fs.cpSync(site.dir, dir, { recursive: true });
   const html = renderFixtureHtml(resume, siteData);
   for (const page of site.manifest.routes.pages) fs.writeFileSync(path.join(dir, page.file), spacer === undefined ? html : withSpacer(html, spacer));
+  writeServiceWorker(dir);
   const manifest = siteManifest(dir);
   return { dir, manifest, remove: () => fs.rmSync(copy, { recursive: true, force: true }) };
 }

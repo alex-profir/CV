@@ -543,7 +543,7 @@ shown field is present, styled, and drawn in the design's fonts (spec US4, quick
 
 ### Tests for User Story 4 (REQUIRED) ⚠️
 
-- [ ] T084 [US4] Write `packages/web/test/offline.test.ts`, covering 004-cv-page-FR-038, 004-cv-page-FR-039, 004-cv-page-FR-040 and 004-cv-page-FR-041 (research R4, R21). Builds of version B (one text changed) and C (a font answering 500) are temporary copies made by the test, served by one server whose files are switched between visits.
+- [X] T084 [US4] Write `packages/web/test/offline.test.ts`, covering 004-cv-page-FR-038, 004-cv-page-FR-039, 004-cv-page-FR-040 and 004-cv-page-FR-041 (research R4, R21). Builds of version B (one text changed) and C (a font answering 500) are temporary copies made by the test, served by one server whose files are switched between visits.
   - FR-038: after one visit to `/cv`, and separately to `/` only, with the server stopped and the context offline, `/cv`, `/cv/`, `/cv?utm_source=x`, `/` and `/nope` show their full pages, styled and in served fonts (US4 scenarios 1, 2 and 7).
   - FR-039: A stored, B published: the next online visit shows B, and offline afterwards shows B (scenario 3). Then C: offline still shows B whole (scenario 4).
   - FR-040: with a stored copy, a server that drops the connection, and one that doesn't answer for 5 s, both show the stored copy (scenario 5).
@@ -551,10 +551,10 @@ shown field is present, styled, and drawn in the design's fonts (spec US4, quick
 
 ### Implementation for User Story 4
 
-- [ ] T085 [P] [US4] Create `packages/web/src/client/register-sw.ts` (research R4): after `load`, if `'serviceWorker' in navigator`, register `/sw.js` with scope `/`, and catch and ignore any failure. It shows and logs nothing.
-- [ ] T086 [P] [US4] Write `packages/web/src/sw/service-worker.ts` (contracts/site.md Service worker): it reads `PRECACHE`, `VERSION` and `ROUTES`, which the build prepends. Install, activate, navigation and same-origin `GET` handling exactly as the contract's table, with the 3-second network limit and the route table's offline answers. **Verify** that Chromium follows `Response.redirect('/cv', 307)` for a navigation (T084's root case).
-- [ ] T087 [US4] Extend `packages/web/scripts/build-site.ts`, `vite.config.ts` and `Document.tsx`, after T085 and T086: add `register-sw: 'src/client/register-sw.ts'` to the client inputs; pass its hashed path as `assets.scripts`, rendered as `<script type="module" src>`; write `dist/site/sw.js` by stripping the worker's types with `module.stripTypeScriptTypes` and prepending `const PRECACHE = […]`, `const VERSION = "…"` and `const ROUTES = …` (every manifest file except `/sw.js`). `sw.js` is in the manifest. `npm run typecheck` covers the worker through its own project.
-- [ ] T088 [US4] Checkpoint, after T084 to T087: `offline.test.ts` passes, and `npm run site-check` shows `offline pass /cv, /, /missing-page`. quickstart 8 behaves as written.
+- [X] T085 [P] [US4] Create `packages/web/src/client/register-sw.ts` (research R4): after `load`, if `'serviceWorker' in navigator`, register `/sw.js` with scope `/`, and catch and ignore any failure. It shows and logs nothing.
+- [X] T086 [P] [US4] Write `packages/web/src/sw/service-worker.ts` (contracts/site.md Service worker): it reads `PRECACHE`, `VERSION` and `ROUTES`, which the build prepends. Install, activate, navigation and same-origin `GET` handling exactly as the contract's table, with the 3-second network limit and the route table's offline answers. **Verify** that Chromium follows `Response.redirect('/cv', 307)` for a navigation (T084's root case).
+- [X] T087 [US4] Extend `packages/web/scripts/build-site.ts`, `vite.config.ts` and `Document.tsx`, after T085 and T086: add `register-sw: 'src/client/register-sw.ts'` to the client inputs; pass its hashed path as `assets.scripts`, rendered as `<script type="module" src>`; write `dist/site/sw.js` by stripping the worker's types with `module.stripTypeScriptTypes` and prepending `const PRECACHE = […]`, `const VERSION = "…"` and `const ROUTES = …` (every manifest file except `/sw.js`). `sw.js` is in the manifest. `npm run typecheck` covers the worker through its own project.
+- [X] T088 [US4] Checkpoint, after T084 to T087: `offline.test.ts` passes, and `npm run site-check` shows `offline pass /cv, /, /missing-page`. quickstart 8 behaves as written.
 
 **Checkpoint**: User Stories 1 to 4 work independently.
 

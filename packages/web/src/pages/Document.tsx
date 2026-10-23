@@ -1,6 +1,6 @@
 // The HTML document both pages share (contracts/page.md Document). The
-// description and preview tags come with US5, the registration script with
-// US4.
+// description and preview tags come with US5. The only script is the
+// service worker's registration (US4).
 import type { ReactNode } from 'react';
 
 export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[] };
@@ -19,6 +19,9 @@ export function Document({ title, assets, children }: { title: string; assets: P
         ))}
         {assets.css.map((href) => (
           <link key={href} rel="stylesheet" href={href} />
+        ))}
+        {assets.scripts.map((src) => (
+          <script key={src} type="module" src={src} />
         ))}
       </head>
       <body>{children}</body>

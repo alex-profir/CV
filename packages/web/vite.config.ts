@@ -29,7 +29,7 @@ export default defineConfig({
     assetsInlineLimit: 0,
     cssMinify: 'lightningcss',
     rolldownOptions: {
-      input: { cv: 'src/styles/global.css' },
+      input: { cv: 'src/styles/global.css', 'register-sw': 'src/client/register-sw.ts' },
       output: {
         // Font files keep their family directory in the name
         // (contracts/fonts.md): `assets/<family-dir>-<subset>-<hash>.woff2`.
