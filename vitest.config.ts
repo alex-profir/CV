@@ -12,5 +12,8 @@ export default defineConfig({
   test: {
     include: TEST_INCLUDE_GLOBS,
     exclude: TEST_EXCLUDE_GLOBS,
+    // Builds the site once per run into a temporary directory, for the page
+    // tests (004 research R21).
+    globalSetup: ['packages/web/test/helpers/site.ts'],
   },
 });

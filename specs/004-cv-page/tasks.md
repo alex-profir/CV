@@ -203,31 +203,31 @@ until it's done.
   - `self-check.test.ts`: its FR-002 and SC-003 scenarios change `color.base.ink` and `space.4`, which T007 keeps. Change them only if a kept name was dropped.
   - `packages/tokens/README.md`: update any example that names a deleted starter token.
   - `npm test` passes for `packages/tokens/` and `tools/token-check/`, and `npm run token-check` passes.
-- [ ] T009 [P] Create the route table and manifest types in `packages/web/src/routes.ts` (research R3, data-model.md Route table, contracts/site.md Site manifest):
+- [X] T009 [P] Create the route table and manifest types in `packages/web/src/routes.ts` (research R3, data-model.md Route table, contracts/site.md Site manifest):
   - `ROUTES = { pages: [{ path: '/cv', aliases: ['/cv/'], file: 'cv.html' }], redirects: [{ from: '/', to: '/cv', status: 307 }], notFound: { file: '404.html', status: 404 } }`, frozen, with its type `Routes`.
   - `type SiteManifest = { version: string; routes: Routes; files: { path: string; hash: string; type: string }[] }`.
   - `resolveRoute(routes, pathname)`: returns `{ kind: 'page', file }`, `{ kind: 'redirect', to, status }` or `{ kind: 'not-found', file, status }`. Query strings are ignored by the caller. Matching is exact: `/cv.html` and `/cv/x` are not-found.
   - Pure, with no Node or DOM import, so the server, the build, the service worker's generated code and the checks can all use it.
-- [ ] T010 [P] Define the site check's shared types in `tools/site-check/src/report.ts`, with no enums (data-model.md Site check, contracts/cli.md). Rendering comes in T067:
+- [X] T010 [P] Define the site check's shared types in `tools/site-check/src/report.ts`, with no enums (data-model.md Site check, contracts/cli.md). Rendering comes in T067:
   - `PARTS`, in the summary's order: `'content'`, `'accessibility'`, `'lighthouse'`, `'no-script'`, `'offline'`, `'keyboard'`, `'other-sites'`, `'fonts'`, `'layout'`, `'print'`, `'modes'`. `Part` is its element type.
   - `Problem = { part: Part; page: string; variant: string; type: string; subject: string; detail: string }`. `page` is a URL path or `-`. `variant` is `375px`, `mobile`, `400%-zoom`, `text-spacing`, `A4`, `Letter`, `forced-colors`, `reduced-motion` or `-`.
   - `CheckResult = { part: Part; page: string; variant: string; status: 'pass' | 'fail' | 'error'; problems: Problem[]; scores?: Record<string, { median: number; runs: number[] }> }`.
   - `Report = { siteDir: string; version: string; pages: { path: string; status: number }[]; results: CheckResult[]; problems: Problem[]; result: 'pass' | 'fail' }`.
-- [ ] T011 [P] Create the Chromium launcher in `tools/site-check/src/browser.ts` (research R17):
+- [X] T011 [P] Create the Chromium launcher in `tools/site-check/src/browser.ts` (research R17):
   - `ISOLATION_ARGS = ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1', '--proxy-server=127.0.0.1:9']`.
   - `launchChromium()`: `chromium.launch({ args: ISOLATION_ARGS })` from `playwright`. It's the only place a browser is launched for Playwright.
   - `chromiumPath()`: `chromium.executablePath()`, for Lighthouse's `chrome-launcher` (T070), which must pass `ISOLATION_ARGS` too.
   - `hasChromium()`: whether that path exists, for the CLI's exit 2 (T076).
-- [ ] T012 [P] Write `packages/web/test/routes.test.ts`, covering 004-cv-page-FR-017, 004-cv-page-FR-018 and 004-cv-page-FR-019, against the built site served by `startServer` (T013, T015). It fails until T013 and T014.
+- [X] T012 [P] Write `packages/web/test/routes.test.ts`, covering 004-cv-page-FR-017, 004-cv-page-FR-018 and 004-cv-page-FR-019, against the built site served by `startServer` (T013, T015). It fails until T013 and T014.
   - FR-017: `/cv`, `/cv/`, `/cv?x=1` and `/cv#a` answer 200 with the same body. The head has no `<link rel="canonical">` and no `og:url`.
   - FR-018: `/` answers 307 with `Location: /cv`, and `/?x=1` with `Location: /cv?x=1`. Neither has a `Cache-Control` that allows storing. A Playwright page opening `/` ends at `/cv` (Constitution VII).
   - FR-019: `/nope`, `/cv.html` and `/cv/x` answer 404 with the body of `404.html`, which holds an `a[href="/cv"]`.
   - In a group with no FR ID ("HTTP behavior (contracts/site.md)"): `HEAD /cv` answers as `GET` with no body; `POST /cv` answers 405 with `Allow: GET, HEAD`; a listed asset has `Cache-Control: public, max-age=31536000, immutable`; HTML has `Cache-Control: no-cache`; with `Accept-Encoding: br`, HTML comes back with `Content-Encoding: br`.
-- [ ] T013 Create the local server in `tools/site-check/src/server.ts`, after T009 (research R3, contracts/site.md HTTP behavior):
+- [X] T013 Create the local server in `tools/site-check/src/server.ts`, after T009 (research R3, contracts/site.md HTTP behavior):
   - `startServer({ siteDir, manifest, port = 0 })` returns `{ url, close }`. It binds `127.0.0.1` only and serves nothing outside `manifest.files` and the routes. It answers every row of the HTTP behavior table, including `HEAD`, 405 and the cache headers, and compresses text with Brotli or gzip from `node:zlib` when the request accepts it.
   - The not-found page is read from `routes.notFound.file`. Redirects keep the original query string.
   - When run as a script (`import.meta.main`), it serves `packages/web/dist/site/` by `packages/web/dist/site-manifest.json` on `PORT` or `4173`, and prints `Serving packages/web/dist/site at http://127.0.0.1:<port>/`. That's `npm run serve`.
-- [ ] T014 Create the build pipeline, with stub pages, in `packages/web/vite.config.ts`, `packages/web/scripts/build-site.ts`, `packages/web/src/render.tsx`, `packages/web/src/pages/Document.tsx`, `packages/web/src/pages/CvPage.tsx`, `packages/web/src/pages/NotFoundPage.tsx` and `packages/web/src/styles/global.css`, after T005, T007 and T009 (research R2, contracts/site.md Output layout):
+- [X] T014 Create the build pipeline, with stub pages, in `packages/web/vite.config.ts`, `packages/web/scripts/build-site.ts`, `packages/web/src/render.tsx`, `packages/web/src/pages/Document.tsx`, `packages/web/src/pages/CvPage.tsx`, `packages/web/src/pages/NotFoundPage.tsx` and `packages/web/src/styles/global.css`, after T005, T007 and T009 (research R2, contracts/site.md Output layout):
   - `vite.config.ts`:
     - `css.transformer: 'lightningcss'` with `lightningcss.drafts.customMedia: true`, and `build.cssMinify: 'lightningcss'`;
     - `build.manifest: true`, `build.assetsInlineLimit: 0`, output under `dist/site/assets/`;
@@ -245,7 +245,7 @@ until it's done.
     4. write `dist/site-manifest.json`, with `version` the first 16 hex characters of a SHA-256 over every file's path and hash, and `files` sorted with `compare`.
 
     It takes an optional `--out <dir>` (default `packages/web/dist`) so tests build into a temporary directory. On any failure it prints `site build failed: <message>` to stderr and exits **2**, so `npm run site-check` exits 2 when the build fails (contracts/cli.md Exit codes). Two builds of the same files give the same manifest byte for byte.
-- [ ] T015 Create the page test helpers in `packages/web/test/helpers/site.ts` and `packages/web/test/helpers/browser.ts`, register the global setup in `vitest.config.ts`, after T011, T013 and T014 (research R21, plan Dependencies "Test helpers"):
+- [X] T015 Create the page test helpers in `packages/web/test/helpers/site.ts` and `packages/web/test/helpers/browser.ts`, register the global setup in `vitest.config.ts`, after T011, T013 and T014 (research R21, plan Dependencies "Test helpers"):
   - `site.ts`:
     - default-exports a Vitest `globalSetup` `setup({ provide })` that runs `build-site.ts --out <temp dir>` once per run and provides `siteDir`. It removes the directory in `teardown`;
     - `builtSite()`: `{ dir, manifest }` from `inject('siteDir')`;
@@ -254,7 +254,7 @@ until it's done.
     - `renderFixtureHtml(resume, siteData?)`: the HTML string, without serving.
   - `browser.ts`: `openPage(url, { width, height = 900, deviceScaleFactor, javaScriptEnabled, forcedColors, reducedMotion, colorScheme, serviceWorkers, media })` on one `launchChromium()` browser per test file, closed after it.
   - `vitest.config.ts`: add `globalSetup: ['packages/web/test/helpers/site.ts']`. Browser test files set a 60 s timeout.
-- [ ] T016 Checkpoint, after T005 to T015:
+- [X] T016 Checkpoint, after T005 to T015:
   - `npm run build` writes `packages/web/dist/site/{cv.html,404.html,assets/…}` and `dist/site-manifest.json`, and `npm run serve` shows the stub page;
   - `routes.test.ts` passes;
   - `npm run typecheck`, `npm run content-check` and `npm run token-check` pass;
