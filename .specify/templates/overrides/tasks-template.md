@@ -65,7 +65,7 @@ description: "Task list template for feature implementation"
 design artifacts. No task that creates or changes UI may start until it is done. Omit it only
 when spec.md says "No UI".
 
-- [ ] T004 Confirm design gate: specs/[###-feature-name]/design/ has wireframe.md, Penpot PNG exports, the Penpot link and a signed review.md
+- [ ] T004 Confirm design gate: specs/[###-feature-name]/design/ has wireframe.md, Penpot PNG exports, the Penpot link and a signed review.md (or, under the constitution's interim provision, an interim local mockup with its PNG exports and a signed review.md)
 
 Examples of other foundational tasks (adjust based on your project):
 

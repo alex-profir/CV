@@ -54,9 +54,9 @@
 | # | Principle | Check | Status | Evidence |
 |---|-----------|-------|--------|----------|
 | I | Spec First | spec.md `Status: Approved`; this plan holds the "how", the spec holds none | [ ] | |
-| II | Design Gate | design/ has wireframe, PNGs, Penpot link, signed review.md; or spec says "No UI" | [ ] | |
+| II | Design Gate | design/ has wireframe, PNGs, Penpot link, signed review.md; or an interim local mockup with PNGs and signed review.md; or spec says "No UI" | [ ] | |
 | III | Traceable Requirements | Every FR has a planned test and, if UI, a `data-req` target (see Requirement Traceability) | [ ] | |
-| IV | One Source of Truth | CV data read only from `packages/content`; styles use tokens only, from Penpot or the motion token source | [ ] | |
+| IV | One Source of Truth | CV data read only from `packages/content`; styles use tokens only, from Penpot (or a hand-written export, under the interim provision) or the motion token source | [ ] | |
 | V | Shared Core, Per-Shell Scope | Apps declare shells; shared logic in `os-core`; matches spec Shell Scope | [ ] | |
 | VI | Offline by Default | Offline Approach delivers everything the spec lists as offline | [ ] | |
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | [ ] | |
@@ -97,7 +97,8 @@ specs/[###-feature]/
 ├── spec.md              # Feature spec (/speckit-specify output)
 ├── design/              # Design gate artifacts (UI features only)
 │   ├── wireframe.md     # ASCII wireframes
-│   ├── *.png            # Penpot mockup exports
+│   ├── mockup/          # Interim local mockup (HTML and CSS), only under the interim provision
+│   ├── *.png            # Penpot mockup exports, or the interim local mockup's
 │   └── review.md        # Owner sign-off, Penpot link and mockup version
 ├── checklists/          # Quality checklists (/speckit-specify, /speckit-checklist)
 ├── plan.md              # This file (/speckit-plan command output)
