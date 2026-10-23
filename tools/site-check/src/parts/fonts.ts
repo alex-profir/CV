@@ -120,3 +120,42 @@ export async function fontProblems(page: Page, families: readonly string[], page
   }
   return problems;
 }
+
+export type UnservedText = { selector: string; family: string; drawnIn: string };
+
+// The elements whose text was drawn, at least in part, by a font that isn't
+// a served face of one of `families`: the family the element asks for first,
+// and the font that drew it instead. For the offline part, which names the
+// family that didn't load (FR-053).
+export async function unservedFonts(page: Page, families: readonly string[]): Promise<UnservedText[]> {
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const elements = await page.evaluate((probe) => {
+    const marked: { selector: string; family: string }[] = [];
+    for (const element of document.body.querySelectorAll('*')) {
+      const ownText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== '');
+      if (!ownText || element.getClientRects().length === 0) continue;
+      const classes = typeof element.className === 'string' && element.className.trim() !== '' ? `.${element.className.trim().split(/\s+/).join('.')}` : '';
+      const family = (getComputedStyle(element).fontFamily.split(',')[0] ?? '').trim().replace(/^["']|["']$/g, '');
+      element.setAttribute(probe, String(marked.length));
+      marked.push({ selector: `${element.tagName.toLowerCase()}${classes}`, family });
+    }
+    return marked;
+  }, PROBE);
+  const cdp = await page.context().newCDPSession(page);
+  const found: UnservedText[] = [];
+  try {
+    await cdp.send('DOM.enable');
+    await cdp.send('CSS.enable');
+    const ids = await nodeIds(cdp, `[${PROBE}]`);
+    for (const [index, nodeId] of ids.entries()) {
+      const other = (await fontsFor(cdp, nodeId)).find((font) => !servedBy(font, families));
+      if (other !== undefined) found.push({ ...elements[index]!, drawnIn: other.familyName });
+    }
+  } finally {
+    await cdp.detach();
+    await page.evaluate((probe) => {
+      for (const element of document.querySelectorAll(`[${probe}]`)) element.removeAttribute(probe);
+    }, PROBE);
+  }
+  return found;
+}
