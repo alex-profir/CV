@@ -633,12 +633,68 @@ not here (see "Not in this feature").
   - **IV**: `npm run content-check` and `npm run token-check` pass with no exception for the site; `site-text.ts` holds no CV fact; no file under `packages/web/src` names a font family or a literal design value.
   - **VII**: `/` is a 307 to `/cv`; `/cv` reads in full with scripting off; offline support adds no prompt, banner or install offer (no web app manifest).
   - **IX**: no font is an Apple or system font, and the arrows are the site's own SVG paths.
-- [ ] T103 Run the full verification with the root `package.json` scripts, after T079 to T102:
+
+  **Audited on 2026-10-23**: compliant, with one fix. X: nineteen root
+  `devDependencies` (the eight new ones pinned exactly) and no `dependencies`, `react` and
+  `react-dom` only in `packages/web`, no
+  agent skill added, and single copies of `vite` and `lightningcss`. Three page-test helpers,
+  `ax.ts`, `fixtures.ts` and `copy.ts`, weren't in plan.md's Dependencies table; its test-helper
+  row now names them with their reason. `chrome-launcher` is imported but comes with
+  `lighthouse`, as the table says. IV: both checks pass with their code unchanged from `main`
+  (no exception and no skip marker); `site-text.ts` holds no CV fact; `packages/web/src` names no
+  family (only `fonts.json` does, by design) and has no literal value under 003's rules (`100vh`
+  is not one of its units). VII: `/` answers 307 to `/cv`, the no-script part passes, and there's
+  no web app manifest, install offer or prompt. IX: the families are Space Grotesk, Schibsted
+  Grotesk and JetBrains Mono (OFL), with generic fallbacks only; the arrows are `Arrow.tsx`'s SVG
+  paths.
+- [X] T103 Run the full verification with the root `package.json` scripts, after T079 to T102:
   - `npm run typecheck` passes, including the service worker project;
   - `npm test` passes, now including 001's self-check;
   - `npm run content-check`, `npm run token-check` and `npm run site-check` exit 0, the last with `Site check: PASSED` and every Lighthouse category at 90 or more on both profiles;
   - `npm run traceability` exits 0, and its last line is exactly `PASS: all 181 active requirements in 4 approved specs are covered.` That's 29 from 001, 36 from 002, 58 from 003 and 58 from 004 (Constitution III, SC-010).
-- [ ] T104 Run quickstart.md scenarios 1 to 5 and 8 to 10, and record any deviation here. Write scratch output to the scratchpad, not `/tmp`. Scenario 9 edits files: revert each change. Scenario 3 needs the network off: cut it for the process tree with `sandbox-exec -p '(version 1)(allow default)(deny network*)'`, as 001 to 003 did, or have the owner turn it off. **Skip scenario 11**: it's the interim provision's follow-up. Scenario 12 is T106 to T108.
+- [X] T104 Run quickstart.md scenarios 1 to 5 and 8 to 10, and record any deviation here. Write scratch output to the scratchpad, not `/tmp`. Scenario 9 edits files: revert each change. Scenario 3 needs the network off: cut it for the process tree with `sandbox-exec -p '(version 1)(allow default)(deny network*)'`, as 001 to 003 did, or have the owner turn it off. **Skip scenario 11**: it's the interim provision's follow-up. Scenario 12 is T106 to T108.
+
+  **Run on 2026-10-23** (with T103's results: `npm test` 774 of 774, `site-check` PASSED in 43 s,
+  Lighthouse medians 99/100/100/100/100 on mobile and 100 on every category on desktop):
+  scenarios 1, 2, 4, 5, 8, 9 and 10 gave their expected results, and scenario 3 did for 10 of 11
+  parts. Deviations:
+  - Scratch output went to `/tmp/cv-phase9/`, outside the repository, as the run was asked to,
+    not the scratchpad.
+  - 1: `/` answered 307 to `/cv` and Chromium ended at `/cv`; `/cv/` and `/cv?utm_source=x` gave
+    the same bytes as `/cv`; `/nope` and `/cv.html` answered 404 with the not-found page and its
+    link to `/cv`. The side-by-side comparison with the four exports is the owner's (T105).
+  - 3: `sandbox-exec -p '(version 1)(allow default)(deny network*)'` also denies the check's own
+    server on 127.0.0.1 (`listen EPERM`, exit 2). The run used a profile that denies every
+    network operation except loopback: `(deny network*)`, then `(allow network-bind (local ip
+    "localhost:*"))`, `(allow network-inbound (local ip "localhost:*"))`, `(allow
+    network-outbound (remote ip "localhost:*"))` and unix sockets. A control `curl` to
+    `https://example.com` and to an IP address failed under it. (An `(allow network* (local ip
+    "localhost:*"))` rule, tried first, let the control through, so it wasn't used.) Under it the
+    check exited 1: the other 10 parts gave scenario 2's results line for line, but `lighthouse`
+    crashed on both profiles with `Connection closed.` The cause is the sandbox, not the network:
+    Chromium's own renderer sandbox can't start inside a `sandbox-exec` profile, so the page's
+    renderer dies (Playwright's headless shell, used by the other parts, is unaffected). A
+    scratch script outside the repository ran the Lighthouse part's three runs per profile on the
+    real build under the same profile, with `--no-sandbox` added for Chromium: every category 99
+    or 100, as in scenario 2. The check's code is unchanged. The owner can repeat scenario 3 with
+    Wi-Fi off to see the whole report.
+  - 4: run as T103: every command passed.
+  - 5 and 8: run in Playwright's Chromium, not by hand. 5: with scripting off at 375 and 1440 px,
+    the h1 and all six section headings were present, the body had the background token and the
+    body font, and the page didn't scroll sideways (screenshots in the scratch directory). 8:
+    after one visit the worker controlled the page; offline, `/cv` showed the CV with its six
+    sections in the three families, `/` ended at `/cv`, and `/nope` showed the not-found page
+    with status 404.
+  - 9: (1) `work[0].position` changed to "Senior Software Developer": the built page showed it,
+    and `git status` listed only `resume.json`. (2) `light.color.text.primary` set to `#20206a`
+    in the export, kept in Penpot's form: after `npm run token-output` and `npm run build` the
+    built style sheet had `--token-color-text-primary:#20206a`, and only the export and the two
+    generated files changed. (3) `"certificates": [{ "name": "X" }]`: `site-check` exited 1 with
+    `content - - unsupported-section certificates: the CV document has 1 certificates entry,
+    which /cv doesn't show yet`, and the other 10 parts passed. Each change was reverted with
+    `git checkout`.
+  - 10: the title is `Alex Profir — Software Engineer`, the description and `og:description` are
+    the summary, and there's no canonical link, `og:url` or image.
 - [ ] T105 Owner action, by hand, after T103. Record each result here and in the PR:
   - **FR-042, quickstart 1**: `/cv` and the not-found page side by side with the four revision 10 exports at 1440 and 375 px. List any difference, and either fix it or record the owner's acceptance.
   - **SC-004, quickstart 6**: VoiceOver on macOS with Safari, and VoiceOver on iOS or TalkBack on Android: the heading list, moving by heading, dates read as words, and the GitHub link announced with network and username.
