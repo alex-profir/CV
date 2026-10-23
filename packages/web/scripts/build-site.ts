@@ -8,6 +8,9 @@
 //      version and route table;
 //   5. `<out>/site-manifest.json`: the routes and every served file.
 //
+// Before step 1, the fonts are checked against the font tokens
+// (contracts/fonts.md).
+//
 // `--out <dir>` (default `packages/web/dist`) lets tests build into a
 // temporary directory. Any failure prints `site build failed: <message>` to
 // stderr and exits 2. A successful build prints nothing.
@@ -24,7 +27,7 @@ import { resume, siteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
-import { preloadSources, readFonts } from './fonts-plugin.ts';
+import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
 
@@ -182,6 +185,9 @@ export async function buildSite(out: string): Promise<SiteManifest> {
   const siteDir = path.join(out, 'site');
   const manifestFile = path.join(out, 'site-manifest.json');
   fs.rmSync(manifestFile, { force: true });
+
+  // 0. The fonts match the font tokens, and every listed file exists.
+  checkFonts();
 
   // 1. Client build.
   await build(clientConfig(siteDir));

@@ -597,23 +597,23 @@ follows, and only `resume.json` changed. Change the primary text color in the ex
 
 ### Tests for User Story 6 (REQUIRED) ⚠️
 
-- [ ] T093 [P] [US6] Write `packages/web/test/tokens.test.ts`, covering 004-cv-page-FR-043, 004-cv-page-FR-044 and 004-cv-page-FR-019:
+- [X] T093 [P] [US6] Write `packages/web/test/tokens.test.ts`, covering 004-cv-page-FR-043, 004-cv-page-FR-044 and 004-cv-page-FR-019:
   - FR-043: every token in the export is read by the site: its custom property, or a token referring to it, appears in the built CSS, or its name in `fonts.json`; the export holds the five colors of design/review.md, compared without regard to case; the motion source is unchanged from 003: exactly `motion.duration.fast` `150ms`, `motion.duration.base` `250ms`, `motion.duration.slow` `{motion.duration.base} * 2` and `motion.easing.standard` `[0.2, 0, 0, 1]`.
   - FR-044: no file under `packages/web/src` or `packages/web/scripts` holds a skip marker for either check.
   - FR-019: the not-found page's computed colors and fonts are token values, as on `/cv`.
-- [ ] T094 [P] [US6] Add the FR-045 and FR-046 groups to `packages/web/test/fonts.test.ts`:
+- [X] T094 [P] [US6] Add the FR-045 and FR-046 groups to `packages/web/test/fonts.test.ts`:
   - 004-cv-page-FR-045: every `fonts.json` file and license exists; each family's directory holds `OFL.txt`; no family matches the Apple and system font patterns of 003's FR-006 test; every built `@font-face` has `font-display: swap`; a build of a copy whose `font.family.display` names a family with no `fonts.json` entry fails, naming the token; a build with a missing file fails, naming it.
   - 004-cv-page-FR-046: no style sheet or component in the repository holds an `@font-face` rule or a family name; the built CSS holds one `@font-face` per `fonts.json` file; `npm run token-check` passes with the fonts declared.
-- [ ] T095 [P] [US6] Write `packages/web/test/one-edit.test.ts`, covering 004-cv-page-FR-003, on a temporary copy of `packages/` and the root files: changing `work[0].position` in the copy's `resume.json` and building it changes the page's `h3`, with only `resume.json` changed (US6 scenario 1); changing `color.base.ink` in the copy's export, running `runGenerate` and building changes the body's computed color, with only the export and the two generated files changed (scenario 2, SC-008).
-- [ ] T096 [P] [US6] Write `packages/web/test/self-check.test.ts`, covering 004-cv-page-FR-003, 004-cv-page-FR-043, 004-cv-page-FR-044 and 004-cv-page-FR-047, on the real repository:
+- [X] T095 [P] [US6] Write `packages/web/test/one-edit.test.ts`, covering 004-cv-page-FR-003, on a temporary copy of `packages/` and the root files: changing `work[0].position` in the copy's `resume.json` and building it changes the page's `h3`, with only `resume.json` changed (US6 scenario 1); changing `color.base.ink` in the copy's export, running `runGenerate` and building changes the body's computed color, with only the export and the two generated files changed (scenario 2, SC-008).
+- [X] T096 [P] [US6] Write `packages/web/test/self-check.test.ts`, covering 004-cv-page-FR-003, 004-cv-page-FR-043, 004-cv-page-FR-044 and 004-cv-page-FR-047, on the real repository:
   - FR-003: `npm run content-check` exits 0, and its exceptions list holds nothing added for `packages/web` (US6 scenario 4);
   - FR-043 and FR-044: `npm run token-check` exits 0, and the export is accepted as Penpot's written form (US6 scenario 3);
   - FR-047: `npm run traceability` exits 0 (run off CI only until T103, when every requirement is covered).
 
 ### Implementation for User Story 6
 
-- [ ] T097 [US6] Add the validation to `packages/web/scripts/fonts-plugin.ts` (data-model.md Font family entry Validation, contracts/fonts.md): fail the build, naming the token or file, when a `fontFamilies` token the site reads has no entry whose `family` equals the token's first value; when an entry's `token` doesn't exist or its first value isn't `family`; or when a listed file or license is missing.
-- [ ] T098 [US6] Checkpoint, after T093 to T097: every US6 test passes, and quickstart 9 behaves as written (revert each change).
+- [X] T097 [US6] Add the validation to `packages/web/scripts/fonts-plugin.ts` (data-model.md Font family entry Validation, contracts/fonts.md): fail the build, naming the token or file, when a `fontFamilies` token the site reads has no entry whose `family` equals the token's first value; when an entry's `token` doesn't exist or its first value isn't `family`; or when a listed file or license is missing.
+- [X] T098 [US6] Checkpoint, after T093 to T097: every US6 test passes, and quickstart 9 behaves as written (revert each change).
 
 **Checkpoint**: All user stories are independently functional.
 

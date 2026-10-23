@@ -6,6 +6,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Plugin } from 'vite';
+import { tokenTypes, tokenValue } from '@cv/tokens';
+import type { CssVarTokenName } from '@cv/tokens';
+import { compare } from '../../../tools/traceability/src/report.ts';
 
 export const FONTS_MODULE = 'virtual:cv-fonts.css';
 
@@ -23,6 +26,62 @@ export type FontsDescription = { families: FontFamily[] };
 
 export function readFonts(file: string = FONTS_FILE): FontsDescription {
   return JSON.parse(fs.readFileSync(file, 'utf8')) as FontsDescription;
+}
+
+// The font tokens as the site reads them: each token's type, and the active
+// value of a token as CSS text.
+export type FontTokens = { types: Readonly<Record<string, string>>; value: (name: string) => string };
+
+const SITE_TOKENS: FontTokens = { types: tokenTypes, value: (name) => tokenValue(name as CssVarTokenName) };
+
+// The first family of a `fontFamilies` value as the token output writes it:
+// a quoted name, or a generic family.
+export function firstFamily(value: string): string {
+  const quoted = /^\s*"((?:[^"\\]|\\.)*)"/.exec(value);
+  return quoted === null ? (value.split(',')[0] ?? '').trim() : (JSON.parse(`"${quoted[1]}"`) as string);
+}
+
+// What stops the build (data-model.md Font family entry, contracts/fonts.md),
+// naming the token or file: a font token whose first family has no entry, an
+// entry whose token doesn't exist or names another family, and a listed file
+// or license that is missing. Paths are relative to `fontsDir`.
+export function fontsProblems(fonts: FontsDescription, fontsDir: string, tokens: FontTokens = SITE_TOKENS): string[] {
+  const problems: string[] = [];
+  const fontTokens = Object.keys(tokens.types)
+    .filter((name) => tokens.types[name] === 'fontFamilies')
+    .sort(compare);
+  for (const name of fontTokens) {
+    const family = firstFamily(tokens.value(name));
+    if (!fonts.families.some((entry) => entry.family === family)) {
+      problems.push(`the font token ${name} names the family ${JSON.stringify(family)}, which has no entry in fonts.json`);
+    }
+  }
+  for (const entry of fonts.families) {
+    const type = tokens.types[entry.token];
+    if (type === undefined) {
+      problems.push(`the fonts.json entry for ${JSON.stringify(entry.family)} names the font token ${entry.token}, which doesn't exist`);
+    } else if (type !== 'fontFamilies') {
+      problems.push(`the fonts.json entry for ${JSON.stringify(entry.family)} names ${entry.token}, which is a ${type} token, not a font family token`);
+    } else {
+      const family = firstFamily(tokens.value(entry.token));
+      if (family !== entry.family) {
+        problems.push(`the fonts.json entry for ${JSON.stringify(entry.family)} names the font token ${entry.token}, whose first family is ${JSON.stringify(family)}`);
+      }
+    }
+    for (const file of [...entry.files.map((listed) => listed.file), entry.license]) {
+      if (!fs.existsSync(path.join(fontsDir, file))) problems.push(`src/fonts/${file}, listed in fonts.json, is missing`);
+    }
+  }
+  return problems;
+}
+
+// Throws when the fonts don't match the font tokens, with every problem in
+// one message. build-site.ts calls it before Vite runs, so the message
+// reaches `site build failed: <message>` unwrapped; the plugin calls it again
+// for any other Vite run.
+export function checkFonts(fontsFile: string = FONTS_FILE): void {
+  const problems = fontsProblems(readFonts(fontsFile), path.dirname(fontsFile));
+  if (problems.length > 0) throw new Error(problems.join('; '));
 }
 
 // One `@font-face` per file. `font-display: swap` keeps text visible in the
@@ -70,6 +129,9 @@ export function cvFonts(fontsFile: string = FONTS_FILE): Plugin {
   return {
     name: 'cv:fonts',
     enforce: 'pre',
+    buildStart() {
+      checkFonts(fontsFile);
+    },
     transform(code, id) {
       if (!id.endsWith('.css') || !IMPORT.test(code)) return null;
       this.addWatchFile(fontsFile);
