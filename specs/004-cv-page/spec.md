@@ -556,8 +556,11 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **FR-042**: The page and the not-found page MUST match the approved Penpot mockup at phone and
   desktop widths, and the approved print wireframe in print (Constitution II).
 - **FR-043**: The token export (003) MUST be replaced by the tokens of the approved mockup,
-  exported from the site's Penpot file. Starter tokens that the design doesn't use MUST be
-  removed. The motion token source changes only if the design uses motion.
+  exported from the site's Penpot file. While the constitution's interim provision on local
+  mockups applies, the export MAY instead be written by hand in the form Penpot exports, with the
+  approved mockup's values, and is imported into Penpot and exported again once Penpot can be
+  reached (Constitution 1.2.0). Starter tokens that the design doesn't use MUST be removed. The
+  motion token source changes only if the design uses motion.
 - **FR-044**: The page's styles and components MUST read every design value from tokens. The
   token check (003) MUST pass over them, and MUST hold no exception added for this page, other
   than an amendment made under FR-046.
@@ -639,7 +642,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **Stored copy**: the version of the site's pages, styles and fonts kept by the visitor's
   browser after one visit, used when the network is unavailable.
 - **Token export**: the site's tokens as Penpot exports them (003), replaced by the approved
-  mockup's tokens.
+  mockup's tokens. Written by hand in that form while the interim provision applies (FR-043).
 - **Site fonts**: the open-licensed font files the design chooses, served by the site, each with
   its license in the repository.
 - **Check result**: one check's pass or fail, for one page and one width or profile, with what
@@ -677,7 +680,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   the not-found page at a phone width and a desktop width
 - [x] PNG exports of the approved Penpot mockup of `/cv` and the not-found page, at a phone width
   and a desktop width
-- [ ] Penpot file link: added with the mockup
+- [ ] Penpot file link: deferred under the constitution's interim provision on local mockups
+  (1.2.0). The mockup exists in Penpot, and its link is added once Penpot can be reached again
 - [x] `review.md` sign-off by the project owner, naming the mockup version and date
 
 ## Success Criteria *(mandatory)*
@@ -768,6 +772,14 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   - Link preview images.
   - Translations, a non-goal in the vision.
   - Sections of the CV document beyond those listed as supported.
-- **Depends on**: Constitution II, IV, VI, VII, VIII and IX; the requirement traceability check
-  (001); the CV content source and content check (002); the design tokens source and token check
-  (003); and an approved Penpot mockup with its review sign-off.
+- **Interim provision** (added 2026-10-23): Penpot can't be reached until at least 2026-10-26.
+  Under Constitution 1.2.0's interim provision on local mockups, the approved Penpot exports
+  (revision 10) stand without their Penpot link, and the token export is written by hand in the
+  form Penpot exports (FR-043). Until it ends, "a token export from Penpot" in User Story 6 and
+  SC-008 means an edit to that file in Penpot's form, followed by `token-output`. The provision's
+  ending steps then import the file into Penpot, export it again and add the link, in a
+  follow-up pull request.
+- **Depends on**: Constitution II, IV, VI, VII, VIII and IX, and 1.2.0's interim provision, which
+  must be merged before this feature; the requirement traceability check (001); the CV content
+  source and content check (002); the design tokens source and token check (003); and an
+  approved Penpot mockup with its review sign-off.

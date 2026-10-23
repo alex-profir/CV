@@ -38,3 +38,7 @@
 - Date: 2026-10-22
 - Approved by: Alex Profir (project owner)
 - Notes: Approved in review of the exported frames. The Penpot link is still to be added.
+- Interim (2026-10-23): Penpot can't be reached until at least 2026-10-26. Under Constitution
+  1.2.0's interim provision on local mockups, this approval stands on the four exports, and the
+  Penpot link is added in the provision's follow-up pull request. The token export is written by
+  hand in Penpot's form from this design's values until then.
