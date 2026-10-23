@@ -1,0 +1,67 @@
+{
+  "version": "3367bf722849646d",
+  "routes": {
+    "pages": [
+      {
+        "path": "/cv",
+        "aliases": [
+          "/cv/"
+        ],
+        "file": "cv.html"
+      }
+    ],
+    "redirects": [
+      {
+        "from": "/",
+        "to": "/cv",
+        "status": 307
+      }
+    ],
+    "notFound": {
+      "file": "404.html",
+      "status": 404
+    }
+  },
+  "files": [
+    {
+      "path": "/404.html",
+      "hash": "51f01052e0bc32f49c04ae41b12891beea8630157fc38b5a7bc44a47b5767752",
+      "type": "text/html"
+    },
+    {
+      "path": "/assets/jetbrains-mono-latin.woff2",
+      "hash": "1e06740a02a443fb7f3eeda8fcaa685a0f6c620e3f01e6666e847295469ce3ad",
+      "type": "font/woff2"
+    },
+    {
+      "path": "/assets/register-sw.js",
+      "hash": "8df2ec4497cea28f408f91e77c372ff9aacf0708a2a0a68f919a58cec63bbd16",
+      "type": "text/javascript"
+    },
+    {
+      "path": "/assets/schibsted-grotesk-latin.woff2",
+      "hash": "e3b56e90510a84ac0ed465b822e112983eaf58e37436bf769681c31f77b1f3a7",
+      "type": "font/woff2"
+    },
+    {
+      "path": "/assets/site.css",
+      "hash": "b3e4ecc8806fc90cea2d17f643d0a2d753870100a4d4e155746a1ef30dec6eb3",
+      "type": "text/css"
+    },
+    {
+      "path": "/assets/space-grotesk-latin.woff2",
+      "hash": "a0d054c4af557de20afd6ca59f47ab353bcaec49c63ff04b6c9d39d0f8910557",
+      "type": "font/woff2"
+    },
+    {
+      "path": "/cv.html",
+      "hash": "81dcb0d5b05da04e316f0d614a8f63eccf400487b7857945c25198c3d9faad31",
+      "type": "text/html"
+    },
+    {
+      "path": "/sw.js",
+      "hash": "b01a5e5e49478f86d9a8089b9b39991c6eda15c944212ee81fb53aa2106bf3e5",
+      "type": "text/javascript"
+    }
+  ]
+}
