@@ -1,3 +1,4 @@
 {
-  "$schema": "./schemas/site.schema.json"
+  "$schema": "./schemas/site.schema.json",
+  "repository": "https://github.com/alex-profir/CV"
 }

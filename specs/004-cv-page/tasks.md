@@ -172,14 +172,14 @@ test helpers. Every story needs them.
 **Design gate (Constitution II)**: T005 comes first. No task that creates or changes UI may start
 until it's done.
 
-- [ ] T005 Confirm the design gate in `specs/004-cv-page/design/` under Constitution 1.2.0's interim provision (plan Constitution Check II, research R22):
+- [X] T005 Confirm the design gate in `specs/004-cv-page/design/` under Constitution 1.2.0's interim provision (plan Constitution Check II, research R22):
   - `wireframes.md` covers `/cv` at phone, desktop and print, and the not-found page at both widths;
   - `mockup/` holds `cv-desktop-1440.png`, `cv-phone-375.png`, `not-found-desktop-1440.png` and `not-found-phone-375.png`;
   - `review.md` reads **Status: Approved**, names Penpot revision 10 and 2026-10-22, and carries the 2026-10-23 interim note;
   - `.specify/memory/constitution.md` on `main` is version 1.2.0 with the Interim Provision section.
 
   The missing Penpot link is allowed by the provision. **Do not add it, and do not tick the spec's Design box**: that is the follow-up pull request's work (see "Not in this feature").
-- [ ] T006 [P] Add the site data field `repository` by 002's process in `packages/content/schemas/site.schema.json`, `packages/content/site.json` and `packages/content/src/shape.generated.ts` (data-model.md Site data, research R7, 002's contracts/site-data-rules.md):
+- [X] T006 [P] Add the site data field `repository` by 002's process in `packages/content/schemas/site.schema.json`, `packages/content/site.json` and `packages/content/src/shape.generated.ts` (data-model.md Site data, research R7, 002's contracts/site-data-rules.md):
   - In the schema, add `"repository": { "type": "string", "format": "uri", "pattern": "^https://", "description": "The address of the site's source repository, for the footer link." }`. The data-model rule is "Optional. An `https` address. Holds no CV fact", so it isn't `required`.
   - In `site.json`, add `"repository": "https://github.com/alex-profir/CV"` after `$schema`.
   - Run `npm run content-shape`, then confirm `SiteData` has `repository?: string`.

@@ -222,4 +222,6 @@ export interface ResumeMeta {
 /** Data only the site needs. CV facts belong in resume.json. */
 export interface SiteData {
   '$schema'?: string;
+  /** The address of the site's source repository, for the footer link. */
+  repository?: string;
 }
