@@ -131,7 +131,7 @@ pixels, as Penpot writes them.
 | `font.size.label`, `.chip`, `.small`, `.mono`, `.body`, `.h4`, `.lead-narrow`, `.lead-wide`, `.h3-narrow`, `.h3-wide`, `.h2-narrow`, `.h2-wide`, `.notfound-narrow`, `.name-narrow`, `.notfound-wide`, `.name-wide` | fontSizes | `12`, `12.5`, `13`, `14`, `16`, `17`, `17`, `20`, `20`, `22`, `26`, `30`, `44`, `56`, `72`, `104` |
 | `font.letter-spacing.normal`, `.role`, `.label`, `.h3`, `.h2-narrow`, `.h2-wide`, `.notfound-narrow`, `.notfound-wide`, `.name-narrow`, `.name-wide` | letterSpacing | `0`, `0.3`, `0.7`, `-0.2`, `-0.5`, `-0.6`, `-1.3`, `-2.2`, `-2.2`, `-4.2` |
 | `font.case.label` | textCase | `uppercase` |
-| `space.0_5`, `.1`, `.1_5`, `.2`, `.2_5`, `.3`, `.4`, `.5`, `.6`, `.7`, `.8`, `.10`, `.11`, `.12`, `.14`, `.16`, `.22`, `.24` | spacing | `2`, `4`, `6`, `8`, `10`, `12`, `16`, `20`, `24`, `28`, `{space.4} * 2`, `40`, `44`, `48`, `56`, `64`, `88`, `96` |
+| `space.0_5`, `.1`, `.1_5`, `.2`, `.2_5`, `.3`, `.4`, `.5`, `.6`, `.7`, `.8`, `.10`, `.11`, `.12`, `.14`, `.16`, `.22` | spacing | `2`, `4`, `6`, `8`, `10`, `12`, `16`, `20`, `24`, `28`, `{space.4} * 2`, `40`, `44`, `48`, `56`, `64`, `88` |
 | `size.page`, `size.section-label`, `size.timeline-dot`, `size.notfound-title`, `size.target` | sizing | `1180`, `260`, `9`, `600`, `24` |
 | `border.thin`, `border.thick` | borderWidth | `1`, `2` |
 | `radius.pill` | borderRadius | `999` |
