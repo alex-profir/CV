@@ -1,0 +1,64 @@
+{
+  "basics": {
+    "name": "Ada Example",
+    "label": "Test Engineer",
+    "email": "ada@example.com",
+    "phone": "+33 4 00 00 00 00",
+    "summary": "Writes small sites that pass every check.",
+    "location": {
+      "city": "Lyon",
+      "countryCode": "FR"
+    },
+    "profiles": [
+      {
+        "network": "GitHub",
+        "username": "ada-example",
+        "url": "https://github.com/ada-example"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Example Ltd",
+      "position": "Engineer",
+      "startDate": "2020-01",
+      "endDate": "2023-06",
+      "highlights": [
+        "Built the test site."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Guided Tours System"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Testing",
+      "level": "Expert",
+      "keywords": [
+        "Accessibility"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Example University"
+    }
+  ],
+  "languages": [
+    {
+      "language": "English",
+      "fluency": "Native"
+    }
+  ],
+  "certificates": [
+    {
+      "name": "Example Certificate"
+    },
+    {
+      "name": "Another Certificate"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "version": "ca4730edd03e1038",
+  "routes": {
+    "pages": [
+      {
+        "path": "/cv",
+        "aliases": [
+          "/cv/"
+        ],
+        "file": "cv.html"
+      }
+    ],
+    "redirects": [
+      {
+        "from": "/",
+        "to": "/cv",
+        "status": 307
+      }
+    ],
+    "notFound": {
+      "file": "404.html",
+      "status": 404
+    }
+  },
+  "files": [
+    {
+      "path": "/404.html",
+      "hash": "cd352e10fd8ade5454a1af9a830f11514f0140f2e11eb46b4d9a82376893c56c",
+      "type": "text/html"
+    },
+    {
+      "path": "/assets/register-sw.js",
+      "hash": "8df2ec4497cea28f408f91e77c372ff9aacf0708a2a0a68f919a58cec63bbd16",
+      "type": "text/javascript"
+    },
+    {
+      "path": "/assets/site.css",
+      "hash": "241ca49f77d9e823354d2e5d530b54d53d9543a5e9ce72d76786853f88340737",
+      "type": "text/css"
+    },
+    {
+      "path": "/cv.html",
+      "hash": "58e4713ea9d18ad72f4a2475ea0a7940f297a3b91a69af633ac5097e5b5ac8c2",
+      "type": "text/html"
+    },
+    {
+      "path": "/sw.js",
+      "hash": "680894929635ce2df398fb3d6e9c3a4122c428435a75225f597bed3e5a09b5db",
+      "type": "text/javascript"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "basics": {
+    "name": "No Url Person",
+    "profiles": [{ "network": "UrllessNetwork", "username": "urlless-user" }]
+  },
+  "work": [{ "name": "No Highlights Company", "position": "No Highlights Position", "startDate": "2020-01", "endDate": "2021-01" }],
+  "projects": [{ "name": "Plain Project Name", "description": "A project with no URL and no dates." }],
+  "skills": [{ "name": "Keywordless Skill", "level": "Keywordless Level" }],
+  "education": [{ "institution": "Courseless Institution", "area": "Courseless Area", "studyType": "Courseless Study", "startDate": "2010-09", "endDate": "2014-06" }]
+}

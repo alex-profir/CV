@@ -1,0 +1,189 @@
+/* Print (004 research R9, contracts/page.md Print, FR-032 to FR-035). The
+   CV alone, in one column whatever the paper width, in the primary text
+   color on no background. There is no @page rule: the browser's default
+   margins, headers and footers stay the visitor's choice in the print
+   dialog. `print-color-adjust` isn't used, as nothing relies on a
+   background. Only tokens. global.css imports this sheet before its own
+   rules, so a selector here that must win over one of global.css's is a
+   little more specific than it. */
+@media print {
+  /* No site elements (FR-032). */
+  footer,
+  [data-site-element] {
+    display: none;
+  }
+
+  /* Normal flow, so the break rules below apply all the way down. */
+  :root body {
+    display: block;
+    min-block-size: auto;
+  }
+
+  /* The narrow layout at any paper width (FR-032). These undo the wide
+     breakpoint's rules, as a wide sheet of paper can reach it. */
+  /* The phone's side padding keeps the timeline's dots inside the page.
+     The paper's own margin is above the first line. */
+  main {
+    max-inline-size: none;
+    padding-block-start: 0;
+    padding-inline: var(--token-space-5);
+  }
+
+  .intro {
+    padding-block-end: var(--token-space-10);
+  }
+
+  .intro h1 {
+    font-family: var(--token-typography-name-narrow-font-family);
+    font-size: var(--token-typography-name-narrow-font-size);
+    font-weight: var(--token-typography-name-narrow-font-weight);
+    letter-spacing: var(--token-typography-name-narrow-letter-spacing);
+    line-height: var(--token-typography-name-narrow-line-height);
+  }
+
+  .intro-body {
+    grid-template-columns: none;
+    margin-block-start: var(--token-space-6);
+  }
+
+  .summary {
+    font-family: var(--token-typography-lead-narrow-font-family);
+    font-size: var(--token-typography-lead-narrow-font-size);
+    font-weight: var(--token-typography-lead-narrow-font-weight);
+    letter-spacing: var(--token-typography-lead-narrow-letter-spacing);
+    line-height: var(--token-typography-lead-narrow-line-height);
+  }
+
+  .cv > section {
+    display: block;
+    padding-block: var(--token-space-10);
+  }
+
+  .section-head {
+    margin-block-end: var(--token-space-6);
+  }
+
+  h2 {
+    font-family: var(--token-typography-h2-narrow-font-family);
+    font-size: var(--token-typography-h2-narrow-font-size);
+    font-weight: var(--token-typography-h2-narrow-font-weight);
+    letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+    line-height: var(--token-typography-h2-narrow-line-height);
+  }
+
+  .timeline {
+    --timeline-indent: calc(var(--token-space-5) + var(--token-space-0-5));
+  }
+
+  h3 {
+    font-family: var(--token-typography-h3-narrow-font-family);
+    font-size: var(--token-typography-h3-narrow-font-size);
+    font-weight: var(--token-typography-h3-narrow-font-weight);
+    letter-spacing: var(--token-typography-h3-narrow-letter-spacing);
+    line-height: var(--token-typography-h3-narrow-line-height);
+  }
+
+  /* Lists laid out as grids on screen are blocks in print, with the same
+     gaps as margins: Chromium keeps a heading with what follows it only
+     when that is in normal flow. */
+  .highlights,
+  .skills,
+  .interests {
+    display: block;
+  }
+
+  .highlights > li + li {
+    margin-block-start: var(--token-space-1-5);
+  }
+
+  .skills > li + li {
+    margin-block-start: var(--token-space-5);
+  }
+
+  .interests > li + li {
+    margin-block-start: var(--token-space-7);
+  }
+
+  /* Text and links in the primary text color, on no background, so turning
+     background graphics on or off changes nothing (FR-035). Links keep
+     their underline, and chips, rules and the timeline keep their borders. */
+  .role,
+  .contact-label,
+  .section-number,
+  .date,
+  .org,
+  .meta,
+  .highlights,
+  .marker,
+  .level,
+  .fluency,
+  .interest-keywords,
+  main a {
+    color: var(--token-color-text-primary);
+  }
+
+  :root,
+  :root body,
+  .chips > li,
+  .timeline > li::before {
+    background: none;
+  }
+
+  /* A link's address after its text (FR-033). Every external link's text
+     differs from its address: profiles and the website show it without
+     its scheme, and entry links show a name. The email link's text is its
+     address, and it isn't matched here, so it prints once. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+  }
+
+  /* Standalone links flow as text in print, so the address follows the
+     link text on the same line and wraps like it. */
+  a.contact-link {
+    display: inline;
+    min-block-size: auto;
+    border-block-end: none;
+    text-decoration-line: underline;
+  }
+
+  .contact-link .arrow {
+    display: none;
+  }
+
+  /* Addresses wrap anywhere, so none is cut off at the page edge
+     (FR-032). */
+  main {
+    overflow-wrap: anywhere;
+  }
+
+  /* No heading ends a page (FR-034): a section's number and heading stay
+     with its first entry, and an entry's date, heading and organization
+     stay together and with what follows. */
+  h2,
+  h3,
+  .section-head,
+  .date {
+    break-after: avoid;
+  }
+
+  .section-head,
+  .date,
+  h3,
+  .org,
+  .meta {
+    break-inside: avoid;
+  }
+
+  /* A skill's or interest's name stays with its keywords, and a language
+     row stays whole. */
+  .skill-head,
+  .interest-name {
+    break-after: avoid;
+  }
+
+  .skills > li,
+  .languages > li,
+  .interests > li {
+    break-inside: avoid;
+  }
+}

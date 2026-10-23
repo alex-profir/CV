@@ -1,0 +1,11 @@
+{
+  "basics": {
+    "name": "Ștefan Țurcanu-Müller",
+    "label": "Inginer de software",
+    "summary": "Lucrează în Brașov și în München, cu clienți din Zürich și din Besançon; îi place strada Großstraße.",
+    "location": { "city": "Brașov", "region": "Țara Bârsei", "countryCode": "RO" }
+  },
+  "work": [{ "name": "Fabrică de Software din țară", "position": "Dezvoltator Șef", "location": "Timișoara", "startDate": "2020-01" }],
+  "education": [{ "institution": "Universität Göttingen École Supérieure", "area": "Informatică", "studyType": "Diplôme", "startDate": "2014-10", "endDate": "2018-06" }],
+  "languages": [{ "language": "Română", "fluency": "Nativă" }, { "language": "Deutsch", "fluency": "Fließend" }]
+}

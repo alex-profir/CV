@@ -6,6 +6,12 @@
   "properties": {
     "$schema": {
       "type": "string"
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "The address of the site's source repository, for the footer link."
     }
   }
 }

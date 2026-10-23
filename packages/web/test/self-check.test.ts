@@ -1,0 +1,84 @@
+// The repository's own checks pass over the site as it is, with no exception
+// added for it (spec US6 scenarios 3 and 4, SC-010).
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, test, vi } from 'vitest';
+import { searchFiles } from '../../../tools/content-check/src/facts.ts';
+import { RESUME_FILE } from '../../../tools/content-check/src/paths.ts';
+import { runCli as runContentCheck } from '../../../tools/content-check/test/helpers/cli.ts';
+import { runCheck as runTokenCheckReport } from '../../../tools/token-check/src/check.ts';
+import { EXPORT_FILE, MOTION_FILE } from '../../../tools/token-check/src/paths.ts';
+import { siteFiles } from '../../../tools/token-check/src/site-files.ts';
+import { runCli as runTokenCheck } from '../../../tools/token-check/test/helpers/tokens.ts';
+import { runCli as runTraceability } from '../../../tools/traceability/test/helpers/project.ts';
+import { REPO_ROOT } from './helpers/copy.ts';
+
+vi.setConfig({ testTimeout: 120_000 });
+
+// The site's files outside its tests: what both checks must read.
+function siteSource(dir = 'packages/web'): string[] {
+  return fs.readdirSync(path.join(REPO_ROOT, dir), { withFileTypes: true }).flatMap((entry) => {
+    const file = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) return ['test', 'dist', 'node_modules'].includes(entry.name) ? [] : siteSource(file);
+    return [file];
+  });
+}
+
+// The checks' own sources, where an exception for the site would be written.
+const CHECK_SOURCES = ['tools/content-check/src', 'tools/token-check/src'].flatMap((dir) =>
+  fs.readdirSync(path.join(REPO_ROOT, dir)).map((name) => fs.readFileSync(path.join(REPO_ROOT, dir, name), 'utf8')),
+);
+
+describe('004-cv-page-FR-003: the content check passes over the site with no exception added for it', () => {
+  test('npm run content-check exits 0', () => {
+    const result = runContentCheck(REPO_ROOT);
+    expect(result.stderr).toBe('');
+    expect(result.status).toBe(0);
+  });
+
+  test("the check searches every file of the site's source, and none of its exclusions names packages/web", () => {
+    const searched = new Set(searchFiles(REPO_ROOT, [RESUME_FILE]).files.map((file) => file.file));
+    // README and license notices are skipped by name everywhere (002), not
+    // for the site.
+    const source = siteSource().filter((file) => !/^(?:README|LICENSE|LICENCE|COPYING)(?:\..*)?$/i.test(path.basename(file)));
+    expect(source.length).toBeGreaterThan(20);
+    expect(source.filter((file) => !searched.has(file))).toEqual([]);
+    for (const text of CHECK_SOURCES) expect(text).not.toMatch(/packages\/web/);
+  });
+});
+
+describe('004-cv-page-FR-043: the token check accepts the export as Penpot writes it', () => {
+  test("npm run token-check exits 0, with the export checked and in Penpot's written form", () => {
+    const result = runTokenCheck(REPO_ROOT);
+    expect(result.status).toBe(0);
+    const report = runTokenCheckReport(REPO_ROOT);
+    expect(report.sources.map((source) => [source.file, source.state])).toEqual([
+      [EXPORT_FILE, 'checked'],
+      [MOTION_FILE, 'checked'],
+    ]);
+    expect(report.problems).toEqual([]);
+    const text = fs.readFileSync(path.join(REPO_ROOT, EXPORT_FILE), 'utf8');
+    expect(text).toBe(JSON.stringify(JSON.parse(text), null, 2));
+  });
+});
+
+describe("004-cv-page-FR-044: the token check passes over the site's styles and components with no exception", () => {
+  test("npm run token-check exits 0, reads every style sheet and component of the site, and none of its exclusions names packages/web", () => {
+    const result = runTokenCheck(REPO_ROOT);
+    expect(result.stdout).toContain('PASS: both token sources are valid and no literal design values were found.');
+    expect(result.status).toBe(0);
+    const read = new Set(siteFiles(REPO_ROOT).files.map((file) => file.file));
+    const styled = siteSource().filter((file) => /\.(?:css|tsx?)$/.test(file));
+    expect(styled.length).toBeGreaterThan(20);
+    expect(styled.filter((file) => !read.has(file))).toEqual([]);
+    for (const text of CHECK_SOURCES) expect(text).not.toMatch(/packages\/web/);
+  });
+});
+
+describe('004-cv-page-FR-047: the requirement traceability check passes', () => {
+  test('npm run traceability exits 0', () => {
+    const result = runTraceability(REPO_ROOT);
+    expect(result.stdout.trim().split('\n').at(-1)).toMatch(/^PASS: /);
+    expect(result.status).toBe(0);
+  });
+});

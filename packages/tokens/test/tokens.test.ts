@@ -3,18 +3,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { activeThemes, cssVar, mediaQuery, tokenTypes, tokenValue } from '@cv/tokens';
+import { activeThemes, cssVar, mediaQuery, tokenTypes } from '@cv/tokens';
 import type { CssVarTokenName } from '@cv/tokens';
 import { REPO_ROOT } from '../../../tools/traceability/test/helpers/project.ts';
 import { runCheck } from '../../../tools/token-check/src/check.ts';
 import { codeName } from '../../../tools/token-check/src/names.ts';
-import { EXPORT_FILE, MOTION_FILE } from '../../../tools/token-check/src/paths.ts';
+import { EXPORT_FILE, MOTION_FILE, OUTPUT_CSS_FILE } from '../../../tools/token-check/src/paths.ts';
+import { runGenerate, tokenProject } from '../../../tools/token-check/test/helpers/tokens.ts';
 
 type Token = { name: string; set: string; $value: unknown; $type: unknown; $description: unknown };
 
 const EXPORT_TEXT = fs.readFileSync(path.join(REPO_ROOT, EXPORT_FILE), 'utf8');
 const EXPORT = JSON.parse(EXPORT_TEXT);
 const MOTION = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, MOTION_FILE), 'utf8'));
+
+// 003's starter export, as Penpot wrote it, kept as a fixture since the /cv
+// design (004) replaced the real export. The pipeline tests that need values
+// the design doesn't use (transparency, a shadow) read it.
+const STARTER_TEXT = fs.readFileSync(path.join(import.meta.dirname, '__fixtures__/starter/tokens.json'), 'utf8');
+const STARTER = JSON.parse(STARTER_TEXT);
 
 // Every token in a source, with its full name and set.
 function tokensOf(source: Record<string, any>): Token[] {
@@ -31,15 +38,16 @@ function tokensOf(source: Record<string, any>): Token[] {
 }
 
 const EXPORT_TOKENS = tokensOf(EXPORT);
+const STARTER_TOKENS = tokensOf(STARTER);
 const MOTION_TOKENS = tokensOf(MOTION);
 const ofType = (tokens: Token[], type: string) => tokens.filter((token) => token.$type === type);
 
-// Every font family named in the export: fontFamilies values and the
+// Every font family named in an export: fontFamilies values and the
 // families of typography values. References name no family.
-function fontFamilies(): string[] {
+function fontFamilies(tokens: Token[]): string[] {
   const values = [
-    ...ofType(EXPORT_TOKENS, 'fontFamilies').map((token) => token.$value),
-    ...ofType(EXPORT_TOKENS, 'typography').map((token) => (token.$value as Record<string, unknown>).fontFamilies),
+    ...ofType(tokens, 'fontFamilies').map((token) => token.$value),
+    ...ofType(tokens, 'typography').map((token) => (token.$value as Record<string, unknown>).fontFamilies),
   ];
   return values
     .flatMap((value) => (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : []))
@@ -48,8 +56,9 @@ function fontFamilies(): string[] {
 }
 
 describe('003-design-tokens-FR-001: the export is in the repository exactly as Penpot wrote it', () => {
-  test('it exists and holds every category Penpot keeps', () => {
-    for (const type of ['color', 'typography', 'spacing', 'borderRadius', 'shadow']) expect(ofType(EXPORT_TOKENS, type).length, type).toBeGreaterThan(0);
+  test('it exists, holds only types Penpot keeps, and holds every category the design uses', () => {
+    for (const token of EXPORT_TOKENS) expect(['duration', 'cubicBezier'], token.name).not.toContain(token.$type);
+    for (const type of ['color', 'typography', 'spacing', 'borderRadius']) expect(ofType(EXPORT_TOKENS, type).length, type).toBeGreaterThan(0);
   });
 
   test("it is in Penpot's written form, with no final newline", () => {
@@ -83,18 +92,18 @@ describe('003-design-tokens-FR-004: the export has one theme, in a group of its 
 });
 
 describe('003-design-tokens-FR-006: the starter tokens prove every part of the pipeline', () => {
-  test('the export holds transparency, a reference, a typography, a shadow and a breakpoint', () => {
-    expect(ofType(EXPORT_TOKENS, 'color').some((token) => /^#(?:[0-9a-f]{4}|[0-9a-f]{8})$/i.test(String(token.$value)) || /^(rgba|hsla)\(/i.test(String(token.$value)))).toBe(
+  test('the starter export holds transparency, a reference, a typography, a shadow and a breakpoint', () => {
+    expect(ofType(STARTER_TOKENS, 'color').some((token) => /^#(?:[0-9a-f]{4}|[0-9a-f]{8})$/i.test(String(token.$value)) || /^(rgba|hsla)\(/i.test(String(token.$value)))).toBe(
       true,
     );
-    expect(EXPORT_TOKENS.some((token) => /\{[^{}]+\}/.test(JSON.stringify(token.$value)))).toBe(true);
-    expect(ofType(EXPORT_TOKENS, 'typography').some((token) => Object.keys(token.$value as object).length >= 2)).toBe(true);
-    expect(ofType(EXPORT_TOKENS, 'shadow').length).toBeGreaterThan(0);
-    expect(EXPORT_TOKENS.some((token) => token.name.startsWith('breakpoint.'))).toBe(true);
+    expect(STARTER_TOKENS.some((token) => /\{[^{}]+\}/.test(JSON.stringify(token.$value)))).toBe(true);
+    expect(ofType(STARTER_TOKENS, 'typography').some((token) => Object.keys(token.$value as object).length >= 2)).toBe(true);
+    expect(ofType(STARTER_TOKENS, 'shadow').length).toBeGreaterThan(0);
+    expect(STARTER_TOKENS.some((token) => token.name.startsWith('breakpoint.'))).toBe(true);
   });
 
   test('no font family is an Apple font or the system interface font', () => {
-    const families = fontFamilies();
+    const families = [...fontFamilies(EXPORT_TOKENS), ...fontFamilies(STARTER_TOKENS)];
     expect(families.length).toBeGreaterThan(0);
     for (const family of families) {
       expect(family, family).not.toMatch(/^\.?SF\b/i);
@@ -127,7 +136,9 @@ describe('003-design-tokens-FR-008: durations and easing curves live in the moti
 
 describe('003-design-tokens-FR-019: code reads transparency unchanged', () => {
   test('the overlay keeps its alpha', () => {
-    expect(tokenValue('color.overlay')).toBe('#00000080');
+    const root = tokenProject({ penpot: STARTER_TEXT, output: false });
+    expect(runGenerate(root).status).toBe(0);
+    expect(fs.readFileSync(path.join(root, OUTPUT_CSS_FILE), 'utf8')).toContain('--token-color-overlay: #00000080;');
   });
 });
 
@@ -145,7 +156,7 @@ describe('003-design-tokens-FR-025: code reads every token by name', () => {
 
 describe('003-design-tokens-FR-052: code reads breakpoints as media queries', () => {
   test('mediaQuery gives the media condition', () => {
-    expect(mediaQuery('breakpoint.wide')).toBe('(width >= 768px)');
+    expect(mediaQuery('breakpoint.wide')).toBe(`(width >= ${EXPORT.base.breakpoint.wide.$value}px)`);
   });
 });
 

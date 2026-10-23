@@ -55,7 +55,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
     const uses = LINES.filter((line) => /^\s*(?:-\s+)?uses:/.test(line));
     expect(uses.length).toBeGreaterThan(0);
     for (const line of uses) {
-      expect(line).toMatch(/uses: actions\/(checkout|setup-node)@[0-9a-f]{40} # v\d+(\.\d+)*$/);
+      expect(line).toMatch(/uses: actions\/(checkout|setup-node|cache)@[0-9a-f]{40} # v\d+(\.\d+)*$/);
     }
   });
 
@@ -67,7 +67,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
 
   test('each job runs its commands in order', () => {
     expect(job('traceability').steps).toEqual(['actions/checkout', 'actions/setup-node', 'npm ci', 'npm run traceability']);
-    expect(job('test').steps).toEqual(['actions/checkout', 'actions/setup-node', 'npm ci', 'npm run typecheck', 'npm test']);
+    expect(job('test').steps).toEqual(['actions/checkout', 'actions/setup-node', 'npm ci', 'actions/cache', 'npx playwright install --with-deps chromium', 'npm run typecheck', 'npm test']);
   });
 
   test('no job is conditional, a matrix or allowed to fail', () => {
@@ -104,6 +104,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
             { context: 'test', integration_id: 15368 },
             { context: 'content', integration_id: 15368 },
             { context: 'tokens', integration_id: 15368 },
+            { context: 'site', integration_id: 15368 },
           ],
         },
       },

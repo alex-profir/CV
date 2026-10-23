@@ -1,0 +1,4 @@
+{
+  "basics": { "name": "Nothing Optional Person", "label": "Nothing Optional Label" },
+  "work": [{ "name": "Nothing Optional Company", "position": "Nothing Optional Position", "startDate": "2020-01" }]
+}
