@@ -136,7 +136,7 @@ the shells, and a dark theme.
 
 **Purpose**: The `@cv/web` workspace, the pinned packages, TSX in the toolchain and Chromium
 
-- [ ] T001 Create the package and the scripts in `package.json` and `packages/web/package.json` (plan Project Structure, contracts/site.md Commands, contracts/cli.md Command):
+- [X] T001 Create the package and the scripts in `package.json` and `packages/web/package.json` (plan Project Structure, contracts/site.md Commands, contracts/cli.md Command):
   - In the root `package.json`, keep the existing seven scripts and:
     - add `"build": "node packages/web/scripts/build-site.ts"`;
     - add `"serve": "node tools/site-check/src/server.ts"`;
@@ -145,19 +145,19 @@ the shells, and a dark theme.
   - Create `packages/web/package.json`: `"name": "@cv/web"`, `"private": true`, `"type": "module"`, no `exports`, `scripts`, `author` or `devDependencies`. T002 adds its `dependencies`.
 
     It's searched by 002's key facts search, so it must not contain the owner's name or email.
-- [ ] T002 Install the packages into `package.json`, `packages/web/package.json` and `package-lock.json`, after T001, with Node 26 active and its bundled npm (plan Dependencies table):
+- [X] T002 Install the packages into `package.json`, `packages/web/package.json` and `package-lock.json`, after T001, with Node 26 active and its bundled npm (plan Dependencies table):
   1. `npm install --save-exact -w @cv/web react@19.3.1 react-dom@19.3.1`.
   2. `npm install --save-dev --save-exact vite@8.3.5 lightningcss@1.33.0 playwright@1.64.1 axe-core@4.14.0 lighthouse@13.5.0 pdfjs-dist@6.4.299 @types/react@19.3.0 @types/react-dom@19.3.0`.
   3. Confirm `package-lock.json` has a `node_modules/@cv/web` link to `packages/web`, and single top-level copies of `vite` 8.3.5 and `lightningcss` 1.33.0, the same ones Vitest already uses (research R2).
   4. Commit `package-lock.json`.
 
   The root `package.json` must end with exactly nineteen `devDependencies` (the eleven already there, unchanged, plus these eight, each pinned with no `^` or `~`) and no `dependencies`. `packages/web/package.json` has exactly the two `dependencies` (Constitution X).
-- [ ] T003 Add TSX to the toolchain in `tsconfig.json`, `packages/web/src/sw/tsconfig.json` and `vitest.config.ts`, after T002 (research R2):
+- [X] T003 Add TSX to the toolchain in `tsconfig.json`, `packages/web/src/sw/tsconfig.json` and `vitest.config.ts`, after T002 (research R2):
   - `tsconfig.json`: add `"packages/**/*.tsx"` to `include`; add `"jsx": "react-jsx"` and `"lib": ["esnext", "dom", "dom.iterable"]` (the registration script and `page.evaluate` callbacks use DOM types); add `"packages/web/src/sw/**"` to `exclude`. Keep every other option.
   - `packages/web/src/sw/tsconfig.json`: `strict`, `noEmit`, `erasableSyntaxOnly`, `verbatimModuleSyntax`, `"lib": ["esnext", "webworker"]`, `"types": []`, including only `service-worker.ts`.
   - `vitest.config.ts`: set React's automatic JSX runtime for test files in Vite 8's transform options. Keep the include and exclude globs from 001. **Verify** with a scratch `packages/web/test/smoke.test.tsx` rendering `<p>x</p>` through `renderToStaticMarkup`, then delete it.
   - `npm run typecheck` passes. The service worker project may have no input yet: create an empty `packages/web/src/sw/service-worker.ts` holding `export {};` so it does (T086 fills it).
-- [ ] T004 Install Playwright's Chromium with `npx playwright install chromium`, after T002. Confirm `node -e "import('playwright').then(({ chromium }) => console.log(chromium.executablePath()))"` prints a path that exists. Needs the network, once per machine (quickstart Prerequisites).
+- [X] T004 Install Playwright's Chromium with `npx playwright install chromium`, after T002. Confirm `node -e "import('playwright').then(({ chromium }) => console.log(chromium.executablePath()))"` prints a path that exists. Needs the network, once per machine (quickstart Prerequisites).
 
 ---
 

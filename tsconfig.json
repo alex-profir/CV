@@ -12,8 +12,16 @@
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true,
     "types": ["node"],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "lib": ["esnext", "dom", "dom.iterable"]
   },
-  "include": ["tools/**/*.ts", "tools/**/*.js", "packages/**/*.ts", "vitest.config.ts"],
-  "exclude": ["**/__fixtures__/**"]
+  "include": [
+    "tools/**/*.ts",
+    "tools/**/*.js",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "vitest.config.ts"
+  ],
+  "exclude": ["**/__fixtures__/**", "packages/web/src/sw/**"]
 }
