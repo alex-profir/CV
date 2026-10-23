@@ -82,6 +82,10 @@ export async function fontProblems(page: Page, families: readonly string[], page
             }
             node.replaceWith(fragment);
           }
+          // Lay the new spans out now: until a layout gives them boxes,
+          // CSS.getPlatformFontsForNode reports no font at all for them, and
+          // every character would pass unchecked.
+          void element.getBoundingClientRect();
           return made;
         },
         { probe: PROBE, char: CHAR, index },
@@ -95,6 +99,7 @@ export async function fontProblems(page: Page, families: readonly string[], page
         const character = characters[position]!;
         if (character.trim() === '') continue;
         const fonts = await fontsFor(cdp, spans[position]!);
+        if (fonts.length === 0) throw new Error(`no font is reported for ${codePoint(character)} in ${selector}: the page wasn't laid out`);
         if (!fonts.some((font) => !servedBy(font, families))) continue;
         const subject = `${codePoint(character)} ${character}`;
         const detail = `in ${where} (${selector}), drawn in a fallback font`;
@@ -108,6 +113,7 @@ export async function fontProblems(page: Page, families: readonly string[], page
           const element = document.querySelector(`[${probe}="${at}"]`)!;
           for (const span of [...element.querySelectorAll(`:scope > [${char}]`)]) span.replaceWith(document.createTextNode(span.textContent ?? ''));
           element.normalize();
+          void element.getBoundingClientRect();
         },
         { probe: PROBE, char: CHAR, index },
       );
