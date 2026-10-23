@@ -570,15 +570,15 @@ role in a fixture and rebuild: the title follows (spec US5, quickstart 10).
 
 ### Tests for User Story 5 (REQUIRED) ⚠️
 
-- [ ] T089 [US5] Write `packages/web/test/sharing.test.tsx`, covering 004-cv-page-FR-036 and 004-cv-page-FR-037, on rendered HTML:
+- [X] T089 [US5] Write `packages/web/test/sharing.test.tsx`, covering 004-cv-page-FR-036 and 004-cv-page-FR-037, on rendered HTML:
   - FR-036: with the real CV, `<title>` and `og:title` are `Alex Profir — Software Engineer`; `meta[name=description]` and `og:description` are the summary; `og:type` is `website`, `twitter:card` is `summary`; there's no `og:image`, `og:url` or canonical (US5 scenarios 1 and 3). Changing the label in a fixture changes both titles (scenario 2).
   - FR-037: one case per row of data-model.md's Page title and description table: no summary → the label as description (scenario 4); no name → the label as title; neither → `CV` and no description element. No empty `content` is ever declared. The not-found page's title is `404 · Not found` with no description.
 
 ### Implementation for User Story 5
 
-- [ ] T090 [US5] Create `packages/web/src/format/meta.ts` (research R10, data-model.md Page title and description): `pageMeta(basics)` returning `{ title, description? }`, with the separator and fallback from `siteText`.
-- [ ] T091 [US5] Use `pageMeta` in `packages/web/src/render.tsx`, and add the description and preview tags to `Document.tsx`, as contracts/page.md's Document lists them. The description tags are rendered only when there is a description.
-- [ ] T092 [US5] Checkpoint, after T089 to T091: `sharing.test.tsx` passes, quickstart 10 behaves as written, and the `lighthouse` part shows SEO at 90 or more on both profiles.
+- [X] T090 [US5] Create `packages/web/src/format/meta.ts` (research R10, data-model.md Page title and description): `pageMeta(basics)` returning `{ title, description? }`, with the separator and fallback from `siteText`.
+- [X] T091 [US5] Use `pageMeta` in `packages/web/src/render.tsx`, and add the description and preview tags to `Document.tsx`, as contracts/page.md's Document lists them. The description tags are rendered only when there is a description.
+- [X] T092 [US5] Checkpoint, after T089 to T091: `sharing.test.tsx` passes, quickstart 10 behaves as written, and the `lighthouse` part shows SEO at 90 or more on both profiles.
 
 **Checkpoint**: User Stories 1 to 5 work independently.
 

@@ -7,6 +7,7 @@ import { Document } from './pages/Document.tsx';
 import type { PageAssets } from './pages/Document.tsx';
 import { CvPage } from './pages/CvPage.tsx';
 import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { pageMeta } from './format/meta.ts';
 import { siteText } from './site-text.ts';
 
 export type { PageAssets };
@@ -14,13 +15,13 @@ export type { PageAssets };
 const DOCTYPE = '<!doctype html>';
 
 export function renderCv({ resume, siteData, assets }: { resume: Resume; siteData: SiteData; assets: PageAssets }): string {
-  // US5 adds the role and the description (FR-036, FR-037).
-  const name = resume.basics?.name;
-  const title = name !== undefined && name !== '' ? name : siteText.siteHeading;
+  // The name and role as the title, the summary or role as the description
+  // (FR-036, FR-037).
+  const { title, description } = pageMeta(resume.basics);
   return (
     DOCTYPE +
     renderToStaticMarkup(
-      <Document title={title} assets={assets}>
+      <Document title={title} description={description} assets={assets}>
         <CvPage resume={resume} siteData={siteData} />
       </Document>,
     )
