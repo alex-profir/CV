@@ -41,7 +41,7 @@ const CONTROL_WAIT_MS = 20_000;
 
 // Whether a service worker controls the page, waiting for one to register,
 // install and claim it.
-async function waitForWorker(page: Page): Promise<boolean> {
+export async function waitForWorker(page: Page): Promise<boolean> {
   return page.evaluate(
     async ({ registrationWait, controlWait }) => {
       if (!('serviceWorker' in navigator)) return false;

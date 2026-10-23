@@ -108,9 +108,9 @@ export function withSpacer(html: string, { spacerBefore, height }: SpacerOptions
 }
 
 // A copy of the built site whose `cv.html` is rendered from a fixture CV,
-// optionally with a spacer before a section, served for the current test,
-// and removed when it finishes. The manifest is recomputed for the copy.
-export async function serveFixture(resume: Resume, siteData: SiteData = realSiteData, spacer?: SpacerOptions): Promise<RunningServer> {
+// optionally with a spacer before a section, in a temporary directory. The
+// manifest is recomputed for the copy. `remove` deletes it.
+export function fixtureSite(resume: Resume, siteData: SiteData = realSiteData, spacer?: SpacerOptions): BuiltSite & { remove: () => void } {
   const site = builtSite();
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-fixture-'));
   const dir = path.join(copy, 'site');
@@ -118,5 +118,11 @@ export async function serveFixture(resume: Resume, siteData: SiteData = realSite
   const html = renderFixtureHtml(resume, siteData);
   for (const page of site.manifest.routes.pages) fs.writeFileSync(path.join(dir, page.file), spacer === undefined ? html : withSpacer(html, spacer));
   const manifest = siteManifest(dir);
-  return serve({ dir, manifest }, () => fs.rmSync(copy, { recursive: true, force: true }));
+  return { dir, manifest, remove: () => fs.rmSync(copy, { recursive: true, force: true }) };
+}
+
+// `fixtureSite`, served for the current test, and removed when it finishes.
+export async function serveFixture(resume: Resume, siteData: SiteData = realSiteData, spacer?: SpacerOptions): Promise<RunningServer> {
+  const { remove, ...site } = fixtureSite(resume, siteData, spacer);
+  return serve(site, remove);
 }
