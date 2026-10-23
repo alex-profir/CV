@@ -1,0 +1,286 @@
+{
+  "basics": {
+    "name": "Print Spacer Person",
+    "label": "Fixture Engineer",
+    "email": "print.spacer@example.com",
+    "summary": "Amber birch cedar delta ember fable grove harbor island juniper kettle lantern meadow north orchard pebble quarry river summit timber upland valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon marsh amber birch cedar delta ember fable grove harbor island juniper kettle.",
+    "location": {
+      "city": "Spacerton",
+      "countryCode": "RO"
+    },
+    "profiles": [
+      {
+        "network": "Codehost",
+        "username": "print-spacer",
+        "url": "https://example.com/print-spacer"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Lantern Meadow North",
+      "position": "Orchard Pebble Quarry",
+      "startDate": "2018-07",
+      "endDate": "2026-10",
+      "summary": "River summit timber upland valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll.",
+      "highlights": [
+        "Lagoon marsh amber birch cedar delta ember fable grove harbor island juniper kettle lantern.",
+        "Meadow north orchard pebble quarry river summit timber upland valley willow.",
+        "Yonder zephyr anchor beacon canyon dune estuary fjord glacier heath.",
+        "Inlet jetty knoll lagoon marsh amber birch cedar delta ember fable grove harbor.",
+        "Island juniper kettle lantern meadow north orchard pebble quarry river summit timber."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Upland Valley Willow Yonder Zephyr Anchor",
+      "area": "Beacon Canyon Dune Estuary Fjord Glacier",
+      "studyType": "Heath Inlet Jetty",
+      "startDate": "2018-09",
+      "endDate": "2022-09",
+      "courses": [
+        "Knoll Lagoon Marsh",
+        "Amber Birch Cedar",
+        "Delta Ember Fable Grove Harbor",
+        "Island Juniper Kettle Lantern Meadow",
+        "North Orchard Pebble Quarry River Summit"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Timber Upland Valley Willow",
+      "level": "Master",
+      "keywords": [
+        "Yonder",
+        "Zephyr Anchor",
+        "Beacon",
+        "Canyon Dune",
+        "Estuary"
+      ]
+    },
+    {
+      "name": "Fjord Glacier Heath",
+      "level": "Master",
+      "keywords": [
+        "Inlet Jetty Knoll",
+        "Lagoon Marsh",
+        "Amber Birch",
+        "Cedar",
+        "Delta Ember",
+        "Fable",
+        "Grove Harbor"
+      ]
+    },
+    {
+      "name": "Island Juniper Kettle",
+      "level": "Advanced",
+      "keywords": [
+        "Lantern",
+        "Meadow North",
+        "Orchard",
+        "Pebble",
+        "Quarry River"
+      ]
+    },
+    {
+      "name": "Summit Timber",
+      "level": "Advanced",
+      "keywords": [
+        "Upland Valley",
+        "Willow Yonder",
+        "Zephyr",
+        "Anchor Beacon"
+      ]
+    },
+    {
+      "name": "Canyon Dune Estuary Fjord",
+      "level": "Master",
+      "keywords": [
+        "Glacier Heath",
+        "Inlet Jetty",
+        "Knoll",
+        "Lagoon",
+        "Marsh"
+      ]
+    },
+    {
+      "name": "Amber Birch Cedar",
+      "level": "Expert",
+      "keywords": [
+        "Delta"
+      ]
+    },
+    {
+      "name": "Ember Fable Grove",
+      "level": "Intermediate",
+      "keywords": [
+        "Harbor",
+        "Island"
+      ]
+    }
+  ],
+  "languages": [
+    {
+      "language": "English",
+      "fluency": "Native Speaker"
+    },
+    {
+      "language": "French",
+      "fluency": "B2"
+    },
+    {
+      "language": "German",
+      "fluency": "A2"
+    }
+  ],
+  "interests": [
+    {
+      "name": "Juniper Kettle Lantern",
+      "keywords": [
+        "Meadow north orchard pebble quarry",
+        "River summit",
+        "Timber upland valley willow yonder"
+      ]
+    },
+    {
+      "name": "Zephyr",
+      "keywords": [
+        "Anchor beacon canyon dune estuary fjord glacier heath inlet"
+      ]
+    },
+    {
+      "name": "Jetty Knoll",
+      "keywords": [
+        "Lagoon marsh amber birch cedar"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Delta Ember Fable Grove Harbor Island",
+      "startDate": "2025-12",
+      "description": "Juniper kettle lantern meadow north orchard pebble quarry river summit timber upland valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet.",
+      "highlights": [
+        "Jetty knoll lagoon marsh amber birch cedar delta ember fable grove harbor island juniper kettle lantern meadow north",
+        "Orchard pebble quarry river summit timber upland valley willow",
+        "Yonder zephyr anchor beacon canyon dune estuary",
+        "Fjord glacier heath inlet jetty knoll lagoon"
+      ]
+    },
+    {
+      "name": "Marsh Amber Birch Cedar Delta",
+      "startDate": "2022-01",
+      "endDate": "2026-10",
+      "description": "Ember fable grove harbor island juniper kettle lantern meadow north orchard pebble quarry river summit timber upland valley willow yonder zephyr anchor beacon canyon dune estuary.",
+      "highlights": [
+        "Fjord glacier heath inlet jetty knoll lagoon marsh amber birch cedar delta ember fable grove",
+        "Harbor island juniper kettle lantern meadow north orchard pebble quarry river summit timber upland valley",
+        "Willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon marsh amber",
+        "Birch cedar delta ember fable grove harbor island juniper kettle lantern meadow north orchard pebble quarry river summit timber",
+        "Upland valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon",
+        "Marsh amber birch cedar delta ember fable grove harbor island juniper kettle lantern meadow north orchard pebble"
+      ]
+    },
+    {
+      "name": "Quarry River Summit",
+      "startDate": "2021-10",
+      "endDate": "2022-09",
+      "description": "Timber upland valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon.",
+      "highlights": [
+        "Marsh amber birch cedar delta ember fable grove harbor island juniper",
+        "Kettle lantern meadow north orchard pebble quarry river summit timber upland",
+        "Valley willow yonder zephyr anchor beacon canyon dune estuary"
+      ]
+    },
+    {
+      "name": "Fjord Glacier Heath Inlet",
+      "startDate": "2021-04",
+      "endDate": "2021-07",
+      "description": "Jetty knoll lagoon marsh amber birch cedar delta ember fable grove.",
+      "highlights": [
+        "Harbor island juniper kettle lantern meadow north orchard pebble quarry river summit timber upland",
+        "Valley willow yonder zephyr anchor beacon canyon dune estuary fjord glacier",
+        "Heath inlet jetty knoll lagoon marsh amber birch cedar"
+      ]
+    },
+    {
+      "name": "Delta Ember Fable Grove Harbor Island",
+      "startDate": "2020-09",
+      "endDate": "2021-12",
+      "description": "Juniper kettle lantern meadow north orchard pebble quarry river summit timber upland.",
+      "highlights": [
+        "Valley willow yonder zephyr anchor beacon canyon dune estuary fjord",
+        "Glacier heath inlet jetty knoll lagoon marsh amber birch cedar delta ember",
+        "Fable grove harbor island juniper kettle lantern meadow north orchard pebble quarry river"
+      ]
+    },
+    {
+      "name": "Summit Timber Upland Valley Willow",
+      "startDate": "2020-08",
+      "endDate": "2020-12",
+      "description": "Yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon marsh amber birch.",
+      "highlights": [
+        "Cedar delta ember fable grove harbor island juniper kettle lantern",
+        "Meadow north orchard pebble quarry river summit timber upland",
+        "Valley willow yonder zephyr anchor beacon canyon dune"
+      ]
+    },
+    {
+      "name": "Estuary Fjord Glacier Heath Inlet Jetty",
+      "startDate": "2020-01",
+      "endDate": "2020-09",
+      "description": "Knoll lagoon marsh amber birch cedar delta ember fable grove harbor island juniper kettle.",
+      "highlights": [
+        "Lantern meadow north orchard pebble quarry river",
+        "Summit timber upland valley willow yonder zephyr anchor",
+        "Beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon marsh amber birch cedar"
+      ]
+    },
+    {
+      "name": "Delta Ember Fable Grove Harbor",
+      "startDate": "2019-06",
+      "endDate": "2020-02",
+      "description": "Island juniper kettle lantern meadow north orchard pebble quarry river summit timber upland valley.",
+      "highlights": [
+        "Willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet",
+        "Jetty knoll lagoon marsh amber birch cedar delta ember fable",
+        "Grove harbor island juniper kettle lantern meadow north orchard pebble quarry"
+      ]
+    },
+    {
+      "name": "River Summit Timber Upland Valley",
+      "startDate": "2019-06",
+      "endDate": "2021-10",
+      "description": "Willow yonder zephyr anchor beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon.",
+      "highlights": [
+        "Marsh amber birch cedar delta ember fable grove harbor",
+        "Island juniper kettle lantern meadow north orchard pebble quarry river",
+        "Summit timber upland valley willow yonder zephyr anchor beacon canyon"
+      ]
+    },
+    {
+      "name": "Dune Estuary Fjord Glacier Heath",
+      "startDate": "2018-08",
+      "endDate": "2019-08",
+      "description": "Inlet jetty knoll lagoon marsh amber birch cedar delta ember fable grove harbor island juniper kettle.",
+      "highlights": [
+        "Lantern meadow north orchard pebble quarry river summit timber upland valley willow yonder zephyr anchor",
+        "Beacon canyon dune estuary fjord glacier heath inlet jetty knoll lagoon marsh",
+        "Amber birch cedar delta ember fable grove harbor island juniper kettle"
+      ]
+    },
+    {
+      "name": "Lantern Meadow North",
+      "startDate": "2018-07",
+      "endDate": "2018-11",
+      "description": "Orchard pebble quarry river summit timber upland valley willow yonder zephyr anchor beacon.",
+      "highlights": [
+        "Canyon dune estuary fjord glacier heath inlet jetty knoll lagoon",
+        "Marsh amber birch cedar delta ember fable grove harbor",
+        "Island juniper kettle lantern meadow north orchard pebble"
+      ]
+    }
+  ]
+}

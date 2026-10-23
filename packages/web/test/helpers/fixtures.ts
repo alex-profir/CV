@@ -18,6 +18,7 @@ export const FIXTURE_NAMES = [
   'entry-without-heading',
   'long-words',
   'non-ascii',
+  'print-spacer',
 ] as const;
 
 export type FixtureName = (typeof FIXTURE_NAMES)[number];

@@ -18,3 +18,4 @@ which isn't newest first), as the page must still render them as written.
 | `entry-without-heading.json` | Work entries with neither position nor name (falling back to the date), named only by the organization, and one holding nothing shown, which isn't rendered; an education entry with neither study type nor area |
 | `long-words.json` | A 120-character word as a project name and a 200-character address in the summary |
 | `non-ascii.json` | Names and places with `ș`, `ț`, `ă`, `é`, `ü` and `ß` |
+| `print-spacer.json` | A made-up CV of the real CV's shape and length: the same sections, entries, highlights, chips and dates, with words of similar length. The print tests render it with a spacer before Projects (`serveFixture(resume, siteData, { spacerBefore: 'projects', height })`, research R18) |

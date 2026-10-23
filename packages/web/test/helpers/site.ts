@@ -16,6 +16,7 @@ import { siteManifest } from '../../scripts/build-site.ts';
 import { renderCv } from '../../src/render.tsx';
 import type { PageAssets } from '../../src/render.tsx';
 import type { SiteManifest } from '../../src/routes.ts';
+import type { SupportedSection } from '../../src/supported.ts';
 
 declare module 'vitest' {
   export interface ProvidedContext {
@@ -94,15 +95,28 @@ export function renderFixtureHtml(resume: Resume, siteData: SiteData = realSiteD
   return renderCv({ resume, siteData, assets: builtAssets() });
 }
 
+// Test-only markup placed before a section of the rendered page: an empty
+// block of a given height in CSS pixels (research R18). Site source never
+// holds it.
+export type SpacerOptions = { spacerBefore: SupportedSection; height: number };
+
+export function withSpacer(html: string, { spacerBefore, height }: SpacerOptions): string {
+  const section = `<section aria-labelledby="section-${spacerBefore}"`;
+  const at = html.indexOf(section);
+  if (at < 0) throw new Error(`the page has no ${spacerBefore} section to put the spacer before`);
+  return `${html.slice(0, at)}<div data-test-spacer="" style="block-size:${height}px"></div>${html.slice(at)}`;
+}
+
 // A copy of the built site whose `cv.html` is rendered from a fixture CV,
-// served for the current test, and removed when it finishes. The manifest
-// is recomputed for the copy.
-export async function serveFixture(resume: Resume, siteData: SiteData = realSiteData): Promise<RunningServer> {
+// optionally with a spacer before a section, served for the current test,
+// and removed when it finishes. The manifest is recomputed for the copy.
+export async function serveFixture(resume: Resume, siteData: SiteData = realSiteData, spacer?: SpacerOptions): Promise<RunningServer> {
   const site = builtSite();
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-fixture-'));
   const dir = path.join(copy, 'site');
   fs.cpSync(site.dir, dir, { recursive: true });
-  for (const page of site.manifest.routes.pages) fs.writeFileSync(path.join(dir, page.file), renderFixtureHtml(resume, siteData));
+  const html = renderFixtureHtml(resume, siteData);
+  for (const page of site.manifest.routes.pages) fs.writeFileSync(path.join(dir, page.file), spacer === undefined ? html : withSpacer(html, spacer));
   const manifest = siteManifest(dir);
   return serve({ dir, manifest }, () => fs.rmSync(copy, { recursive: true, force: true }));
 }
