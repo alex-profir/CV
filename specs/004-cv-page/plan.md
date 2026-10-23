@@ -145,7 +145,7 @@ shows the post-design state.
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | Pass | `/` is a 307 to `/cv`, so the CV is zero clicks from first load (FR-018). `/cv`'s full content is in the HTML the server sends, rendered at build time, and reads with scripting off (R1, FR-014). Offline support adds no prompt, banner or install offer (R4) |
 | VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | Pass | axe-core at three widths on both pages, keyboard order and visible focus, forced colors, no motion, layout at 200% and 400% zoom and with text spacing, and Lighthouse 90+ on both profiles, all blocking merge (R11 to R19). Manual screen reader pass (SC-004). The desktop-shell keyboard clause doesn't apply: no shell exists |
 | IX | Original Design | No Apple icons, fonts, wallpapers or other Apple assets | Pass | The design is the owner's own (design/review.md). Fonts are Space Grotesk, Schibsted Grotesk and JetBrains Mono, all OFL. A test asserts no font token or `fonts.json` family is an Apple or system UI font. Arrows are the site's own SVG paths |
-| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | Ten packages, two of them already installed, and thirteen abstractions are listed below, each with the simpler alternative it rejected. No agent skill is added |
+| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | Ten packages, two of them already installed, and fourteen abstractions are listed below, each with the simpler alternative it rejected. No agent skill is added |
 | XI | One Feature, One PR | Feature ships in one PR linking spec.md and tasks.md | Pass | One PR from `004-cv-page`, with the token export, the site data field and the ruleset change in it. Applying the ruleset is a repository setting made during the PR (quickstart 12) |
 
 ## Requirement Traceability
@@ -189,7 +189,7 @@ in Chromium (R21). "Fixture site" means a small site under `tools/site-check/tes
 | 004-cv-page-FR-029 | web `focus.test.ts`: every link is reached by Tab in reading order, shows an indicator of 3:1 or more, and isn't covered (the keyboard part, on fixture CVs) | CV links |
 | 004-cv-page-FR-030 | web `modes.test.ts`: with forced colors, rules, timeline dots and chips keep a visible border, links keep their underline, and the focus outline is visible. No element has a background image | Non-UI |
 | 004-cv-page-FR-031 | web `modes.test.ts`: with and without reduced motion, every element's computed transition and animation durations are 0 | Non-UI |
-| 004-cv-page-FR-032 | web `print.test.ts`: on A4 and Letter PDFs, the footer's text is absent and every text item is inside the page (US3 scenarios 1 and 6); the page sets no `@page` margin box content (US3 scenario 7) | `footer` |
+| 004-cv-page-FR-032 | web `print.test.ts`: on A4 and Letter PDFs, the footer's text is absent and every text item is inside the page (US3 scenarios 1 and 6); the built CSS has no `@page` rule (US3 scenario 7) | `footer` |
 | 004-cv-page-FR-033 | web `print.test.ts`: `https://github.com/alex-profir` appears in the PDF text (US3 scenario 2), and the email address appears once (scenario 3) | CV links |
 | 004-cv-page-FR-034 | web `print.test.ts`: with the spacer fixture (R18), no page's last line is a section or entry heading (US3 scenario 4) | Non-UI |
 | 004-cv-page-FR-035 | web `print.test.ts`: in print emulation, every text color has 4.5:1 or more against white, and no element relies on a background (US3 scenario 5) | Non-UI |
@@ -206,7 +206,7 @@ in Chromium (R21). "Fixture site" means a small site under `tools/site-check/tes
 | 004-cv-page-FR-046 | web `fonts.test.ts`: no style sheet or component in the repository holds an `@font-face` rule or a family name, the built CSS holds one `@font-face` per `fonts.json` file, and `npm run token-check` passes with the fonts declared, so no amendment to 003 is needed (R5) | Non-UI |
 | 004-cv-page-FR-047 | web `data-req.test.tsx`: every UI target in this table appears on its element in the rendered pages. `self-check`: `npm run traceability` passes | all targets |
 | 004-cv-page-FR-048 | check `repo-settings.test.ts`: `ci.yml` has the `site` job with the steps and restrictions of [contracts/ci.md](./contracts/ci.md), and the ruleset requires `site`. Live: quickstart 12 | Non-UI |
-| 004-cv-page-FR-049 | check `cli.test.ts`: `npm run --silent site-check` and the CI step run the same command; two runs on a fixture give identical reports | Non-UI |
+| 004-cv-page-FR-049 | check `cli.test.ts`: `npm run --silent site-check` and the CI step run the same command; two runs on a fixture give the same result ([contracts/cli.md](./contracts/cli.md#determinism)) | Non-UI |
 | 004-cv-page-FR-050 | check `accessibility.test.ts`: a fixture link with no name (US2 Independent Test) and low-contrast text (US2 scenario 2) each fail, naming page, width, rule and element | Non-UI |
 | 004-cv-page-FR-051 | check `lighthouse.test.ts`: a fixture page with a 2 MB blocking script scores under 90 on mobile and fails, reporting profile, category and score (US2 scenario 3); a minimal page passes; the not-found page and the redirect aren't scored | Non-UI |
 | 004-cv-page-FR-052 | check `no-script.test.ts`: the expected fields come from the CV document (adding a highlight to a fixture CV adds an expected field); missing and out-of-order fields are named by JSON path | Non-UI |
@@ -215,18 +215,22 @@ in Chromium (R21). "Fixture site" means a small site under `tools/site-check/tes
 | 004-cv-page-FR-055 | check `other-sites.test.ts`: a fixture with an analytics script and a style sheet from other sites fails, naming both addresses (US2 scenario 7 and Independent Test) | Non-UI |
 | 004-cv-page-FR-056 | check `pages.test.ts`: a fixture manifest with a second page gets it checked by every part, and by Lighthouse because it answers 200, with no change to the command (US2 scenario 9) | Non-UI |
 | 004-cv-page-FR-057 | check `cli.test.ts`: the positive control of R17 (`example.com` and `203.0.113.10` requested, both reported, no connection made); every launch carries both isolation flags | Non-UI |
-| 004-cv-page-FR-058 | check `report.test.ts`: with several parts failing, every part still runs; a crashing part is reported as `error` and the rest continue; each problem line has part, page, variant and subject; the summary lists every part, page, variant and Lighthouse score. check `cli.test.ts`: the seeded fixture's report equals `expected-report.txt` | Non-UI |
+| 004-cv-page-FR-058 | check `report.test.ts`: with several parts failing, every part still runs; a crashing part is reported as `error` and the rest continue; each problem line has part, page, variant and subject; the summary lists every part, page, variant and Lighthouse score | Non-UI |
 
 Success criteria without an FR of their own:
 
 - SC-001: FR-052 and FR-014 above, at 320 and 1440 px.
 - SC-002, SC-003: the `lighthouse` part on every pull request. SC-003 is asserted in check
   `lighthouse.test.ts` on the real build off CI: the median first contentful paint on the mobile
-  profile is under 2.5 s.
+  profile is under 2.5 s, and the `h1` and `p.role` lie inside the first 375 × 667 px viewport.
+  The page is static HTML with render-blocking CSS, no script and `font-display: swap`, so
+  everything in that viewport, the name and role included, is drawn in the first contentful
+  frame. On CI, SC-003 is guarded by the Performance score of 90 or more.
 - SC-004, SC-005: by hand, quickstart 6 and 7, recorded in the pull request.
 - SC-006, SC-007: the `offline` and `other-sites` parts on every pull request.
 - SC-008: quickstart 9, with FR-003 and FR-043 as automated guards.
-- SC-009: check `performance.test.ts` runs `npm run site-check` on the real repository in under
+- SC-009: check `cli.test.ts`: the seeded fixture's report equals `expected-report.txt`, with
+  Lighthouse scores masked. Check `performance.test.ts` runs `npm run site-check` on the real repository in under
   5 minutes, asserted off CI only, as in 001.
 - SC-010: the `self-check` tests above.
 
@@ -250,10 +254,11 @@ Success criteria without an FR of their own:
 | Service worker and registration script | abstraction | The offline behavior of FR-038 to FR-041 (R4) | Workbox: a build toolchain, and precached pages served cache first against FR-039 | N/A |
 | Site text module (`src/site-text.ts`) | abstraction | All non-CV wording in one place, so changing a word is one edit (FR-006, R7) | Strings inline in components: a heading's wording would be spread across files. Site data: needs a schema field per label | N/A |
 | Supported content (`src/supported.ts`) | abstraction | The Key Entities table as data, read by the page and the `content` part (FR-005) | Two hand-kept lists, one in the page and one in the check, would drift | N/A |
-| Formatters (`src/format/dates.ts`, `src/format/location.ts`) | abstraction | Pure functions for date ranges and location lines, tested on their own (FR-008 to FR-011) | Formatting inside components: every edge case would need a rendered page to test | N/A |
+| Formatters (`src/format/dates.ts`, `src/format/location.ts`, `src/format/meta.ts`) | abstraction | Pure functions for date ranges, location lines and the page title and description, tested on their own (FR-008 to FR-011, FR-036, FR-037) | Formatting inside components: every edge case would need a rendered page to test | N/A |
 | Site check CLI (`tools/site-check/`) | abstraction | One command, one report, eleven parts, as the spec requires (FR-049, FR-058, R11) | Separate commands per tool: no single result or summary, and no guarantee every part runs | N/A |
 | Expected fields (`tools/site-check/src/expected.ts`) | abstraction | Lists the shown fields from the CV document, so the no-script and offline parts don't use a hand list (FR-052) | A hand-written list: forbidden by FR-052 | N/A |
 | Test helpers (`packages/web/test/helpers/site.ts`, `browser.ts`) | abstraction (tests only) | Build once per run; render a fixture CV with the real components, style sheet and fonts; open it in Chromium at a width (R21) | Building per test file: about 10 s each. Testing HTML strings only: no layout, fonts or computed styles | N/A |
+| Check test helper (`tools/site-check/test/helpers/sites.ts`) | abstraction (tests only) | Runs the CLI as a process, locates committed fixture sites and builds temporary ones, reusing 001's `makeProject` | Repeating the process spawn and fixture setup in each of the check's thirteen test files | N/A |
 | Site data field `repository` | data (002 site data) | The footer link's address, shared later by the shells' repository link (R7) | A constant in the page: it would be a second copy once the shells add their link | N/A |
 
 No agent skill is added. `frontend-design` and `web-design-guidelines` (docs/skill-options.md) were
@@ -309,7 +314,10 @@ packages/
 │   └── src/shape.generated.ts       # regenerated by npm run content-shape
 ├── tokens/
 │   ├── penpot/tokens.json           # replaced by the mockup's tokens, hand-written in Penpot's form (FR-043)
-│   └── src/tokens.generated.{css,ts} # regenerated by npm run token-output
+│   ├── src/tokens.generated.{css,ts} # regenerated by npm run token-output
+│   └── test/
+│       ├── tokens.test.ts           # starter-value assertions move to the fixture below
+│       └── __fixtures__/starter/tokens.json # verbatim copy of 003's starter export
 └── web/                             # @cv/web: the site (new)
     ├── package.json                 # private, type module; dependencies react, react-dom
     ├── vite.config.ts               # client and SSR builds, Lightning CSS with customMedia, fonts plugin
@@ -323,13 +331,14 @@ packages/
     │   ├── supported.ts             # shown sections and fields (FR-002, FR-005)
     │   ├── format/
     │   │   ├── dates.ts             # FR-009 to FR-011
-    │   │   └── location.ts          # FR-008
+    │   │   ├── location.ts          # FR-008
+    │   │   └── meta.ts              # FR-036, FR-037
     │   ├── pages/
     │   │   ├── Document.tsx         # html, head, title, metadata, assets
     │   │   ├── CvPage.tsx
     │   │   └── NotFoundPage.tsx
     │   ├── cv/                      # Intro, Section, Timeline, Entry, DateRange, Chips, Skills,
-    │   │                            #   Languages, Interests, Arrow (svg), SiteFooter
+    │   │                            #   Languages, Interests, Arrow (svg), VisuallyHidden, SiteFooter
     │   ├── styles/
     │   │   ├── global.css           # imports @cv/tokens/tokens.css and virtual:cv-fonts.css; base
     │   │   ├── cv.css               # layout and components, tokens only
@@ -361,6 +370,7 @@ tools/
 ├── traceability/test/repo-settings.test.ts   # ruleset now includes site
 ├── content-check/test/repo-settings.test.ts  # ruleset now includes site
 ├── token-check/test/repo-settings.test.ts    # ruleset now includes site
+├── token-check/test/self-check.test.ts       # only if a token name it changes is dropped
 └── site-check/                               # new
     ├── src/
     │   ├── main.js          # entry point, plain JS: Node version gate, loads cli.ts
@@ -374,6 +384,7 @@ tools/
     │   │   └── keyboard.ts  other-sites.ts  fonts.ts  layout.ts  print.ts  modes.ts
     │   └── report.ts        # ordering, problem lines, summary
     └── test/
+        ├── helpers/sites.ts # runs the CLI; committed and temporary fixture sites
         ├── __fixtures__/    # small sites, each a dist/ with site-manifest.json; seeded/ + expected-report.txt
         ├── content.test.ts  accessibility.test.ts  lighthouse.test.ts  no-script.test.ts
         ├── offline.test.ts  keyboard.test.ts  other-sites.test.ts  fonts.test.ts  pages.test.ts
@@ -392,6 +403,13 @@ tools/
   and Node version gate. The local server is part of it, and `npm run serve` runs it too, so the
   owner sees exactly what the checks see.
 - `os-core`, the shells and the apps aren't created here.
+- Replacing the token export (FR-043) breaks 003 tests that pin starter values (a shadow,
+  `color.overlay`'s transparency, `breakpoint.wide` at 768). Those assertions move onto a
+  committed copy of the 003 starter export at
+  `packages/tokens/test/__fixtures__/starter/tokens.json`, keeping every 003 test title and ID.
+  003 FR-006 says the tokens *start* with placeholders, and 003's Assumptions expect them to
+  change completely with the `/cv` mockup, so 003's requirements stay covered without keeping
+  unused tokens.
 
 Conventions set here for later features:
 

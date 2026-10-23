@@ -277,14 +277,15 @@ mode is `manual`). Confirmed by the offline check's root case.
 
 - Penpot can't be reached until at least 2026-10-26. Under Constitution 1.2.0's interim provision
   on local mockups, the export is **written by hand** at `packages/tokens/penpot/tokens.json`, in
-  exactly the form Penpot 2.18.3 exports (003 R2, R3): one `base` set, one theme in its own group,
+  exactly the form Penpot 2.18.3 exports (003 R2, R3): the `base` and `light` sets, one theme in its own group,
   every token with `$value`, `$type` and `$description`, sizes as unitless strings, two-space
   indentation and no final newline. 003's check rejects anything Penpot wouldn't write, so a file
   it accepts is one Penpot can import (FR-043).
-- Values come from the approved design: the five colors in design/review.md, and the type scale,
-  spacing, widths, rules, radius and dot size read from direction C's HTML exploration, which the
-  Penpot frames were built from, and checked against the revision 10 exports at 1440 and 375 px. The owner reviews the file in the pull request against the frames. `npm run
-  token-output` regenerates the output.
+- Names and values are those in [data-model.md](./data-model.md#token-roles)'s Token roles
+  table. They were read from direction C's HTML exploration, which the Penpot frames were built
+  from, and from the Penpot token script written with it, and the owner approves the table before
+  implementation. The exploration itself stays outside the repository: it holds CV text, which 002
+  allows only in `packages/content`. `npm run token-output` regenerates the output.
 - The roles the page needs are listed in [data-model.md](./data-model.md#token-roles): five colors,
   three families, the type scale, weights, line heights, letter spacing, the spacing scale, the
   content and column widths, border widths, the chip radius, the timeline dot size, the focus
@@ -346,11 +347,9 @@ change to 003 and out of scope here. It's recorded as a follow-up.
   is already restricted to the 249 ISO 3166-1 alpha-2 codes by the content check (002,
   `tools/content-check/src/countries.ts`). The English names are CLDR's, shipped with Node's ICU:
   "Romania", "United States", "South Korea". ISO 3166-1's own English short names are formal
-  ("Korea (the Republic of)", "Netherlands (Kingdom of the)"), and read badly in a location line.
-  A test asserts all 249 codes get a name that isn't the code. **This reads FR-008's "the
-  country's English name, taken from its country code using the ISO 3166-1 list" as: the ISO
-  3166-1 code, named in English by CLDR.** If the owner wants ISO's official short names, the
-  change is a 249-entry table in the same module.
+  ("Korea (the Republic of)", "Netherlands (Kingdom of the)"), and read badly in a location line,
+  which is why FR-008 asks for the common English name. A test asserts all 249 codes get a name
+  that isn't the code.
 - **Unsupported content** (FR-005): `packages/web/src/supported.ts` lists the supported sections
   and, per section, the shown fields (the Key Entities table). The site check's `content` part
   (R11) walks the CV document and reports any unsupported section with at least one entry, and any

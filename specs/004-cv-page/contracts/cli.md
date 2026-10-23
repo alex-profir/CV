@@ -122,6 +122,9 @@ Site check: FAILED
 
 ## Determinism
 
-For the same files, two runs give the same problems and the same pass or fail for every part
-(SC-009). Lighthouse scores may differ by a point or two between machines. The median of three
-runs keeps the pass or fail result stable for a page that scores near 100 (research R13).
+For the same files, two runs give the same result (FR-049, SC-009): the same exit code, the
+same problem lines, and the same summary once every Lighthouse score is replaced by `<n>`.
+Lighthouse scores may differ by a point or two between runs and machines, so whether a score is
+90 or more is part of the result, and the exact number isn't. The median of three runs keeps the
+pass or fail result stable for a page that scores near 100 (research R13). Tests that compare
+two reports mask the scores the same way.

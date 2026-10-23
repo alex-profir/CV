@@ -112,29 +112,94 @@ An absent location gives no row at all (FR-004).
 
 ## Token roles
 
-The roles the page reads from `@cv/tokens` (R6, FR-043, FR-044). The token names are set in the
-export, following 003's naming rules: by hand under the interim provision, then kept when the file
-is imported into Penpot. The values come from the approved mockup (design/review.md
-gives the colors).
+The tokens the page reads from `@cv/tokens` (R6, FR-043, FR-044), approved by the owner before
+implementation. Names follow 003's naming rules and keep the starter's names where the role
+matches (`color.base.ink`, `color.base.paper`, `color.text.primary`, `color.surface`, `space.1`,
+`space.2`, `space.4`, `space.8`, `border.thin`, `breakpoint.wide`, `font.family.body`,
+`font.size.body`, `font.weight.regular`, `font.letter-spacing.normal`, `typography.body`). Names
+and values come from direction C's HTML exploration and the Penpot token script written with it
+on 2026-10-22, so they stay the same when the file is imported into Penpot. Sizes are unitless
+pixels, as Penpot writes them.
 
-| Role | Type | From the design |
-|------|------|-----------------|
-| Background | color | `#F4F4EF` |
-| Text, primary | color | `#121212` |
-| Text, secondary | color | `#55554F` |
-| Rule, light (rules, timeline line, chip outline) | color | `#D6D6CE` |
-| Accent (role, organization, links, timeline dot, focus) | color | `#3730A3` |
-| Family: display, body, mono | fontFamilies | Space Grotesk, Schibsted Grotesk, JetBrains Mono, each with a generic fallback |
-| Type scale: name (phone, desktop), section heading, entry heading, body, small, mono label | fontSizes, with typography tokens grouping family, size, weight, line height and letter spacing | from the mockup |
-| Weights used | fontWeights | from the mockup |
-| Spacing scale | spacing | from the mockup |
-| Content width (1068), section heading column, page margin (phone 20) | sizing | from the mockup |
-| Rule widths: light and strong | borderWidth | from the mockup |
-| Chip radius | borderRadius | from the mockup |
-| Timeline dot size | sizing | from the mockup |
-| Focus outline width and offset | borderWidth, spacing | set with the design, at least 2 px wide |
-| Minimum target size | sizing | 24 |
-| Breakpoint where the two-column layout starts | dimension (`breakpoint.` name) | from the mockup |
+**`base` set**
+
+| Tokens | Type | Values |
+|--------|------|--------|
+| `color.base.ink`, `.paper`, `.stone`, `.graphite`, `.mist`, `.indigo`, `.white` | color | `#121212`, `#f4f4ef`, `#55554f`, `#2b2b28`, `#d6d6ce`, `#3730a3`, `#ffffff` |
+| `font.family.display`, `.body`, `.mono` | fontFamilies | `["Space Grotesk", "sans-serif"]`, `["Schibsted Grotesk", "sans-serif"]`, `["JetBrains Mono", "monospace"]` |
+| `font.weight.regular`, `.medium`, `.semibold` | fontWeights | `400`, `500`, `600` |
+| `font.size.label`, `.chip`, `.small`, `.mono`, `.body`, `.h4`, `.lead-narrow`, `.lead-wide`, `.h3-narrow`, `.h3-wide`, `.h2-narrow`, `.h2-wide`, `.notfound-narrow`, `.name-narrow`, `.notfound-wide`, `.name-wide` | fontSizes | `12`, `12.5`, `13`, `14`, `16`, `17`, `17`, `20`, `20`, `22`, `26`, `30`, `44`, `56`, `72`, `104` |
+| `font.letter-spacing.normal`, `.role`, `.label`, `.h3`, `.h2-narrow`, `.h2-wide`, `.notfound-narrow`, `.notfound-wide`, `.name-narrow`, `.name-wide` | letterSpacing | `0`, `0.3`, `0.7`, `-0.2`, `-0.5`, `-0.6`, `-1.3`, `-2.2`, `-2.2`, `-4.2` |
+| `font.case.label` | textCase | `uppercase` |
+| `space.0_5`, `.1`, `.1_5`, `.2`, `.2_5`, `.3`, `.4`, `.5`, `.6`, `.7`, `.8`, `.10`, `.11`, `.12`, `.14`, `.16`, `.22`, `.24` | spacing | `2`, `4`, `6`, `8`, `10`, `12`, `16`, `20`, `24`, `28`, `{space.4} * 2`, `40`, `44`, `48`, `56`, `64`, `88`, `96` |
+| `size.page`, `size.section-label`, `size.timeline-dot`, `size.notfound-title`, `size.target` | sizing | `1180`, `260`, `9`, `600`, `24` |
+| `border.thin`, `border.thick` | borderWidth | `1`, `2` |
+| `radius.pill` | borderRadius | `999` |
+| `breakpoint.wide` | dimension | `900` |
+
+Typography tokens, each referring to a family, size, weight and letter spacing above, with a
+line height (and `font.case.label` for `level`):
+
+| Token | Family | Size | Weight | Letter spacing | Line height |
+|-------|--------|------|--------|----------------|-------------|
+| `typography.role` | mono | mono | medium | role | 1.5 |
+| `typography.name-wide`, `typography.name-narrow` | display | name-wide, name-narrow | semibold | name-wide, name-narrow | 0.95 |
+| `typography.lead-wide`, `typography.lead-narrow` | body | lead-wide, lead-narrow | regular | normal | 1.55 |
+| `typography.label` | mono | mono | regular | normal | 1.5 |
+| `typography.section-number` | mono | small | medium | normal | 1.5 |
+| `typography.h2-wide`, `typography.h2-narrow` | display | h2-wide, h2-narrow | semibold | h2-wide, h2-narrow | 1.1 |
+| `typography.date` | mono | small | medium | normal | 1.5 |
+| `typography.h3-wide`, `typography.h3-narrow` | display | h3-wide, h3-narrow | semibold | h3 | 1.25 |
+| `typography.org` | body | body | medium | normal | 1.6 |
+| `typography.body` | body | body | regular | normal | 1.6 |
+| `typography.marker` | mono | small | regular | normal | 1.6 |
+| `typography.h4` | display | h4 | semibold | normal | 1.4 |
+| `typography.level` | mono | label | regular | label | 1.5 |
+| `typography.chip` | mono | chip | regular | normal | 1.5 |
+| `typography.small` | mono | small | regular | normal | 1.5 |
+| `typography.link` | mono | body | medium | normal | 1.5 |
+| `typography.notfound-wide`, `typography.notfound-narrow` | display | notfound-wide, notfound-narrow | semibold | notfound-wide, notfound-narrow | 1 |
+
+**`light` set**
+
+| Token | Refers to | Role |
+|-------|-----------|------|
+| `color.surface` | `{color.base.paper}` | page background |
+| `color.surface-raised` | `{color.base.white}` | chip fill |
+| `color.text.primary` | `{color.base.ink}` | text, links |
+| `color.text.secondary` | `{color.base.stone}` | dates, labels, levels, footer |
+| `color.text.list` | `{color.base.graphite}` | highlight text |
+| `color.text.accent` | `{color.base.indigo}` | role, section numbers, organizations, skill levels, list markers |
+| `color.rule.strong` | `{color.base.ink}` | section and contact top rules |
+| `color.rule.subtle` | `{color.base.mist}` | light rules, timeline line, chip outline |
+| `color.link.underline` | `{color.base.indigo}` | link underline, timeline dot |
+| `color.focus` | `{color.base.indigo}` | focus outline |
+
+How the layout uses them:
+
+- **Page**: a column at most `size.page` wide, centered, with `space.14` padding on each side
+  from `breakpoint.wide`, so the content is 1068 px wide. Below `breakpoint.wide`, the side
+  padding is `space.5` (the phone margin). Each section's heading column is
+  `size.section-label` wide from `breakpoint.wide`.
+- **Links**: underline `border.thick` thick in `color.link.underline`, offset `space.1`.
+- **Focus**: an outline `border.thick` wide in `color.focus`, offset `space.0_5`.
+- **Targets**: standalone links are at least `size.target` tall (FR-028).
+- **Timeline**: a `border.thin` line in `color.rule.subtle`; dots `size.timeline-dot` across,
+  with a `border.thick` ring in `color.link.underline` on `color.surface`.
+- **Chips**: `border.thin` in `color.rule.subtle`, on `color.surface-raised`, `radius.pill`.
+- A few of the exploration's values are off the spacing scale: the phone timeline indent
+  (22 px), chip padding (3 × 9 px) and the dot's offset (derived from the indent). The CSS
+  snaps them to the nearest token or derives them with `calc()` over tokens, and the owner
+  checks the result against the exports (T105).
+
+In the export, typography values use Penpot's written keys (`fontFamilies` as a list,
+`fontSizes`, `fontWeights`, `letterSpacing`, `lineHeights`, `textCase`), as in 003's starter.
+The colors are written in lowercase, as Penpot writes them, and compared with design/review.md's
+uppercase values without regard to case.
+
+`color.base.graphite` and `color.base.white` are in the approved exports (highlight text and chip
+fill) but not in design/review.md's list of five colors. Both are decoration or body text with
+sufficient contrast: graphite on the background is 12.9:1.
 
 Every token in the export must be read by the site, directly or through another token's reference
 (FR-043). The motion token source is unchanged.
