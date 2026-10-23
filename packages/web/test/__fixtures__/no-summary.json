@@ -1,0 +1,9 @@
+{
+  "basics": {
+    "name": "No Summary Person",
+    "label": "No Summary Label",
+    "email": "no-summary@example.org",
+    "location": { "city": "Summaryless City", "countryCode": "FR" }
+  },
+  "work": [{ "name": "No Summary Company", "position": "No Summary Position", "startDate": "2021-05", "endDate": "2022-01" }]
+}

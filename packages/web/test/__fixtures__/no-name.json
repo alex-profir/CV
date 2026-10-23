@@ -1,0 +1,4 @@
+{
+  "basics": { "label": "Nameless Label", "summary": "A CV document with no name." },
+  "work": [{ "name": "Nameless Company", "position": "Nameless Position", "startDate": "2020-01" }]
+}

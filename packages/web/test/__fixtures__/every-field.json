@@ -1,0 +1,84 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json",
+  "basics": {
+    "name": "Field Fixture Person",
+    "label": "Fixture Label Role",
+    "email": "fixture.person@example.org",
+    "url": "https://fixture-person.example.org",
+    "summary": "Fixture basics summary text.",
+    "location": {
+      "city": "Fixture City",
+      "region": "Fixture Region",
+      "countryCode": "DE"
+    },
+    "profiles": [
+      {
+        "network": "FixtureNetworkA",
+        "username": "fixture-user-a",
+        "url": "https://network-a.example.org/fixture-user-a"
+      },
+      {
+        "network": "FixtureNetworkB",
+        "url": "https://network-b.example.org/profile-b"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Fixture Work Company",
+      "position": "Fixture Work Position",
+      "location": "Fixture Work Location",
+      "url": "https://work-company.example.org",
+      "startDate": "2019-03",
+      "endDate": "2021-11",
+      "summary": "Fixture work summary text.",
+      "description": "Fixture work description text.",
+      "highlights": ["Fixture work highlight one.", "Fixture work highlight two."]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Fixture Project Name",
+      "description": "Fixture project description text.",
+      "entity": "Fixture Project Entity",
+      "type": "Fixture Project Type",
+      "roles": ["Fixture Role One", "Fixture Role Two"],
+      "url": "https://project.example.org",
+      "startDate": "2020-02",
+      "endDate": "2020-08",
+      "highlights": ["Fixture project highlight."],
+      "keywords": ["FixtureKeywordA", "FixtureKeywordB"]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Fixture Skill Name",
+      "level": "Fixture Level",
+      "keywords": ["FixtureSkillKeywordA", "FixtureSkillKeywordB"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Fixture Institution",
+      "url": "https://institution.example.org",
+      "area": "Fixture Area",
+      "studyType": "Fixture Study Type",
+      "startDate": "2014-10",
+      "endDate": "2018-06",
+      "score": "Fixture Score 9.5",
+      "courses": ["Fixture Course One", "Fixture Course Two"]
+    }
+  ],
+  "languages": [
+    {
+      "language": "Fixture Language",
+      "fluency": "Fixture Fluency"
+    }
+  ],
+  "interests": [
+    {
+      "name": "Fixture Interest",
+      "keywords": ["Fixture Interest Keyword One", "Fixture Interest Keyword Two"]
+    }
+  ]
+}

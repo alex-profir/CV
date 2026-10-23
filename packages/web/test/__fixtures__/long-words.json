@@ -1,0 +1,12 @@
+{
+  "basics": {
+    "name": "Long Words Person",
+    "summary": "Here is an address that is very long: https://example.org/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/end and more text."
+  },
+  "projects": [
+    {
+      "name": "Supercalifragilisticexpialidocious-Supercalifragilisticexpialidocious-Supercalifragilisticexpialidocious-Supercalifragil",
+      "description": "A project whose name is one 120-character word."
+    }
+  ]
+}

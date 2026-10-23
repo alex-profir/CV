@@ -1,0 +1,9 @@
+{
+  "basics": { "name": "Headingless Person" },
+  "work": [
+    { "startDate": "2019-04", "endDate": "2020-02", "summary": "A work entry with neither position nor name." },
+    { "name": "Organization Only Company", "summary": "A work entry named only by its organization." },
+    {}
+  ],
+  "education": [{ "institution": "Headingless Institution", "startDate": "2010-09", "endDate": "2014-06" }]
+}

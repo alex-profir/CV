@@ -1,0 +1,6 @@
+{
+  "basics": { "name": "Empty Sections Person", "summary": "A CV document with empty and absent sections." },
+  "work": [{ "name": "Empty Sections Company", "position": "Empty Sections Position", "startDate": "2020-01" }],
+  "skills": [{ "name": "Empty Sections Skill", "keywords": ["EmptyKeyword"] }],
+  "interests": []
+}

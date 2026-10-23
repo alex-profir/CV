@@ -1,0 +1,8 @@
+{
+  "basics": { "name": "Three Projects Person" },
+  "projects": [
+    { "name": "Project Middle", "startDate": "2020-01", "endDate": "2020-06" },
+    { "name": "Project Newest", "startDate": "2023-04" },
+    { "name": "Project Oldest", "startDate": "2016-05", "endDate": "2017-01" }
+  ]
+}

@@ -44,3 +44,14 @@ export async function openPage(url: string, options: OpenPageOptions): Promise<P
   await page.goto(url);
   return page;
 }
+
+// A page holding `html`, with scripting off, for reading the markup of a
+// rendered string. Asset links don't load: nothing is served.
+export async function openHtml(html: string, { width = 1440 }: { width?: number } = {}): Promise<Page> {
+  browser ??= launchChromium();
+  const context = await (await browser).newContext({ viewport: { width, height: 900 }, javaScriptEnabled: false });
+  onTestFinished(() => context.close());
+  const page = await context.newPage();
+  await page.setContent(html);
+  return page;
+}

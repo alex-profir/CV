@@ -1,0 +1,14 @@
+{
+  "basics": { "name": "Partial Dates Person" },
+  "work": [
+    { "name": "Range Company", "position": "Start And End", "startDate": "2018-07", "endDate": "2026-10" },
+    { "name": "Ongoing Company", "position": "Start Only", "startDate": "2025-12" },
+    { "name": "Ended Company", "position": "End Only", "endDate": "2026-10" },
+    { "name": "Undated Company", "position": "No Dates" },
+    { "name": "Same Month Company", "position": "Same Month", "startDate": "2018-07", "endDate": "2018-07" },
+    { "name": "Year To Month Company", "position": "Year To Same Year Month", "startDate": "2018", "endDate": "2018-07" },
+    { "name": "Year To Later Company", "position": "Year To Later Month", "startDate": "2018", "endDate": "2019-03" },
+    { "name": "Day Company", "position": "Day Alone", "startDate": "2018-07-29", "endDate": "2018-07-29" },
+    { "name": "Day Start Company", "position": "Day Start Only", "startDate": "2018-07-29" }
+  ]
+}
