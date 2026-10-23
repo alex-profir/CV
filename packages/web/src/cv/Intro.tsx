@@ -5,19 +5,20 @@ import type { ResumeBasics, ResumeProfile } from '@cv/content';
 import { locationLine } from '../format/location.ts';
 import { siteText } from '../site-text.ts';
 import { Arrow } from './Arrow.tsx';
-import { CvLink } from './CvLink.tsx';
+import { CvLink, withoutScheme } from './CvLink.tsx';
 import { VisuallyHidden } from './VisuallyHidden.tsx';
 import { present } from './join.tsx';
 
-const withoutScheme = (url: string) => url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
-
-// A profile's shown text: the username, or the network when there's none.
+// A profile's shown text: the username, or the address without its scheme
+// when there's none, as the website row shows it. The network is the row's
+// label, or the text itself when there's neither.
 function Profile({ profile }: { profile: ResumeProfile }) {
   const { network, username, url } = profile;
-  const text = present(username) ? username! : present(network) ? network! : withoutScheme(url ?? '');
-  // The network joins the username in the accessible name, as
+  const text = present(username) ? username! : present(url) ? withoutScheme(url!) : network!;
+  const labelled = present(network) && (present(username) || present(url));
+  // The network joins the text in the accessible name, as
   // `siteText.profileLabel` gives it, through visually hidden text.
-  const prefix = present(network) && present(username) ? siteText.profileLabel.split('{username}')[0]!.replace('{network}', network!) : '';
+  const prefix = labelled ? siteText.profileLabel.split('{username}')[0]!.replace('{network}', network!) : '';
   const content = (
     <>
       {prefix !== '' && <VisuallyHidden>{prefix}</VisuallyHidden>}
@@ -26,7 +27,7 @@ function Profile({ profile }: { profile: ResumeProfile }) {
   );
   return (
     <li className="contact-row">
-      {present(network) && (
+      {labelled && (
         <span className="contact-label" aria-hidden="true">
           {network}
         </span>

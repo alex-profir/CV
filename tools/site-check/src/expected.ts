@@ -8,8 +8,9 @@
 // - `text`: the CV string after NFC, as the page writes it;
 // - `datetime`: a date, by the `time` element carrying the CV string;
 // - `href`: an address the page shows as a link's target, found where the
-//   link starts. Apart from the basics' website, whose text is the address
-//   without its scheme, an address is only a link's target, never text.
+//   link starts. An address is never expected as text: where the page shows
+//   it (the website, a profile with no username, an entry's address with no
+//   field to link from), it's the address without its scheme.
 import type { Resume } from '@cv/content';
 import { dateRange } from '../../../packages/web/src/format/dates.ts';
 import { countryName } from '../../../packages/web/src/format/location.ts';

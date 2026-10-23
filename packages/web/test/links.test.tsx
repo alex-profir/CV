@@ -3,6 +3,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
+import type { Resume } from '@cv/content';
+import { expectedFields } from '../../../tools/site-check/src/expected.ts';
+import { fieldProblems, mainSequence } from '../../../tools/site-check/src/parts/no-script.ts';
 import { axNodes } from './helpers/ax.ts';
 import { openHtml, openPage } from './helpers/browser.ts';
 import { fixture } from './helpers/fixtures.ts';
@@ -26,6 +29,19 @@ describe('004-cv-page-FR-012: the email, profiles and every address in the CV do
       expect(await page.locator(`main a[href="${url}"]`).count(), url).toBe(1);
     }
     expect(await page.locator(`main a[href="${cv.basics!.url!}"]`).textContent()).toBe('fixture-person.example.org');
+  });
+
+  test('an entry address with no name to link from is a link of its own, its text the address without the scheme', async () => {
+    const cv: Resume = {
+      work: [{ position: 'Fixture Position', url: 'https://work-only.example.org' }],
+      projects: [{ description: 'Fixture project description.', url: 'https://project-only.example.org' }],
+      education: [{ studyType: 'Fixture Study', url: 'https://school-only.example.org' }],
+    };
+    const page = await openHtml(renderFixtureHtml(cv));
+    for (const address of ['work-only.example.org', 'project-only.example.org', 'school-only.example.org']) {
+      expect(await page.locator(`main a[href="https://${address}"]`).textContent(), address).toBe(address);
+    }
+    expect(fieldProblems(await mainSequence(page), expectedFields(cv))).toEqual([]);
   });
 
   test('a project and a profile with no address are plain text, not links (US1 scenario 12)', async () => {
@@ -57,13 +73,13 @@ describe('004-cv-page-FR-013: every link names its target: a profile its network
     expect(link).toMatchObject({ role: 'link', name: 'GitHub: alex-profir' });
   });
 
-  test('a profile with no username is named by its network, and entry links by the entry', async () => {
+  test('a profile with no username is named by its network and address, and entry links by the entry', async () => {
     const cv = fixture('every-field');
     const { url } = await serveFixture(cv);
     const page = await openPage(`${url}/cv`, { width: 375 });
     const name = async (href: string) => (await axNodes(page, `a[href="${href}"]`))[0]?.name;
     expect(await name('https://network-a.example.org/fixture-user-a')).toBe('FixtureNetworkA: fixture-user-a');
-    expect(await name('https://network-b.example.org/profile-b')).toBe('FixtureNetworkB');
+    expect(await name('https://network-b.example.org/profile-b')).toBe('FixtureNetworkB: network-b.example.org/profile-b');
     expect(await name('https://work-company.example.org')).toBe('Fixture Work Company');
     expect(await name('https://project.example.org')).toBe('Fixture Project Name');
     expect(await name('https://institution.example.org')).toBe('Fixture Institution');

@@ -86,6 +86,10 @@ main
 - When an entry has no field for its `h3` (a work entry with neither position nor name, a project
   with no name, an education entry with neither study type nor area), the `h3` holds the first
   field present from: organization, then date. If the entry holds nothing shown, it isn't rendered.
+- When an entry has a `url` but not the field its link goes around (a work entry with no name, a
+  project with neither name nor entity, an education entry with no institution), the address is a
+  link of its own, its text the address without the scheme, first in `p.org` or `p.meta`. An
+  address is never dropped.
 - The section number before each `h2` (`01` to `06`) is `aria-hidden="true"`, and numbered by the
   sections actually shown.
 - No element is reordered with CSS `order`, `flex-direction: *-reverse`, `grid` placement out of
@@ -101,7 +105,7 @@ main
 | `basics.url` | `a[href]` | Text is the address without the scheme |
 | `basics.summary` | `p.summary` | |
 | `basics.location.*` | `dd` | `city, region, Country` |
-| profile `network`, `username`, `url` | `li > a[href]` or `li > span` | Text is the username, or the network when there's no username. Accessible name `GitHub: alex-profir` via visually hidden text. No URL → plain text (FR-012) |
+| profile `network`, `username`, `url` | `li > a[href]` or `li > span` | Text is the username; with no username, the address without the scheme; with neither, the network. The network is the row's label, unless it is the text. Accessible name `GitHub: alex-profir` (or `GitHub: github.com/alex-profir` with no username) via visually hidden text. No URL → plain text (FR-012) |
 | `startDate`, `endDate` | `p.date` | See [Dates](#dates) |
 | work `name`, `url`, `location` | `p.org` | Name is a link when `url` exists |
 | work `position` | `h3` | |
