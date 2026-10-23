@@ -80,8 +80,7 @@ a {
 
 /* An outline, not a shadow, so forced colors keep it (FR-029, FR-030). */
 a:focus-visible {
-  outline: var(--token-border-thick) solid var(--token-color-focus);
-  outline-offset: var(--token-space-0-5);
+  outline: none;
 }
 
 /* Standalone links are targets of at least size.target (FR-028). Their
