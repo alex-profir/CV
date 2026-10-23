@@ -1,0 +1,31 @@
+schema_version: "1.0"
+workflow:
+  id: "speckit-spec"
+  name: "Draft a spec"
+  version: "1.0.0"
+  author: "Alex Profir"
+  description: "Drafts spec.md headless, then stops for the owner's review (Constitution I)"
+
+requires:
+  speckit_version: ">=1.2.2"
+  integrations:
+    any: ["claude"]
+
+inputs:
+  spec:
+    type: string
+    required: true
+    prompt: "Describe the feature"
+
+steps:
+  - id: specify
+    command: speckit.specify
+    integration: claude
+    input:
+      # Nobody is there to answer questions, so open points become markers the
+      # owner resolves afterwards with /speckit-clarify.
+      args: >-
+        {{ inputs.spec }}
+
+        (Unattended run: do not ask questions. Mark anything you would have asked
+        with [NEEDS CLARIFICATION: ...]. Leave Status as Draft.)

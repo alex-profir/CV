@@ -5,6 +5,14 @@
 # switch features, so it is per-checkout state rather than something to share.
 feature.json
 
+# Unattended runs (tools/speckit-auto): workflow run state, the handoff between
+# sessions and the feature it belongs to, the progress count and the analyze report.
+workflows/runs/
+handoff.md
+handoff.feature
+handoff.progress
+analysis.md
+
 # Per-machine extension config overrides.
 extensions/*/local-config.yml
 
