@@ -66,7 +66,8 @@ stripped at build time.
   the registration script and the service worker, both hand-written.
 - Build: `vite` 8.3.5 and `lightningcss` 1.33.0, both already installed through Vitest, now pinned
   directly.
-- Checks: `playwright` 1.64.1, `axe-core` 4.14.0, `lighthouse` 13.5.0, `pdfjs-dist` 6.4.299.
+- Checks: `playwright` 1.64.1, `axe-core` 4.14.0, `lighthouse` 13.5.0, `chrome-launcher` 1.2.2,
+  `pdfjs-dist` 6.4.299.
 - Types: `@types/react` and `@types/react-dom` 19.3.0.
 - Reused: `@cv/content` (002), `@cv/tokens` (003), 001's file walk and ordering, 002's site-file
   walk.
@@ -145,7 +146,7 @@ shows the post-design state.
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | Pass | `/` is a 307 to `/cv`, so the CV is zero clicks from first load (FR-018). `/cv`'s full content is in the HTML the server sends, rendered at build time, and reads with scripting off (R1, FR-014). Offline support adds no prompt, banner or install offer (R4) |
 | VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | Pass | axe-core at three widths on both pages, keyboard order and visible focus, forced colors, no motion, layout at 200% and 400% zoom and with text spacing, and Lighthouse 90+ on both profiles, all blocking merge (R11 to R19). Manual screen reader pass (SC-004). The desktop-shell keyboard clause doesn't apply: no shell exists |
 | IX | Original Design | No Apple icons, fonts, wallpapers or other Apple assets | Pass | The design is the owner's own (design/review.md). Fonts are Space Grotesk, Schibsted Grotesk and JetBrains Mono, all OFL. A test asserts no font token or `fonts.json` family is an Apple or system UI font. Arrows are the site's own SVG paths |
-| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | Ten packages, two of them already installed, and fourteen abstractions are listed below, each with the simpler alternative it rejected. No agent skill is added |
+| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | Eleven packages, three of them already installed, and fourteen abstractions are listed below, each with the simpler alternative it rejected. No agent skill is added |
 | XI | One Feature, One PR | Feature ships in one PR linking spec.md and tasks.md | Pass | One PR from `004-cv-page`, with the token export, the site data field and the ruleset change in it. Applying the ruleset is a repository setting made during the PR (quickstart 12) |
 
 ## Requirement Traceability
@@ -245,6 +246,7 @@ Success criteria without an FR of their own:
 | `playwright` 1.64.1 (exact pin) | dev dependency | Drives Chromium for the site check and the page tests: scripting off, offline, keyboard, emulated media, CDP, PDF (R11) | Puppeteer: Chrome only too, but Playwright's per-context offline, scripting and service worker routing are what the parts need. Playwright Test as a runner: a second runner 001 only partly reads | Yes: Microsoft |
 | `axe-core` 4.14.0 (exact pin) | dev dependency | Finds automated WCAG 2.2 A and AA violations with element selectors (R12) | Lighthouse's accessibility category: a subset of axe at one width, reported as a score. `@axe-core/playwright`: a wrapper over two calls | Yes: Deque |
 | `lighthouse` 13.5.0 (exact pin) | dev dependency | The constitution names Lighthouse scores (R13). Brings `chrome-launcher` | `@lhci/cli`: adds assertions, uploads and a server the check doesn't use | Yes: Google's Chrome team. Brings about 25 packages, including `puppeteer-core`; its error reporting stays off |
+| `chrome-launcher` 1.2.2 (exact pin) | dev dependency, already installed through Lighthouse | Starts Playwright's Chromium for Lighthouse with the isolation flags (R13, R17). The check imports it, so it's declared, not resolved through Lighthouse's copy | Playwright's own launch: Lighthouse needs a Chromium on a debugging port it connects to itself. Leaving it undeclared: it resolves only while npm hoists Lighthouse's copy | Yes: Google's Chrome team |
 | `pdfjs-dist` 6.4.299 (exact pin) | dev dependency | Reads text positions from Chromium's PDFs, so print rules are verified as printed (R18) | Checking computed `break-after` only proves the rule is written. Rendering pages to images needs a canvas package | Yes: Mozilla's PDF.js |
 | npm workspace `@cv/web` | abstraction (package boundary) | Holds the site source, so shells and later pages have one place, and tests import components by package | Site files at the root would be searched as tooling by 002 and mixed with repository configuration | N/A |
 | Build script (`scripts/build-site.ts`) | abstraction | Runs the two Vite builds, renders each route, writes the service worker and the site manifest (R2) | A framework's static output: rejected in R1 | N/A |
@@ -254,7 +256,7 @@ Success criteria without an FR of their own:
 | Service worker and registration script | abstraction | The offline behavior of FR-038 to FR-041 (R4) | Workbox: a build toolchain, and precached pages served cache first against FR-039 | N/A |
 | Site text module (`src/site-text.ts`) | abstraction | All non-CV wording in one place, so changing a word is one edit (FR-006, R7) | Strings inline in components: a heading's wording would be spread across files. Site data: needs a schema field per label | N/A |
 | Supported content (`src/supported.ts`) | abstraction | The Key Entities table as data, read by the page and the `content` part (FR-005) | Two hand-kept lists, one in the page and one in the check, would drift | N/A |
-| Formatters (`src/format/dates.ts`, `src/format/location.ts`, `src/format/meta.ts`) | abstraction | Pure functions for date ranges, location lines and the page title and description, tested on their own (FR-008 to FR-011, FR-036, FR-037) | Formatting inside components: every edge case would need a rendered page to test | N/A |
+| Formatters (`src/format/dates.ts`, `src/format/location.ts`, `src/format/meta.ts`) | abstraction | Pure functions for date ranges, location lines and the page title and description, tested on their own (FR-008 to FR-011, FR-036, FR-037). `dates.ts` reads a date with the content check's `parseDate` (`tools/content-check/src/dates.ts`), so the page and the check accept the same dates | Formatting inside components: every edge case would need a rendered page to test | N/A |
 | Site check CLI (`tools/site-check/`) | abstraction | One command, one report, eleven parts, as the spec requires (FR-049, FR-058, R11) | Separate commands per tool: no single result or summary, and no guarantee every part runs | N/A |
 | Expected fields (`tools/site-check/src/expected.ts`) | abstraction | Lists the shown fields from the CV document, so the no-script and offline parts don't use a hand list (FR-052) | A hand-written list: forbidden by FR-052 | N/A |
 | Test helpers (`packages/web/test/helpers/site.ts`, `browser.ts`, `ax.ts`, `fixtures.ts`, `copy.ts`) | abstraction (tests only) | Build once per run; render a fixture CV with the real components, style sheet and fonts; open it in Chromium at a width (R21). `ax.ts` reads Chromium's accessibility tree through CDP, `fixtures.ts` loads the fixture CVs, and `copy.ts` makes a temporary copy of the repository for the fonts, one-edit and self-check tests | Building per test file: about 10 s each. Testing HTML strings only: no layout, fonts or computed styles. Repeating the CDP calls, fixture reads and repository copy in each test file that needs them | N/A |
@@ -296,7 +298,7 @@ specs/004-cv-page/
 ```text
 package.json             # scripts build, serve, site-check; typecheck also runs the service worker project;
                          #   devDependencies vite, lightningcss, playwright, axe-core, lighthouse,
-                         #   pdfjs-dist, @types/react, @types/react-dom
+                         #   chrome-launcher, pdfjs-dist, @types/react, @types/react-dom
 package-lock.json
 tsconfig.json            # + "packages/**/*.tsx", "jsx": "react-jsx"; excludes packages/web/src/sw
 vitest.config.ts         # + React's automatic JSX runtime for test files
@@ -329,6 +331,7 @@ packages/
     │   ├── routes.ts                # the route table (R3)
     │   ├── site-text.ts             # every non-CV word (FR-006)
     │   ├── supported.ts             # shown sections and fields (FR-002, FR-005)
+    │   ├── freeze.ts                # deepFreeze, for the route table and site text
     │   ├── format/
     │   │   ├── dates.ts             # FR-009 to FR-011
     │   │   ├── location.ts          # FR-008
