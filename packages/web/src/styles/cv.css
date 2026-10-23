@@ -1,0 +1,473 @@
+/* The layout of /cv and the not-found page, from the approved revision 10
+   exports (004 FR-020, FR-042; data-model.md Token roles, How the layout uses
+   them). One column by default; from the wide breakpoint, a centered column
+   at most size.page wide with each section's heading in its own column. Only
+   tokens. Nothing is reordered: no `order`, no reversed flex direction and no
+   grid placement out of source order (FR-027). Decoration is drawn with
+   borders, so forced colors keep it (FR-030). There is no motion (FR-031). */
+
+/* The page column, shared by main and the footer. */
+main,
+.footer-inner {
+  inline-size: 100%;
+  max-inline-size: var(--token-size-page);
+  margin-inline: auto;
+  padding-inline: var(--token-space-5);
+}
+
+main {
+  padding-block-start: var(--token-space-11);
+}
+
+main.not-found {
+  padding-block-end: var(--token-space-12);
+}
+
+/* The role above the name, and the not-found page's label. */
+.role {
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-role-font-family);
+  font-size: var(--token-typography-role-font-size);
+  font-weight: var(--token-typography-role-font-weight);
+  letter-spacing: var(--token-typography-role-letter-spacing);
+  line-height: var(--token-typography-role-line-height);
+}
+
+/* The basics block. */
+.intro {
+  padding-block-end: var(--token-space-10);
+}
+
+.intro h1 {
+  margin-block-start: var(--token-space-5);
+  font-family: var(--token-typography-name-narrow-font-family);
+  font-size: var(--token-typography-name-narrow-font-size);
+  font-weight: var(--token-typography-name-narrow-font-weight);
+  letter-spacing: var(--token-typography-name-narrow-letter-spacing);
+  line-height: var(--token-typography-name-narrow-line-height);
+}
+
+.intro-body {
+  display: grid;
+  gap: var(--token-space-4);
+  margin-block-start: var(--token-space-6);
+}
+
+.summary {
+  text-wrap: pretty;
+  font-family: var(--token-typography-lead-narrow-font-family);
+  font-size: var(--token-typography-lead-narrow-font-size);
+  font-weight: var(--token-typography-lead-narrow-font-weight);
+  letter-spacing: var(--token-typography-lead-narrow-letter-spacing);
+  line-height: var(--token-typography-lead-narrow-line-height);
+}
+
+.contact-block {
+  border-block-start: var(--token-border-thin) solid var(--token-color-rule-strong);
+}
+
+.contact-row {
+  min-block-size: calc(var(--token-size-target) + 2 * var(--token-space-2-5) + var(--token-border-thin));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--token-space-4);
+  padding-block: var(--token-space-2-5);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+  font-family: var(--token-typography-label-font-family);
+  font-size: var(--token-typography-label-font-size);
+  font-weight: var(--token-typography-label-font-weight);
+  letter-spacing: var(--token-typography-label-letter-spacing);
+  line-height: var(--token-typography-label-line-height);
+}
+
+.contact-label {
+  flex: none;
+  color: var(--token-color-text-secondary);
+}
+
+.contact-value {
+  min-inline-size: 0;
+  text-align: end;
+}
+
+/* Sections: a strong rule above each, the number and heading, then the
+   content. */
+.cv > section {
+  padding-block: var(--token-space-10);
+  border-block-start: var(--token-border-thin) solid var(--token-color-rule-strong);
+}
+
+.section-head {
+  margin-block-end: var(--token-space-6);
+}
+
+.section-number {
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-section-number-font-family);
+  font-size: var(--token-typography-section-number-font-size);
+  font-weight: var(--token-typography-section-number-font-weight);
+  letter-spacing: var(--token-typography-section-number-letter-spacing);
+  line-height: var(--token-typography-section-number-line-height);
+}
+
+h2 {
+  margin-block-start: var(--token-space-2-5);
+  font-family: var(--token-typography-h2-narrow-font-family);
+  font-size: var(--token-typography-h2-narrow-font-size);
+  font-weight: var(--token-typography-h2-narrow-font-weight);
+  letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+  line-height: var(--token-typography-h2-narrow-line-height);
+}
+
+/* The timeline: a thin line with a ringed dot per entry, both borders. The
+   phone indent, 22 px in the exports, is derived from the spacing scale. */
+.timeline {
+  --timeline-indent: calc(var(--token-space-5) + var(--token-space-0-5));
+  padding-inline-start: var(--timeline-indent);
+  border-inline-start: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+.timeline > li {
+  position: relative;
+}
+
+.timeline > li + li {
+  margin-block-start: var(--token-space-10);
+}
+
+/* The dot's inner circle is centred on the line and on the date line, as
+   in the exports: its ring sits a border's width right of and below that. */
+.timeline > li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: calc(-1 * (var(--timeline-indent) + var(--token-border-thin) / 2 + var(--token-size-timeline-dot) / 2));
+  inset-block-start: calc((var(--token-typography-date-font-size) * var(--token-typography-date-line-height) - var(--token-size-timeline-dot)) / 2);
+  box-sizing: content-box;
+  inline-size: var(--token-size-timeline-dot);
+  block-size: var(--token-size-timeline-dot);
+  border: var(--token-border-thick) solid var(--token-color-link-underline);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-surface);
+}
+
+.date {
+  color: var(--token-color-text-secondary);
+  font-family: var(--token-typography-date-font-family);
+  font-size: var(--token-typography-date-font-size);
+  font-weight: var(--token-typography-date-font-weight);
+  letter-spacing: var(--token-typography-date-letter-spacing);
+  line-height: var(--token-typography-date-line-height);
+}
+
+h3 {
+  margin-block-start: var(--token-space-1-5);
+  font-family: var(--token-typography-h3-narrow-font-family);
+  font-size: var(--token-typography-h3-narrow-font-size);
+  font-weight: var(--token-typography-h3-narrow-font-weight);
+  letter-spacing: var(--token-typography-h3-narrow-letter-spacing);
+  line-height: var(--token-typography-h3-narrow-line-height);
+}
+
+li > h3:first-child {
+  margin-block-start: 0;
+}
+
+.org {
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-org-font-family);
+  font-size: var(--token-typography-org-font-size);
+  font-weight: var(--token-typography-org-font-weight);
+  letter-spacing: var(--token-typography-org-letter-spacing);
+  line-height: var(--token-typography-org-line-height);
+}
+
+.meta {
+  margin-block-start: var(--token-space-1);
+  color: var(--token-color-text-secondary);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+  font-weight: var(--token-typography-small-font-weight);
+  letter-spacing: var(--token-typography-small-letter-spacing);
+  line-height: var(--token-typography-small-line-height);
+}
+
+.text {
+  margin-block-start: var(--token-space-2);
+  text-wrap: pretty;
+}
+
+.highlights {
+  display: grid;
+  gap: var(--token-space-1-5);
+  margin-block-start: var(--token-space-3);
+  color: var(--token-color-text-list);
+}
+
+.highlights > li {
+  display: flex;
+  align-items: baseline;
+  text-wrap: pretty;
+}
+
+/* The arrow before each highlight, set in the marker type so it sits on the
+   text's first line. */
+.marker {
+  flex: none;
+  inline-size: var(--token-space-5);
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-marker-font-family);
+  font-size: var(--token-typography-marker-font-size);
+  font-weight: var(--token-typography-marker-font-weight);
+  letter-spacing: var(--token-typography-marker-letter-spacing);
+  line-height: var(--token-typography-marker-line-height);
+}
+
+.marker .arrow {
+  inline-size: var(--token-space-1-5);
+  block-size: var(--token-space-1-5);
+  vertical-align: middle;
+}
+
+/* Keywords and courses: bordered chips. Their padding, 3 × 9 px in the
+   exports, is derived from the spacing scale. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--token-space-1-5);
+  margin-block-start: var(--token-space-3);
+}
+
+.chips > li {
+  padding-block: calc(var(--token-space-1-5) / 2);
+  padding-inline: calc(var(--token-space-1-5) * 1.5);
+  border: var(--token-border-thin) solid var(--token-color-rule-subtle);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-surface-raised);
+  font-family: var(--token-typography-chip-font-family);
+  font-size: var(--token-typography-chip-font-size);
+  font-weight: var(--token-typography-chip-font-weight);
+  letter-spacing: var(--token-typography-chip-letter-spacing);
+  line-height: var(--token-typography-chip-line-height);
+}
+
+/* Skills. */
+.skills {
+  display: grid;
+  gap: var(--token-space-5);
+}
+
+.skill-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--token-space-4);
+  padding-block-end: var(--token-space-2);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+.skill-name,
+.interest-name {
+  font-family: var(--token-typography-h4-font-family);
+  font-size: var(--token-typography-h4-font-size);
+  font-weight: var(--token-typography-h4-font-weight);
+  letter-spacing: var(--token-typography-h4-letter-spacing);
+  line-height: var(--token-typography-h4-line-height);
+}
+
+/* Written as in the CV document, shown in capitals. */
+.level {
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  font-weight: var(--token-typography-level-font-weight);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  line-height: var(--token-typography-level-line-height);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+/* Languages: one row each. */
+.languages > li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--token-space-4);
+  padding-block: var(--token-space-3);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+.languages > li:first-child {
+  padding-block-start: 0;
+}
+
+.fluency {
+  color: var(--token-color-text-secondary);
+  text-align: end;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+  font-weight: var(--token-typography-small-font-weight);
+  letter-spacing: var(--token-typography-small-letter-spacing);
+  line-height: var(--token-typography-small-line-height);
+}
+
+/* Interests. */
+.interests {
+  display: grid;
+  gap: var(--token-space-7);
+}
+
+.interest-keywords {
+  margin-block-start: var(--token-space-0-5);
+  color: var(--token-color-text-secondary);
+  text-wrap: pretty;
+}
+
+/* The footer: a strong rule across the whole width, and the repository
+   link in the page column. */
+footer {
+  border-block-start: var(--token-border-thin) solid var(--token-color-rule-strong);
+}
+
+.footer-inner {
+  padding-block: var(--token-space-5) var(--token-space-12);
+}
+
+.small-link {
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+  font-weight: var(--token-typography-small-font-weight);
+  letter-spacing: var(--token-typography-small-letter-spacing);
+  line-height: var(--token-typography-small-line-height);
+}
+
+/* The not-found page. */
+.not-found h1 {
+  max-inline-size: var(--token-size-notfound-title);
+  margin-block-start: var(--token-space-5);
+  text-wrap: balance;
+  font-family: var(--token-typography-notfound-narrow-font-family);
+  font-size: var(--token-typography-notfound-narrow-font-size);
+  font-weight: var(--token-typography-notfound-narrow-font-weight);
+  letter-spacing: var(--token-typography-notfound-narrow-letter-spacing);
+  line-height: var(--token-typography-notfound-narrow-line-height);
+}
+
+/* The hint's measure, about 450 px in the exports, is derived from the
+   title's. */
+.hint {
+  max-inline-size: calc(var(--token-size-notfound-title) * 0.75);
+  margin-block-start: var(--token-space-7);
+  text-wrap: pretty;
+  font-family: var(--token-typography-lead-narrow-font-family);
+  font-size: var(--token-typography-lead-narrow-font-size);
+  font-weight: var(--token-typography-lead-narrow-font-weight);
+  letter-spacing: var(--token-typography-lead-narrow-letter-spacing);
+  line-height: var(--token-typography-lead-narrow-line-height);
+}
+
+.go-to-cv {
+  margin-block-start: var(--token-space-8);
+  font-family: var(--token-typography-link-font-family);
+  font-size: var(--token-typography-link-font-size);
+  font-weight: var(--token-typography-link-font-weight);
+  letter-spacing: var(--token-typography-link-letter-spacing);
+  line-height: var(--token-typography-link-line-height);
+}
+
+@media (--token-breakpoint-wide) {
+  main,
+  .footer-inner {
+    padding-inline: var(--token-space-14);
+  }
+
+  main {
+    padding-block-start: var(--token-space-22);
+  }
+
+  .intro {
+    padding-block-end: var(--token-space-16);
+  }
+
+  .intro h1 {
+    font-family: var(--token-typography-name-wide-font-family);
+    font-size: var(--token-typography-name-wide-font-size);
+    font-weight: var(--token-typography-name-wide-font-weight);
+    letter-spacing: var(--token-typography-name-wide-letter-spacing);
+    line-height: var(--token-typography-name-wide-line-height);
+  }
+
+  .intro-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--token-space-16);
+    margin-block-start: var(--token-space-10);
+  }
+
+  .summary {
+    font-family: var(--token-typography-lead-wide-font-family);
+    font-size: var(--token-typography-lead-wide-font-size);
+    font-weight: var(--token-typography-lead-wide-font-weight);
+    letter-spacing: var(--token-typography-lead-wide-letter-spacing);
+    line-height: var(--token-typography-lead-wide-line-height);
+  }
+
+  .cv > section {
+    display: grid;
+    grid-template-columns: var(--token-size-section-label) minmax(0, 1fr);
+    column-gap: var(--token-space-12);
+    padding-block: var(--token-space-14);
+  }
+
+  .section-head {
+    margin-block-end: 0;
+  }
+
+  h2 {
+    font-family: var(--token-typography-h2-wide-font-family);
+    font-size: var(--token-typography-h2-wide-font-size);
+    font-weight: var(--token-typography-h2-wide-font-weight);
+    letter-spacing: var(--token-typography-h2-wide-letter-spacing);
+    line-height: var(--token-typography-h2-wide-line-height);
+  }
+
+  .timeline {
+    --timeline-indent: var(--token-space-7);
+  }
+
+  h3 {
+    font-family: var(--token-typography-h3-wide-font-family);
+    font-size: var(--token-typography-h3-wide-font-size);
+    font-weight: var(--token-typography-h3-wide-font-weight);
+    letter-spacing: var(--token-typography-h3-wide-letter-spacing);
+    line-height: var(--token-typography-h3-wide-line-height);
+  }
+
+  .skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--token-space-12);
+    row-gap: var(--token-space-7);
+  }
+
+  .interests {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--token-space-12);
+    row-gap: var(--token-space-7);
+  }
+
+  .not-found h1 {
+    margin-block-start: var(--token-space-5);
+    font-family: var(--token-typography-notfound-wide-font-family);
+    font-size: var(--token-typography-notfound-wide-font-size);
+    font-weight: var(--token-typography-notfound-wide-font-weight);
+    letter-spacing: var(--token-typography-notfound-wide-letter-spacing);
+    line-height: var(--token-typography-notfound-wide-line-height);
+  }
+
+  .hint {
+    margin-block-start: var(--token-space-8);
+    font-family: var(--token-typography-lead-wide-font-family);
+    font-size: var(--token-typography-lead-wide-font-size);
+    font-weight: var(--token-typography-lead-wide-font-weight);
+    letter-spacing: var(--token-typography-lead-wide-letter-spacing);
+    line-height: var(--token-typography-lead-wide-line-height);
+  }
+}

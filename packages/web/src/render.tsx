@@ -6,18 +6,22 @@ import type { Resume, SiteData } from '@cv/content';
 import { Document } from './pages/Document.tsx';
 import type { PageAssets } from './pages/Document.tsx';
 import { CvPage } from './pages/CvPage.tsx';
-import { NOT_FOUND_TEXT, NotFoundPage } from './pages/NotFoundPage.tsx';
+import { NotFoundPage } from './pages/NotFoundPage.tsx';
+import { siteText } from './site-text.ts';
 
 export type { PageAssets };
 
 const DOCTYPE = '<!doctype html>';
 
-export function renderCv({ resume, assets }: { resume: Resume; siteData: SiteData; assets: PageAssets }): string {
+export function renderCv({ resume, siteData, assets }: { resume: Resume; siteData: SiteData; assets: PageAssets }): string {
+  // US5 adds the role and the description (FR-036, FR-037).
+  const name = resume.basics?.name;
+  const title = name !== undefined && name !== '' ? name : siteText.siteHeading;
   return (
     DOCTYPE +
     renderToStaticMarkup(
-      <Document title={resume.basics?.name ?? 'CV'} assets={assets}>
-        <CvPage resume={resume} />
+      <Document title={title} assets={assets}>
+        <CvPage resume={resume} siteData={siteData} />
       </Document>,
     )
   );
@@ -27,7 +31,7 @@ export function renderNotFound({ siteData, assets }: { siteData: SiteData; asset
   return (
     DOCTYPE +
     renderToStaticMarkup(
-      <Document title={NOT_FOUND_TEXT.label} assets={assets}>
+      <Document title={siteText.notFound.label} assets={assets}>
         <NotFoundPage siteData={siteData} />
       </Document>,
     )

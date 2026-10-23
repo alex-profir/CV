@@ -21,6 +21,7 @@ import { resume, siteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
+import { preloadSources, readFonts } from './fonts-plugin.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
 
@@ -88,14 +89,21 @@ function ssrConfig(ssrDir: string): UserConfig {
   });
 }
 
-// The page's asset links, from Vite's manifest. Later stories add the
-// registration script and the preloaded fonts.
+// The page's asset links, from Vite's manifest: the style sheet, and the
+// `latin` file of each family to preload (research R5). The manifest lists
+// every font file the style sheet refers to, by its source path. US4 adds
+// the registration script.
 function pageAssets(manifest: Manifest): PageAssets {
   const entry = manifest[STYLE_ENTRY];
   if (entry === undefined) throw new Error(`Vite's manifest has no entry for ${STYLE_ENTRY}`);
   const css = [entry.file, ...(entry.css ?? [])].filter((file) => file.endsWith('.css')).map((file) => `/${file}`);
   if (css.length === 0) throw new Error(`Vite's manifest gives no style sheet for ${STYLE_ENTRY}`);
-  return { css, scripts: [], preloadFonts: [] };
+  const preloadFonts = preloadSources(readFonts()).map((source) => {
+    const font = manifest[source];
+    if (font === undefined) throw new Error(`Vite's manifest has no entry for the font ${source}`);
+    return `/${font.file}`;
+  });
+  return { css, scripts: [], preloadFonts };
 }
 
 function listFiles(dir: string, base = dir): string[] {
