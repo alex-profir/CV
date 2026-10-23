@@ -16,13 +16,17 @@ state=".specify/handoff.progress"
 limit=${STALL_LIMIT:-2}
 
 # A task's block runs from its "- [ ] T###" line to the next task or heading.
-# An unticked task whose block says "BLOCKED:" waits for the owner, so it is
-# reported as blocked rather than remaining, and the loop can finish.
+# An unticked task marked "BLOCKED:" waits for the owner, so it is reported as
+# blocked rather than remaining, and the loop can finish. The marker counts on
+# the task line itself, or at the start of a note under it, not wherever the
+# word appears in the task's text.
 read -r remaining blocked done_ < <(awk '
-  /^[[:space:]]*- \[ \] T[0-9]+/   { open = 1; isblocked = 0; nopen++; next }
+  /^[[:space:]]*- \[ \] T[0-9]+/   { open = 1; isblocked = 0; nopen++
+                                      if (/BLOCKED:/) { isblocked = 1; nblocked++ }
+                                      next }
   /^[[:space:]]*- \[[xX]\] T[0-9]+/ { open = 0; ndone++; next }
   /^#/                              { open = 0; next }
-  open && !isblocked && /BLOCKED:/  { isblocked = 1; nblocked++ }
+  open && !isblocked && /^[[:space:]]*([-*>][[:space:]]+)?(\*\*)?BLOCKED:/ { isblocked = 1; nblocked++ }
   END { printf "%d %d %d\n", nopen - nblocked, nblocked, ndone }
 ' "$dir/tasks.md" 2>/dev/null || echo "0 0 0")
 

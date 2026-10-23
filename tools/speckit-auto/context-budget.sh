@@ -15,6 +15,11 @@ transcript=$(jq -r '.transcript_path // empty' <<<"$input")
 session=$(jq -r '.session_id // "unknown"' <<<"$input")
 [ -n "$transcript" ] && [ -f "$transcript" ] || exit 0
 
+# Fire once per session; the reminder is not repeated on every later tool call.
+# Checked first, so later tool calls skip parsing the transcript.
+marker="${TMPDIR:-/tmp}/speckit-context-budget-$session"
+[ -e "$marker" ] && exit 0
+
 # Context in use = the input side of the latest main-conversation API call,
 # the same formula the status line uses for context_window.used_percentage.
 used=$(tail -n 400 "$transcript" | jq -s '
@@ -39,9 +44,6 @@ case " ${CONTEXT_BUDGET_COMMANDS:-speckit-implement} " in
   *) exit 0 ;;
 esac
 
-# Fire once per session; the reminder is not repeated on every later tool call.
-marker="${TMPDIR:-/tmp}/speckit-context-budget-$session"
-[ -e "$marker" ] && exit 0
 touch "$marker"
 
 handoff=${SPECKIT_HANDOFF_FILE:-.specify/handoff.md}

@@ -22,6 +22,26 @@ here=tools/speckit-auto
 
 usage() { sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
+# The feature directory relative to the repository root, given either way.
+root_abs=$(cd "$root" && pwd -P)
+relative() {
+  local abs
+  abs=$(cd "$1" 2>/dev/null && pwd -P) || return 1
+  case "$abs" in
+    "$root_abs"/*) echo "${abs#"$root_abs"/}" ;;
+    *) return 1 ;;
+  esac
+}
+
+# Implement sessions commit as they go, so HEAD must be the feature's branch.
+on_branch() {
+  local want branch
+  want=$(basename "$1")
+  branch=$(git branch --show-current)
+  [ "$branch" = "$want" ] \
+    || { echo "On ${branch:-a detached HEAD}, not $want. Run: git switch $want" >&2; exit 1; }
+}
+
 # What the owner needs to look at after a build.
 summary() {
   [ -f "$feature/tasks.md" ] || return 0
@@ -38,8 +58,10 @@ case "$cmd" in
     ;;
   build)
     feature=${1:-}; shift || true
-    [ -d "$feature" ] || { echo "No such feature directory: $feature" >&2; usage; }
-    feature=${feature%/}
+    rel=$(relative "${feature:-.}") && [[ $rel == specs/* ]] \
+      || { echo "No such feature directory in this repository: $feature" >&2; usage; }
+    feature=$rel
+    on_branch "$feature"
     verdict=approve guidance="" from=plan
     while [ $# -gt 0 ]; do
       case "$1" in
@@ -64,6 +86,9 @@ case "$cmd" in
     inputs=".specify/workflows/runs/$1/inputs.json"
     feature=""
     if [ -f "$inputs" ] && feature=$(jq -er '.inputs.feature // .feature // empty' "$inputs"); then
+      feature=$(relative "$feature") \
+        || { echo "Run $1 is for a feature directory that no longer exists." >&2; exit 1; }
+      on_branch "$feature"
       export SPECIFY_FEATURE_DIRECTORY="$root/$feature"
     fi
     status=0

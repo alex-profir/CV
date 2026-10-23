@@ -36,8 +36,18 @@ steps:
     type: shell
     run: "tools/speckit-auto/gates.sh '{{ inputs.feature }}'"
 
+  # The handoff and analyze report are kept per checkout, not per feature.
+  # Drop them if an earlier run for another feature left them.
+  - id: own_state
+    type: shell
+    run: |
+      [ "$(cat .specify/handoff.feature 2>/dev/null)" = '{{ inputs.feature }}' ] \
+        || rm -f .specify/handoff.md .specify/analysis.md
+      printf '%s\n' '{{ inputs.feature }}' > .specify/handoff.feature
+
   # from=implement skips planning, for a plan and tasks the owner already
-  # reviewed or edited. A handoff left by the previous run is kept then.
+  # reviewed or edited. A handoff left by an earlier run for this feature is
+  # kept then.
   - id: planning
     type: if
     condition: "{{ inputs.from == 'plan' }}"
@@ -68,9 +78,12 @@ steps:
 
       # /speckit-analyze is read-only and would ask before fixing anything, so a
       # free prompt runs it and applies the fixes the run may make on its own.
+      # A prompt step stops after 300 seconds unless told otherwise, even while
+      # its output streams; analyzing and fixing a large feature takes longer.
       - id: analyze
         type: prompt
         integration: claude
+        timeout: 3600
         prompt: >-
           Run /speckit-analyze for {{ inputs.feature }}. Write the full report to
           .specify/analysis.md. Then fix every CRITICAL and HIGH finding by editing
@@ -141,6 +154,17 @@ steps:
         type: shell
         run: "tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}' --peek"
         output_format: json
+
+  # The engine reports a loop that stalled or reached max_iterations as
+  # completed, so check that every task is ticked or BLOCKED before going on.
+  - id: finished
+    type: shell
+    run: |
+      tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}' --peek | grep -q '"remaining": 0,' || {
+        echo "The build stopped with tasks still open: $(tools/speckit-auto/tasks-status.sh '{{ inputs.feature }}' --peek)" >&2
+        echo "Continue with: tools/speckit-auto/run.sh build {{ inputs.feature }} --implement-only" >&2
+        exit 1
+      }
 
   - id: checks
     type: shell

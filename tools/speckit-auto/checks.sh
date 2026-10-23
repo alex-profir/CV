@@ -3,17 +3,12 @@
 # A UI feature should also get npm run site-check before its pull request.
 set -euo pipefail
 
-# The project needs Node 26 (.nvmrc); the shell default may be older.
-if [ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]; then
-  _speckit_flags=$-   # nvm.sh fails under set -eu; restore the caller's flags after
-  set +eu
-  # shellcheck disable=SC1091
-  . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
-  nvm use >/dev/null
-  case $_speckit_flags in *e*) set -e ;; esac
-  case $_speckit_flags in *u*) set -u ;; esac
-  unset _speckit_flags
-fi
+# env.sh, sourced by run.sh, puts the Node version in .nvmrc on PATH, and
+# workflow shell steps inherit it.
+want=$(cat .nvmrc)
+have=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo none)
+[ "$have" = "$want" ] \
+  || { echo "checks.sh needs Node $want (.nvmrc), found $have. Source tools/speckit-auto/env.sh first." >&2; exit 1; }
 
 # The checks CI requires, minus site-check, which needs a browser and a build.
 npm run content-check

@@ -34,7 +34,9 @@ lists runs; a failed or paused run continues with `run.sh resume <run_id>`.
 
 `workflows/speckit-build.yml`:
 
-1. `gates.sh` checks spec status and the design sign-off (Constitution I, II).
+1. `gates.sh` checks spec status and, for a UI feature, the wireframes, PNG
+   mockups and an Approved `review.md` (Constitution I, II). `run.sh` also
+   refuses to start unless HEAD is the feature's branch, since sessions commit.
 2. `/speckit-plan` and `/speckit-tasks`, each followed by `expect.sh`, which stops
    the run if the step exited cleanly but wrote nothing. Then `/speckit-analyze`, whose CRITICAL and
    HIGH findings are fixed in `plan.md` and `tasks.md` only. The report goes to
@@ -44,6 +46,7 @@ lists runs; a failed or paused run continues with `run.sh resume <run_id>`.
    `/speckit-converge` compares the code with the spec and adds tasks for gaps.
    The loop ends when nothing is left, or when two sessions in a row tick no task.
    Tasks a session marks `BLOCKED:` are left for the owner and listed when the run ends.
+   If the loop ends with tasks still open, the run fails rather than reporting success.
 4. `checks.sh` runs CI's required checks: content, tokens, traceability, typecheck and
    tests. `site-check` needs a browser, so run it yourself for UI features.
 
