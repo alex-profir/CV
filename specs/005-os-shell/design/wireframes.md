@@ -35,9 +35,9 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Smallest window that gets the desktop shell | 1024 × 640 CSS px. Anything narrower or shorter gets the mobile shell | FR-001 |
 | Order of apps in the dock and on the home screen | The order of the app list: CV first, then later apps as their specs add them | FR-003 |
 | Menu bar height | 32 px | FR-010 |
-| Space the dock keeps at the bottom | 96 px: the dock floats 8 px above the bottom edge | FR-010 |
-| Desktop area | The window minus the menu bar and the dock's space: 1440 × 772 at 1440 × 900 | FR-010, FR-021 |
-| CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 724 at x 220, y 56 | FR-005, FR-018 |
+| Space the dock keeps at the bottom | 104 px: the dock is 88 px tall, 8 px above the bottom edge, with 8 px between it and the desktop area | FR-010 |
+| Desktop area | The window minus the menu bar and the dock's space: 1440 × 764 at 1440 × 900 | FR-010, FR-021 |
+| CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56 | FR-005, FR-018 |
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
 | Title bar height | 40 px. The controls are 28 × 28 px buttons with 4 px between them | FR-016, FR-037 |
@@ -47,12 +47,13 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Dock names without hover | Every dock item shows its name below its icon all the time, so hover isn't needed on touch | FR-011 |
 | Open mark | A dot below the dock item's name: filled when open, hollow when minimized, none when closed. Shape, not color, carries the state | FR-011, FR-063 |
 | Focused window | A thicker border, a filled title bar and a larger shadow. Windows that aren't focused have a thin border and a plain title bar. The difference holds without color | FR-017 |
-| CV layout inside a window | Two columns (headings on the left) while the window's content is at least 880 px wide. Narrower, it uses `/cv`'s phone layout. The layout follows the window's width, not the screen's | FR-008 |
-| Home screen grid | 64 px icons with names below, 4 per row at 375 px, 3 at 320 px, up to 8 in landscape, filled left to right | FR-031 |
+| CV layout inside a window | Two columns (headings on the left) while the window's content is at least 900 px wide, `/cv`'s own wide breakpoint (`breakpoint.wide`). Narrower, it uses `/cv`'s phone layout. The layout follows the window's width, not the screen's | FR-008 |
+| Home screen grid | 64 px icons with names below, as many per row as fit at 76 px or more each: 4 at 375 px, 3 at 320 px, 10 at 812 px in landscape. Filled left to right | FR-031 |
+| Focus indicator | A 2 px outline, 2 px outside the element, in the accent color (9.9:1 on white, 9:1 on the background). On the focused window's dark title bar the accent is only 1.9:1, so the outline there is the background color (17:1) | FR-024 |
 | Mobile header | 52 px, kept at the top while the app scrolls. A "Home" button (44 × 44 px) on the left, the app's name centered | FR-032, FR-037 |
 | Wallpaper | One original wallpaper from tokens, proposed: the site's background color with a fine grid in the rule color. Set by the mockup | FR-044 |
 | Theme | `/cv`'s one light theme and its fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
-| Opening and closing animation | Windows and full-screen apps fade and grow from 96% in 160 ms. With reduced motion: a 120 ms fade with no movement or scaling | FR-046 |
+| Opening and closing animation | Windows and full-screen apps fade and grow from 96% over `motion.duration.fast` (150 ms) with `motion.easing.standard`. With reduced motion: the same fade with no movement or scaling | FR-046 |
 
 ## Desktop shell
 
@@ -342,7 +343,7 @@ it, in front and focused (FR-064).
 
 ### A window resized (FR-061)
 
-The CV window after its bottom-right corner was dragged to make it narrower. Below 880 px of
+The CV window after its bottom-right corner was dragged to make it narrower. Below 900 px of
 content width the CV uses `/cv`'s phone layout, so it reads without scrolling sideways (FR-008).
 
 ```
@@ -552,7 +553,7 @@ outline marks its size when the resize started. The pad shows the current size.
 |              # Open as a page to print or share ->                ^ #             :              |
 |              # -------------------------------------------------  | #             :              |
 |              # [label] #=====================================#    | #             :              |
-|              # [NAME]  # Resizing CV          784 × 600      #    | #             :              |
+|              # [NAME]  # Resizing CV          776 × 596      #    | #             :              |
 |              #         #                                     #    | #             :              |
 |              # [summary#             [ Shorter ]             #ty  | #             :              |
 |              # [.......# [ Narrower ]            [ Wider ]   #    | #             :              |
@@ -580,7 +581,7 @@ outline marks its size when the resize started. The pad shows the current size.
 +--------------------------------------------------------------------------------------------------+
 ```
 
-- Enter or Done ends the resize and announces `CV resized to 784 by 600.` Escape or Cancel
+- Enter or Done ends the resize and announces `CV resized to 776 by 596.` Escape or Cancel
   returns it to its earlier size and announces `Resize cancelled.`
 - A resize stops at 400 × 300 and at the desktop area's edges.
 
@@ -688,7 +689,7 @@ A phone in landscape keeps the mobile shell (it is shorter than 640 px).
 | [Site name]                                                                   |
 |                                                                               |
 | +-------+                                                                     |
-| | CV    | <- up to 8 per row, left to right                                   |
+| | CV    | <- 10 per row, left to right                                        |
 | | icon  |                                                                     |
 | +-------+                                                                     |
 |    CV                                                                         |

@@ -1,0 +1,778 @@
+/* The interim local mockup of both shells (Constitution 1.2.0, interim
+   provision). Every design value is a token: the site's token output, plus the
+   proposals in proposed-tokens.css. Each page is one state of a shell, with the
+   geometry the design sets for that state. The CV itself is /cv, shown in an
+   iframe, as the CV app shows the same CV (FR-006). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  block-size: 100%;
+}
+
+body {
+  overflow: hidden;
+  color: var(--token-color-text-primary);
+  font-family: var(--token-typography-body-font-family);
+  font-size: var(--token-typography-body-font-size);
+  line-height: var(--token-typography-body-line-height);
+}
+
+:where(h1, h2, p, ul, dl, dd) {
+  margin: 0;
+}
+
+:where(ul) {
+  padding: 0;
+  list-style: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thick);
+  stroke-linecap: square;
+}
+
+a {
+  color: var(--token-color-text-primary);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--token-border-thick);
+  text-decoration-color: var(--token-color-link-underline);
+  text-underline-offset: var(--token-space-1);
+}
+
+/* The focus indicator: an outline, so forced colors keep it (FR-024). */
+.is-focus-visible {
+  outline: var(--token-border-thick) solid var(--token-color-focus);
+  outline-offset: var(--token-space-0-5);
+}
+
+/* On the focused window's ink title bar the accent has too little contrast,
+   so the outline there is paper (17:1). */
+.is-focused .title-bar .is-focus-visible {
+  outline-color: var(--token-color-focus-on-dark);
+}
+
+.mono {
+  font-family: var(--token-font-family-mono);
+}
+
+/* The wallpaper: the paper color with a fine grid in the rule color. */
+.wallpaper {
+  background-color: var(--token-color-wallpaper);
+  background-image:
+    linear-gradient(to right, var(--token-color-wallpaper-grid) var(--token-border-thin), transparent var(--token-border-thin)),
+    linear-gradient(to bottom, var(--token-color-wallpaper-grid) var(--token-border-thin), transparent var(--token-border-thin));
+  background-size: var(--token-size-wallpaper-grid) var(--token-size-wallpaper-grid);
+}
+
+/* ---- Desktop: menu bar ---------------------------------------------- */
+
+.menu-bar {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 3;
+  display: flex;
+  align-items: stretch;
+  block-size: var(--token-size-menu-bar);
+  padding-inline: var(--token-space-2);
+  background: var(--token-color-chrome);
+  border-block-end: var(--token-border-thin) solid var(--token-color-chrome-border);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.menu-title {
+  display: flex;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-inline-size: var(--token-size-target);
+  padding-inline: var(--token-space-3);
+  border: 0;
+  background: none;
+}
+
+.menu-title.is-app {
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.menu-title.is-open {
+  background: var(--token-color-title-bar-focused);
+  color: var(--token-color-title-bar-focused-text);
+}
+
+.site-mark {
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+}
+
+.site-mark .shadow {
+  fill: currentColor;
+  stroke: none;
+}
+
+.site-mark .face {
+  fill: var(--token-color-chrome);
+}
+
+.menu-title.is-open .site-mark .face {
+  fill: var(--token-color-title-bar-focused);
+}
+
+.menu-slot {
+  position: relative;
+  display: flex;
+}
+
+.menu {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  margin: 0;
+  z-index: 4;
+  min-inline-size: calc(var(--token-size-section-label) + var(--token-space-6));
+  padding-block: var(--token-space-1);
+  background: var(--token-color-chrome);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  box-shadow: var(--token-shadow-menu);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.menu-item {
+  display: grid;
+  grid-template-columns: var(--token-space-4) 1fr auto;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-block-size: var(--token-size-menu-item);
+  padding-inline: var(--token-space-2) var(--token-space-4);
+}
+
+.menu-item .keys,
+.menu-item .note {
+  color: var(--token-color-text-secondary);
+}
+
+.menu-item.is-active {
+  background: var(--token-color-title-bar-focused);
+  color: var(--token-color-title-bar-focused-text);
+}
+
+.menu-item.is-active .keys {
+  color: var(--token-color-title-bar-focused-text);
+}
+
+.menu-item .arrow {
+  inline-size: var(--token-space-2-5);
+  block-size: var(--token-space-2-5);
+  stroke-width: var(--token-border-thin);
+}
+
+.menu-separator {
+  margin-block: var(--token-space-1);
+  border-block-start: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+/* ---- Desktop: dock -------------------------------------------------- */
+
+.dock {
+  position: fixed;
+  inset-block-end: var(--token-space-2);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  z-index: 3;
+  display: flex;
+  gap: var(--token-space-3);
+  padding: var(--token-space-1-5) var(--token-space-3);
+  background: var(--token-color-chrome);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  box-shadow: var(--token-shadow-dock);
+}
+
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--token-space-1);
+  padding: var(--token-space-0-5) var(--token-space-2);
+  border: 0;
+  background: none;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-font-size-label);
+  line-height: 1;
+}
+
+.dock-item .app-icon {
+  inline-size: var(--token-size-dock-icon);
+  block-size: var(--token-size-dock-icon);
+}
+
+.open-mark {
+  inline-size: var(--token-size-open-mark);
+  block-size: var(--token-size-open-mark);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+  visibility: hidden;
+}
+
+.is-open .open-mark {
+  visibility: visible;
+  background: var(--token-color-chrome-border);
+}
+
+.is-minimized .open-mark {
+  visibility: visible;
+  background: none;
+}
+
+/* ---- App icon: an original glyph, a timeline on the accent color ----- */
+
+.app-icon {
+  stroke: none;
+}
+
+.app-icon .tile {
+  fill: var(--token-color-text-accent);
+}
+
+.app-icon .ink {
+  fill: var(--token-color-surface);
+}
+
+.app-icon .line {
+  fill: none;
+  stroke: var(--token-color-surface);
+  stroke-width: var(--token-border-thick);
+}
+
+.app-icon .faint {
+  fill: var(--token-color-base-mist);
+}
+
+/* ---- Desktop: windows ----------------------------------------------- */
+
+.window {
+  position: fixed;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--token-color-surface);
+  border: var(--token-border-thin) solid var(--token-color-window-border);
+  box-shadow: var(--token-shadow-window);
+}
+
+.window.is-focused {
+  z-index: 2;
+  border: var(--token-border-thick) solid var(--token-color-chrome-border);
+  box-shadow: var(--token-shadow-window-focused);
+}
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  block-size: var(--token-size-title-bar);
+  padding-inline: var(--token-space-3) var(--token-space-1-5);
+  background: var(--token-color-title-bar);
+  color: var(--token-color-title-bar-text);
+  border-block-end: var(--token-border-thin) solid var(--token-color-window-border);
+  font-family: var(--token-typography-role-font-family);
+  font-size: var(--token-typography-role-font-size);
+  font-weight: var(--token-typography-role-font-weight);
+}
+
+.is-focused .title-bar {
+  background: var(--token-color-title-bar-focused);
+  color: var(--token-color-title-bar-focused-text);
+  border-block-end-color: var(--token-color-chrome-border);
+}
+
+.controls {
+  display: flex;
+  gap: var(--token-space-1);
+}
+
+.control {
+  display: grid;
+  place-items: center;
+  inline-size: var(--token-size-control);
+  block-size: var(--token-size-control);
+  padding: 0;
+  border: var(--token-border-thin) solid currentColor;
+  background: none;
+}
+
+.control svg {
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  stroke-width: var(--token-border-thin);
+}
+
+.mode {
+  padding-inline-end: var(--token-space-2);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+.window-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-block-size: 0;
+}
+
+/* The CV app's link to /cv, above the CV (FR-007). */
+.app-bar {
+  flex: none;
+  padding: var(--token-space-2) var(--token-space-5);
+  background: var(--token-color-surface);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.app-bar a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  min-block-size: var(--token-size-target);
+}
+
+.app-bar .arrow {
+  inline-size: var(--token-space-2-5);
+  block-size: var(--token-space-2-5);
+  stroke-width: var(--token-border-thin);
+}
+
+.cv-frame {
+  flex: 1;
+  inline-size: 100%;
+  min-block-size: 0;
+  border: 0;
+  background: var(--token-color-surface);
+}
+
+/* Window geometry. The desktop area runs from the menu bar to the space the
+   dock keeps. */
+.at-cv {
+  inset-inline-start: calc((100vw - var(--token-size-window-cv-width)) / 2);
+  inset-block-start: calc(var(--token-size-menu-bar) + var(--token-space-6));
+  inline-size: var(--token-size-window-cv-width);
+  block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve) - 2 * var(--token-space-6));
+}
+
+.at-about {
+  inset-inline-start: calc((100vw - var(--token-size-window-cv-width)) / 2 + var(--token-space-12));
+  inset-block-start: calc(var(--token-size-menu-bar) + var(--token-space-6) + var(--token-space-12));
+  inline-size: var(--token-size-window-about-width);
+  block-size: var(--token-size-window-about-height);
+}
+
+.window.at-max {
+  box-shadow: none;
+}
+
+.at-max {
+  inset-inline-start: 0;
+  inset-block-start: var(--token-size-menu-bar);
+  inline-size: 100vw;
+  block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve));
+}
+
+/* Resized by dragging: 600 × 628, narrower than the wide breakpoint, so the
+   CV uses its one-column layout. */
+.at-cv.resized {
+  inline-size: calc(var(--token-size-window-cv-width) - 25 * var(--token-space-4));
+  block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve) - 2 * var(--token-space-6) - 6 * var(--token-space-4));
+}
+
+/* A keyboard move: 8 steps right and 1 down. */
+.at-cv.moved {
+  inset-inline-start: calc((100vw - var(--token-size-window-cv-width)) / 2 + 8 * var(--token-space-4));
+  inset-block-start: calc(var(--token-size-menu-bar) + var(--token-space-6) + var(--token-space-4));
+}
+
+/* A keyboard resize: 14 steps narrower and 8 shorter, 776 × 596. */
+.at-cv.resizing {
+  inline-size: calc(var(--token-size-window-cv-width) - 14 * var(--token-space-4));
+  block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve) - 2 * var(--token-space-6) - 8 * var(--token-space-4));
+}
+
+/* Where a window was when a keyboard move or resize started. */
+.ghost {
+  position: fixed;
+  z-index: 1;
+  border: var(--token-border-thick) dashed var(--token-color-ghost);
+  pointer-events: none;
+}
+
+/* The move and resize pad (FR-020, FR-062). */
+.pad {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  translate: -50% -50%;
+  display: grid;
+  gap: var(--token-space-3);
+  padding: var(--token-space-4) var(--token-space-5);
+  background: var(--token-color-chrome);
+  border: var(--token-border-thick) solid var(--token-color-chrome-border);
+  box-shadow: var(--token-shadow-menu);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.pad-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--token-space-8);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: center;
+  gap: var(--token-space-1-5);
+}
+
+.pad button {
+  min-block-size: var(--token-size-pad-button);
+  padding-inline: var(--token-space-3);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  background: var(--token-color-chrome);
+}
+
+.pad .up,
+.pad .down {
+  grid-column: 2;
+}
+
+.pad .left {
+  grid-column: 1;
+}
+
+.pad .right {
+  grid-column: 3;
+}
+
+.pad-hint {
+  color: var(--token-color-text-secondary);
+  text-align: center;
+}
+
+.pad-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--token-space-2);
+}
+
+.pad .done {
+  background: var(--token-color-title-bar-focused);
+  color: var(--token-color-title-bar-focused-text);
+}
+
+.pad kbd {
+  font: inherit;
+}
+
+/* ---- About this site ------------------------------------------------ */
+
+.about {
+  overflow: auto;
+  flex: 1;
+  padding: var(--token-space-6) var(--token-space-6) var(--token-space-8);
+}
+
+.about h1 {
+  font-family: var(--token-typography-h2-narrow-font-family);
+  font-size: var(--token-typography-h2-narrow-font-size);
+  font-weight: var(--token-typography-h2-narrow-font-weight);
+  letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+  line-height: var(--token-typography-h2-narrow-line-height);
+}
+
+.about p {
+  margin-block-start: var(--token-space-4);
+  text-wrap: pretty;
+}
+
+.about .links {
+  display: grid;
+  justify-items: start;
+  gap: var(--token-space-2);
+  margin-block-start: var(--token-space-5);
+}
+
+.standalone {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--token-space-1-5);
+  min-block-size: var(--token-size-target);
+  text-decoration-line: none;
+  border-block-end: var(--token-border-thick) solid var(--token-color-link-underline);
+  font-family: var(--token-typography-link-font-family);
+  font-size: var(--token-typography-small-font-size);
+  font-weight: var(--token-typography-link-font-weight);
+}
+
+.standalone .arrow {
+  align-self: center;
+  inline-size: var(--token-space-2-5);
+  block-size: var(--token-space-2-5);
+  stroke-width: var(--token-border-thin);
+}
+
+.about h2 {
+  margin-block-start: var(--token-space-8);
+  padding-block-end: var(--token-space-2);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-strong);
+  font-family: var(--token-typography-h4-font-family);
+  font-size: var(--token-typography-h4-font-size);
+  font-weight: var(--token-typography-h4-font-weight);
+}
+
+.shortcuts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--token-space-5);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.shortcuts dt,
+.shortcuts dd {
+  padding-block: var(--token-space-1-5);
+  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+.shortcuts dt {
+  color: var(--token-color-text-accent);
+  font-weight: var(--token-font-weight-medium);
+}
+
+.about .note {
+  margin-block-start: var(--token-space-3);
+  color: var(--token-color-text-secondary);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+/* ---- Phone: home screen --------------------------------------------- */
+
+.phone {
+  display: flex;
+  flex-direction: column;
+  block-size: 100vh;
+}
+
+.home-head {
+  padding: var(--token-space-6) var(--token-space-5) var(--token-space-5);
+}
+
+.home-head .site-name {
+  font-family: var(--token-typography-h2-narrow-font-family);
+  font-size: var(--token-typography-h2-narrow-font-size);
+  font-weight: var(--token-typography-h2-narrow-font-weight);
+  letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+  line-height: var(--token-typography-h2-narrow-line-height);
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--token-size-app-icon) + var(--token-space-3)), 1fr));
+  row-gap: var(--token-space-6);
+  padding-inline: var(--token-space-5);
+}
+
+.app-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--token-space-2);
+  color: var(--token-color-text-primary);
+  text-decoration: none;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+  font-weight: var(--token-font-weight-medium);
+}
+
+.app-tile .app-icon {
+  inline-size: var(--token-size-app-icon);
+  block-size: var(--token-size-app-icon);
+  box-shadow: var(--token-shadow-menu);
+}
+
+.home-foot {
+  margin-block-start: auto;
+  padding: var(--token-space-1) var(--token-space-3);
+  background: var(--token-color-chrome);
+  border-block-start: var(--token-border-thin) solid var(--token-color-chrome-border);
+}
+
+.home-foot button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-block-size: var(--token-size-home-target);
+  padding-inline: var(--token-space-2);
+  border: 0;
+  background: none;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-font-size-mono);
+}
+
+.home-foot svg {
+  inline-size: var(--token-space-5);
+  block-size: var(--token-space-5);
+  stroke-width: var(--token-border-thin);
+}
+
+/* ---- Phone: a full-screen app --------------------------------------- */
+
+.app-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  flex: none;
+  block-size: var(--token-size-mobile-header);
+  padding-inline: var(--token-space-1);
+  background: var(--token-color-chrome);
+  border-block-end: var(--token-border-thin) solid var(--token-color-chrome-border);
+}
+
+.home-button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1);
+  min-block-size: var(--token-size-home-target);
+  padding-inline: var(--token-space-2) var(--token-space-3);
+  border: 0;
+  background: none;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-font-size-mono);
+}
+
+.home-button svg {
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+}
+
+.app-name {
+  font-family: var(--token-typography-role-font-family);
+  font-size: var(--token-typography-role-font-size);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.app-view {
+  background: var(--token-color-surface);
+}
+
+.phone .app-bar {
+  padding-inline: var(--token-space-5);
+}
+
+.phone .about {
+  padding-inline: var(--token-space-5);
+}
+
+/* ---- Without scripts ------------------------------------------------ */
+
+.plain {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  background: var(--token-color-surface);
+}
+
+.plain main {
+  flex: 1;
+  inline-size: 100%;
+  max-inline-size: var(--token-size-page);
+  margin-inline: auto;
+  padding: var(--token-space-11) var(--token-space-5) var(--token-space-12);
+}
+
+.plain .role {
+  color: var(--token-color-text-accent);
+  font-family: var(--token-typography-role-font-family);
+  font-size: var(--token-typography-role-font-size);
+  font-weight: var(--token-typography-role-font-weight);
+  letter-spacing: var(--token-typography-role-letter-spacing);
+}
+
+.plain h1 {
+  margin-block-start: var(--token-space-5);
+  font-family: var(--token-typography-name-narrow-font-family);
+  font-size: var(--token-typography-name-narrow-font-size);
+  font-weight: var(--token-typography-name-narrow-font-weight);
+  letter-spacing: var(--token-typography-name-narrow-letter-spacing);
+  line-height: var(--token-typography-name-narrow-line-height);
+}
+
+.plain.wide h1 {
+  font-size: var(--token-typography-name-wide-font-size);
+  letter-spacing: var(--token-typography-name-wide-letter-spacing);
+}
+
+.plain p {
+  max-inline-size: var(--token-size-notfound-title);
+  margin-block: var(--token-space-6) var(--token-space-8);
+  font-family: var(--token-typography-lead-narrow-font-family);
+  font-size: var(--token-typography-lead-narrow-font-size);
+  line-height: var(--token-typography-lead-narrow-line-height);
+}
+
+.plain.wide p {
+  font-size: var(--token-typography-lead-wide-font-size);
+}
+
+.plain .standalone {
+  font-size: var(--token-typography-link-font-size);
+}
+
+.plain footer {
+  border-block-start: var(--token-border-thin) solid var(--token-color-rule-subtle);
+}
+
+.plain footer div {
+  max-inline-size: var(--token-size-page);
+  margin-inline: auto;
+  padding: var(--token-space-5);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+/* The resize grip on the bottom-right corner (FR-061). Every edge and corner
+   resizes; only this corner shows it. */
+.grip {
+  position: absolute;
+  inset-block-end: var(--token-space-0-5);
+  inset-inline-end: var(--token-space-0-5);
+  z-index: 1;
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  color: var(--token-color-text-secondary);
+  stroke-width: var(--token-border-thin);
+  pointer-events: none;
+}

@@ -1,0 +1,49 @@
+/* Tokens the shell needs that the export doesn't hold yet, written as the
+   token output will write them. They are proposals for the design review: once
+   approved, the plan adds them to packages/tokens/penpot/tokens.json in
+   Penpot's form (the names in README.md), and this file is no longer used.
+   Every value here refers to an existing token where one fits. */
+:root {
+  /* Breakpoint (FR-001): the desktop shell needs at least this much space. */
+  --token-breakpoint-desktop-width: 1024px;
+  --token-breakpoint-desktop-height: 640px;
+
+  /* Colors */
+  --token-color-wallpaper: var(--token-color-base-paper);
+  --token-color-wallpaper-grid: var(--token-color-base-mist);
+  --token-color-chrome: var(--token-color-base-white);
+  --token-color-chrome-border: var(--token-color-base-ink);
+  --token-color-title-bar-focused: var(--token-color-base-ink);
+  --token-color-title-bar-focused-text: var(--token-color-base-paper);
+  --token-color-title-bar: var(--token-color-base-paper);
+  --token-color-title-bar-text: var(--token-color-base-stone);
+  --token-color-window-border: var(--token-color-base-stone);
+  --token-color-ghost: var(--token-color-base-indigo);
+  /* The focus outline on the ink title bar, where the accent is only 1.9:1. */
+  --token-color-focus-on-dark: var(--token-color-base-paper);
+
+  /* Shadows: hard offset shadows with no blur, part of the original look. */
+  --token-shadow-window-focused: 8px 8px 0 0 var(--token-color-base-ink);
+  --token-shadow-window: 4px 4px 0 0 var(--token-color-base-mist);
+  --token-shadow-menu: 4px 4px 0 0 var(--token-color-base-ink);
+  --token-shadow-dock: 4px 4px 0 0 var(--token-color-base-ink);
+
+  /* Sizes */
+  --token-size-menu-bar: 32px;
+  --token-size-title-bar: 40px;
+  --token-size-control: 28px;
+  --token-size-menu-item: 32px;
+  --token-size-dock-icon: 48px;
+  --token-size-dock-reserve: 104px;
+  --token-size-open-mark: 6px;
+  --token-size-app-icon: 64px;
+  --token-size-home-target: 44px;
+  --token-size-mobile-header: 52px;
+  --token-size-wallpaper-grid: 24px;
+  --token-size-window-cv-width: 1000px;
+  --token-size-window-about-width: 560px;
+  --token-size-window-about-height: 520px;
+  --token-size-window-min-width: 400px;
+  --token-size-window-min-height: 300px;
+  --token-size-pad-button: 36px;
+}
