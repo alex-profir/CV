@@ -716,7 +716,7 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
 
 **UI change**: design artifacts live in `specs/005-os-shell/design/`:
 
-- [ ] ASCII wireframes, per shell, of every state: on desktop, first load with the CV window
+- [x] ASCII wireframes, per shell, of every state: on desktop, first load with the CV window
   open, the desktop with no window open, two windows open, a menu open, the Window menu, a
   window resized, a window minimized, a window maximized, and a keyboard move and a keyboard
   resize in progress; on
