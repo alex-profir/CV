@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Draft
+**Status**: Approved
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -21,13 +21,33 @@
 > Settings and the requirement inspector are separate features. The look is original, not a
 > replica of macOS or iOS. See docs/vision.md.
 
+## Clarifications
+
+### Session 2026-10-24
+
+- Q: When a desktop visitor first opens the site, should the CV already be open in a window, or
+  should the desktop start empty with the CV one click away in the dock? → A: The CV is already
+  open in a focused window, with the desktop, menu bar and dock around it. Keyboard focus stays
+  at the start of the page and isn't moved into the window.
+- Q: Besides opening, closing, focusing, moving and switching windows, should visitors also be
+  able to resize, minimise or maximise them in this feature? → A: All three: resize, minimise to
+  the dock, and maximise (FR-061 to FR-065).
+- Q: When a visitor opens or closes an app, should the browser's address and its Back button
+  change with it, or should the address stay at the site root, so Back leaves the site? → A:
+  The address stays at the site root. On mobile only, Back from a full-screen app returns to the
+  home screen. On desktop, Back leaves the site.
+- Q: What name should the site use in the menu bar, on the desktop and in the browser tab:
+  "AboutThisDev" or "Alex Profir"? → A: "Alex Profir", the owner's name read from the CV
+  document wherever the site name appears (FR-066).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reach the CV in one click or tap, on either shell (Priority: P1)
 
-A recruiter opens the site link. On a laptop they see a desktop with a menu bar and a dock. On a
-phone they see a home screen of app icons. Either way the CV is one obvious click or tap away,
-with nothing in front of it: no splash screen, boot sequence, onboarding or banner. The CV app
+A recruiter opens the site link. On a laptop they see a desktop with a menu bar and a dock, and
+the CV already open in a window. On a phone they see a home screen of app icons, and the CV is
+one obvious tap away. Nothing is in front of it: no splash screen, boot sequence, onboarding or
+banner. The CV app
 shows the same CV as `/cv`, with every section, date and link, and offers a link to `/cv` for
 printing or sharing.
 
@@ -35,16 +55,17 @@ printing or sharing.
 showcase, but the CV is the product. Without this story the shell gets in the way of the CV.
 Every other story builds on a shell that can open the CV app.
 
-**Independent Test**: build the site, open the site root at 375 px and at 1440 px wide, and open
-the CV with one tap or one click. Confirm that every shown field of the CV document (004 Key
+**Independent Test**: build the site, open the site root at 1440 px wide and confirm the CV app
+is already open, then at 375 px wide and open the CV with one tap. Confirm that every shown field of the CV document (004 Key
 Entities) appears in the CV app in the same order as on `/cv`, and that nothing appears before
 the shell.
 
 **Acceptance Scenarios**:
 
 1. **Given** a desktop browser 1440 px wide, **When** a visitor opens the site root, **Then**
-   the desktop shell appears with a menu bar, a desktop and a dock that holds the CV app, and
-   nothing appears in front of it.
+   the desktop shell appears with a menu bar, a desktop and a dock that holds the CV app, with
+   the CV app open in a focused window in front, showing the CV, and nothing else in front of
+   it.
 2. **Given** the desktop shell with the CV app closed, **When** the visitor clicks the CV item
    in the dock once, **Then** the CV app opens in a focused window in front, showing the CV.
 3. **Given** a phone 375 px wide, **When** a visitor opens the site root, **Then** the mobile
@@ -63,17 +84,20 @@ the shell.
 
 ### User Story 2 - Use the desktop with windows (Priority: P2)
 
-A hiring manager on a desktop explores the site. They open the CV, then open "About this site"
-from the menu bar. Both appear as windows. They drag one by its title bar, click the other to
-bring it to the front, switch between them from the Window menu, and close them. The dock shows
+A hiring manager on a desktop explores the site. The CV is already open in a window, and they
+open "About this site" from the menu bar as a second window. They drag one by its title bar,
+resize it by a corner, click the other to bring it to the front, maximize it and restore it,
+minimize one and bring it back from the dock or the Window menu, switch between them from the
+Window menu, and close them. The dock shows
 which apps are open, and the menu bar shows the focused app's name and menus.
 
 **Why this priority**: the desktop is the main showcase of the craft for hiring managers and
 engineers. It comes after the CV path because a recruiter never needs it.
 
-**Independent Test**: at 1440 px wide, with a mouse, open the CV app and About this site, move
-each window by dragging and by the non-dragging alternative, bring each to the front by clicking
-it and from the Window menu, then close both. Confirm the dock's open marks and the menu bar's
+**Independent Test**: at 1440 px wide, with a mouse, use the CV app open on first load and open
+About this site, move and resize each window by dragging and by the non-dragging alternative,
+minimize and restore each, maximize and restore each, bring each to the front by clicking it and
+from the Window menu, then close both. Confirm the dock's open marks and the menu bar's
 app name follow each step.
 
 **Acceptance Scenarios**:
@@ -100,6 +124,17 @@ app name follow each step.
 9. **Given** an open window near the right edge, **When** the browser window is made narrower
    but stays wide enough for the desktop shell, **Then** the window moves back so its title bar
    is fully inside the desktop area.
+10. **Given** the CV window is open and not maximized, **When** the visitor drags its bottom
+    right corner, **Then** the window grows or shrinks with the pointer, never below the minimum
+    size the design sets, and the CV reflows inside it without horizontal scrolling.
+11. **Given** the CV window is open, **When** the visitor clicks its minimize control, **Then**
+    the window disappears, the dock still marks the CV as open, and the Window menu lists it as
+    minimized. **When** the visitor then clicks the CV item in the dock, **Then** the window
+    returns at the same position and size, in front and focused.
+12. **Given** the CV window is open, **When** the visitor clicks its maximize control, **Then**
+    the window fills the desktop area with the menu bar and dock still visible, and the control
+    now restores it. **When** the visitor clicks it again, **Then** the window returns to its
+    earlier position and size.
 
 ---
 
@@ -127,6 +162,10 @@ Confirm it is at the same scroll position.
    open app, **Then** the mobile shell stays and everything reads without horizontal scrolling.
 5. **Given** a 320 px wide phone, **When** the visitor looks at the home screen, **Then** every
    icon and name is fully visible and nothing needs horizontal scrolling.
+6. **Given** the CV app is open full screen, **When** the visitor presses the browser's Back
+   button or uses the back gesture, **Then** the home screen appears with focus on the CV icon,
+   and the address is still the site root. **When** they press Back again, **Then** they leave
+   the site.
 
 ---
 
@@ -150,9 +189,10 @@ lands.
 **Acceptance Scenarios**:
 
 1. **Given** first load of the desktop shell, **When** a keyboard user presses Tab, **Then**
-   focus moves through the shell in a logical order with a visible indicator, and the CV app can
-   be opened within 3 key presses.
-2. **Given** focus is on the CV item in the dock, **When** the user presses Enter, **Then** the
+   focus moves through the shell in a logical order with a visible indicator, and focus reaches
+   the open CV window within 3 key presses.
+2. **Given** the CV app is closed and focus is on the CV item in the dock, **When** the user
+   presses Enter, **Then** the
    CV window opens and focus moves into it, to its title or first heading, and a screen reader
    announces the CV app.
 3. **Given** two open windows, **When** the user presses the shortcut for the next window,
@@ -171,6 +211,10 @@ lands.
    it can't be reached by the screen reader until the user goes home.
 9. **Given** the CV app was opened from the home screen, **When** the user activates the home
    control, **Then** focus lands on the CV icon.
+10. **Given** the CV window is focused, **When** the user starts the keyboard resize, presses
+    the arrow keys and confirms, **Then** the window changes size and the end of the resize is
+    announced. **When** the user minimizes it with the keyboard and no other window is visible,
+    **Then** focus moves to the CV item in the dock, and pressing Enter there restores it.
 
 ---
 
@@ -274,7 +318,18 @@ confirm that the matching check fails with a clear message and that the pull req
   them, and the CV scrolls inside its window.
 - **Double-clicking or quickly clicking a dock item**: opens one window, never two.
 - **A drag that starts on the close control**: does not move the window. Releasing away from the
-  control does not close it.
+  control does not close it. The same holds for the minimize and maximize controls.
+- **A resize past the minimum size or the desktop area's edge**: the window stops at the minimum
+  size, or at the edge, and its title bar stays inside the desktop area.
+- **Dragging the title bar or an edge of a maximized window**: does nothing. The visitor restores
+  the window first (FR-065).
+- **The browser window shrinks with a window maximized**: the window keeps filling the smaller
+  desktop area.
+- **Every open window minimized**: the desktop shows no window, the menu bar shows the desktop's
+  own name, and the dock and the Window menu bring each window back.
+- **The shell switches to mobile with a window minimized or maximized**: on mobile, every app
+  opens full screen from its icon as usual. Back on desktop in the same visit, a minimized
+  window stays minimized, and a maximized one stays maximized.
 - **A touchscreen laptop**: windows can be moved by touch drag, and dock names are available
   without hover, through the non-hover means the design sets.
 - **Scrolling over a window**: scrolls that window's content, not the desktop. The desktop itself
@@ -285,8 +340,9 @@ confirm that the matching check fails with a clear message and that the pull req
   started. It does not close a window.
 - **A shortcut the browser or a screen reader already uses**: the shell doesn't take it over
   (FR-029).
-- **The CV document has no name**: the CV app falls back as `/cv` does (004 FR-023). Window and
-  app titles are site text and don't change.
+- **The CV document has no name**: the CV app falls back as `/cv` does (004 FR-023), and the
+  site's name falls back to the same site heading (FR-066). Window and app titles are site text
+  and don't change.
 - **A very long CV**: scrolls inside its window or full-screen view. On mobile, returning to the
   app in the same visit keeps the scroll position.
 - **Ctrl-click, middle-click or long-press on the link to `/cv`**: behaves as a normal link, so
@@ -305,7 +361,9 @@ confirm that the matching check fails with a clear message and that the pull req
 - **A system that prefers a dark theme**: sees the site's one theme, fully legible. Themes belong
   to the Settings feature.
 - **Text spacing overridden by the visitor**: shell labels and menus don't cut off or overlap.
-- **The browser's Back button**: behaves as FR-050 sets.
+- **The browser's Back button**: on mobile, with an app open full screen, it returns to the home
+  screen. On the home screen, or on desktop, it leaves the site in one press, even after the shell
+  switched while an app was open (FR-050).
 
 ## Requirements *(mandatory)*
 
@@ -342,10 +400,11 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 - **FR-004**: From first load, the CV app MUST be at most one click away on desktop and one tap
   away on mobile, with nothing in front of the shell: no splash screen, boot sequence,
   onboarding, sign-in, banner or modal (Constitution VII).
-- **FR-005**: On first load, the desktop shell MUST show the CV app [NEEDS CLARIFICATION: closed,
-  with the desktop empty and the CV one click away in the dock, or already open in a focused
-  window, so the CV is zero clicks away with the desktop around it?]. The mobile shell MUST open
-  on the home screen, as a full-screen app would hide the shell.
+- **FR-005**: On first load, the desktop shell MUST show the CV app already open, in a focused
+  window in front, with the menu bar, the desktop area and the dock visible around it, so the CV
+  is zero clicks away. Keyboard focus MUST stay at the start of the page and MUST NOT be moved
+  into the window on first load. The mobile shell MUST open on the home screen, as a full-screen
+  app would hide the shell.
 - **FR-006**: The CV app MUST show the same CV as `/cv`: it MUST meet 004 FR-001 to FR-013
   (sections, fields, order, wording, dates and links) inside its window and its full-screen
   view. Every word of CV text in it MUST come from the CV document, and the content check (002)
@@ -373,10 +432,12 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   it. Each app MUST have at most one window: activating an item again, or several times quickly,
   MUST NOT open a second.
 - **FR-013**: The menu bar MUST show a site menu, then the focused window's name and that
-  window's menus. With no window open, it MUST show the site menu and the desktop's own name.
+  window's menus. With no window focused, because none is open or every open window is
+  minimized, it MUST show the site menu and the desktop's own name.
   The site menu MUST hold About this site, a link to `/cv`, and a link to the site's repository.
-- **FR-014**: The menu bar MUST hold a Window menu that lists every open window, marks the
-  focused one, and brings the chosen window to the front, focused. The focused window's menu MUST
+- **FR-014**: The menu bar MUST hold a Window menu that lists every open window, including
+  minimized ones, marks the focused one and the minimized ones, and brings the chosen window to
+  the front, focused, restoring it if it is minimized (FR-064). The focused window's menu MUST
   hold a command that closes it.
 - **FR-015**: A menu MUST open when its title is activated, and MUST close when an item is
   chosen, when Escape is pressed, when the visitor clicks or taps outside it, or when focus
@@ -385,7 +446,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 **Desktop: windows**
 
 - **FR-016**: Every window MUST have a title bar that shows its app's name and holds a close
-  control, with the app's content below. The close control's accessible name MUST name the
+  control, a minimize control (FR-063) and a maximize control (FR-065), with the app's content
+  below. The close control's accessible name MUST name the
   window, such as "Close CV".
 - **FR-017**: At most one window MUST be focused at a time. The focused window MUST be in front
   of every other window, and MUST be distinguishable from the others by more than color.
@@ -401,10 +463,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   its edge. When the desktop area shrinks, every window MUST move back so its title bar is fully
   inside, and a window larger than the area MUST be fitted to it.
 - **FR-022**: A window's content MUST scroll inside the window when it is taller than the
-  window. Whether windows can also be resized, minimized or maximized: [NEEDS CLARIFICATION:
-  should this feature let visitors resize, minimize and maximize windows, or only open, close,
-  focus, move and switch between them, as the description lists, leaving the rest to a later
-  feature?]
+  window. Windows MUST also be resizable, and able to be minimized and maximized, as FR-061 to
+  FR-065 set.
 - **FR-023**: Closing a window MUST remove it and its app's open mark in the dock. Focus MUST
   move to the window now in front, or, when no window is left, to the dock item of the app that
   was closed.
@@ -412,15 +472,16 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 **Desktop: keyboard**
 
 - **FR-024**: Every action of the desktop shell MUST be possible with the keyboard alone: using
-  the menu bar and its menus, using the dock, and opening, focusing, switching, moving and
-  closing windows (Constitution VIII). Focus MUST always be visible, with an indicator of at
+  the menu bar and its menus, using the dock, and opening, focusing, switching, moving,
+  resizing, minimizing, maximizing, restoring and closing windows (Constitution VIII). Focus MUST always be visible, with an indicator of at
   least 3:1 contrast against its surroundings, and MUST NOT be hidden behind a window, the menu
   bar or the dock.
 - **FR-025**: From anywhere in the desktop shell, a keyboard user MUST be able to move focus to
   the menu bar, to the dock and to the next open window, each with one shortcut, without passing
   through every element of every window.
 - **FR-026**: A shortcut MUST move focus to the next open window and bring it to the front,
-  going through every open window in turn. The Window menu MUST do the same (FR-014).
+  going through every open window that isn't minimized in turn. The Window menu MUST do the same
+  for every open window, minimized or not (FR-014).
 - **FR-027**: A keyboard user MUST be able to move the focused window: they start a move from
   the window's menu or with a shortcut, move it with the arrow keys in steps the design sets,
   then confirm with Enter or cancel with Escape. Cancelling MUST return the window to where it
@@ -435,6 +496,35 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   MUST reach the menu bar, every open window and the dock. Focus order inside a window MUST
   follow its reading order. When focus moves to an element inside a window that isn't focused,
   that window MUST come to the front and become focused.
+
+**Desktop: resizing, minimizing and maximizing**
+
+- **FR-061**: Dragging any edge or corner of a window that isn't maximized, with a mouse, a pen
+  or touch, MUST resize the window from that edge or corner. A window MUST NOT become smaller
+  than the minimum size the approved design sets, nor larger than the desktop area, and its
+  title bar MUST stay inside the desktop area as FR-021 sets. Its content MUST reflow to the new
+  size (FR-008).
+- **FR-062**: Every resize possible by dragging MUST also be possible with single pointer actions
+  and no dragging (WCAG 2.2 success criterion 2.5.7), and with the keyboard: the user starts a
+  resize from the window's menu or with a shortcut, changes the size with the arrow keys in
+  steps the design sets, then confirms with Enter or cancels with Escape. Cancelling MUST return
+  the window to the size it had. The end of a resize MUST be announced (FR-041).
+- **FR-063**: The minimize control's accessible name MUST name the window, such as "Minimize
+  CV". The window's menu MUST hold a minimize command with a shortcut. Minimizing MUST hide the
+  window without closing its app: the app keeps its open mark in the dock, screen readers are
+  told its window is minimized, and the Window menu lists it as minimized. Focus MUST move to
+  the window now in front or, when no window is left visible, to the dock item of the app that
+  was minimized, or to the site menu's title for About this site.
+- **FR-064**: Activating a minimized app's dock item, choosing its window in the Window menu, or,
+  for About this site, choosing it again from the site menu MUST restore the window at the
+  position and size it had, in front and focused.
+- **FR-065**: The maximize control's accessible name MUST name the window, such as "Maximize
+  CV". The window's menu MUST hold a maximize command with a shortcut. Maximizing MUST make the
+  window fill the desktop area, with the menu bar and the dock still visible (FR-010). While the
+  window is maximized, the control and the command MUST restore it to the position and size it
+  had before, and their names MUST say so, such as "Restore CV". A maximized window MUST NOT be
+  moved or resized until it is restored, and MUST keep filling the desktop area when that area
+  changes size.
 
 **Mobile: home screen and full-screen apps**
 
@@ -471,14 +561,18 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   home screen MUST each be named for screen readers. Every window MUST be named by its app's
   name, and screen readers MUST be told which window is focused.
 - **FR-040**: Opening a window or a full-screen app MUST move focus into it, to its title or
-  first heading, so a screen reader announces it. Closing it MUST move focus as FR-023 and
-  FR-034 set.
+  first heading, so a screen reader announces it. The CV window open on first load is the one
+  exception (FR-005). Closing it MUST move focus as FR-023 and FR-034 set.
 - **FR-041**: A change that doesn't move focus, such as the end of a keyboard move, MUST be
   announced to screen readers.
-- **FR-042**: The page title MUST name the site, and the focused app when there is one.
-- **FR-043**: Text in the shell that isn't CV content, such as the names of menus, commands and
-  the desktop, MUST be in English, MUST be set by the approved design, and MUST NOT contain a CV
-  fact (as 004 FR-006 requires of `/cv`).
+- **FR-042**: The page title MUST name the site (FR-066), and the focused app when there is one.
+- **FR-043**: Text in the shell that isn't CV content, such as the names of menus and commands,
+  MUST be in English, MUST be set by the approved design, and MUST NOT contain a CV fact (as 004
+  FR-006 requires of `/cv`). The site's name is CV content, not site text (FR-066).
+- **FR-066**: Wherever the shell shows the site's name, including the desktop's own name in the
+  menu bar (FR-013), the page title (FR-042) and About this site (FR-038), it MUST be the owner's
+  name, read from the CV document. When the CV document has no name, the shell MUST show instead
+  the site heading the design sets, as `/cv` does (004 FR-023).
 
 **Look, motion and accessibility**
 
@@ -490,7 +584,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   design value MUST come from tokens, and motion values from the motion token source. The token
   check (003) MUST pass over the shells with no exception added for them.
 - **FR-046**: When the visitor asks for reduced motion, every non-essential animation of the
-  shells, such as windows or apps opening and closing and menus appearing, MUST be removed or
+  shells, such as windows or apps opening, closing, minimizing, restoring and maximizing, and
+  menus appearing, MUST be removed or
   replaced with one that doesn't move or scale (Constitution VIII). A window being dragged MUST
   still follow the pointer.
 - **FR-047**: With forced colors active, every shell element MUST stay visible and
@@ -499,7 +594,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   background color alone.
 - **FR-048**: Both shells MUST conform to WCAG 2.2 Level AA in every state: with no app open,
   with the CV app open, with About this site open, with a menu open, and, on desktop, with two
-  windows open. They MUST keep all content and function at 200% browser zoom and text-only zoom,
+  windows open, with a window minimized, with a window maximized, and during a keyboard move and
+  a keyboard resize. They MUST keep all content and function at 200% browser zoom and text-only zoom,
   at 400% zoom on a window 1280 px wide, and with text spacing overridden as WCAG 2.2 success
   criterion 1.4.12 describes.
 
@@ -512,10 +608,11 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 **Addresses**
 
 - **FR-050**: The site root's address MUST show the shell, and `/cv` MUST stay the plain page
-  004 defines. Opening or closing an app [NEEDS CLARIFICATION: should each open app have its own
-  address, so a link can open the shell with the CV app open and the browser's Back button closes
-  an app or returns home, or should the address stay at the site root, with Back leaving the
-  site?].
+  004 defines. Opening, closing, minimizing or maximizing an app MUST NOT change the address,
+  which stays at the site root. On mobile, the browser's Back button or back gesture, used while
+  an app is open full screen, MUST return to the home screen as the home control does (FR-034).
+  On the home screen, and on desktop at any time, Back MUST leave the site with one press, as
+  from any page.
 - **FR-051**: Before the site root changes, 004's spec MUST be amended in this feature's pull
   request, with the owner's approval and keeping its IDs (Constitution III): 004 FR-018, the
   redirect from the site root to `/cv`, is marked as removed and replaced by this spec's FR-001;
@@ -546,11 +643,13 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   shells. The accessibility check MUST cover every state FR-048 lists, at a phone width and a
   desktop width. The Lighthouse check MUST score the site root on both profiles. The other-site
   check MUST cover the site root with the CV app open.
-- **FR-057**: The keyboard check MUST, at a desktop width and with the keyboard alone, open the
-  CV app from the dock, open About this site from the menu bar, switch between the two windows,
-  move one, cancel a move, and close both, confirming a visible focus indicator and the focus
-  target of FR-023 at each step. At a phone width it MUST open the CV app, return home and
-  confirm focus lands on the CV icon.
+- **FR-057**: The keyboard check MUST, at a desktop width and with the keyboard alone, reach the
+  CV window open on first load, close it, open the CV app again from the dock, open About this
+  site from the menu bar, switch between the two windows, move one, cancel a move, resize one,
+  cancel a resize, minimize and restore one, maximize and restore one, and close both,
+  confirming a visible focus indicator and the focus targets of FR-023 and FR-063 at each step. At a phone width it MUST open the CV app, return home, once
+  with the home control and once with the browser's Back, and confirm focus lands on the CV icon
+  each time.
 - **FR-058**: The CV app check MUST open the CV app in each shell and confirm that every shown
   field the CV document holds is present, in the same order as on `/cv`. It MUST read the
   expected fields from the CV document, not from a hand-written list.
@@ -569,8 +668,9 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 - **App**: something a visitor opens in a shell. It has a name, an icon, the shells it supports
   (declared with the app) and whether it needs the network. The CV app is the only one in this
   feature.
-- **Window**: an open app on desktop. It has its app, a position, a place in the front-to-back
-  order and whether it is focused. Each app has at most one.
+- **Window**: an open app on desktop. It has its app, a position, a size, a place in the
+  front-to-back order, whether it is focused, and whether it is minimized or maximized, with the
+  position and size to restore. Each app has at most one.
 - **Full-screen view**: an open app on mobile, with a header and a home control. It keeps its
   scroll position for the rest of the visit.
 - **Dock**: the desktop's row of app items, each with an open mark when its app is open.
@@ -591,12 +691,12 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 
 | Shell | Supported | Instead |
 |-------|-----------|---------|
-| Desktop (macOS-style) | Yes: menu bar, desktop, dock and windows, with the CV app and About this site | - |
+| Desktop (macOS-style) | Yes: menu bar, desktop, dock and windows that can be moved, resized, minimized and maximized, with the CV app and About this site | - |
 | Mobile (iOS-style) | Yes: home screen and full-screen apps, with the CV app and About this site | - |
 
 **CV path**: Changed. The site root no longer redirects to `/cv` (004 FR-018 is replaced,
-FR-051). It shows the shell, and the CV app is one click (desktop) or one tap (mobile) away,
-or open from the start on desktop, depending on FR-005. Without scripts the root links to `/cv`
+FR-051). It shows the shell. On desktop the CV app is already open in a focused window (FR-005),
+and on mobile it is one tap away. Without scripts the root links to `/cv`
 (FR-049). `/cv` remains a plain server-rendered page, unchanged.
 
 ## Offline Behavior *(mandatory)*
@@ -616,8 +716,10 @@ or open from the start on desktop, depending on FR-005. Without scripts the root
 
 **UI change**: design artifacts live in `specs/005-os-shell/design/`:
 
-- [ ] ASCII wireframes, per shell, of every state: on desktop, first load, the CV window
-  focused, two windows open, a menu open, the Window menu, and a keyboard move in progress; on
+- [ ] ASCII wireframes, per shell, of every state: on desktop, first load with the CV window
+  open, the desktop with no window open, two windows open, a menu open, the Window menu, a
+  window resized, a window minimized, a window maximized, and a keyboard move and a keyboard
+  resize in progress; on
   mobile, the home screen in portrait and landscape, the CV app full screen and About this site
   full screen; and the page shown without scripts
 - [ ] PNG exports of the approved Penpot mockup of both shells, at a phone width and a desktop
@@ -631,10 +733,11 @@ or open from the start on desktop, depending on FR-005. Without scripts the root
 
 ### Measurable Outcomes
 
-- **SC-001**: From first load, the CV app's content is visible after at most 1 click on desktop
-  and at most 1 tap on mobile, at 375 px and 1440 px wide, in every check run.
-- **SC-002**: From first load, a keyboard user opens the CV app with at most 3 key presses on the
-  desktop shell, and on the mobile shell with an external keyboard.
+- **SC-001**: From first load, the CV app's content is visible with 0 clicks on desktop at
+  1440 px wide and after at most 1 tap on mobile at 375 px wide, in every check run.
+- **SC-002**: From first load, a keyboard user reaches the open CV window with at most 3 key
+  presses on the desktop shell, and opens the CV app with at most 3 key presses on the mobile
+  shell with an external keyboard.
 - **SC-003**: Under Lighthouse's mobile profile, with its simulated slow connection, the CV app's
   icon is visible within 2.5 seconds of the request. With the CPU slowed as that profile slows
   it, the CV app's content appears within 1 second of the click or tap.
@@ -648,8 +751,9 @@ or open from the start on desktop, depending on FR-005. Without scripts the root
 - **SC-007**: After one online visit, the site root opens with no network with the complete
   shell, and the CV app with 100% of its content, every time the offline check runs.
 - **SC-008**: Loading the site root and opening the CV app makes 0 requests to any other site.
-- **SC-009**: With reduced motion set, opening and closing the CV app and About this site, and
-  opening a menu, moves or scales 0 elements in either shell.
+- **SC-009**: With reduced motion set, opening and closing the CV app and About this site,
+  minimizing, restoring and maximizing a window, and opening a menu, moves or scales 0 elements
+  in either shell.
 - **SC-010**: When this feature is merged, every requirement in this spec is covered by at least
   one test, the content check (002) and the token check (003) pass with no exception added for
   the shells, and the local run of every check gives the same result as the pull-request run,
@@ -678,11 +782,13 @@ or open from the start on desktop, depending on FR-005. Without scripts the root
 - **Nothing is remembered between visits**: each visit starts at first load, with no windows
   restored and no positions kept. Mobile keeps an app's scroll position only within a visit.
   Remembering preferences belongs to the Settings feature.
-- **Shortcuts and the keyboard move**: the exact keys, the step size of a keyboard move and the
-  non-dragging pointer alternative (FR-020) are set by the design within FR-024 to FR-030.
-- **Site name**: the name shown in the menu bar, the desktop and the page title is site text set
-  by the design. The vision's open question about the name ("AboutThisDev" or "Alex Profir") is
-  settled before the design is signed off.
+- **Shortcuts, keyboard moves and resizes**: the exact keys, the step sizes of a keyboard move
+  and a keyboard resize, a window's minimum size, and the non-dragging pointer alternatives for
+  moving and resizing (FR-020, FR-062) are set by the design within FR-024 to FR-030 and FR-061
+  to FR-065.
+- **Site name**: the site is named after the owner, "Alex Profir", read from the CV document
+  (FR-066). This settles the vision's open question about the name ("AboutThisDev" or "Alex
+  Profir").
 - **Theme and wallpaper**: one theme and one wallpaper, set by the design. Choosing them belongs
   to the Settings feature, as does a site-level reduced-motion setting. This feature follows the
   visitor's system setting.
@@ -697,7 +803,6 @@ or open from the start on desktop, depending on FR-005. Without scripts the root
   - Terminal, Contact and Settings, each a separate feature.
   - The requirement inspector, a separate feature. This feature still adds `data-req` attributes
     (FR-055).
-  - Window resizing, minimizing and maximizing, unless FR-022's clarification brings them in.
   - Several windows per app, desktop icons, right-click menus, drag and drop between apps,
     several desktops, search, notifications, sounds, lock or sign-in screens and an app switcher
     on mobile.
