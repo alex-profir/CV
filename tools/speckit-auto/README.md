@@ -12,7 +12,8 @@ since nothing would continue them.
 ## Use
 
 ```bash
-# 1. Draft the spec. Stops when spec.md exists; nothing is planned or built.
+# 1. On main: draft the spec and commit it on a new branch named after the
+#    feature directory. Nothing is planned or built.
 tools/speckit-auto/run.sh spec "Describe the feature"
 
 # 2. You: review spec.md, run /speckit-clarify for any [NEEDS CLARIFICATION],
@@ -57,6 +58,7 @@ lists runs; a failed or paused run continues with `run.sh resume <run_id>`.
 | `run.sh` | Entry point; sources `env.sh` and starts or resumes a workflow |
 | `env.sh` | Node 26, Opus/high for sessions, subagents and background tasks, context budget, permission mode |
 | `context-budget.sh` | `PostToolUse` hook (registered in `.claude/settings.json`); inert unless `CONTEXT_BUDGET_PCT` is set |
+| `spec-branch.sh` | Commits a drafted spec on its own branch; Spec Kit 1.2 creates none without its git extension |
 | `gates.sh` | Owner gates before planning |
 | `expect.sh` | Checks that plan and tasks were really written |
 | `tasks-status.sh` | Counts open and ticked tasks; detects a stalled session |

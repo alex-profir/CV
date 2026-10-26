@@ -6,7 +6,8 @@
 #   tools/speckit-auto/run.sh build specs/<feature> [--review | --implement-only] [--guidance "<text>"]
 #   tools/speckit-auto/run.sh resume <run_id> [-i key=value ...]
 #
-# spec   drafts spec.md and stops. Review it, set Status: Approved and, for UI,
+# spec   run on main: drafts spec.md, commits it on a new branch named after the
+#        feature directory and stops. Review it, set Status: Approved and, for UI,
 #        pass the design gate before building (Constitution I and II).
 # build  checks those gates, then plans, writes tasks, analyzes and implements.
 #        --review pauses after plan, tasks and analyze for your approval;
@@ -20,7 +21,7 @@ here=tools/speckit-auto
 # shellcheck source=env.sh
 . "$here/env.sh"
 
-usage() { sed -n '5,14p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 # The feature directory relative to the repository root, given either way.
 root_abs=$(cd "$root" && pwd -P)
@@ -63,6 +64,8 @@ cmd=${1:-}; shift || true
 case "$cmd" in
   spec)
     [ -n "${1:-}" ] || usage
+    # The draft is committed on a new branch cut from HEAD (spec-branch.sh).
+    on_branch main
     exec specify workflow run "$here/workflows/speckit-spec.yml" -i spec="$1"
     ;;
   build)

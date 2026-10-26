@@ -29,3 +29,8 @@ steps:
 
         (Unattended run: do not ask questions. Mark anything you would have asked
         with [NEEDS CLARIFICATION: ...]. Leave Status as Draft.)
+
+  # /speckit-specify creates no branch without Spec Kit's git extension.
+  - id: branch
+    type: shell
+    run: "tools/speckit-auto/spec-branch.sh"
