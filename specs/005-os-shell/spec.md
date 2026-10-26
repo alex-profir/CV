@@ -722,11 +722,11 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
   resize in progress; on
   mobile, the home screen in portrait and landscape, the CV app full screen and About this site
   full screen; and the page shown without scripts
-- [ ] PNG exports of the approved Penpot mockup of both shells, at a phone width and a desktop
+- [x] PNG exports of the approved Penpot mockup of both shells, at a phone width and a desktop
   width (or of the interim local mockup, under the constitution's interim provision)
 - [ ] Penpot file link: to be added (not needed for an interim local mockup until the provision
   ends)
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-044)
 
 ## Success Criteria *(mandatory)*

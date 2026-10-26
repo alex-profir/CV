@@ -1,6 +1,6 @@
 # Design Review: The OS Shell
 
-**Status**: Awaiting the owner's sign-off
+**Status**: Approved
 
 **Design**: an interim local mockup, under Constitution 1.2.0's interim provision on local
 mockups. Penpot can't be reached until at least 2026-10-26. The look is Graphite, chosen by the
@@ -68,14 +68,17 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 
 ## Original look (FR-044, SC-011)
 
-- [ ] No icon, glyph, wallpaper, font or window control in either shell comes from or traces an
+- [x] No icon, glyph, wallpaper, font or window control in either shell comes from or traces an
   Apple asset. The site mark, the CV icon, the window controls' glyphs and the wallpaper are drawn
   for this site. The controls follow a Mac's placement and order, but in one neutral color, not
   three colored circles.
 
 ## Sign-off
 
-- Reviewed mockup version: interim local mockup, Graphite, commit _to be filled in when it lands_ (`specs/005-os-shell/design/`)
-- Date: _to be filled in by the owner_
-- Approved by: _to be filled in by the owner_
-- Notes: _to be filled in by the owner_
+- Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
+- Date: 2026-10-26
+- Approved by: Alex Profir (project owner)
+- Notes: Approved in review of the exports, with the neutral window controls rather than colored
+  lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
+  the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's
+  follow-up pull request.
