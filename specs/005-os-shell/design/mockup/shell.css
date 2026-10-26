@@ -1,8 +1,9 @@
 /* The interim local mockup of both shells (Constitution 1.2.0, interim
-   provision). Every design value is a token: the site's token output, plus the
-   proposals in proposed-tokens.css. Each page is one state of a shell, with the
-   geometry the design sets for that state. The CV itself is /cv, shown in an
-   iframe, as the CV app shows the same CV (FR-006). */
+   provision), in the Graphite look: a dark shell around /cv's light CV. Every
+   design value is a token: the site's token output, plus the proposals in
+   proposed-tokens.css. Each page is one state of a shell, with the geometry
+   the design sets for that state. The CV itself is /cv, shown in an iframe, as
+   the CV app shows the same CV (FR-006). */
 
 *,
 *::before,
@@ -18,10 +19,11 @@ body {
 
 body {
   overflow: hidden;
-  color: var(--token-color-text-primary);
+  color: var(--token-color-shell-text);
   font-family: var(--token-typography-body-font-family);
   font-size: var(--token-typography-body-font-size);
   line-height: var(--token-typography-body-line-height);
+  -webkit-font-smoothing: antialiased;
 }
 
 :where(h1, h2, p, ul, dl, dd) {
@@ -44,40 +46,47 @@ svg {
   fill: none;
   stroke: currentColor;
   stroke-width: var(--token-border-thick);
-  stroke-linecap: square;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 a {
-  color: var(--token-color-text-primary);
+  color: var(--token-color-shell-accent);
   text-decoration-line: underline;
-  text-decoration-thickness: var(--token-border-thick);
-  text-decoration-color: var(--token-color-link-underline);
+  text-decoration-thickness: var(--token-border-thin);
   text-underline-offset: var(--token-space-1);
 }
 
-/* The focus indicator: an outline, so forced colors keep it (FR-024). */
+/* The focus indicator: an outline, so forced colors keep it (FR-024). One
+   color holds everywhere in the shell: 7.4:1 on the focused title bar, 8.5:1
+   on a window, 9.7:1 on the wallpaper. */
 .is-focus-visible {
-  outline: var(--token-border-thick) solid var(--token-color-focus);
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
   outline-offset: var(--token-space-0-5);
-}
-
-/* On the focused window's ink title bar the accent has too little contrast,
-   so the outline there is paper (17:1). */
-.is-focused .title-bar .is-focus-visible {
-  outline-color: var(--token-color-focus-on-dark);
 }
 
 .mono {
   font-family: var(--token-font-family-mono);
 }
 
-/* The wallpaper: the paper color with a fine grid in the rule color. */
+/* The wallpaper: a deep graphite with two soft glows over a faint dot grid. */
 .wallpaper {
   background-color: var(--token-color-wallpaper);
   background-image:
-    linear-gradient(to right, var(--token-color-wallpaper-grid) var(--token-border-thin), transparent var(--token-border-thin)),
-    linear-gradient(to bottom, var(--token-color-wallpaper-grid) var(--token-border-thin), transparent var(--token-border-thin));
-  background-size: var(--token-size-wallpaper-grid) var(--token-size-wallpaper-grid);
+    radial-gradient(var(--token-size-wallpaper-glow) at 18% 12%, var(--token-color-wallpaper-glow), transparent 62%),
+    radial-gradient(var(--token-size-wallpaper-glow) at 88% 86%, var(--token-color-wallpaper-glow-second), transparent 60%),
+    radial-gradient(var(--token-color-wallpaper-dots) var(--token-border-thin), transparent calc(var(--token-border-thin) * 1.4)),
+    linear-gradient(160deg, var(--token-color-wallpaper-top), var(--token-color-wallpaper));
+  background-size: auto, auto, var(--token-size-wallpaper-dots) var(--token-size-wallpaper-dots), auto;
+}
+
+/* Glass: the menu bar and the dock blur what is behind them. */
+.menu-bar,
+.dock,
+.home-foot button {
+  background: var(--token-color-chrome);
+  backdrop-filter: blur(var(--token-size-chrome-blur));
+  -webkit-backdrop-filter: blur(var(--token-size-chrome-blur));
 }
 
 /* ---- Desktop: menu bar ---------------------------------------------- */
@@ -88,13 +97,13 @@ a {
   inset-inline: 0;
   z-index: 3;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  gap: var(--token-space-0-5);
   block-size: var(--token-size-menu-bar);
   padding-inline: var(--token-space-2);
-  background: var(--token-color-chrome);
+  color: var(--token-color-chrome-text);
   border-block-end: var(--token-border-thin) solid var(--token-color-chrome-border);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  font-size: var(--token-font-size-small);
 }
 
 .menu-title {
@@ -102,8 +111,10 @@ a {
   align-items: center;
   gap: var(--token-space-2);
   min-inline-size: var(--token-size-target);
-  padding-inline: var(--token-space-3);
+  block-size: var(--token-size-target);
+  padding-inline: var(--token-space-2-5);
   border: 0;
+  border-radius: var(--token-radius-small);
   background: none;
 }
 
@@ -112,8 +123,7 @@ a {
 }
 
 .menu-title.is-open {
-  background: var(--token-color-title-bar-focused);
-  color: var(--token-color-title-bar-focused-text);
+  background: var(--token-color-base-rim);
 }
 
 .site-mark {
@@ -122,16 +132,13 @@ a {
 }
 
 .site-mark .shadow {
-  fill: currentColor;
+  fill: var(--token-color-icon-top);
   stroke: none;
 }
 
 .site-mark .face {
-  fill: var(--token-color-chrome);
-}
-
-.menu-title.is-open .site-mark .face {
-  fill: var(--token-color-title-bar-focused);
+  fill: var(--token-color-shell-surface);
+  stroke-width: var(--token-border-thin);
 }
 
 .menu-slot {
@@ -141,17 +148,18 @@ a {
 
 .menu {
   position: absolute;
-  inset-block-start: 100%;
+  inset-block-start: calc(100% + var(--token-space-1));
   inset-inline-start: 0;
   margin: 0;
   z-index: 4;
   min-inline-size: calc(var(--token-size-section-label) + var(--token-space-6));
-  padding-block: var(--token-space-1);
-  background: var(--token-color-chrome);
-  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  padding: var(--token-space-1);
+  background: var(--token-color-chrome-solid);
+  border: var(--token-border-thin) solid var(--token-color-window-border-focused);
+  border-radius: var(--token-radius-menu);
   box-shadow: var(--token-shadow-menu);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  color: var(--token-color-shell-text);
+  font-size: var(--token-font-size-small);
 }
 
 .menu-item {
@@ -160,21 +168,25 @@ a {
   align-items: center;
   gap: var(--token-space-2);
   min-block-size: var(--token-size-menu-item);
-  padding-inline: var(--token-space-2) var(--token-space-4);
+  padding-inline: var(--token-space-1-5) var(--token-space-3);
+  border-radius: var(--token-radius-small);
 }
 
 .menu-item .keys,
 .menu-item .note {
-  color: var(--token-color-text-secondary);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
 }
 
 .menu-item.is-active {
-  background: var(--token-color-title-bar-focused);
-  color: var(--token-color-title-bar-focused-text);
+  background: var(--token-color-selection);
+  color: var(--token-color-selection-text);
 }
 
-.menu-item.is-active .keys {
-  color: var(--token-color-title-bar-focused-text);
+.menu-item.is-active .keys,
+.menu-item.is-active .note {
+  color: var(--token-color-selection-text);
 }
 
 .menu-item .arrow {
@@ -184,8 +196,8 @@ a {
 }
 
 .menu-separator {
-  margin-block: var(--token-space-1);
-  border-block-start: var(--token-border-thin) solid var(--token-color-rule-subtle);
+  margin: var(--token-space-1) var(--token-space-1-5);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
 }
 
 /* ---- Desktop: dock -------------------------------------------------- */
@@ -197,10 +209,10 @@ a {
   translate: -50% 0;
   z-index: 3;
   display: flex;
-  gap: var(--token-space-3);
-  padding: var(--token-space-1-5) var(--token-space-3);
-  background: var(--token-color-chrome);
+  gap: var(--token-space-2);
+  padding: var(--token-space-2) var(--token-space-2-5) var(--token-space-1-5);
   border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-dock);
   box-shadow: var(--token-shadow-dock);
 }
 
@@ -209,10 +221,10 @@ a {
   flex-direction: column;
   align-items: center;
   gap: var(--token-space-1);
-  padding: var(--token-space-0-5) var(--token-space-2);
+  padding: 0 var(--token-space-1);
   border: 0;
   background: none;
-  font-family: var(--token-typography-small-font-family);
+  color: var(--token-color-chrome-text);
   font-size: var(--token-font-size-label);
   line-height: 1;
 }
@@ -225,14 +237,14 @@ a {
 .open-mark {
   inline-size: var(--token-size-open-mark);
   block-size: var(--token-size-open-mark);
-  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border: var(--token-border-thin) solid var(--token-color-chrome-text);
   border-radius: var(--token-radius-pill);
   visibility: hidden;
 }
 
 .is-open .open-mark {
   visibility: visible;
-  background: var(--token-color-chrome-border);
+  background: var(--token-color-chrome-text);
 }
 
 .is-minimized .open-mark {
@@ -240,28 +252,37 @@ a {
   background: none;
 }
 
-/* ---- App icon: an original glyph, a timeline on the accent color ----- */
+/* ---- App icon: an original glyph, a timeline on an indigo tile ------- */
 
 .app-icon {
   stroke: none;
 }
 
 .app-icon .tile {
-  fill: var(--token-color-text-accent);
+  fill: url(#icon-g);
+  rx: var(--token-radius-icon);
+}
+
+.icon-top {
+  stop-color: var(--token-color-icon-top);
+}
+
+.icon-bottom {
+  stop-color: var(--token-color-icon-bottom);
 }
 
 .app-icon .ink {
-  fill: var(--token-color-surface);
+  fill: var(--token-color-icon-glyph);
 }
 
 .app-icon .line {
   fill: none;
-  stroke: var(--token-color-surface);
+  stroke: var(--token-color-icon-glyph);
   stroke-width: var(--token-border-thick);
 }
 
 .app-icon .faint {
-  fill: var(--token-color-base-mist);
+  fill: var(--token-color-control-focused);
 }
 
 /* ---- Desktop: windows ----------------------------------------------- */
@@ -271,61 +292,100 @@ a {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  background: var(--token-color-surface);
+  overflow: hidden;
+  background: var(--token-color-shell-surface);
   border: var(--token-border-thin) solid var(--token-color-window-border);
+  border-radius: var(--token-radius-window);
   box-shadow: var(--token-shadow-window);
 }
 
 .window.is-focused {
   z-index: 2;
-  border: var(--token-border-thick) solid var(--token-color-chrome-border);
+  border-color: var(--token-color-window-border-focused);
   box-shadow: var(--token-shadow-window-focused);
 }
 
 .title-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex: none;
   block-size: var(--token-size-title-bar);
-  padding-inline: var(--token-space-3) var(--token-space-1-5);
+  padding-inline: var(--token-space-2);
   background: var(--token-color-title-bar);
   color: var(--token-color-title-bar-text);
-  border-block-end: var(--token-border-thin) solid var(--token-color-window-border);
-  font-family: var(--token-typography-role-font-family);
-  font-size: var(--token-typography-role-font-size);
-  font-weight: var(--token-typography-role-font-weight);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-size: var(--token-font-size-small);
+  font-weight: var(--token-font-weight-semibold);
 }
 
 .is-focused .title-bar {
   background: var(--token-color-title-bar-focused);
   color: var(--token-color-title-bar-focused-text);
-  border-block-end-color: var(--token-color-chrome-border);
 }
 
+/* The window's name, centered over the whole title bar. */
+.title-bar .title {
+  position: absolute;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  white-space: nowrap;
+}
+
+/* Close, minimize and maximize: on the left, in that order. Each is a small
+   circle in one neutral color, never three colors (FR-044), centered in a
+   24 px button (FR-037). The focused window's circles are light and show
+   their glyphs. Another window's circles are slate (3.5:1) and show their
+   glyphs under the pointer or keyboard focus. */
 .controls {
+  position: relative;
+  z-index: 1;
   display: flex;
-  gap: var(--token-space-1);
 }
 
 .control {
+  position: relative;
   display: grid;
   place-items: center;
   inline-size: var(--token-size-control);
   block-size: var(--token-size-control);
   padding: 0;
-  border: var(--token-border-thin) solid currentColor;
+  border: 0;
   background: none;
+  color: transparent;
+}
+
+.control::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--token-size-control) - var(--token-size-control-dot)) / 2);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-control);
+}
+
+.is-focused .control,
+.controls:hover .control,
+.controls:focus-within .control {
+  color: var(--token-color-control-glyph);
+}
+
+.is-focused .control::before,
+.controls:hover .control::before,
+.controls:focus-within .control::before {
+  background: var(--token-color-control-focused);
 }
 
 .control svg {
-  inline-size: var(--token-space-4);
-  block-size: var(--token-space-4);
-  stroke-width: var(--token-border-thin);
+  position: relative;
+  inline-size: var(--token-size-control-glyph);
+  block-size: var(--token-size-control-glyph);
 }
 
+/* During a keyboard move or resize, the title bar names the mode where the
+   controls are. */
 .mode {
-  padding-inline-end: var(--token-space-2);
+  padding-inline-start: var(--token-space-1);
+  color: var(--token-color-shell-accent);
   font-family: var(--token-typography-level-font-family);
   font-size: var(--token-typography-level-font-size);
   letter-spacing: var(--token-typography-level-letter-spacing);
@@ -343,11 +403,10 @@ a {
 /* The CV app's link to /cv, above the CV (FR-007). */
 .app-bar {
   flex: none;
-  padding: var(--token-space-2) var(--token-space-5);
-  background: var(--token-color-surface);
-  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  padding: var(--token-space-1-5) var(--token-space-4);
+  background: var(--token-color-title-bar);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-size: var(--token-font-size-small);
 }
 
 .app-bar a {
@@ -387,7 +446,10 @@ a {
   block-size: var(--token-size-window-about-height);
 }
 
+/* A maximized window fills the desktop area edge to edge, so it drops its
+   corners and its shadow. */
 .window.at-max {
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -422,6 +484,7 @@ a {
   position: fixed;
   z-index: 1;
   border: var(--token-border-thick) dashed var(--token-color-ghost);
+  border-radius: var(--token-radius-window);
   pointer-events: none;
 }
 
@@ -434,11 +497,12 @@ a {
   display: grid;
   gap: var(--token-space-3);
   padding: var(--token-space-4) var(--token-space-5);
-  background: var(--token-color-chrome);
-  border: var(--token-border-thick) solid var(--token-color-chrome-border);
+  background: var(--token-color-chrome-solid);
+  border: var(--token-border-thin) solid var(--token-color-window-border-focused);
+  border-radius: var(--token-radius-window);
   box-shadow: var(--token-shadow-menu);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  color: var(--token-color-shell-text);
+  font-size: var(--token-font-size-small);
 }
 
 .pad-head {
@@ -446,6 +510,12 @@ a {
   justify-content: space-between;
   gap: var(--token-space-8);
   font-weight: var(--token-font-weight-semibold);
+}
+
+.pad-head span + span {
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-weight: var(--token-font-weight-regular);
 }
 
 .pad-grid {
@@ -459,7 +529,8 @@ a {
   min-block-size: var(--token-size-pad-button);
   padding-inline: var(--token-space-3);
   border: var(--token-border-thin) solid var(--token-color-chrome-border);
-  background: var(--token-color-chrome);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-shell-raised);
 }
 
 .pad .up,
@@ -476,7 +547,7 @@ a {
 }
 
 .pad-hint {
-  color: var(--token-color-text-secondary);
+  color: var(--token-color-shell-text-secondary);
   text-align: center;
 }
 
@@ -487,12 +558,14 @@ a {
 }
 
 .pad .done {
-  background: var(--token-color-title-bar-focused);
-  color: var(--token-color-title-bar-focused-text);
+  border-color: var(--token-color-selection);
+  background: var(--token-color-selection);
+  color: var(--token-color-selection-text);
 }
 
 .pad kbd {
-  font: inherit;
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
 }
 
 /* ---- About this site ------------------------------------------------ */
@@ -512,69 +585,62 @@ a {
 }
 
 .about p {
-  margin-block-start: var(--token-space-4);
+  margin-block-start: var(--token-space-3);
+  color: var(--token-color-shell-text-secondary);
   text-wrap: pretty;
 }
 
 .about .links {
   display: grid;
   justify-items: start;
-  gap: var(--token-space-2);
-  margin-block-start: var(--token-space-5);
+  gap: var(--token-space-1);
+  margin-block-start: var(--token-space-4);
 }
 
 .standalone {
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--token-space-1-5);
   min-block-size: var(--token-size-target);
-  text-decoration-line: none;
-  border-block-end: var(--token-border-thick) solid var(--token-color-link-underline);
-  font-family: var(--token-typography-link-font-family);
-  font-size: var(--token-typography-small-font-size);
-  font-weight: var(--token-typography-link-font-weight);
 }
 
 .standalone .arrow {
-  align-self: center;
   inline-size: var(--token-space-2-5);
   block-size: var(--token-space-2-5);
   stroke-width: var(--token-border-thin);
 }
 
 .about h2 {
-  margin-block-start: var(--token-space-8);
-  padding-block-end: var(--token-space-2);
-  border-block-end: var(--token-border-thin) solid var(--token-color-rule-strong);
-  font-family: var(--token-typography-h4-font-family);
-  font-size: var(--token-typography-h4-font-size);
-  font-weight: var(--token-typography-h4-font-weight);
+  margin-block: var(--token-space-6) var(--token-space-2-5);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-label-font-family);
+  font-size: var(--token-typography-label-font-size);
+  font-weight: var(--token-typography-label-font-weight);
+  letter-spacing: var(--token-typography-label-letter-spacing);
+  text-transform: var(--token-font-case-label);
 }
 
 .shortcuts {
   display: grid;
   grid-template-columns: auto 1fr;
-  column-gap: var(--token-space-5);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
-}
-
-.shortcuts dt,
-.shortcuts dd {
-  padding-block: var(--token-space-1-5);
-  border-block-end: var(--token-border-thin) solid var(--token-color-rule-subtle);
+  align-items: center;
+  gap: var(--token-space-1-5) var(--token-space-4);
+  font-size: var(--token-font-size-small);
 }
 
 .shortcuts dt {
-  color: var(--token-color-text-accent);
-  font-weight: var(--token-font-weight-medium);
+  justify-self: start;
+  padding: var(--token-space-0-5) var(--token-space-1-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-shell-raised);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
 }
 
 .about .note {
-  margin-block-start: var(--token-space-3);
-  color: var(--token-color-text-secondary);
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  margin-block-start: var(--token-space-4);
+  font-size: var(--token-font-size-small);
 }
 
 /* ---- Phone: home screen --------------------------------------------- */
@@ -586,14 +652,15 @@ a {
 }
 
 .home-head {
-  padding: var(--token-space-6) var(--token-space-5) var(--token-space-5);
+  padding: var(--token-space-14) var(--token-space-5) var(--token-space-10);
+  text-align: center;
 }
 
 .home-head .site-name {
-  font-family: var(--token-typography-h2-narrow-font-family);
-  font-size: var(--token-typography-h2-narrow-font-size);
-  font-weight: var(--token-typography-h2-narrow-font-weight);
-  letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+  font-family: var(--token-font-family-display);
+  font-size: var(--token-font-size-home-name);
+  font-weight: var(--token-font-weight-semibold);
+  letter-spacing: var(--token-font-letter-spacing-home-name);
   line-height: var(--token-typography-h2-narrow-line-height);
 }
 
@@ -609,24 +676,22 @@ a {
   flex-direction: column;
   align-items: center;
   gap: var(--token-space-2);
-  color: var(--token-color-text-primary);
+  color: var(--token-color-shell-text);
   text-decoration: none;
-  font-family: var(--token-typography-small-font-family);
-  font-size: var(--token-typography-small-font-size);
+  font-size: var(--token-font-size-small);
   font-weight: var(--token-font-weight-medium);
 }
 
 .app-tile .app-icon {
   inline-size: var(--token-size-app-icon);
   block-size: var(--token-size-app-icon);
-  box-shadow: var(--token-shadow-menu);
 }
 
 .home-foot {
+  display: flex;
+  justify-content: center;
   margin-block-start: auto;
-  padding: var(--token-space-1) var(--token-space-3);
-  background: var(--token-color-chrome);
-  border-block-start: var(--token-border-thin) solid var(--token-color-chrome-border);
+  padding: var(--token-space-4) var(--token-space-5) var(--token-space-7);
 }
 
 .home-foot button {
@@ -634,11 +699,13 @@ a {
   align-items: center;
   gap: var(--token-space-2);
   min-block-size: var(--token-size-home-target);
-  padding-inline: var(--token-space-2);
-  border: 0;
-  background: none;
-  font-family: var(--token-typography-small-font-family);
+  padding-inline: var(--token-space-4) var(--token-space-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+  box-shadow: var(--token-shadow-dock);
+  color: var(--token-color-chrome-text);
   font-size: var(--token-font-size-mono);
+  font-weight: var(--token-font-weight-medium);
 }
 
 .home-foot svg {
@@ -656,8 +723,8 @@ a {
   flex: none;
   block-size: var(--token-size-mobile-header);
   padding-inline: var(--token-space-1);
-  background: var(--token-color-chrome);
-  border-block-end: var(--token-border-thin) solid var(--token-color-chrome-border);
+  background: var(--token-color-chrome-solid);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
 }
 
 .home-button {
@@ -669,7 +736,7 @@ a {
   padding-inline: var(--token-space-2) var(--token-space-3);
   border: 0;
   background: none;
-  font-family: var(--token-typography-small-font-family);
+  color: var(--token-color-shell-accent);
   font-size: var(--token-font-size-mono);
 }
 
@@ -679,13 +746,12 @@ a {
 }
 
 .app-name {
-  font-family: var(--token-typography-role-font-family);
-  font-size: var(--token-typography-role-font-size);
+  font-size: var(--token-font-size-mono);
   font-weight: var(--token-font-weight-semibold);
 }
 
 .app-view {
-  background: var(--token-color-surface);
+  background: var(--token-color-shell-surface);
 }
 
 .phone .app-bar {
@@ -696,13 +762,48 @@ a {
   padding-inline: var(--token-space-5);
 }
 
-/* ---- Without scripts ------------------------------------------------ */
+/* ---- Forced colors (FR-047) ----------------------------------------- */
+
+/* Shadows, glass and the dark fills drop out, so every edge becomes a system
+   border, and the focused window keeps a thicker one. */
+@media (forced-colors: active) {
+  .menu-bar,
+  .menu,
+  .dock,
+  .pad,
+  .window,
+  .home-foot button,
+  .app-head {
+    border: var(--token-border-thin) solid CanvasText;
+  }
+
+  .window.is-focused {
+    border: var(--token-border-thick) solid Highlight;
+  }
+
+  .control {
+    color: ButtonText;
+  }
+
+  .control::before {
+    border: var(--token-border-thin) solid ButtonText;
+  }
+}
+
+/* ---- Without scripts: /cv's own light look -------------------------- */
 
 .plain {
   display: flex;
   flex-direction: column;
   min-block-size: 100vh;
   background: var(--token-color-surface);
+  color: var(--token-color-text-primary);
+}
+
+.plain a {
+  color: var(--token-color-text-primary);
+  text-decoration-thickness: var(--token-border-thick);
+  text-decoration-color: var(--token-color-link-underline);
 }
 
 .plain main {
@@ -748,7 +849,16 @@ a {
 }
 
 .plain .standalone {
+  align-items: flex-end;
+  text-decoration-line: none;
+  border-block-end: var(--token-border-thick) solid var(--token-color-link-underline);
+  font-family: var(--token-typography-link-font-family);
   font-size: var(--token-typography-link-font-size);
+  font-weight: var(--token-typography-link-font-weight);
+}
+
+.plain .standalone .arrow {
+  align-self: center;
 }
 
 .plain footer {
@@ -763,16 +873,20 @@ a {
   font-size: var(--token-typography-small-font-size);
 }
 
+.plain footer .standalone {
+  font-size: var(--token-typography-small-font-size);
+}
+
 /* The resize grip on the bottom-right corner (FR-061). Every edge and corner
    resizes; only this corner shows it. */
 .grip {
   position: absolute;
-  inset-block-end: var(--token-space-0-5);
-  inset-inline-end: var(--token-space-0-5);
+  inset-block-end: var(--token-space-1);
+  inset-inline-end: var(--token-space-1);
   z-index: 1;
   inline-size: var(--token-space-3);
   block-size: var(--token-space-3);
-  color: var(--token-color-text-secondary);
+  color: var(--token-color-control);
   stroke-width: var(--token-border-thin);
   pointer-events: none;
 }

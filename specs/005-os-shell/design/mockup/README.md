@@ -57,31 +57,84 @@ The pages read the token output and the fonts by relative paths from the reposit
 
 `proposed-tokens.css` writes these new tokens as the token output would write them. Once the
 design is approved, the plan adds them to `packages/tokens/penpot/tokens.json`, in Penpot's form,
-under these names. Under the interim provision that export is written by hand. Colors refer to the
-existing base colors.
+under these names. Under the interim provision that export is written by hand. Every color refers
+to a base color, an existing one where one fits.
+
+The look is Graphite: a dark shell around the CV app, which keeps `/cv`'s light look. It needs a
+dark color scale (`color.base.night` to `color.base.snow`), two accents and translucent colors
+for glass, hairlines and shadows. Translucent colors are 8-digit hex, `#rrggbbaa`.
 
 | Token | Type | Value |
 |-------|------|-------|
 | `breakpoint.desktop-width` | dimension | 1024px |
 | `breakpoint.desktop-height` | dimension | 640px |
-| `color.wallpaper` | color | `{color.base.paper}` |
-| `color.wallpaper-grid` | color | `{color.base.mist}` |
-| `color.chrome` | color | `{color.base.white}` |
-| `color.chrome-border` | color | `{color.base.ink}` |
-| `color.title-bar-focused` | color | `{color.base.ink}` |
-| `color.title-bar-focused-text` | color | `{color.base.paper}` |
-| `color.title-bar` | color | `{color.base.paper}` |
-| `color.title-bar-text` | color | `{color.base.stone}` |
-| `color.window-border` | color | `{color.base.stone}` |
-| `color.ghost` | color | `{color.base.indigo}` |
-| `color.focus-on-dark` | color | `{color.base.paper}` |
-| `shadow.window-focused` | shadow | 8px 8px 0 0 `{color.base.ink}` |
-| `shadow.window` | shadow | 4px 4px 0 0 `{color.base.mist}` |
-| `shadow.menu` | shadow | 4px 4px 0 0 `{color.base.ink}` |
-| `shadow.dock` | shadow | 4px 4px 0 0 `{color.base.ink}` |
+| `color.base.night` | color | `#0c0d12` |
+| `color.base.dusk` | color | `#171821` |
+| `color.base.carbon` | color | `#1b1c24` |
+| `color.base.soot` | color | `#20212a` |
+| `color.base.smoke` | color | `#262732` |
+| `color.base.slate` | color | `#737482` |
+| `color.base.fog` | color | `#a3a3b0` |
+| `color.base.haze` | color | `#c9cad6` |
+| `color.base.snow` | color | `#ececf2` |
+| `color.base.periwinkle` | color | `#a5b4fc` |
+| `color.base.lilac` | color | `#818cf8` |
+| `color.base.glass` | color | `#1212188c` |
+| `color.base.hairline` | color | `#ffffff12` |
+| `color.base.hairline-strong` | color | `#ffffff1a` |
+| `color.base.rim` | color | `#ffffff33` |
+| `color.base.speck` | color | `#ffffff0d` |
+| `color.base.glow-lilac` | color | `#818cf861` |
+| `color.base.glow-teal` | color | `#2dd4bf33` |
+| `color.base.shade` | color | `#00000073` |
+| `color.base.shade-strong` | color | `#000000a6` |
+| `color.wallpaper` | color | `{color.base.night}` |
+| `color.wallpaper-top` | color | `{color.base.dusk}` |
+| `color.wallpaper-glow` | color | `{color.base.glow-lilac}` |
+| `color.wallpaper-glow-second` | color | `{color.base.glow-teal}` |
+| `color.wallpaper-dots` | color | `{color.base.speck}` |
+| `color.chrome` | color | `{color.base.glass}` |
+| `color.chrome-solid` | color | `{color.base.soot}` |
+| `color.chrome-border` | color | `{color.base.hairline-strong}` |
+| `color.chrome-text` | color | `{color.base.snow}` |
+| `color.shell-surface` | color | `{color.base.carbon}` |
+| `color.shell-raised` | color | `{color.base.smoke}` |
+| `color.shell-text` | color | `{color.base.snow}` |
+| `color.shell-text-secondary` | color | `{color.base.fog}` |
+| `color.shell-accent` | color | `{color.base.periwinkle}` |
+| `color.shell-rule` | color | `{color.base.hairline}` |
+| `color.title-bar` | color | `{color.base.soot}` |
+| `color.title-bar-text` | color | `{color.base.fog}` |
+| `color.title-bar-focused` | color | `{color.base.smoke}` |
+| `color.title-bar-focused-text` | color | `{color.base.snow}` |
+| `color.window-border` | color | `{color.base.hairline}` |
+| `color.window-border-focused` | color | `{color.base.rim}` |
+| `color.control` | color | `{color.base.slate}` |
+| `color.control-focused` | color | `{color.base.haze}` |
+| `color.control-glyph` | color | `{color.base.carbon}` |
+| `color.selection` | color | `{color.base.indigo}` |
+| `color.selection-text` | color | `{color.base.white}` |
+| `color.icon-top` | color | `{color.base.lilac}` |
+| `color.icon-bottom` | color | `{color.base.indigo}` |
+| `color.icon-glyph` | color | `{color.base.white}` |
+| `color.ghost` | color | `{color.base.periwinkle}` |
+| `color.focus-shell` | color | `{color.base.periwinkle}` |
+| `shadow.window-focused` | shadow | 0 30px 90px 0 `{color.base.shade-strong}` |
+| `shadow.window` | shadow | 0 14px 40px 0 `{color.base.shade}` |
+| `shadow.menu` | shadow | 0 12px 32px 0 `{color.base.shade}` |
+| `shadow.dock` | shadow | 0 16px 40px 0 `{color.base.shade}` |
+| `font.size.home-name` | dimension | 40px |
+| `font.letter-spacing.home-name` | dimension | -1.2px |
+| `radius.window` | borderRadius | 12px |
+| `radius.menu` | borderRadius | 8px |
+| `radius.dock` | borderRadius | 22px |
+| `radius.icon` | borderRadius | 14px |
+| `radius.small` | borderRadius | 6px |
 | `size.menu-bar` | dimension | 32px |
 | `size.title-bar` | dimension | 40px |
-| `size.control` | dimension | 28px |
+| `size.control` | dimension | 24px |
+| `size.control-dot` | dimension | 14px |
+| `size.control-glyph` | dimension | 10px |
 | `size.menu-item` | dimension | 32px |
 | `size.dock-icon` | dimension | 48px |
 | `size.dock-reserve` | dimension | 104px |
@@ -89,7 +142,9 @@ existing base colors.
 | `size.app-icon` | dimension | 64px |
 | `size.home-target` | dimension | 44px |
 | `size.mobile-header` | dimension | 52px |
-| `size.wallpaper-grid` | dimension | 24px |
+| `size.wallpaper-dots` | dimension | 22px |
+| `size.wallpaper-glow` | dimension | 900px |
+| `size.chrome-blur` | dimension | 24px |
 | `size.window-cv-width` | dimension | 1000px |
 | `size.window-about-width` | dimension | 560px |
 | `size.window-about-height` | dimension | 520px |

@@ -15,12 +15,12 @@ text, set by this design (FR-043). The full list is under [Site text](#site-text
 
 | Mark | Meaning |
 |------|---------|
-| `#===#` | The focused window: a thick border and a filled title bar |
-| `+---+` | A window that isn't focused, a menu or a dock: a thin border |
+| `#===#` | The focused window: a lighter title bar, light controls showing their glyphs, a brighter edge and a deeper shadow |
+| `+---+` | A window that isn't focused (a darker title bar, slate controls without glyphs), a menu or a dock |
 | `.....` `:` | A dotted outline: where a window was when a keyboard move or resize started |
 | `[*]` | The site mark, the title of the site menu. An original mark, drawn in the mockup |
 | `[Title]` | A menu title in the menu bar whose menu is open |
-| `[-]` `[^]` `[v]` `[x]` | Window controls: minimize, maximize, restore, close. Outlined square buttons with line glyphs, on the right of the title bar. Not three colored circles (FR-044) |
+| `[x]` `[-]` `[^]` `[v]` | Window controls: close, minimize, maximize, restore. Small circles in one neutral color, on the left of the title bar in that order, with the window's name centered. Not three colored circles (FR-044) |
 | `•` | Dock open mark, filled: the app is open |
 | `◦` | Dock open mark, hollow: the app is open and its window is minimized |
 | `^ \| v` | The window's own scrollbar |
@@ -40,19 +40,19 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56 | FR-005, FR-018 |
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
-| Title bar height | 40 px. The controls are 28 × 28 px buttons with 4 px between them | FR-016, FR-037 |
+| Title bar height | 40 px. The controls are 24 × 24 px buttons with no space between them, each showing a 14 px circle and a 10 px glyph, 8 px from the window's left edge | FR-016, FR-037 |
 | Resize handles | Every edge (8 px wide) and corner (16 × 16 px). The bottom-right corner shows a grip | FR-061 |
 | Keyboard move and resize steps | 16 px per arrow key press, 64 px with Shift. The same steps for the on-screen buttons | FR-027, FR-062 |
 | Non-dragging alternative for moving and resizing | Move… and Resize… in the window's menu open a control pad on the window, with one button per direction plus Done and Cancel. One click is one step. The same pad shows during a keyboard move or resize | FR-020, FR-062 |
 | Dock names without hover | Every dock item shows its name below its icon all the time, so hover isn't needed on touch | FR-011 |
 | Open mark | A dot below the dock item's name: filled when open, hollow when minimized, none when closed. Shape, not color, carries the state | FR-011, FR-063 |
-| Focused window | A thicker border, a filled title bar and a larger shadow. Windows that aren't focused have a thin border and a plain title bar. The difference holds without color | FR-017 |
+| Focused window | A lighter title bar with brighter text, light controls that show their glyphs, a brighter edge and a deeper shadow. A window that isn't focused has a darker title bar, slate controls whose glyphs show only under the pointer or keyboard focus, and a lighter shadow. The glyphs make the difference without color, and in forced colors the focused window keeps a thicker border | FR-017 |
 | CV layout inside a window | Two columns (headings on the left) while the window's content is at least 900 px wide, `/cv`'s own wide breakpoint (`breakpoint.wide`). Narrower, it uses `/cv`'s phone layout. The layout follows the window's width, not the screen's | FR-008 |
 | Home screen grid | 64 px icons with names below, as many per row as fit at 76 px or more each: 4 at 375 px, 3 at 320 px, 10 at 812 px in landscape. Filled left to right | FR-031 |
-| Focus indicator | A 2 px outline, 2 px outside the element, in the accent color (9.9:1 on white, 9:1 on the background). On the focused window's dark title bar the accent is only 1.9:1, so the outline there is the background color (17:1) | FR-024 |
+| Focus indicator | A 2 px outline, 2 px outside the element, in the shell's periwinkle accent: 7.4:1 on the focused title bar, 8.5:1 on a window, 9.7:1 on the wallpaper. Inside the CV, `/cv`'s own indicator applies | FR-024 |
 | Mobile header | 52 px, kept at the top while the app scrolls. A "Home" button (44 × 44 px) on the left, the app's name centered | FR-032, FR-037 |
-| Wallpaper | One original wallpaper from tokens, proposed: the site's background color with a fine grid in the rule color. Set by the mockup | FR-044 |
-| Theme | `/cv`'s one light theme and its fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
+| Wallpaper | One original wallpaper from tokens, proposed: a deep graphite with an indigo glow top left, a teal glow bottom right and a faint dot grid. Set by the mockup | FR-044 |
+| Theme | One theme, Graphite: a dark shell (menu bar, dock, windows, menus, home screen) around the CV app, which keeps `/cv`'s light look. `/cv`'s fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
 | Opening and closing animation | Windows and full-screen apps fade and grow from 96% over `motion.duration.fast` (150 ms) with `motion.easing.standard`. With reduced motion: the same fade with no movement or scaling | FR-046 |
 
 ## Desktop shell
@@ -69,7 +69,7 @@ dock's CV item has a filled open mark.
 +--------------------------------------------------------------------------------------------------+
 |                                                                                                  |
 |              #====================================================================#              |
-|              # CV                                                     [-] [^] [x] #              |
+|              # [x] [-] [^]                           CV                           #              |
 |              #====================================================================#              |
 |              # Open as a page to print or share ->                              ^ #              |
 |              # ---------------------------------------------------------------  | #              |
@@ -157,7 +157,8 @@ and no window menu of its own. The Window menu stays. The dock's CV item has no 
 ### Two windows: About this site in front of the CV (FR-017, FR-018, FR-038)
 
 About this site opened from the site menu. It opens 48 px right of and below the CV window, so the
-CV window's title bar stays visible. The CV window behind has a thin border and a plain title bar.
+CV window's title bar stays visible. The CV window behind has a darker title bar and slate controls
+without glyphs.
 About this site has no dock item.
 
 ```
@@ -166,10 +167,10 @@ About this site has no dock item.
 +--------------------------------------------------------------------------------------------------+
 |                                                                                                  |
 |              +--------------------------------------------------------------------+              |
-|              | CV                                                     [-] [^] [x] |              |
+|              | [x] [-] [^]                           CV                           |              |
 |              +--------------------------------------------------------------------+              |
 |              | Op#================================================#             ^ |              |
-|              | --# About this site                    [-] [^] [x] #-----------  | |              |
+|              | --# [x] [-] [^]          About this site           #-----------  | |              |
 |              | [l#================================================#             | |              |
 |              | [N# About this site                              ^ #             | |              |
 |              |   #                                              | #             | |              |
@@ -210,7 +211,7 @@ About this site has no dock item.
 ++------------------------------+------------------------------------------------------------------+
 || About this site              |                                                                  |
 |+------------------------------+===================================================#              |
-|| Open the CV as a page ->     |                                       [-] [^] [x] #              |
+|| Open the CV as a page ->     |                        CV                         #              |
 || Source code on GitHub ↗      |===================================================#              |
 |+------------------------------+o print or share ->                              ^ #              |
 |              # ---------------------------------------------------------------  | #              |
@@ -259,7 +260,7 @@ Titled with the focused window's name. It holds the window's commands with their
 +-----+----------------------------------+---------------------------------------------------------+
 |     | Open the CV as a page ->         |                                                         |
 |     +----------------------------------+==========================================#              |
-|     | Move…             Alt+Shift+P    |                              [-] [^] [x] #              |
+|     | Move…             Alt+Shift+P    |                    CV                    #              |
 |     | Resize…           Alt+Shift+S    |==========================================#              |
 |     +----------------------------------+r share ->                              ^ #              |
 |     | Minimize          Alt+Shift+H    |--------------------------------------  | #              |
@@ -310,7 +311,7 @@ it, in front and focused (FR-064).
 |                          +----------------------------------+                                    |
 |                          |   CV              (minimized)    |                                    |
 |                  #=======| ✓ About this site                |=====#                              |
-|                  # About +----------------------------------+ [x] #                              |
+|                  #       +----------------------------------+     #                              |
 |                  #================================================#                              |
 |                  # About this site                              ^ #                              |
 |                  #                                              | #                              |
@@ -352,7 +353,7 @@ content width the CV uses `/cv`'s phone layout, so it reads without scrolling si
 +--------------------------------------------------------------------------------------------------+
 |                                                                                                  |
 |              #====================================#                                              |
-|              # CV                     [-] [^] [x] #                                              |
+|              # [x] [-] [^]           CV           #                                              |
 |              #====================================#                                              |
 |              # Open as a page to print          ^ #                                              |
 |              # or share ->                      | #                                              |
@@ -448,7 +449,7 @@ position and size.
 | [*]  CV   Window                                                                                 |
 +--------------------------------------------------------------------------------------------------+
 |#================================================================================================#|
-|# CV                                                                                 [-] [v] [x] #|
+|# [x] [-] [v]                                         CV                                         #|
 |#================================================================================================#|
 |# Open as a page to print or share ->                                                          ^ #|
 |# -------------------------------------------------------------------------------------------  | #|
@@ -497,7 +498,7 @@ shows `Moving` in place of its controls.
 +--------------------------------------------------------------------------------------------------+
 |      ......................................................................                      |
 |      :       #====================================================================#              |
-|      :       # CV                                                          Moving #              |
+|      :       # Moving                             CV                              #              |
 |      :       #====================================================================#              |
 |      :       # Open as a page to print or share ->                              ^ #              |
 |      :       # ---------------------------------------------------------------  | #              |
@@ -548,7 +549,7 @@ outline marks its size when the resize started. The pad shows the current size.
 +--------------------------------------------------------------------------------------------------+
 |                                                                                                  |
 |              #======================================================#..............              |
-|              # CV                                          Resizing #             :              |
+|              # Resizing                     CV                      #             :              |
 |              #======================================================#             :              |
 |              # Open as a page to print or share ->                ^ #             :              |
 |              # -------------------------------------------------  | #             :              |
@@ -618,11 +619,12 @@ In menus and the dock, use the arrow keys, Enter and Escape.
 
 ### Home screen, portrait, 375 px (FR-031)
 
-The site's name, then the app grid, then a bar with About this site. Nothing is in front of it.
+The site's name, centered, then the app grid, then About this site as a button at the bottom.
+Nothing is in front of it.
 
 ```
 +-----------------------------------+
-| [Site name]                       |
+|            [Site name]            |
 |                                   |
 | +-------+                         |
 | | CV    | <- 4 per row            |
@@ -641,8 +643,8 @@ The site's name, then the app grid, then a bar with About this site. Nothing is 
 |                                   |
 |                                   |
 |                                   |
-+-----------------------------------+
-| (i) About this site               |
+|                                   |
+|      ( (i) About this site )      |
 |                                   |
 +-----------------------------------+
 ```
@@ -657,7 +659,7 @@ The site's name, then the app grid, then a bar with About this site. Nothing is 
 
 ```
 +------------------------------+
-| [Site name]                  |
+|         [Site name]          |
 |                              |
 | +-------+                    |
 | | CV    | <- 3 per row       |
@@ -674,8 +676,8 @@ The site's name, then the app grid, then a bar with About this site. Nothing is 
 |                              |
 |                              |
 |                              |
-+------------------------------+
-| (i) About this site          |
+|                              |
+|   ( (i) About this site )    |
 |                              |
 +------------------------------+
 ```
@@ -686,7 +688,7 @@ A phone in landscape keeps the mobile shell (it is shorter than 640 px).
 
 ```
 +-------------------------------------------------------------------------------+
-| [Site name]                                                                   |
+|                                  [Site name]                                  |
 |                                                                               |
 | +-------+                                                                     |
 | | CV    | <- 10 per row, left to right                                        |
@@ -695,8 +697,8 @@ A phone in landscape keeps the mobile shell (it is shorter than 640 px).
 |    CV                                                                         |
 |                                                 (wallpaper)                   |
 |                                                                               |
-+-------------------------------------------------------------------------------+
-| (i) About this site                                                           |
+|                                                                               |
+|                            ( (i) About this site )                            |
 |                                                                               |
 +-------------------------------------------------------------------------------+
 ```
@@ -893,8 +895,9 @@ Announcements for changes that don't move focus (FR-041):
 
 ## Forced colors and zoom (FR-047, FR-048)
 
-- Every window, menu, dock and pad keeps a visible border in forced colors. The focused window
-  keeps its thicker border, and its title bar uses the system's highlight colors.
+- Every window, menu, dock, pad and the menu bar keeps a visible border in forced colors, as
+  shadows, glass and dark fills drop out. The focused window gets a thicker border in the
+  system's highlight color, and each control's circle keeps an outline.
 - The open marks are shapes (filled and hollow dots), and the focus indicator is an outline, so
   both survive forced colors.
 - The wallpaper is decoration. Nothing relies on it or on a background color.

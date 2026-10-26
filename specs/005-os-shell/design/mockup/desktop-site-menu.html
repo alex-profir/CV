@@ -11,10 +11,11 @@
 </head>
 <body class="wallpaper">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-min" viewBox="0 0 16 16"><path d="M3 12.5h10"/></symbol>
-  <symbol id="i-max" viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10"/></symbol>
-  <symbol id="i-restore" viewBox="0 0 16 16"><rect x="2.5" y="5.5" width="8" height="8"/><path d="M5.5 5.5v-3h8v8h-3"/></symbol>
-  <symbol id="i-close" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></symbol>
+  <defs><linearGradient id="icon-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="icon-top"/><stop offset="1" class="icon-bottom"/></linearGradient></defs>
+  <symbol id="i-min" viewBox="0 0 16 16"><path d="M4 8h8"/></symbol>
+  <symbol id="i-max" viewBox="0 0 16 16"><path d="M6.5 3h6.5v6.5z M9.5 13H3V6.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 16 16"><path d="M9 2.5V7h4.5z M7 13.5V9H2.5z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-close" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></symbol>
   <symbol id="i-home" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></symbol>
   <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6v.5"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 10 10"><path d="M1 5h8M5.5 1.5L9 5l-3.5 3.5"/></symbol>
@@ -23,11 +24,11 @@
 </svg>
 <nav class="menu-bar" aria-label="Menu bar"><div class="menu-slot"><button class="menu-title is-open" aria-label="Site menu" aria-haspopup="menu" aria-expanded="true"><svg class="site-mark" viewBox="0 0 16 16" aria-hidden="true"><rect class="shadow" x="4" y="4" width="11" height="11"/><rect class="face" x="1" y="1" width="11" height="11"/></svg></button><ul class="menu" role="menu"><li class="menu-item" role="menuitem"><span></span><span>About this site</span><span class="keys"></span></li><li class="menu-separator" role="separator"></li><li class="menu-item" role="menuitem"><span></span><span>Open the CV as a page</span><span class="keys">→</span></li><li class="menu-item" role="menuitem"><span></span><span>Source code on GitHub</span><span class="keys">↗</span></li></ul></div><div class="menu-slot"><button class="menu-title is-app" aria-haspopup="menu" aria-expanded="false">CV</button></div><div class="menu-slot"><button class="menu-title" aria-haspopup="menu" aria-expanded="false">Window</button></div></nav>
 <section class="window is-focused at-cv" aria-label="CV">
-  <header class="title-bar"><span>CV</span><div class="controls">
-      <button class="control" aria-label="Minimize CV"><svg aria-hidden="true"><use href="#i-min"/></svg></button>
-      <button class="control" aria-label="Maximize CV"><svg aria-hidden="true"><use href="#i-max"/></svg></button>
-      <button class="control" aria-label="Close CV"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
-    </div></header>
+  <header class="title-bar"><div class="controls">
+      <button class="control close" aria-label="Close CV"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+      <button class="control min" aria-label="Minimize CV"><svg aria-hidden="true"><use href="#i-min"/></svg></button>
+      <button class="control max" aria-label="Maximize CV"><svg aria-hidden="true"><use href="#i-max"/></svg></button>
+    </div><span class="title">CV</span></header>
   <div class="window-body">
     <div class="app-bar"><a href="/cv">Open as a page to print or share <svg class="arrow" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
     <iframe class="cv-frame" src="http://127.0.0.1:4173/cv" title="CV"></iframe>
