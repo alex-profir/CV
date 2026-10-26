@@ -43,6 +43,15 @@ on_branch() {
     || { echo "On ${branch:-a detached HEAD}, not $want. Run: git switch $want" >&2; exit 1; }
 }
 
+# The engine keeps a failed shell step's stderr in the run state but prints
+# only "Shell command exited with code N", so show why the step failed.
+why_failed() {
+  local state=".specify/workflows/runs/$1/state.json"
+  [ -f "$state" ] || return 0
+  jq -r '[.step_results[] | select(.status == "failed") | .output.stderr // empty
+          | select(. != "")] | unique[]' "$state" 2>/dev/null | tail -n 20 >&2 || true
+}
+
 # What the owner needs to look at after a build.
 summary() {
   [ -f "$feature/tasks.md" ] || return 0
@@ -81,6 +90,10 @@ case "$cmd" in
     specify workflow run "$here/workflows/speckit-build.yml" \
       -i feature="$feature" -i from="$from" -i plan_verdict="$verdict" -i guidance="$guidance" \
       || status=$?
+    if [ "$status" -ne 0 ]; then
+      run=$(ls -td .specify/workflows/runs/*/ 2>/dev/null | head -n 1 || true)
+      [ -z "$run" ] || why_failed "$(basename "$run")"
+    fi
     summary
     exit "$status"
     ;;
@@ -96,6 +109,7 @@ case "$cmd" in
     fi
     status=0
     specify workflow resume "$@" || status=$?
+    [ "$status" -eq 0 ] || why_failed "$1"
     [ -z "$feature" ] || summary
     exit "$status"
     ;;
