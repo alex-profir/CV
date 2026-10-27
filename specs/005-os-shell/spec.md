@@ -467,7 +467,7 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   FR-065 set.
 - **FR-023**: Closing a window MUST remove it and its app's open mark in the dock. Focus MUST
   move to the window now in front, or, when no window is left, to the dock item of the app that
-  was closed.
+  was closed, or to the site menu's title for About this site.
 
 **Desktop: keyboard**
 

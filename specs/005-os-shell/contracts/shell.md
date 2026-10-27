@@ -13,7 +13,7 @@ and tests can rely on. Visual values are the design's ([design/wireframes.md](..
 <!doctype html>
 <html lang="en">
   <head>
-    <script>/* sets data-shell on <html> from matchMedia(shellQuery) */</script>
+    <script>/* sets data-shell on <html> from matchMedia(shellQuery); records an early tap */</script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
@@ -32,11 +32,23 @@ and tests can rely on. Visual values are the design's ([design/wireframes.md](..
 </html>
 ```
 
-- The inline script is the first child of `<head>`, a single statement, with the query written by
-  the build from tokens. It is the page's only inline script.
+- The inline script is the first child of `<head>`, with the query written by the build from
+  tokens. It is the page's only inline script, and it makes two statements:
+  1. It sets `data-shell` on `<html>` from `matchMedia(<query>).matches`.
+  2. It adds one `click` listener on `document`, which records an early tap (FR-004,
+     Constitution VII).
 - `data-shell` is `desktop` or `mobile` once the script runs. Without scripting it is absent.
 - `#os` gets `data-ready` once hydration has finished and the inactive shell is gone. Tests and the
   site check wait for it before acting. It changes nothing a visitor sees.
+- **Early tap**: while `#os` has no `data-ready`, the first click on a `#os .app-icon` or
+  `#os .about` sets `window.osEarlyView` to that element's `data-view` (`cv` or `about`). Later
+  clicks don't change it. The icons are already pre-rendered, so a visitor on a slow phone can tap
+  one while the `os` script is still downloading, before React can handle the tap.
+- **Replaying it**: once hydrated, if `window.osEarlyView` is set, the shell is mobile and no app is
+  open yet, `Os` opens that view full screen, as a tap would: focus moves to its `.app-title` and
+  one history entry is pushed (FR-050). React may have replayed the same tap already, in which
+  case an app is open and nothing more happens. Either way `Os` then deletes
+  `window.osEarlyView`. On desktop the record is ignored.
 - `html[data-shell] .no-script` and `html:not([data-shell]) #os` are `display: none`.
   `html[data-shell="desktop"] #os .mobile` and `html[data-shell="mobile"] #os .desktop` are
   `display: none` until hydration removes the inactive shell.
@@ -69,7 +81,7 @@ div.desktop                          data-req FR-005 FR-010 FR-024 FR-025 FR-037
 │   │   — or, with no focused window —
 │   ├── span[role=menuitem][aria-disabled=true]   {site name}                    FR-013 FR-066
 │   └── button[role=menuitem]        "Window", aria-haspopup=menu
-│       └── div[role=menu]           Next window · one item per open window, ✓ focused, "(minimized)"   FR-014 FR-026 FR-064
+│       └── div[role=menu]           Go to the menu bar · Go to the dock · Next window · one item per open window, ✓ focused, "(minimized)"   FR-014 FR-025 FR-026 FR-029 FR-064
 ├── main.desktop-area                aria-label "Desktop"                       FR-039
 │   └── section.window × n           front to back (DOM order = Tab order)      FR-017 FR-018 FR-021 FR-030 FR-039
 │       ├── div.title-bar                                                      FR-016 FR-019
@@ -104,8 +116,8 @@ div.mobile                           data-req FR-031 FR-036 FR-037
     ├── section.home                 aria-label "Home screen"; inert while an app is open   FR-031 FR-035 FR-039 FR-066
     │   ├── p.site-name              {site name} (not a heading)
     │   ├── ul.app-grid              one li per app supporting mobile, in APPS order   FR-003
-    │   │   └── button.app-icon      icon, then {app name} below                       FR-032
-    │   └── button.about             "About this site"                                 FR-038
+    │   │   └── button.app-icon      icon, then {app name} below; data-view {view}      FR-032
+    │   └── button.about             "About this site"; data-view "about"              FR-038
     └── section.full-screen          aria-labelledby the header title; only while open; data-view   FR-032 FR-034
         ├── header
         │   ├── button.home          "Home", 44 × 44 px                                 FR-033 FR-034
@@ -154,7 +166,7 @@ On a Mac the modifier is `Option+Shift`. `Escape` never closes a window. No othe
 | Opening or restoring a window | Its `.window-title` (FR-040, FR-064) |
 | Closing or minimizing, another window still shown | The new front window's `.window-title` |
 | Closing or minimizing the CV, none left shown | The CV's dock item (FR-023, FR-063) |
-| Closing or minimizing About this site, none left shown | The site menu's title (FR-063) |
+| Closing or minimizing About this site, none left shown | The site menu's title (FR-023, FR-063) |
 | A menu closed with `Escape` | Its title (FR-015) |
 | Ending or cancelling a move or resize | The window's `.window-title` |
 | Tab or a click reaching a window behind | It comes to the front, focused (FR-017, FR-030) |

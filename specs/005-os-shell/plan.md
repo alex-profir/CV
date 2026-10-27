@@ -7,7 +7,8 @@ this plan: *pre-render the shell at build time and hydrate it on the client; kee
 static files.*
 
 **Design**: [design/review.md](./design/review.md) (Graphite, interim local mockup, commit
-`4d2e29f`, approved 2026-10-26). No Penpot link is needed under Constitution 1.2.0's interim
+`4d2e29f`, approved 2026-10-26, and amended on 2026-10-27 with the Window menu's Go to the menu
+bar and Go to the dock commands). No Penpot link is needed under Constitution 1.2.0's interim
 provision on local mockups (research R19).
 
 ## Summary
@@ -71,8 +72,9 @@ cache `cv-<version>`, which now includes the shell.
 - Vitest browser tests for the shells in Chromium through Playwright, on the real build (004 R21).
 - `npm run site-check` on the real build: the root in both shells and every state (R17).
 - `tsc --noEmit` over the new workspace and TSX.
-- By hand before merge: screen readers, shortcuts in every browser, forced colors in Edge,
-  text-only zoom in Firefox (quickstart 6 to 8).
+- By hand: screen readers, shortcuts in every browser, forced colors in Edge, text-only zoom in
+  Firefox (quickstart 6 to 8). Under Constitution 1.3.0's interim provision on deferred manual
+  checks they may wait for the final testing phase, recorded in T122 and the pull request.
 
 **Target Platform**: the current and previous major versions of Chrome, Edge, Firefox and Safari,
 on desktop and phone (spec Assumptions). Build and checks on Node.js 26, macOS (owner) and Linux
@@ -131,7 +133,7 @@ shows the post-design state.
 | V | Shared Core, Per-Shell Scope | Apps declare shells; shared logic in `os-core`; matches spec Shell Scope | Pass | `@cv/os-core` holds every behavior both shells share (R4). Each app declares its shells in `apps/<app>/app.tsx`, and both shells read the same list (FR-003). Desktop and mobile code live in `shells/desktop/` and `shells/mobile/`, including the desktop-only shortcut listener (in `Desktop.tsx`, so it exists only while the desktop shell is shown) and the pad's styles (in `desktop.css`). Matches the spec's Shell Scope: both shells, with the CV app and About this site |
 | VI | Offline by Default | Offline Approach delivers everything the spec lists as offline | Pass | After one visit to `/` or `/cv`, both shells, the CV app, About this site, fonts, icons and wallpaper work offline (R14). Icons are inline SVG and the wallpaper is CSS, so nothing extra is fetched (R6). Proven by the `offline` part on every pull request (FR-059) |
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | Pass | Desktop: the CV is open in the pre-rendered HTML, zero clicks and no script needed to see it (FR-005). Mobile: one tap (FR-004), including a tap made before hydration finishes, which the inline script records and `Os` replays. No splash, banner or prompt. Without scripts, the root links to `/cv` (FR-049). `/cv` is still rendered at build time with no script but the worker's registration |
-| VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | Pass | Every desktop action has a keyboard path and a single-click path (R8, R9). axe in every FR-048 state, the keyboard flows of FR-057, forced colors, reduced motion and zoom run on every pull request (R17). Lighthouse 90+ on `/` on both profiles is a merge check. Hydration cost on mobile is marked **Verify**, with a fallback (R18). Screen readers are checked by hand (quickstart 6) |
+| VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | Pass | Every desktop action has a keyboard path and a single-click path (R8, R9). axe in every FR-048 state, the keyboard flows of FR-057, forced colors, reduced motion and zoom run on every pull request (R17). Lighthouse 90+ on `/` on both profiles is a merge check. Hydration cost on mobile is marked **Verify**, with a fallback (R18). Screen readers are checked by hand (quickstart 6), before merge or, under 1.3.0's interim provision on deferred manual checks, in the final testing phase, recorded in T122 and the pull request |
 | IX | Original Design | No Apple icons, fonts, wallpapers or other Apple assets | Pass | The site mark, the CV icon, the control glyphs and the wallpaper are the mockup's own drawings, as inline SVG and CSS (R6). Fonts are the three OFL families of `/cv`. The controls are neutral circles, not three colors (design/review.md). A test asserts no Apple or system UI font is named |
 | X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | No new package. React DOM's client, already a dependency, now ships on one page, with the reason below. Sixteen abstractions are listed with the simpler alternative each rejected. No agent skill is added |
 | XI | One Feature, One PR | Feature ships in one PR linking spec.md and tasks.md | Pass | One pull request from `005-os-shell`, holding the 004 amendment, the tokens, the code and the check changes. The token rename in the mockup README is a `docs:` commit in the same pull request |
@@ -168,9 +170,9 @@ real build opened in Chromium at the given size and driven by clicks, drags, tou
 | 005-os-shell-FR-020 | shell `windows.test.ts`: Move… then pad clicks move the window by 16 px per click, with no drag; the pad's legends show the step sizes read from the tokens (US2 scenario 5) | pad |
 | 005-os-shell-FR-021 | core `geometry.test.ts`: `clampMove` and `fitToArea` keep the title bar inside for moves past each edge and for shrinking areas. shell `windows.test.ts`: dragging toward each edge stops with the title bar inside; narrowing the viewport moves a window back (US2 scenarios 4, 9) | `section.window` |
 | 005-os-shell-FR-022 | shell `windows.test.ts`: wheel over a window scrolls its content, not the page; the document never scrolls on desktop (edge cases) | `.window-content` |
-| 005-os-shell-FR-023 | core `reducer.test.ts`: `close` focuses the next window, or the dock item. shell `windows.test.ts`: closing removes the window and the dock's mark, and the menu bar shows the next name or the site name (US2 scenario 8) | close control |
+| 005-os-shell-FR-023 | core `reducer.test.ts`: `close` focuses the next window, or the dock item, or `site-menu` when About was the last window. shell `windows.test.ts`: closing removes the window and the dock's mark, and the menu bar shows the next name or the site name (US2 scenario 8) | close control |
 | 005-os-shell-FR-024 | shell `keyboard.test.ts`: every action of US2 done with keys alone; at each step the focused element has an indicator of 3:1 or more and isn't covered (004's indicator measurement) | `.desktop` |
-| 005-os-shell-FR-025 | shell `keyboard.test.ts`: from inside the CV content, `Alt+Shift+M`, `D` and `N` reach the menu bar, the dock and the next window | `.desktop` |
+| 005-os-shell-FR-025 | shell `keyboard.test.ts`: from inside the CV content, `Alt+Shift+M`, `D` and `N` reach the menu bar, the dock and the next window; the Window menu's Go to the menu bar and Go to the dock do the same | `.desktop` |
 | 005-os-shell-FR-026 | core `reducer.test.ts`: `next` cycles through shown windows and skips minimized ones. shell `keyboard.test.ts`: `Alt+Shift+N` alternates two windows (US4 scenario 3) | Window menu's Next window |
 | 005-os-shell-FR-027 | core `reducer.test.ts`: a move session steps 16 and 64 px, clamps, confirms and cancels to the start. shell `keyboard.test.ts`: `Alt+Shift+P`, arrows, Enter moves and announces; Escape returns (US4 scenario 4) | pad, Move… item |
 | 005-os-shell-FR-028 | shell `keyboard.test.ts`: `Alt+Shift+W` closes the focused window; Tab reaches the close control and Enter and Space each close | close control |
