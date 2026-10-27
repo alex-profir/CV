@@ -757,7 +757,7 @@ plain server-rendered page.
 
 **UI change**: design artifacts live in `specs/006-terminal/design/`:
 
-- [ ] ASCII wireframes, per shell, of every state: on desktop, the Terminal just opened beside the
+- [x] ASCII wireframes, per shell, of every state: on desktop, the Terminal just opened beside the
   CV window, after `help`, after `cv`, after an unknown command, after `ls`, inside a folder after
   `cat`, after `specs`, maximized, and its menu open; on mobile, the pocket terminal just opened,
   after `help`, after `ls`, with the on-screen keyboard open, at 320 px wide and in landscape
