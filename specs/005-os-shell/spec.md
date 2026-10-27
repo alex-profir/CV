@@ -40,6 +40,13 @@
   "AboutThisDev" or "Alex Profir"? → A: "Alex Profir", the owner's name read from the CV
   document wherever the site name appears (FR-066).
 
+### Session 2026-10-27
+
+- Q: When a later app is for typing, such as the Terminal (006), may opening it move focus straight
+  to its input, rather than to its title? → A: Yes. An app whose own spec says so may move focus
+  to an input inside it, which names the app for screen readers instead. The CV app and About
+  this site keep focusing their title (FR-040).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reach the CV in one click or tap, on either shell (Priority: P1)
@@ -562,7 +569,9 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   name, and screen readers MUST be told which window is focused.
 - **FR-040**: Opening a window or a full-screen app MUST move focus into it, to its title or
   first heading, so a screen reader announces it. The CV window open on first load is the one
-  exception (FR-005). Closing it MUST move focus as FR-023 and FR-034 set.
+  exception (FR-005). An app whose own spec says so, such as one made for typing, MAY instead move
+  focus to an input inside it, as long as a screen reader still announces the app's name with it.
+  Closing it MUST move focus as FR-023 and FR-034 set.
 - **FR-041**: A change that doesn't move focus, such as the end of a keyboard move, MUST be
   announced to screen readers.
 - **FR-042**: The page title MUST name the site (FR-066), and the focused app when there is one.
