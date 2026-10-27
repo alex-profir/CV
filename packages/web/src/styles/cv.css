@@ -6,8 +6,12 @@
    grid placement out of source order (FR-027). Decoration is drawn with
    borders, so forced colors keep it (FR-030). There is no motion (FR-031). */
 
-/* The page column, shared by main and the footer. */
-main,
+/* The page column, shared by the CV, the not-found page and the footer.
+   The CV's own selectors are scoped to its root, `.cv`, so they style it on
+   /cv and in the shell without reaching shell elements (005 research R5).
+   `:where` keeps each rule's specificity as it was, so print.css still
+   overrides them. */
+:where(.cv, main.not-found),
 .footer-inner {
   inline-size: 100%;
   max-inline-size: var(--token-size-page);
@@ -15,7 +19,7 @@ main,
   padding-inline: var(--token-space-5);
 }
 
-main {
+:where(.cv, main.not-found) {
   padding-block-start: var(--token-space-11);
 }
 
@@ -111,7 +115,7 @@ main.not-found {
   line-height: var(--token-typography-section-number-line-height);
 }
 
-h2 {
+:where(.cv) h2 {
   margin-block-start: var(--token-space-2-5);
   font-family: var(--token-typography-h2-narrow-font-family);
   font-size: var(--token-typography-h2-narrow-font-size);
@@ -160,7 +164,7 @@ h2 {
   line-height: var(--token-typography-date-line-height);
 }
 
-h3 {
+:where(.cv) h3 {
   margin-block-start: var(--token-space-1-5);
   font-family: var(--token-typography-h3-narrow-font-family);
   font-size: var(--token-typography-h3-narrow-font-size);
@@ -169,7 +173,7 @@ h3 {
   line-height: var(--token-typography-h3-narrow-line-height);
 }
 
-li > h3:first-child {
+:where(.cv) li > h3:first-child {
   margin-block-start: 0;
 }
 
@@ -324,7 +328,7 @@ li > h3:first-child {
 
 /* The footer: a strong rule across the whole width, and the repository
    link in the page column. */
-footer {
+footer[data-site-element] {
   border-block-start: var(--token-border-thin) solid var(--token-color-rule-strong);
 }
 
@@ -374,13 +378,15 @@ footer {
   line-height: var(--token-typography-link-line-height);
 }
 
-@media (--token-breakpoint-wide) {
-  main,
+/* The wide layout follows the CV's container: the page on /cv, the window
+   or full-screen view in the shell (005 research R5). */
+@container (--token-breakpoint-wide) {
+  :where(.cv, main.not-found),
   .footer-inner {
     padding-inline: var(--token-space-14);
   }
 
-  main {
+  :where(.cv, main.not-found) {
     padding-block-start: var(--token-space-22);
   }
 
@@ -421,7 +427,7 @@ footer {
     margin-block-end: 0;
   }
 
-  h2 {
+  :where(.cv) h2 {
     font-family: var(--token-typography-h2-wide-font-family);
     font-size: var(--token-typography-h2-wide-font-size);
     font-weight: var(--token-typography-h2-wide-font-weight);
@@ -433,7 +439,7 @@ footer {
     --timeline-indent: var(--token-space-7);
   }
 
-  h3 {
+  :where(.cv) h3 {
     font-family: var(--token-typography-h3-wide-font-family);
     font-size: var(--token-typography-h3-wide-font-size);
     font-weight: var(--token-typography-h3-wide-font-weight);

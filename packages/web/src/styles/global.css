@@ -6,20 +6,18 @@
 @import "@cv/tokens/tokens.css";
 @import "./cv.css";
 @import "./print.css";
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* After cv.css and print.css, where these rules have always come. */
+@import "./base.css";
 
 html {
   background: var(--token-color-surface);
 }
 
 /* The footer sits at the bottom of a short page, such as the not-found
-   page. */
+   page. The body is the CV's size container, so cv.css's container queries
+   follow the page's width here (005 research R5). */
 body {
+  container-type: inline-size;
   margin: 0;
   min-block-size: 100vh;
   display: flex;
@@ -37,86 +35,9 @@ main {
   flex-grow: 1;
 }
 
-/* Resets carry no specificity, so cv.css, imported above, sets the
-   margins it needs. */
-:where(h1, h2, h3, p, ul, ol, dl, dd) {
-  margin: 0;
-}
-
-:where(ul, ol) {
-  padding: 0;
-  list-style: none;
-}
-
 /* Text that holds CV content wraps within its column, however long a word
    or address is (FR-022). */
 main,
 footer {
   overflow-wrap: anywhere;
-}
-
-/* Kept in the accessibility tree, out of view and out of print. */
-.visually-hidden {
-  position: absolute;
-  inline-size: var(--token-border-thin);
-  block-size: var(--token-border-thin);
-  margin: calc(-1 * var(--token-border-thin));
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* Links are underlined in the accent color, so they are never shown by
-   color alone. */
-a {
-  color: var(--token-color-text-primary);
-  text-decoration-line: underline;
-  text-decoration-thickness: var(--token-border-thick);
-  text-decoration-color: var(--token-color-link-underline);
-  text-underline-offset: var(--token-space-1);
-}
-
-/* An outline, not a shadow, so forced colors keep it (FR-029, FR-030). */
-a:focus-visible {
-  outline: var(--token-border-thick) solid var(--token-color-focus);
-  outline-offset: var(--token-space-0-5);
-}
-
-/* Standalone links are targets of at least size.target (FR-028). Their
-   underline is a bottom border, so it runs under the arrow too, as in the
-   design. A border stays in forced colors (FR-030). */
-.standalone,
-.contact-link {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: var(--token-space-1-5);
-  min-block-size: var(--token-size-target);
-  text-decoration-line: none;
-  border-block-end: var(--token-border-thick) solid var(--token-color-link-underline);
-}
-
-.standalone .arrow,
-.contact-link .arrow {
-  align-self: center;
-}
-
-/* Arrows are drawn with the text color, at the stroke of a thin border. */
-.arrow {
-  flex: none;
-  inline-size: var(--token-space-2-5);
-  block-size: var(--token-space-2-5);
-  stroke-width: var(--token-border-thin);
-  vector-effect: non-scaling-stroke;
-}
-
-.arrow path {
-  vector-effect: non-scaling-stroke;
-}
-
-@media (forced-colors: active) {
-  a:focus-visible {
-    outline-color: Highlight;
-  }
 }

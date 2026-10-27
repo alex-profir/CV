@@ -1,0 +1,24 @@
+/* The site root's style sheet (005 research R6): the shell, the CV app and
+   the page shown without scripts. Every value is a token. The inline script
+   sets `data-shell` before the first paint; without scripting it is never
+   set, and only the no-script page shows (FR-049). */
+@import "virtual:cv-fonts.css";
+@import "@cv/tokens/tokens.css";
+@import "./cv.css";
+/* After cv.css, as on /cv. */
+@import "./base.css";
+@import "../os/shell.css";
+@import "../shells/desktop/desktop.css";
+@import "../shells/mobile/mobile.css";
+
+html:not([data-shell]) #os,
+html[data-shell] .no-script {
+  display: none;
+}
+
+/* Until hydration drops the inactive shell, the style sheet hides it, so
+   neither shell ever shows on the other's screen (research R2). */
+html[data-shell="desktop"] #os .mobile,
+html[data-shell="mobile"] #os .desktop {
+  display: none;
+}
