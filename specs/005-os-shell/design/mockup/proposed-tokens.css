@@ -1,0 +1,107 @@
+/* Tokens the shell needs that the export doesn't hold yet, written as the
+   token output will write them. They are proposals for the design review: once
+   approved, the plan adds them to packages/tokens/penpot/tokens.json in
+   Penpot's form (the names in README.md), and this file is no longer used.
+   Every value here refers to an existing token where one fits. */
+:root {
+  /* Breakpoint (FR-001): the desktop shell needs at least this much space. */
+  --token-breakpoint-desktop-width: 1024px;
+  --token-size-desktop-min-height: 640px;
+
+  /* Base colors: the Graphite scale, darkest first, and its accents. */
+  --token-color-base-night: #0c0d12;
+  --token-color-base-dusk: #171821;
+  --token-color-base-carbon: #1b1c24;
+  --token-color-base-soot: #20212a;
+  --token-color-base-smoke: #262732;
+  --token-color-base-slate: #737482;
+  --token-color-base-fog: #a3a3b0;
+  --token-color-base-haze: #c9cad6;
+  --token-color-base-snow: #ececf2;
+  --token-color-base-periwinkle: #a5b4fc;
+  --token-color-base-lilac: #818cf8;
+  /* Translucent colors, for glass, hairlines and shadows. */
+  --token-color-base-glass: #1212188c;
+  --token-color-base-hairline: #ffffff12;
+  --token-color-base-hairline-strong: #ffffff1a;
+  --token-color-base-rim: #ffffff33;
+  --token-color-base-speck: #ffffff0d;
+  --token-color-base-glow-lilac: #818cf861;
+  --token-color-base-glow-teal: #2dd4bf33;
+  --token-color-base-shade: #00000073;
+  --token-color-base-shade-strong: #000000a6;
+
+  /* Colors */
+  --token-color-wallpaper: var(--token-color-base-night);
+  --token-color-wallpaper-top: var(--token-color-base-dusk);
+  --token-color-wallpaper-glow: var(--token-color-base-glow-lilac);
+  --token-color-wallpaper-glow-second: var(--token-color-base-glow-teal);
+  --token-color-wallpaper-dots: var(--token-color-base-speck);
+  --token-color-chrome: var(--token-color-base-glass);
+  --token-color-chrome-solid: var(--token-color-base-soot);
+  --token-color-chrome-border: var(--token-color-base-hairline-strong);
+  --token-color-chrome-text: var(--token-color-base-snow);
+  --token-color-shell-surface: var(--token-color-base-carbon);
+  --token-color-shell-raised: var(--token-color-base-smoke);
+  --token-color-shell-text: var(--token-color-base-snow);
+  --token-color-shell-text-secondary: var(--token-color-base-fog);
+  --token-color-shell-accent: var(--token-color-base-periwinkle);
+  --token-color-shell-rule: var(--token-color-base-hairline);
+  --token-color-title-bar: var(--token-color-base-soot);
+  --token-color-title-bar-text: var(--token-color-base-fog);
+  --token-color-title-bar-focused: var(--token-color-base-smoke);
+  --token-color-title-bar-focused-text: var(--token-color-base-snow);
+  --token-color-window-border: var(--token-color-base-hairline);
+  --token-color-window-border-focused: var(--token-color-base-rim);
+  --token-color-control: var(--token-color-base-slate);
+  --token-color-control-focused: var(--token-color-base-haze);
+  --token-color-control-glyph: var(--token-color-base-carbon);
+  --token-color-selection: var(--token-color-base-indigo);
+  --token-color-selection-text: var(--token-color-base-white);
+  --token-color-icon-top: var(--token-color-base-lilac);
+  --token-color-icon-bottom: var(--token-color-base-indigo);
+  --token-color-icon-glyph: var(--token-color-base-white);
+  --token-color-ghost: var(--token-color-base-periwinkle);
+  /* The focus outline on the dark shell (7.4:1 on the focused title bar). */
+  --token-color-focus-shell: var(--token-color-base-periwinkle);
+
+  /* Shadows: soft and deep, as the windows float over the wallpaper. */
+  --token-shadow-window-focused: 0 30px 90px 0 var(--token-color-base-shade-strong);
+  --token-shadow-window: 0 14px 40px 0 var(--token-color-base-shade);
+  --token-shadow-menu: 0 12px 32px 0 var(--token-color-base-shade);
+  --token-shadow-dock: 0 16px 40px 0 var(--token-color-base-shade);
+
+  /* The site's name on the phone home screen. */
+  --token-font-size-home-name: 40px;
+  --token-font-letter-spacing-home-name: -1.2px;
+
+  /* Radii */
+  --token-radius-window: 12px;
+  --token-radius-menu: 8px;
+  --token-radius-dock: 22px;
+  --token-radius-icon: 14px;
+  --token-radius-small: 6px;
+
+  /* Sizes */
+  --token-size-menu-bar: 32px;
+  --token-size-title-bar: 40px;
+  --token-size-control: 24px;
+  --token-size-control-dot: 14px;
+  --token-size-control-glyph: 10px;
+  --token-size-menu-item: 32px;
+  --token-size-dock-icon: 48px;
+  --token-size-dock-reserve: 104px;
+  --token-size-open-mark: 6px;
+  --token-size-app-icon: 64px;
+  --token-size-home-target: 44px;
+  --token-size-mobile-header: 52px;
+  --token-size-wallpaper-dots: 22px;
+  --token-size-wallpaper-glow: 900px;
+  --token-size-chrome-blur: 24px;
+  --token-size-window-cv-width: 1000px;
+  --token-size-window-about-width: 560px;
+  --token-size-window-about-height: 520px;
+  --token-size-window-min-width: 400px;
+  --token-size-window-min-height: 300px;
+  --token-size-pad-button: 36px;
+}
