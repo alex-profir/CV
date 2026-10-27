@@ -42,6 +42,6 @@
 - Command names (`help`, `work` and so on) and key names (Tab, Enter, the arrows) describe what the
   visitor types and presses, not how it is built. Named standards and tools (WCAG 2.2, Lighthouse,
   Penpot) appear because the constitution names them, as in 004 and 005.
-- FR-004 needs 005 FR-040 amended for the Terminal, so focus goes to the command line on opening.
-  005 isn't merged yet, so the owner may instead amend 005 on its own branch.
+- FR-004 relies on 005 FR-040, widened on 005's branch on 2026-10-27 so an app made for typing
+  may move focus to its input on opening. No amendment to 005 is left for this feature's PR.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`.

@@ -38,6 +38,20 @@
   like a small handheld terminal of the site's own design, with a screen above and big
   physical-looking command keys below it that run the common commands (FR-024, FR-051 to
   FR-054).
+- Q: When a command prints a lot, such as `cv` or `work`, what should a screen reader announce?
+  → A: Output of at most 5 lines is announced in full. Longer output is announced as a one-line
+  summary, such as "work: 4 entries", and the user reads on with their screen reader. Focus stays
+  in the command line either way (FR-028).
+- Q: How close must a mistyped command be before the Terminal suggests a real one? → A: Every
+  command or alias at most 2 single-letter edits away (a letter added, removed or changed, or two
+  neighbouring letters swapped), plus every command the typed word begins, when it is at least 2
+  letters long (FR-016).
+- Q: FR-004 needs 005 FR-040 to let focus go to the Terminal's command line on opening. Where is
+  that change made? → A: On 005's branch, before 005 merges: 005 FR-040 now lets an app whose spec
+  says so move focus to an input inside it. This spec relies on that and amends nothing (FR-004).
+- Q: Should the Terminal's output use headings, so screen reader users can jump between commands
+  and entries? → A: Yes. Each command run is a heading, and inside its output the sections and
+  entries are headings one and two levels below it, as on `/cv` (FR-029).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -223,12 +237,14 @@ run `help` and `work` and confirm what is announced and that the output can be b
 3. **Given** focus is in the command line, **When** the user presses the shell's shortcut for the
    dock, the menu bar or the next window (005 FR-025, FR-026), **Then** the shell acts on it as it
    would anywhere else.
-4. **Given** a screen reader in the command line, **When** the user runs `help`, **Then** the
-   output is announced once, focus stays in the command line, and the user can type the next
-   command straight away.
-5. **Given** several commands were run, **When** a screen reader user browses the output,
-   **Then** each command and its output form one group named by the command, lists are read as
-   lists, and links as links.
+4. **Given** a screen reader in the command line, **When** the user runs `pwd`, **Then** its
+   one-line output is announced in full, once. **When** the user runs `work`, **Then** a one-line
+   summary naming the command and its number of entries is announced instead of the whole output.
+   Either way, focus stays in the command line and the user can type the next command straight
+   away.
+5. **Given** several commands were run, **When** a screen reader user moves by heading,
+   **Then** they move from one command to the next, and within the output of `cv` from section to
+   section and from entry to entry. Lists are read as lists, and links as links.
 6. **Given** focus is on a command name in the output of `help`, **When** the user presses Enter
    or Space, **Then** the command runs and focus returns to the command line.
 7. **Given** the Terminal is the only open window, **When** the user runs `exit`, **Then** the
@@ -319,8 +335,9 @@ can't merge.
 - **An empty command line** and Enter: a new prompt appears, with no message.
 - **Extra spaces, capitals or tabs** around or inside a command: they are ignored, so ` Work  `
   runs `work`. The echoed command is shown as typed.
-- **A misspelt command** close to a known one: the reply names what was typed, offers the closest
-  command or commands, and mentions `help` (FR-016).
+- **A misspelt command** close to a known one, such as `wrok`, `hlep` or `proj`: the reply names
+  what was typed, offers the closest commands, at most 3, and mentions `help` (FR-016). A word
+  nothing like any command, such as `sudo`, gets no suggestion besides `help`.
 - **A command nothing like a known one**, such as `sudo` or `rm -rf /`: the same "not a
   command" reply, with no joke reply or hidden command, as easter eggs are a non-goal. Commands
   that would change files, such as `rm`, `mkdir`, `touch` or `mv`, get the same reply, as the file
@@ -391,6 +408,8 @@ can't merge.
 - **Reduced motion**: the cursor doesn't blink, output never types itself out, and the pocket
   terminal's keys don't move when pressed.
 - **Forced colors**: every part of the Terminal stays visible and distinguishable (FR-033).
+- **A screen reader and a long output**, such as `cv`: only a one-line summary is announced, not
+  the whole CV, and the user reads the output from its start with their screen reader (FR-028).
 
 ## Requirements *(mandatory)*
 
@@ -418,10 +437,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   command that clears its output (FR-019). On mobile it MUST open full screen as every app does
   (005 FR-032 to FR-035).
 - **FR-004**: Opening the Terminal MUST move focus to its command line, so the visitor can type at
-  once, and a screen reader MUST announce the Terminal's name and the command line's name. This
-  replaces, for the Terminal only, 005 FR-040's rule that focus moves to an app's title or first
-  heading. Before the Terminal ships, 005's spec MUST be amended to allow it, with the owner's
-  approval and keeping its IDs (Constitution III).
+  once, and a screen reader MUST announce the Terminal's name and the command line's name, as 005
+  FR-040 allows an app made for typing to do.
 - **FR-005**: When it opens, the Terminal MUST show a short greeting that says what the Terminal is,
   suggests `help`, and offers a few commands as controls that run them (FR-015), then a prompt.
   The greeting and prompt MUST be site text set by the design (FR-030), and any CV fact in them,
@@ -534,8 +551,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   been typed and Enter pressed, including in the output and the command history, MUST NOT open the
   on-screen keyboard, and MUST return focus to the command line.
 - **FR-016**: A command the Terminal doesn't know MUST get a reply, in site text, that names what
-  was typed, shown exactly as typed, says it is not a command, and mentions `help`. When it is
-  close to one or more known commands or aliases, the reply MUST offer them, as controls (FR-015).
+  was typed, shown exactly as typed, says it is not a command, and mentions `help`. The reply MUST
+  offer, as controls (FR-015), every command or alias whose name is at most 2 single-letter edits
+  from the typed word (a letter added, removed or changed, or two neighbouring letters swapped),
+  and every command whose name begins with the typed word when it is at least 2 letters long,
+  closest first and at most 3. Capitals don't count as edits. When none qualifies, the reply
+  offers only `help`.
 - **FR-017**: A command with an argument it doesn't take, or missing one it needs, MUST get a reply
   that says so and shows how to use the command. The command line MUST accept at least 200
   characters and MAY stop accepting more after a limit the design sets.
@@ -601,11 +622,18 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-027**: The command line MUST have an accessible name that says it takes a command. The
   prompt MUST NOT be read as part of what was typed.
 - **FR-028**: After a command runs, its output MUST be announced to screen readers once, without
-  moving focus from the command line. Output that only scrolls into view, such as earlier output,
-  MUST NOT be announced again.
-- **FR-029**: In the output, each command and its output MUST form one group named by the command,
-  so a screen reader user can move from one command to the next. Lists MUST be lists, links MUST
-  be links, and command controls (FR-015) MUST be buttons named by the command they run. The
+  moving focus from the command line. Output of at most 5 lines, as shown at a desktop width, MUST
+  be announced in full. Longer output MUST be announced as a one-line summary in site text that
+  names the command and how many entries, files or lines it showed, such as "work: 4 entries",
+  and the full output MUST stay available to read with the screen reader (FR-029). Output that
+  only scrolls into view, such as earlier output, MUST NOT be announced again.
+- **FR-029**: In the output, each command and its output MUST form one group named by the command.
+  The Terminal MUST have one heading that names it, and each command run MUST be a heading one
+  level below it, holding the command as typed and not the prompt. In a command's output, each
+  section MUST be a heading one level below the command, and each work, project and education
+  entry a heading one level below its section, or one level below the command when the command
+  shows a single section, such as `work`. No level may be skipped. Lists MUST be lists, links
+  MUST be links, and command controls (FR-015) MUST be buttons named by the command they run. The
   reading order MUST follow the visual order.
 
 **Look, motion and accessibility**
@@ -792,7 +820,7 @@ plain server-rendered page.
   users (FR-026). Visitors who don't know a command use the command controls (FR-015) and the
   suggestions for near misses (FR-016) instead.
 - **Focus on opening**: a terminal is for typing, so focus goes to the command line rather than to
-  a heading. This needs 005 FR-040 amended for the Terminal (FR-004), as 005 amended 004.
+  a heading (FR-004). 005 FR-040 was widened to allow this on 005's branch, before 005 merged.
 - **Output appears at once**: typing output out letter by letter would slow every reader and be
   noise for a screen reader, so the Terminal never does it, with or without reduced motion
   (FR-032).
@@ -833,5 +861,5 @@ plain server-rendered page.
   manual checks; the requirement traceability check (001); the CV content source and content check
   (002); the design tokens source and token check (003); `/cv`, its rules for showing the CV, its
   fonts and its checks (004); the OS shell, its app list, windows, full-screen apps, About this site
-  and its checks (005), and an amendment to 005 FR-040 (FR-004); and an approved mockup of the
-  Terminal in both shells with its review sign-off.
+  and its checks (005), including 005 FR-040's rule for apps made for typing (FR-004); and an
+  approved mockup of the Terminal in both shells with its review sign-off.
