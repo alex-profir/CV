@@ -882,8 +882,7 @@ plain server-rendered page.
 - [x] PNG exports of the approved Penpot mockup of the Terminal in both shells, at a phone width
   and a desktop width, and of the pocket terminal at 320 px wide and in landscape (or of the
   interim local mockup, under the constitution's interim provision)
-- [ ] Penpot file link: to be added (not needed for an interim local mockup until the provision
-  ends)
+- [x] Penpot file link: [006 Terminal — Glass](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f)
 - [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-031, FR-054)
 
