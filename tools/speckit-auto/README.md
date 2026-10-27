@@ -31,6 +31,13 @@ tools/speckit-auto/run.sh build specs/005-example --implement-only  # after edit
 Run it in `tmux` with `caffeinate -i` for long builds. `specify workflow status`
 lists runs; a failed or paused run continues with `run.sh resume <run_id>`.
 
+`build` and `resume` resume the run on their own when a session fails on the usage
+limit or a passing API error (429, 5xx, overloaded): after a limit they wait until
+the reset time it names, plus two minutes, or check again every 30 minutes if it
+names none; after an API error they back off from one minute to 15. Any other
+failure stops the run as before. `SPECKIT_AUTO_RESUME_MAX` caps the resumes per
+command (default 30; 0 turns it off).
+
 ## How the build works
 
 `workflows/speckit-build.yml`:
