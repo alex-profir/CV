@@ -23,6 +23,8 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | `── SECTION ──` | A section heading in a command's output |
 | `[ key ]` | A command key of the pocket terminal (FR-051) |
 | `^ \| v` | The output's own scrollbar |
+| `+--  16 lines: "work": [ ····` | A closed fold in the vim view: a control that opens it |
+| `[NORMAL]` | The vim view's mode, in a mint pill at the start of its status line |
 
 ## Design values the spec leaves to the design
 
@@ -34,7 +36,7 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | Padding | 20 px on desktop (24 px maximized), 14 px on the pocket terminal's screen (12 px below 375 px wide) | FR-031 |
 | Rows holding command controls | 24 px tall, so every control in `help`, `ls` and `specs` has a 24 × 24 px target (FR-034). Chips are 26 px tall | FR-034 |
 | Greeting and prompt | See [Site text](#site-text). The greeting's name and label come from the CV document | FR-005, FR-030 |
-| Order of the home folder in `ls` | `about`, `contact`, `work/`, `projects/`, `skills`, `education/`, `languages`, `interests`, `readme`, `specs/`: the CV in `/cv`'s order, then the site | FR-043 |
+| Order of the home folder in `ls` | `cv.json`, `about`, `contact`, `work/`, `projects/`, `skills`, `education/`, `languages`, `interests`, `readme`, `specs/`: the whole CV, its parts in `/cv`'s order, then the site | FR-043 |
 | Command line limit | 500 characters. Typing or pasting past it adds nothing more | FR-017 |
 | Cursor | A steady block that never blinks, with or without reduced motion | FR-032 |
 | Terminal menu | Titled `Terminal`. It holds `Clear output` (no shortcut), then 005's window commands with their shortcuts | FR-003, FR-019 |
@@ -44,6 +46,11 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | Device it evokes | A small handheld terminal of the site's own design: a glass case, a power light, a recessed screen, raised keys, a speaker grille and the owner's name, from the CV document, engraved (drawn only where it fits). It copies no real device | FR-054 |
 | On-screen keyboard open | The keys hide and the screen grows to fill the space above the keyboard, so the command line and the newest output stay in view. When the keyboard closes, the keys come back | FR-053 |
 | Output color | Commands and CV text in snow and haze, dates and descriptions in fog, controls and links in periwinkle, section headings in lilac, the prompt mark in mint, "is not a command" in rose. Slate is never used for text | FR-031, FR-035 |
+| Vim view | Fills the Terminal window's content, or the pocket terminal's screen. A 4-character line-number gutter (3 on the phone), the text, then a 24 px status line and a 28 px message line (26 on the phone). Text 14 on 21 px, as the Terminal's. Long lines wrap at a space, continuations indented 2 past the line's own indent. Opens with each top-level section folded and the cursor on the first fold | FR-058, FR-061, FR-063 |
+| Vim view colors | Keys periwinkle, strings haze, numbers amber, `true`, `false` and `null` rose, punctuation and line numbers fog, the cursor line's number snow. Fold lines periwinkle on a faint band. Search matches on amber at 20%, the current one at 42% with an amber outline. The cursor a haze block with the character under it in night | FR-056, FR-062 |
+| Vim view status line | `NORMAL` (mint) or `HELP` (lilac) pill, the file name, `[RO]` and the pipe that opened it; on the right the file type, `line,column` and `Top`, `Bot`, `All` or a percentage | FR-058, FR-059 |
+| Vim view controls for pointers | `:help` and `:q` chips at the right of the message line, fold lines, and on the phone the vim keys | FR-061, FR-064, FR-066 |
+| Vim keys on the pocket terminal | `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q` (mint, the way out), in the command keys' places; the case reads `cv-os pocket · vim keys` | FR-066 |
 | Forced colors and reduced transparency | The glass, sheen and blur drop out. Forced colors: `Canvas` and `CanvasText`, a solid border, chips and keys outlined, the cursor in `Highlight`. Reduced transparency: the solid `color.shell-surface` | FR-033 |
 
 ## Desktop shell
@@ -102,7 +109,7 @@ and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
 #                                                                ^ #
 # (guest)(~) ◷ 18:25                                             | #
 # ❯ help                                                         | #
-# Click a command to run it, or type it and press Enter.         | #
+# Click a command to run it, or type it. Join commands with |.   | #
 # _help_ [command]  _?_          Every command, or one command's | #
 #                                own help                        | #
 # _about_  _whoami_              Name, role, location and summary| #
@@ -114,13 +121,17 @@ and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
 # _languages_                    Every language with its fluency | #
 # _interests_                    Every interest                  | #
 # _contact_                      Email, website and profiles     | #
-# _cv_                           The whole CV, then a link to /cv  #
+# _cv_                           The CV's JSON in vim: cat cv.json #
+#                                | jq | vim -                       #
 # _site_                         What this site is and how it was  #
 #                                built                             #
 # _specs_                        The site's feature specs          #
 # _ls_ [path]                    List a folder                     #
 # _cd_ [path]                    Change folder. cd alone goes home #
 # _cat_ <path>                   Show a file                       #
+# _jq_ [path]                    Pretty-print JSON                 #
+# _vim_ [path | -]               Read a file in vim. - reads what  #
+#                                is piped in                       #
 # _pwd_                          Show the current folder           #
 # _open_ <name>                  Open cv or about in the shell   v #
 #==================================================================#
@@ -129,33 +140,99 @@ and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
 
 - Descriptions start at the 25th column. In a narrow window they wrap under themselves.
 
-### After `cv` (FR-008, FR-009, FR-019)
+### After `cv`: the vim view (FR-055 to FR-065)
 
-The command at the top, then every section `/cv` shows, in its order, then a link to `/cv`.
-Export: `exports/desktop-3-after-cv-1440.png`.
+`cv` runs `cat cv.json | jq | vim -`. The vim view takes the window's content, as vim takes a
+terminal: the CV document's JSON, pretty-printed, each top-level section folded, the cursor on the
+first fold. The window's title reads `Terminal — vim`. Focus moves into the view. Export:
+`exports/desktop-3a-vim-opened-by-cv-1440.png`.
 
 ```
 #==================================================================#
-# [x] [-] [^]               Terminal — ~                           #
-#                                                                ^ #
-# (guest)(~) ◷ 18:28                                             | #
-# ❯ cv                                                           v #
-# [Name]                                                           #
-# [label]                                                          #
-# [city], [country] · _[email]_ · [network] _[username] ↗_         #
-# [summary ..................................................]     #
-# [..........................................................]     #
-# ── EXPERIENCE ─────────────────────────────────────────────       #
-# [position] · [company]                                           #
-# [start] – [end]                                                  #
-# [summary ..................................................]     #
-# • [highlight .............................................]      #
-# • [highlight .............................................]      #
-# ── PROJECTS ───────────────────────────────────────────────       #
-# [project name]                                                   #
-# [start] – Present                                                #
-#   ... skills, education, languages and interests, as on /cv      #
-#   Open the CV as a page: _/cv_                                   #
+# [x] [-] [^]               Terminal — vim                         #
+#                                                                  #
+#    1 {                                                           #
+#    2   "$schema": "[schema URL]",                                #
+#    3 █--  17 lines: "basics": { ································ #
+#   20 +--  16 lines: "work": [ ·································· #
+#   36 +--  16 lines: "education": [ ····························· #
+#   52 +--  73 lines: "skills": [ ································ #
+#  125 +--  14 lines: "languages": [ ····························· #
+#  139 +--  22 lines: "interests": [ ····························· #
+#  161 +-- 126 lines: "projects": [ ······························ #
+#  287 }                                                           #
+# ~                                                                #
+# ~                                                                #
+# [NORMAL] cv.json [RO]  cat cv.json | jq | vim -    json  3,1  Top#
+# "cv.json" [readonly] 287 lines · za or click opens a fold ‹:help› ‹:q›
+#==================================================================#
+```
+
+- Line numbers, fold sizes and the sections come from the CV document's JSON when the site is
+  built (FR-055). Only top-level sections are folded.
+- `:q` brings the Terminal's output back as it was, with `cv` after its prompt and a new prompt
+  below it, focus in the command line (FR-064).
+
+### The vim view: a section open and a search (FR-060 to FR-063)
+
+After `za` on `"work"` and `/REST` Enter. Every match in view is highlighted, the current one
+outlined; the message line counts the matches. Long strings wrap at a space under their line.
+Export: `exports/desktop-3b-vim-fold-open-search-1440.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — vim                         #
+#    1 {                                                           #
+#    2   "$schema": "[schema URL]",                                #
+#    3 +--  17 lines: "basics": { ································ #
+#   20   "work": [                                                 #
+#   21     {                                                       #
+#   22       "name": "[company]",                                  #
+#   23       "position": "[position]",                             #
+#   24       "startDate": "[start]",                               #
+#   25       "endDate": "[end]",                                   #
+#   26       "summary": "[summary ......................           #
+#              ....... █REST║ .........................]",         #
+#   27       "highlights": [                                       #
+#   28         "[highlight ...................................     #
+#                ...........]",                                    #
+#   30         "[highlight ... ║REST║ ...]",                       #
+# [NORMAL] cv.json [RO]  cat cv.json | jq | vim -   json  26,86  9%#
+# /REST   match 1 of 3 · n next · N previous            ‹:help› ‹:q› #
+#==================================================================#
+```
+
+- `║REST║` marks a match on amber. `█` is the cursor, on the current match, which also has an
+  amber outline, so it differs by more than color (FR-062).
+- `i`, `x`, `dd` or `:w` here leave the file as it is, and the message line reads
+  `cv.json is read only: nothing can be changed` (FR-060).
+
+### The vim view: its key help (FR-064)
+
+`:help`, or its chip, splits the view: the file above, the keys below in a `HELP` window. `:q`
+closes the help first, then the view. Export: `exports/desktop-3c-vim-key-help-1440.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — vim                         #
+#    1 {                                                           #
+#    2   "$schema": "[schema URL]",                                #
+#    3 █--  17 lines: "basics": { ································ #
+#   20 +--  16 lines: "work": [ ·································· #
+#   ...                                                            #
+# cv.json [RO]                                           3,1   Top #
+#      KEYS FOR cv.json · the file is read only                    #
+#      Move    h j k l or arrows   w b word   0 $ line start, end  #
+#              gg G top, bottom   { } previous, next section       #
+#              PgUp PgDn                                           #
+#      Search  /text then Enter   n N next, previous match         #
+#      Folds   za open or close   zR open all   zM close all       #
+#      Lines   :12 go to line 12   :set nu / :set nonu             #
+#      Leave   :q back to the Terminal   Tab moves focus out       #
+#      i, a, o, x, dd and :w can't change the file. Folds and the  #
+#      cursor can be clicked or tapped too.                        #
+# [HELP] keys [RO]                                       1,1   All #
+# :help                                                      ‹:q›  #
 #==================================================================#
 ```
 
@@ -191,8 +268,8 @@ Folders end in `/`. Every name is a control. Export: `exports/desktop-5-after-ls
 #   ... the greeting ...                                           #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ ls                                                             #
-# _about_     _contact_   _work/_   _projects/_ _skills_ _education/_
-# _languages_ _interests_ _readme_  _specs/_                       #
+# _cv.json_   _about_     _contact_   _work/_   _projects/_ _skills_
+# _education/_ _languages_ _interests_ _readme_ _specs/_           #
 #                                                                  #
 # (guest)(~) ◷ 18:26                                               #
 # ❯ █                                                              #
@@ -261,7 +338,7 @@ The maximize control shows its restore glyph. The output reflows, so `help` fits
 #                                                                                                  #
 # (guest)(~) ◷ 18:25                                                                               #
 # ❯ help                                                                                           #
-# Click a command to run it, or type it and press Enter.                                           #
+# Click a command to run it, or type it. Join commands with |.                                     #
 # _help_ [command]  _?_          Every command, or one command's own help                          #
 #   ... every command, through _exit_ ...                                                          #
 # (guest)(~) ◷ 18:25                                                                               #
@@ -365,10 +442,10 @@ Three columns at 375 px. Export: `exports/phone-3-after-ls-375.png`.
 ```
 |  | | (guest)(~)                | |  |
 |  | | ❯ ls                      | |  |
-|  | | _about_    _contact_  _work/_     |
-|  | | _projects/_ _skills_  _education/_ |
-|  | | _languages_ _interests_ _readme_   |
-|  | | _specs/_                  | |  |
+|  | | _cv.json_  _about_   _contact_    |
+|  | | _work/_    _projects/_ _skills_   |
+|  | | _education/_ _languages_ _interests_ |
+|  | | _readme_   _specs/_       | |  |
 |  | | (guest)(~)                | |  |
 |  | | ❯ █                       | |  |
 ```
@@ -403,6 +480,39 @@ output stay in view. When the keyboard closes, the keys come back. Export:
 |  (the phone's own keyboard)         |
 +-------------------------------------+
 ```
+
+### The vim view with its vim keys (FR-063, FR-066)
+
+`cv` on the phone opens the same view in the screen. The command keys become vim keys until
+`:q`, and fold lines can be tapped. Export: `exports/phone-7-vim-keys-375.png`.
+
+```
++-------------------------------------+
+| ‹ Home          Terminal            |
++-------------------------------------+
+|  +-------------------------------+  |
+|  | • cv-os pocket · vim keys     |  |
+|  | +---------------------------+ |  |
+|  | |  1 {                      | |  |
+|  | |  2   "$schema":           | |  |
+|  | |        "[schema URL ....  | |  |
+|  | |        .........]",       | |  |
+|  | |  3 █--  17 lines: "basi···| |  |
+|  | | 20 +--  16 lines: "work"··| |  |
+|  | |   ... a fold per section  | |  |
+|  | |287 }                      | |  |
+|  | | ~                         | |  |
+|  | | [NORMAL] cv.json [RO] 3,1 | |  |
+|  | | "cv.json" 287 lines · tap | |  |
+|  | +---------------------------+ |  |
+|  | [  j  ][  k  ][ za  ][  /  ]  |  |
+|  | [  n  ][ gg  ][  G  ][ :q  ]  |  |
+|  +-------------------------------+  |
++-------------------------------------+
+```
+
+- `/` opens the phone's keyboard for the search text; the screen then shrinks as in the
+  keyboard-open state, and the vim keys hide until the keyboard closes.
 
 ### At 320 px wide (FR-052, SC-012)
 
@@ -465,6 +575,9 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | Enter runs a command | Stays in the command line | The output once: in full up to 5 lines, else a summary such as "help: 23 commands" (FR-028) |
 | A command control is activated | Back to the command line | As if the command were typed (FR-015) |
 | Tab from the command line | The next control in the output, then out of the Terminal to the shell | Nothing is completed or inserted (FR-026) |
+| `cv`, or `vim` with a file | Into the vim view | The file's name, `read only`, its number of lines, and "Type :q to leave" (FR-065) |
+| `:q` in the vim view | Back to the command line | The Terminal's output, as it was |
+| Tab in the vim view | The next control: the `:help` and `:q` chips, then out to the shell | Nothing in the file changes |
 | `exit`, or Close in the menu | The Terminal item in the dock (005 FR-023) | — |
 
 - Headings: one heading names the Terminal (visually hidden). Each command run is a heading one
@@ -490,7 +603,14 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then each command and its description as listed in the desktop `help` frame, plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal` |
 | Unknown command | `[typed] is not a command. Run help to see them all, or try:` and the suggestions. With none: `[typed] is not a command. Run help to see them all.` |
 | `specs` | `Every feature is specified before it is built. [n] specs:` … `All specs, plans and history: [repository]` |
-| `cv` | Ends with `Open the CV as a page: /cv` |
+| `cv` description in `help` | `The CV's JSON in vim: cat cv.json \| jq \| vim -` |
+| Vim view, opening | `"[file]" [readonly] [n] lines  ·  za or click opens a fold` (phone: `"[file]" [n] lines  ·  tap a fold`) |
+| Vim view, editing key or `:w` | `[file] is read only: nothing can be changed` |
+| Vim view, unknown `:` command | `:[typed] is not a command here. :help lists the keys.` |
+| Vim view, search | `/[text]   match [i] of [n]  ·  n next  ·  N previous`, or `/[text]   not found` |
+| Vim view, key help | As in the key help frame |
+| `jq` errors | `jq: [path or input] is not JSON.` / `jq here only pretty-prints. Usage: jq [path], or … \| jq` |
+| Pipe into a command that reads no input | `[command] doesn't read piped input. Pipe into jq or vim -.` |
 | Empty section (FR-011) | `The CV lists no [section].` |
 | No such path (FR-048) | `[path]: no such file or folder.` |
 | `cd` on a file | `[path] is a file. Try cat [path].` with `cat [path]` as a control |
@@ -498,4 +618,4 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | Wrong arguments (FR-017) | `[command] takes [what]. Usage: [usage]`, the usage as `help` shows it |
 | `open` with another name | `open takes cv or about.` with both as controls |
 | Pocket case | `cv-os pocket`, and `[name]` from the CV document, set in capitals and spaced out (decoration, hidden from screen readers) |
-| Key names | `help`, `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear` |
+| Key names | `help`, `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear`; in the vim view `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q`, named for screen readers `Down`, `Up`, `Open or close fold`, `Search`, `Next match`, `Top`, `Bottom`, `Quit` |
