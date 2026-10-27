@@ -77,3 +77,39 @@ describe('005-os-shell-FR-038: on a phone, About this site opens full screen', (
     expect(await page.locator(`${view} .shortcuts, ${view} .about-shortcuts`).count()).toBe(0);
   });
 });
+
+describe('005-os-shell-FR-029: About this site on the desktop lists the eight shortcuts', () => {
+  const shortcuts = (page: Page) =>
+    page.locator(`${ABOUT} .about-shortcuts`).evaluate((section) => ({
+      heading: section.querySelector('h2')?.textContent?.trim(),
+      entries: [...section.querySelectorAll('dl > div')].map((entry) => [entry.querySelector('dt')?.textContent?.trim(), entry.querySelector('dd')?.textContent?.trim()]),
+      notes: [...section.querySelectorAll('p.note')].map((note) => note.textContent?.trim()),
+      req: section.getAttribute('data-req'),
+    }));
+
+  test('in SHORTCUTS order with the two notes, as Alt+Shift off a Mac and Option+Shift on one', async () => {
+    for (const [platform, modifier] of [
+      ['Windows', 'Alt'],
+      ['macOS', 'Option'],
+    ] as const) {
+      const page = await openShell({ width: 1440, height: 900, platform });
+      await openAboutWindow(page);
+      expect(await shortcuts(page), platform).toEqual({
+        heading: 'Keyboard shortcuts',
+        entries: [
+          [`${modifier}+Shift+M`, 'Go to the menu bar'],
+          [`${modifier}+Shift+D`, 'Go to the dock'],
+          [`${modifier}+Shift+N`, 'Next window'],
+          [`${modifier}+Shift+W`, 'Close window'],
+          [`${modifier}+Shift+H`, 'Minimize window'],
+          [`${modifier}+Shift+F`, 'Maximize or restore window'],
+          [`${modifier}+Shift+P`, 'Move window'],
+          [`${modifier}+Shift+S`, 'Resize window'],
+        ],
+        notes: ['On a Mac, use Option+Shift in place of Alt+Shift.', 'In menus and the dock, use the arrow keys, Enter and Escape.'],
+        req: '005-os-shell-FR-029',
+      });
+      await page.context().close();
+    }
+  });
+});

@@ -2,7 +2,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume } from '@cv/content';
-import { box, centre, drag, focusedElement, openShell, resize } from '../helpers/shell.ts';
+import { box, centre, drag, focusedElement, frontWindow, openShell, resize } from '../helpers/shell.ts';
 import type { Box } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -88,7 +88,7 @@ describe('005-os-shell-FR-017: a click anywhere in a window behind brings it to 
     await page.mouse.click(cv.x + cv.width - 40, cv.y + cv.height - 60);
     expect(await page.locator(CV).getAttribute('aria-current')).toBe('true');
     expect(await page.locator(ABOUT).getAttribute('aria-current')).toBeNull();
-    expect(await page.locator('#os .desktop-area > .window').first().getAttribute('data-view')).toBe('cv');
+    expect(await frontWindow(page)).toBe('cv');
     const gray = async (selector: string) => {
       const shot = await page.locator(`${selector} .title-bar`).screenshot({ animations: 'disabled', style: 'html { filter: grayscale(1) }' });
       return shot.toString('base64');
@@ -262,7 +262,7 @@ describe('005-os-shell-FR-064: a minimized window comes back where it was', () =
     await page.click('#menu-title-window');
     await page.getByRole('menuitemradio', { name: 'CV (minimized)' }).click();
     expect(await box(page, CV)).toEqual(cv);
-    expect(await page.locator('#os .desktop-area > .window').first().getAttribute('data-view')).toBe('cv');
+    expect(await frontWindow(page)).toBe('cv');
     // About is behind the CV: bring it forward, minimize it, and open it
     // again from the site menu.
     await page.click('#menu-title-window');

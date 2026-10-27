@@ -3,7 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { axNodes } from '../helpers/ax.ts';
-import { focusedElement, openShell } from '../helpers/shell.ts';
+import { focusedElement, focusIndicator, openShell, resize } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -12,6 +12,13 @@ const phone = (width = 375, height = 812) => openShell({ width, height, hasTouch
 async function openCv(page: Page): Promise<void> {
   await page.locator('#os .app-icon[data-view="cv"]').tap();
   await page.locator('#os .full-screen[data-view="cv"]').waitFor();
+}
+
+const focusIs = (page: Page, selector: string) => page.evaluate((target) => document.activeElement?.matches(target) ?? false, selector);
+
+async function expectIndicator(page: Page, step: string): Promise<void> {
+  const indicator = await focusIndicator(page);
+  expect(indicator.ok, `${step}: ${await focusedElement(page)} ${JSON.stringify(indicator)}`).toBe(true);
 }
 
 const scrolls = (page: Page) =>
@@ -89,5 +96,46 @@ describe('005-os-shell-FR-035: with an app open, the home screen is out of reach
     }
     const nodes = await axNodes(page, '#os .home, #os .home *');
     expect(nodes.filter((node) => !node.ignored)).toEqual([]);
+  });
+});
+
+describe('005-os-shell-FR-036: the phone shell works with an external keyboard', () => {
+  test('keys alone open the CV in at most 3 presses, go home and open About, with a visible indicator at each step (SC-002)', async () => {
+    const page = await phone();
+    let presses = 0;
+    while (presses < 3 && (await page.locator('#os .full-screen[data-view="cv"]').count()) === 0) {
+      await page.keyboard.press((await focusIs(page, '#os .app-icon[data-view="cv"]')) ? 'Enter' : 'Tab');
+      presses += 1;
+      if ((await page.locator('#os .full-screen').count()) === 0) await expectIndicator(page, `press ${presses}`);
+    }
+    await page.locator('#os .full-screen[data-view="cv"]').waitFor();
+    expect(presses).toBeLessThanOrEqual(3);
+    await expect.poll(() => focusIs(page, '#os .full-screen .app-title')).toBe(true);
+    await expectIndicator(page, 'CV open');
+    await page.keyboard.press('Shift+Tab');
+    expect(await focusIs(page, '#os .home-button')).toBe(true);
+    await expectIndicator(page, 'Home');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => focusIs(page, '#os .app-icon[data-view="cv"]')).toBe(true);
+    await expectIndicator(page, 'back home');
+    await page.keyboard.press('Tab');
+    expect(await focusIs(page, '#os .home .about')).toBe(true);
+    await expectIndicator(page, 'About this site');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => focusIs(page, '#os .full-screen[data-view="about"] .app-title')).toBe(true);
+    await expectIndicator(page, 'About open');
+  });
+
+  test('after narrowing from the desktop with the CV open, the eight desktop shortcuts do nothing', async () => {
+    const page = await openShell({ width: 1440, height: 900 });
+    await resize(page, 375, 812);
+    await page.locator('#os .full-screen[data-view="cv"]').waitFor();
+    await page.locator('#os .full-screen .app-title').focus();
+    for (const letter of ['M', 'D', 'N', 'W', 'H', 'F', 'P', 'S']) {
+      await page.keyboard.press(`Alt+Shift+${letter}`);
+      expect(await page.locator('#os .full-screen[data-view="cv"]').isVisible(), letter).toBe(true);
+      expect(await focusIs(page, '#os .full-screen .app-title'), letter).toBe(true);
+      expect(await page.locator('#os .desktop, #os .pad').count(), letter).toBe(0);
+    }
   });
 });

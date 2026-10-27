@@ -2,7 +2,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume, siteData } from '@cv/content';
-import { focusedElement, openShell } from '../helpers/shell.ts';
+import { focusedElement, frontWindow, openShell } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -49,7 +49,7 @@ describe('005-os-shell-FR-014: the Window menu lists the open windows, and the f
     const cv = page.locator('#os .window[data-view="cv"]');
     expect(await cv.isVisible()).toBe(true);
     expect(await cv.getAttribute('aria-current')).toBe('true');
-    expect(await page.locator('#os .desktop-area > .window').first().getAttribute('data-view')).toBe('cv');
+    expect(await frontWindow(page)).toBe('cv');
   });
 
   test("the focused window's menu holds its commands, Close among them", async () => {
@@ -87,5 +87,40 @@ describe('005-os-shell-FR-015: a menu opens on its title and closes when done wi
     await page.click('#menu-title-window');
     expect(await openMenus(page)).toBe(1);
     expect(await page.locator('#menu-window').count()).toBe(1);
+  });
+});
+
+describe('005-os-shell-FR-029: menu commands show their shortcut and expose it', () => {
+  // The focused window's menu and the Window menu: [label, shortcut] per command.
+  const commands = (page: Page, menu: string) =>
+    page.locator(`#menu-${menu} [role^="menuitem"]`).evaluateAll((list) =>
+      list.map((item) => [(item.querySelector('.label')?.textContent ?? '').trim(), (item.querySelector('.keys')?.textContent ?? '').trim(), item.getAttribute('aria-keyshortcuts')]),
+    );
+
+  test('each command with a shortcut shows its label and carries aria-keyshortcuts, as Alt+Shift off a Mac and Option+Shift on one', async () => {
+    for (const [platform, modifier] of [
+      ['Windows', 'Alt'],
+      ['macOS', 'Option'],
+    ] as const) {
+      const page = await openShell({ width: 1440, height: 900, platform });
+      await page.click('#menu-title-app');
+      expect(await commands(page, 'app'), platform).toEqual([
+        ['Open the CV as a page', '', null],
+        ['Move…', `${modifier}+Shift+P`, 'Alt+Shift+P'],
+        ['Resize…', `${modifier}+Shift+S`, 'Alt+Shift+S'],
+        ['Minimize', `${modifier}+Shift+H`, 'Alt+Shift+H'],
+        ['Maximize', `${modifier}+Shift+F`, 'Alt+Shift+F'],
+        ['Close', `${modifier}+Shift+W`, 'Alt+Shift+W'],
+      ]);
+      await page.keyboard.press('Escape');
+      await page.click('#menu-title-window');
+      expect(await commands(page, 'window'), platform).toEqual([
+        ['Go to the menu bar', `${modifier}+Shift+M`, 'Alt+Shift+M'],
+        ['Go to the dock', `${modifier}+Shift+D`, 'Alt+Shift+D'],
+        ['Next window', `${modifier}+Shift+N`, 'Alt+Shift+N'],
+        ['CV', '', null],
+      ]);
+      await page.context().close();
+    }
   });
 });

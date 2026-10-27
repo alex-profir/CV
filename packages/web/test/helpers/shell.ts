@@ -34,6 +34,9 @@ export type ShellOptions = {
   url?: string;
   // The path opened, `/` by default.
   path?: string;
+  // The platform the page reads from `navigator` (research R9's labels),
+  // such as `Windows` or `macOS`; the test machine's by default.
+  platform?: 'Windows' | 'macOS';
 };
 
 export const PHONE_USER_AGENT =
@@ -43,7 +46,7 @@ export const PHONE_USER_AGENT =
 const OS_SCRIPT = /\/assets\/os-[\w-]{8}\.js$/;
 
 function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}): OpenPageOptions {
-  const { width, height, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling } = options;
+  const { width, height, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform } = options;
   return {
     width,
     height,
@@ -58,6 +61,13 @@ function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}
       if (cpuThrottling !== undefined) {
         const session = await page.context().newCDPSession(page);
         await session.send('Emulation.setCPUThrottlingRate', { rate: cpuThrottling });
+      }
+      if (platform !== undefined) {
+        await page.addInitScript((name) => {
+          const legacy = name === 'macOS' ? 'MacIntel' : 'Win32';
+          Object.defineProperty(Navigator.prototype, 'platform', { get: () => legacy, configurable: true });
+          Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => ({ platform: name, mobile: false, brands: [] }), configurable: true });
+        }, platform);
       }
       await extra.beforeGoto?.(page);
     },
@@ -169,6 +179,16 @@ export function box(page: Page, selector: string): Promise<Box | null> {
   }, selector);
 }
 
+// The view of the window drawn in front: the highest `z-index` among those
+// shown. DOM order is Tab order and doesn't follow stacking (FR-030).
+export function frontWindow(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const windows = [...document.querySelectorAll<HTMLElement>('#os .desktop-area > .window:not([hidden])')];
+    windows.sort((a, b) => Number(getComputedStyle(b).zIndex) - Number(getComputedStyle(a).zIndex));
+    return windows[0]?.getAttribute('data-view') ?? null;
+  });
+}
+
 export function centre(rect: Box): Point {
   return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
 }
@@ -202,8 +222,10 @@ export type Indicator = { ok: boolean; changed: number; needed: number; coveredB
 
 // The focused element's indicator, measured as 004's keyboard part does:
 // the pixels that change by 3:1 or more against the same box unfocused,
-// at least the box's perimeter at the outline's width, and nothing else on
-// the element's centre. Focus is put back afterwards.
+// at least the element's perimeter at the outline's width, and nothing
+// else on the element's centre. The perimeter is the element's shape, as
+// WCAG 2.4.13 measures it: rounded corners make it shorter than its box's.
+// Focus is put back afterwards.
 export async function focusIndicator(page: Page): Promise<Indicator> {
   const px = (value: string) => Number.parseFloat(value);
   const outline = px(tokenValue('border.thick'));
@@ -215,11 +237,13 @@ export async function focusIndicator(page: Page): Promise<Indicator> {
     const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
     const coveredBy = hit !== null && !active.contains(hit) && !hit.contains(active) ? `${hit.tagName.toLowerCase()}.${String(hit.className)}` : null;
     active.setAttribute('data-test-focused', '');
-    return { box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, coveredBy };
+    const radius = Math.min(Number.parseFloat(getComputedStyle(active).borderTopLeftRadius) || 0, rect.width / 2, rect.height / 2);
+    return { box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, coveredBy, radius };
   });
   if (state === null) return { ok: false, changed: 0, needed: 0, coveredBy: null };
   const clip = clipOf(page, state.box, pad);
-  const needed = 2 * (state.box.width + state.box.height) * outline;
+  // Each rounded corner swaps two straight runs of `radius` for a quarter circle.
+  const needed = (2 * (state.box.width + state.box.height) - (8 - 2 * Math.PI) * state.radius) * outline;
   if (clip === null) return { ok: false, changed: 0, needed, coveredBy: state.coveredBy };
   const focused = await page.screenshot({ clip, animations: 'disabled', caret: 'hide' });
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());

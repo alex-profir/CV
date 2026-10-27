@@ -2,7 +2,7 @@
 // tap away on a phone, and nothing in front of either shell.
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
-import { box, centre, focusedElement, openShell, openShellHeld } from '../helpers/shell.ts';
+import { box, centre, focusedElement, frontWindow, openShell, openShellHeld } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -68,7 +68,7 @@ describe('005-os-shell-FR-004: nothing stands between the visitor and the CV (SC
     await page.locator('#os .dock-item[data-app="cv"]').click();
     const window = page.locator('#os .window[data-view="cv"]');
     await expect.poll(() => window.getAttribute('aria-current')).toBe('true');
-    expect(await page.locator('#os .desktop-area > .window').first().getAttribute('data-view')).toBe('cv');
+    expect(await frontWindow(page)).toBe('cv');
     expect(await focusedElement(page)).toMatch(/^div#window-title-cv\.window-title /);
   });
 });
