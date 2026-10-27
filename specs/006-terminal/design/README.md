@@ -1,7 +1,7 @@
 # Design: The Terminal
 
-The Terminal's look, drawn in Penpot on the page **006 Terminal — Glass** (file id
-`eaccfa4c-8a01-81ad-8008-d441a46da254`). It builds on 005's Graphite look: the same wallpaper,
+The Terminal's look, drawn in Penpot on the page
+[006 Terminal — Glass](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f). It builds on 005's Graphite look: the same wallpaper,
 menu bar, dock, window controls and fonts. The Terminal window is frosted glass instead of a solid
 panel.
 

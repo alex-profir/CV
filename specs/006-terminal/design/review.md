@@ -16,7 +16,7 @@ On a phone it is a pocket terminal in the same glass.
 | Exports: phone at 375 × 812 (just opened, after `help`, after `ls`, keyboard open, the vim view), 320 × 568 and 568 × 320 in landscape | `exports/phone-*.png` |
 | Export: the glass recipe, proposed tokens and contrast checks | `exports/glass-recipe-1440.png` |
 | Notes and proposed tokens | [README.md](README.md) |
-| Penpot file | Page **006 Terminal — Glass**. The shareable link is still to be added |
+| Penpot file | [006 Terminal — Glass](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f) |
 
 ## Design decisions
 
@@ -106,5 +106,4 @@ On a phone it is a pocket terminal in the same glass.
 - Approved by: Alex Profir (project owner)
 - Notes: The look was approved first, on review of the first four exports. The full set of states,
   with the whole CV as JSON in the vim view, was approved on review of every export in
-  `exports/`, and the owner confirms the look is original as recorded above. The Penpot file's
-  shareable link is still to be added.
+  `exports/`, and the owner confirms the look is original as recorded above.
