@@ -133,12 +133,13 @@ publishing and the domain; printing the shell.
 
 **Purpose**: The `@cv/os-core` workspace and a clean baseline
 
-- [ ] T001 Create the `@cv/os-core` workspace in `packages/os-core/package.json` and `packages/os-core/src/index.ts` (plan Project Structure, contracts/os-core.md):
+- [X] T001 Create the `@cv/os-core` workspace in `packages/os-core/package.json` and `packages/os-core/src/index.ts` (plan Project Structure, contracts/os-core.md):
   - `package.json`: `"name": "@cv/os-core"`, `"private": true`, `"type": "module"`, `"exports": { ".": "./src/index.ts" }`, and no `dependencies`, `devDependencies` or `scripts`.
   - `src/index.ts`: a header comment saying what the package is (Constitution V), and no exports yet.
   - Run `npm install` with Node 26 so `package-lock.json` records the workspace and `node_modules/@cv/os-core` links to it. No package is added (plan Dependencies).
   - `tsconfig.json` (`packages/**/*.ts`) and `vitest.config.ts` (`TEST_INCLUDE_GLOBS`) already cover the new folder: confirm, and change neither.
-- [ ] T002 Record the baseline, after T001: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check` and `npm run site-check` pass on the branch as it is. `npm run traceability` fails only because 005's 66 requirements have no test yet. Write the result here.
+- [X] T002 Record the baseline, after T001: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check` and `npm run site-check` pass on the branch as it is. `npm run traceability` fails only because 005's 66 requirements have no test yet. Write the result here.
+  - **Result (2026-10-27)**: `typecheck`, `content-check`, `token-check` and `site-check` exit 0 (site check: 11 of 11 parts passed, `/cv` Lighthouse 99/100 mobile). `npm test`: 773 passed, 2 failed, both the traceability self-checks (`packages/web/test/self-check.test.ts` 004-cv-page-FR-047 and `tools/traceability/test/self-check.test.ts` 001 FR-028). `npm run traceability`: `FAIL: 66 problems found.`, all `uncovered` 005-os-shell requirements. No other failure.
 
 ---
 
@@ -152,8 +153,9 @@ queries, the root page and its build, the `Os` root, and the shell test helper
 **Design gate (Constitution II)**: T003 comes first. No task that creates or changes UI may start
 until it is done.
 
-- [ ] T003 Confirm the design gate in `specs/005-os-shell/design/` under Constitution 1.2.0's interim provision (plan Constitution Check II, research R19): `wireframes.md` covers every state of both shells and the no-script page; `mockup/` holds the interim local mockup with its 18 PNG exports at 1440, 375, 320 and 812 px; `review.md` is signed by the owner, naming commit `4d2e29f` and 2026-10-26, records the look as original (FR-044, SC-011), and lists the owner's changes of 2026-10-27 (the Window menu's two commands, and focus after closing About) under "Changes after sign-off". Write the result here.
-- [ ] T004 Rename the desktop height token in the design before any code reads it (research R7), in `specs/005-os-shell/design/mockup/README.md` (Proposed tokens: `breakpoint.desktop-height` → `size.desktop-min-height`, dimension, `640px`) and `specs/005-os-shell/design/mockup/proposed-tokens.css` (`--token-breakpoint-desktop-height` → `--token-size-desktop-min-height`). Change no value and nothing else. Commit it alone as `docs: rename the desktop height token (005)`.
+- [X] T003 Confirm the design gate in `specs/005-os-shell/design/` under Constitution 1.2.0's interim provision (plan Constitution Check II, research R19): `wireframes.md` covers every state of both shells and the no-script page; `mockup/` holds the interim local mockup with its 18 PNG exports at 1440, 375, 320 and 812 px; `review.md` is signed by the owner, naming commit `4d2e29f` and 2026-10-26, records the look as original (FR-044, SC-011), and lists the owner's changes of 2026-10-27 (the Window menu's two commands, and focus after closing About) under "Changes after sign-off". Write the result here.
+  - **Result (2026-10-27)**: confirmed. `wireframes.md` covers both shells' states and the no-script page; `mockup/` holds the 18 PNGs (1440, 375, 320 and 812 px); `review.md` is `Approved`, signed by the owner naming commit `4d2e29f` and 2026-10-26, ticks the original-look box (FR-044, SC-011) and lists both 2026-10-27 changes under "Changes after sign-off".
+- [X] T004 Rename the desktop height token in the design before any code reads it (research R7), in `specs/005-os-shell/design/mockup/README.md` (Proposed tokens: `breakpoint.desktop-height` → `size.desktop-min-height`, dimension, `640px`) and `specs/005-os-shell/design/mockup/proposed-tokens.css` (`--token-breakpoint-desktop-height` → `--token-size-desktop-min-height`). Change no value and nothing else. Commit it alone as `docs: rename the desktop height token (005)`.
 - [ ] T005 Owner action: approve the amendment of 004 (FR-051, research R15), written in `specs/004-cv-page/spec.md` and `specs/004-cv-page/contracts/site.md`, before the root changes (T018):
   - FR-018 becomes `- ~~**FR-018**~~: Removed <date> – replaced by 005-os-shell-FR-001: the site root shows the OS shell.`, keeping its line.
   - FR-038 becomes `- ~~**FR-038**~~: Removed <date> – replaced by 004-cv-page-FR-059.`
