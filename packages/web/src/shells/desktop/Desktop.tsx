@@ -1,9 +1,14 @@
 // The desktop shell (005 contracts/shell.md Desktop shell): the menu bar,
-// the desktop area with its windows front to back, so DOM order is Tab
-// order (research R9), and the dock. The area never scrolls; each window's
+// the desktop area with its windows, and the dock. DOM order is Tab order
+// (research R9): a window opened goes first, as it opens in front, but
+// raising a window changes only its z-index. Were the DOM reordered as
+// focus raised windows, Tab from one window into the one behind would put
+// the first after it again, and Tab would go between them for ever
+// (FR-030). The area never scrolls; each window's
 // content does (FR-022). The keyboard shortcuts live here, so they work
 // only while the desktop is shown (Constitution V).
 import { useEffect, useRef } from 'react';
+import type { ViewId } from '@cv/os-core';
 import { matchShortcut } from '@cv/os-core';
 import type { ShellProps } from '../../os/shell-props.ts';
 import { siteText } from '../../site-text.ts';
@@ -11,9 +16,21 @@ import { Dock } from './Dock.tsx';
 import { focusDock, focusMenuBar, MenuBar } from './MenuBar.tsx';
 import { Window } from './Window.tsx';
 
+// The windows' DOM order: the last order, without closed windows, with
+// newly opened ones first in their stacking order.
+export function domOrder(previous: readonly ViewId[], stacked: readonly ViewId[]): ViewId[] {
+  const kept = previous.filter((view) => stacked.includes(view));
+  return [...stacked.filter((view) => !kept.includes(view)), ...kept];
+}
+
 export function Desktop(props: ShellProps & { active: boolean }) {
   const { state, dispatch, active, mac } = props;
   const area = useRef<HTMLElement>(null);
+  const order = useRef<ViewId[]>([]);
+  order.current = domOrder(
+    order.current,
+    state.windows.map((window) => window.view),
+  );
 
   // The area's size, as the viewport changes (FR-021, FR-065).
   useEffect(() => {
@@ -72,9 +89,10 @@ export function Desktop(props: ShellProps & { active: boolean }) {
     <div className="desktop" data-req="005-os-shell-FR-005 005-os-shell-FR-010 005-os-shell-FR-024 005-os-shell-FR-025 005-os-shell-FR-037">
       <MenuBar {...props} />
       <main ref={area} className="desktop-area" aria-label={siteText.desktop.area}>
-        {state.windows.map((window, index) => (
-          <Window key={window.view} {...props} window={window} depth={state.windows.length - index} />
-        ))}
+        {order.current.map((view) => {
+          const index = state.windows.findIndex((window) => window.view === view);
+          return <Window key={view} {...props} window={state.windows[index]!} depth={state.windows.length - index} />;
+        })}
         {state.session !== null && (
           // Where the window was when the keyboard move or resize started.
           <div

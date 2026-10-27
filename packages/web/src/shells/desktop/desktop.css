@@ -326,6 +326,8 @@ span.menu-title {
   flex: 1;
   min-block-size: 0;
   overflow: auto;
+  /* A focused element scrolled into view keeps its whole outline (FR-024). */
+  scroll-padding: calc(var(--token-border-thick) + var(--token-space-0-5));
   overscroll-behavior: contain;
   container-type: inline-size;
 }

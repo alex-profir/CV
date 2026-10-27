@@ -83,12 +83,12 @@ div.desktop                          data-req FR-005 FR-010 FR-024 FR-025 FR-037
 │   └── button[role=menuitem]        "Window", aria-haspopup=menu
 │       └── div[role=menu]           Go to the menu bar · Go to the dock · Next window · one item per open window, ✓ focused, "(minimized)"   FR-014 FR-025 FR-026 FR-029 FR-064
 ├── main.desktop-area                aria-label "Desktop"                       FR-039
-│   └── section.window × n           front to back (DOM order = Tab order)      FR-017 FR-018 FR-021 FR-030 FR-039
+│   └── section.window × n           newest first; z-index draws them front to back (DOM order = Tab order)   FR-017 FR-018 FR-021 FR-030 FR-039
 │       ├── div.title-bar                                                      FR-016 FR-019
+│       │   ├── div.window-title     id, tabindex=-1, {window}; first, so Tab goes on to the controls   FR-040
 │       │   ├── button.control       "Close {window}"                           FR-016 FR-023 FR-028
 │       │   ├── button.control       "Minimize {window}"                        FR-063
-│       │   ├── button.control       "Maximize {window}" | "Restore {window}"   FR-065
-│       │   └── div.window-title     id, tabindex=-1, {window}                  FR-040
+│       │   └── button.control       "Maximize {window}" | "Restore {window}"   FR-065
 │       ├── div.window-content       container for the CV's layout; scrolls     FR-022
 │       ├── div.resize-handle × 8    aria-hidden, pointer only                  FR-061
 │       └── div.pad[role=group]      only during a move or resize               FR-020 FR-027 FR-062
@@ -96,6 +96,9 @@ div.desktop                          data-req FR-005 FR-010 FR-024 FR-025 FR-037
     └── button.dock-item × apps      {app name}[, open | , minimized]           FR-011 FR-012 FR-064
 ```
 
+- Windows keep their DOM order while they are raised: a window opened goes first, as it opens in
+  front, and raising one changes only its `z-index`. Reordering the DOM as focus raised windows
+  would let Tab go back and forth between two windows for ever (FR-030; found in T079, 005 US4).
 - A window: `<section aria-roledescription="window" aria-labelledby="{title id}" data-view="{view}">`.
   The focused one has `aria-current="true"`. A minimized one is `hidden`.
 - Menu items show their shortcut beside the command and carry `aria-keyshortcuts`

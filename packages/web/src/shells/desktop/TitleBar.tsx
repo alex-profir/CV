@@ -43,6 +43,11 @@ export function TitleBar({ window, session, dispatch, viewName }: ShellProps & {
 
   return (
     <div className="title-bar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} data-req="005-os-shell-FR-016 005-os-shell-FR-019">
+      {/* First in the DOM, so Tab from the focused title reaches the controls
+          next, then the content (research R9); the style sheet centers it. */}
+      <div className="window-title" id={windowTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
+        {name}
+      </div>
       {session === null ? (
         <div className="controls">
           <button type="button" className="control control-close" aria-label={fill(siteText.desktop.controls.close, { window: name })} onClick={() => dispatch({ type: 'close', view })} data-req="005-os-shell-FR-016 005-os-shell-FR-023 005-os-shell-FR-028">
@@ -64,9 +69,6 @@ export function TitleBar({ window, session, dispatch, viewName }: ShellProps & {
       ) : (
         <span className="mode">{session.kind === 'move' ? siteText.desktop.mode.move : siteText.desktop.mode.resize}</span>
       )}
-      <div className="window-title" id={windowTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
-        {name}
-      </div>
     </div>
   );
 }
