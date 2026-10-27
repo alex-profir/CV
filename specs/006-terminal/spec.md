@@ -879,12 +879,12 @@ plain server-rendered page.
   `cat`, after `specs`, maximized, and its menu open; on mobile, the pocket terminal just opened,
   after `help`, after `ls`, with the on-screen keyboard open, the vim view with its vim keys, at
   320 px wide and in landscape
-- [ ] PNG exports of the approved Penpot mockup of the Terminal in both shells, at a phone width
+- [x] PNG exports of the approved Penpot mockup of the Terminal in both shells, at a phone width
   and a desktop width, and of the pocket terminal at 320 px wide and in landscape (or of the
   interim local mockup, under the constitution's interim provision)
 - [ ] Penpot file link: to be added (not needed for an interim local mockup until the provision
   ends)
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-031, FR-054)
 
 ## Success Criteria *(mandatory)*
