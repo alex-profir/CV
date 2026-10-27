@@ -237,3 +237,57 @@ describe('005-os-shell-FR-020 005-os-shell-FR-027 005-os-shell-FR-062: keyboard 
     expect(state.effects[0]).toEqual({ kind: 'announce', message: 'Resize cancelled.' });
   });
 });
+
+describe('005-os-shell-FR-034: going home keeps the place in the app', () => {
+  test('mobileHome saves the scroll position, closes the view, uses up the entry and focuses its icon', () => {
+    const state = run(mobile(), [{ type: 'mobileOpen', view: 'cv' }, { type: 'effectsDone' }, { type: 'mobileHome', scrollTop: 1234 }]);
+    expect(state.mobile).toEqual({ open: null, scroll: { cv: 1234 }, historyEntry: false });
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'home-icon', view: 'cv' } }]);
+  });
+
+  test('mobileHome with no app open changes nothing', () => {
+    const state = mobile();
+    expect(run(state, [{ type: 'mobileHome', scrollTop: 10 }])).toBe(state);
+  });
+});
+
+describe('005-os-shell-FR-002: the shell changes while the site is open, keeping what is open', () => {
+  test("to the phone, the focused window's view opens full screen and its title takes focus, and windows keep their flags", () => {
+    const state = run(desktop(), [{ type: 'open', view: 'about' }, { type: 'toggleMaximize', view: 'about' }, { type: 'effectsDone' }, { type: 'shellChanged', shell: 'mobile' }]);
+    expect(state.shell).toBe('mobile');
+    expect(state.mobile.open).toBe('about');
+    expect(state.mobile.historyEntry).toBe(true);
+    expect(state.windows.find((window) => window.view === 'about')!.maximized).not.toBeNull();
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'mobile-title', view: 'about' } }]);
+  });
+
+  test('to the phone with no window shown, the home screen shows', () => {
+    const state = run(desktop(), [{ type: 'minimize', view: 'cv' }, { type: 'effectsDone' }, { type: 'shellChanged', shell: 'mobile' }]);
+    expect(state.mobile.open).toBeNull();
+    expect(state.windows[0]!.minimized).toBe(true);
+    expect(state.effects).toEqual([]);
+  });
+
+  test("to the desktop, the full-screen view's window comes forward, opened by placeWindow if needed, and its title takes focus", () => {
+    const state = run(mobile(), [{ type: 'mobileOpen', view: 'cv' }, { type: 'effectsDone' }, { type: 'shellChanged', shell: 'desktop', area: AREA }]);
+    expect(state.shell).toBe('desktop');
+    expect(state.windows).toEqual([{ view: 'cv', geometry: { x: 220, y: 24, width: 1000, height: 716 }, minimized: false, maximized: null, placement: 'set' }]);
+    expect(state.focused).toBe('cv');
+    expect(state.mobile).toMatchObject({ open: null, historyEntry: false });
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'window-title', view: 'cv' } }]);
+  });
+
+  test('to the desktop, a minimized window of the open view comes back where it was', () => {
+    const before = desktop();
+    const state = run(before, [{ type: 'shellChanged', shell: 'mobile' }, { type: 'effectsDone' }, { type: 'shellChanged', shell: 'desktop', area: AREA }]);
+    expect(state.windows[0]).toEqual(before.windows[0]);
+    expect(state.focused).toBe('cv');
+  });
+
+  test('to the desktop with nothing open, the desktop is empty', () => {
+    const state = run(mobile(), [{ type: 'shellChanged', shell: 'desktop', area: AREA }]);
+    expect(state.windows).toEqual([]);
+    expect(state.focused).toBeNull();
+    expect(state.effects).toEqual([]);
+  });
+});

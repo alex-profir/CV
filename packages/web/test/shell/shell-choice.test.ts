@@ -45,3 +45,30 @@ describe('005-os-shell-FR-001: the space available picks the shell, whatever the
     }
   });
 });
+
+describe('005-os-shell-FR-002: crossing 1024 px changes the shell without a reload, keeping what is open', () => {
+  test('with the CV open, both ways: no navigation, and the CV stays open, focused or full screen', async () => {
+    const page = await openShell({ width: 1440, height: 900 });
+    const loads: string[] = [];
+    page.on('framenavigated', (frame) => loads.push(frame.url()));
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await page.locator('#os .full-screen[data-view="cv"]').waitFor();
+    expect(await shown(page)).toEqual({ shell: 'mobile', desktop: false, mobile: true });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator('#os .window[data-view="cv"]').waitFor();
+    expect(await shown(page)).toEqual({ shell: 'desktop', desktop: true, mobile: false });
+    expect(await page.locator('#os .window[data-view="cv"]').getAttribute('aria-current')).toBe('true');
+    expect(loads).toEqual([]);
+  });
+
+  test('with nothing open, the empty desktop becomes the home screen, and back', async () => {
+    const page = await openShell({ width: 1440, height: 900 });
+    await page.getByRole('button', { name: 'Close CV' }).click();
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await page.locator('#os .home').waitFor();
+    expect(await page.locator('#os .full-screen').count()).toBe(0);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator('#os .desktop').waitFor();
+    expect(await page.locator('#os .window').count()).toBe(0);
+  });
+});

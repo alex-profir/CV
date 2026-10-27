@@ -34,3 +34,24 @@ describe('005-os-shell-FR-054: loading the root and opening the CV app ask only 
     expect(await record(375, 812, async (page) => void (await page.locator('#os .app-icon[data-view="cv"]').tap()))).toEqual(['127.0.0.1']);
   });
 });
+
+describe('005-os-shell-FR-054: opening About this site asks only this site (SC-008)', () => {
+  test('at 1440 px, from the site menu', async () => {
+    expect(
+      await record(1440, 900, async (page) => {
+        await page.click('#menu-title-site');
+        await page.getByRole('menuitem', { name: 'About this site' }).click();
+        await page.locator('#os .window[data-view="about"]').waitFor();
+      }),
+    ).toEqual(['127.0.0.1']);
+  });
+
+  test('at 375 px, from the home screen', async () => {
+    expect(
+      await record(375, 812, async (page) => {
+        await page.locator('#os .home .about').tap();
+        await page.locator('#os .full-screen[data-view="about"]').waitFor();
+      }),
+    ).toEqual(['127.0.0.1']);
+  });
+});

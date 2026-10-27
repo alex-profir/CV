@@ -374,7 +374,7 @@ go home, open the CV again at the same scroll position; then quickstart scenario
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T065 [P] [US3] Add to `packages/os-core/test/reducer.test.ts`:
+- [X] T065 [P] [US3] Add to `packages/os-core/test/reducer.test.ts`:
   - covers 005-os-shell-FR-034: `mobileHome { scrollTop }` saves `scroll[open]`, clears `mobile.open` and `historyEntry`, and adds a `home-icon` focus effect for the view left;
   - covers 005-os-shell-FR-002: `shellChanged` to mobile opens the focused window's view full screen, or shows the home screen with none shown, keeping minimized and maximized flags; to desktop focuses the full-screen view's window, opening it by `placeWindow` if needed, or leaves the desktop empty; each focuses the open view's title.
 - [ ] T066 [P] [US3] Write `packages/web/test/shell/mobile.test.ts`:

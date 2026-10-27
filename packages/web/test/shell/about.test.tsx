@@ -57,3 +57,23 @@ describe('005-os-shell-FR-038: About this site says what the site is and links t
     expect((await content(page, ABOUT)).paragraph).toBe(paragraph(changed.basics!.name!));
   });
 });
+
+describe('005-os-shell-FR-038: on a phone, About this site opens full screen', () => {
+  test('from the home screen, with the same header and Home as an app, its text and both links, and no shortcut list', async () => {
+    const page = await openShell({ width: 375, height: 812, hasTouch: true });
+    await page.locator('#os .home .about').tap();
+    const view = '#os .full-screen[data-view="about"]';
+    await page.locator(view).waitFor();
+    expect((await page.locator(`${view} .app-title`).textContent())?.trim()).toBe('About this site');
+    expect(await page.locator(`${view} .home-button`).isVisible()).toBe(true);
+    expect(await content(page, view)).toEqual({
+      heading: 'About this site',
+      paragraph: paragraph(resume.basics!.name!),
+      links: [
+        ['Open the CV as a page', '/cv'],
+        ['Source code, specs and history on GitHub', siteData.repository],
+      ],
+    });
+    expect(await page.locator(`${view} .shortcuts, ${view} .about-shortcuts`).count()).toBe(0);
+  });
+});
