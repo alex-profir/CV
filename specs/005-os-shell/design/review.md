@@ -73,11 +73,26 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   for this site. The controls follow a Mac's placement and order, but in one neutral color, not
   three colored circles.
 
+## Changes after sign-off
+
+- **2026-10-27, the Window menu's commands**, at the owner's request after `/speckit-analyze`
+  (finding B1). FR-029 asks for every shortcut to be shown next to its command in the menus, but
+  Go to the menu bar (`Alt+Shift+M`) and Go to the dock (`Alt+Shift+D`) had no menu command. The
+  Window menu now starts with both, above Next window, each with its shortcut, in the menu's
+  existing style. Changed: [wireframes.md](wireframes.md) (the Window menu frame and its site
+  text), `mockup/desktop-window-menu.html` and its export `mockup/desktop-window-menu-1440.png`.
+  No other state, value or token changes.
+- **2026-10-27, focus after closing About this site** (finding C2): the wireframes' focus table
+  now says that closing About this site, like minimizing it, with no window left shown, moves
+  focus to the site menu's title, as FR-023 now says.
+
 ## Sign-off
 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
 - Date: 2026-10-26
 - Approved by: Alex Profir (project owner)
+- Amended: 2026-10-27, by the changes above, at the owner's request. The owner confirms them in
+  the 005 pull request.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
   the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's

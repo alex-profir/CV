@@ -299,7 +299,9 @@ Titled with the focused window's name. It holds the window's commands with their
 
 ### The Window menu, with one window minimized (FR-014, FR-026)
 
-The CV window is minimized, and About this site is focused. The Window menu lists every open
+The CV window is minimized, and About this site is focused. The Window menu starts with the
+commands Go to the menu bar, Go to the dock and Next window, each with its shortcut, so every
+shortcut is shown next to a command in a menu (FR-029). Below them it lists every open
 window: `✓` marks the focused one and `(minimized)` the minimized ones. Choosing the CV restores
 it, in front and focused (FR-064).
 
@@ -307,13 +309,13 @@ it, in front and focused (FR-064).
 +--------------------------------------------------------------------------------------------------+
 | [*]  About this site  [Window]                                                                   |
 +--------------------------+----------------------------------+------------------------------------+
-|                          | Next window       Alt+Shift+N    |                                    |
-|                          +----------------------------------+                                    |
-|                          |   CV              (minimized)    |                                    |
+|                          | Go to the menu bar  Alt+Shift+M  |                                    |
+|                          | Go to the dock      Alt+Shift+D  |                                    |
+|                          | Next window         Alt+Shift+N  |                                    |
+|                  #=======+----------------------------------+=====#                              |
+|                  #       |   CV              (minimized)    |     #                              |
 |                  #=======| ✓ About this site                |=====#                              |
-|                  #       +----------------------------------+     #                              |
-|                  #================================================#                              |
-|                  # About this site                              ^ #                              |
+|                  # About +----------------------------------+   ^ #                              |
 |                  #                                              | #                              |
 |                  # This is [name]'s CV, presented as a small    | #                              |
 |                  # operating system that runs in the browser.   | #                              |
@@ -868,7 +870,7 @@ Escape never closes a window (spec: edge cases).
 | Opening a window, from the dock or a menu | The window's title (FR-040) |
 | Closing or minimizing a window, with another window still shown | The window now in front |
 | Closing or minimizing the CV, with no window left shown | The CV item in the dock |
-| Minimizing About this site, with no window left shown | The site menu's title |
+| Closing or minimizing About this site, with no window left shown | The site menu's title |
 | Closing a menu with Escape | The menu's title |
 | Opening an app on the home screen | The app's header title |
 | Going home, with Home or Back | The icon of the app that was open |
@@ -914,7 +916,7 @@ Every piece of shell text that isn't CV content. Nothing here holds a CV fact (F
 |-------|------|
 | Site menu title (accessible name) | `Site menu` |
 | Site menu items | `About this site`, `Open the CV as a page`, `Source code on GitHub` |
-| Window menu | `Window`, `Next window`, `(minimized)` |
+| Window menu | `Window`, `Go to the menu bar`, `Go to the dock`, `Next window`, `(minimized)` |
 | Window's menu items | `Open the CV as a page`, `Move…`, `Resize…`, `Minimize`, `Maximize`, `Restore`, `Close` |
 | App and window names | `CV`, `About this site` |
 | CV app link to `/cv` | `Open as a page to print or share` |
