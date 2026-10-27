@@ -8,3 +8,6 @@ export type * from './types.ts';
 export { appsFor, shellQuery } from './shell.ts';
 export { initialState } from './state.ts';
 export { osReducer } from './reducer.ts';
+export { clampMove, clampResize, fitToArea, placeWindow } from './geometry.ts';
+export { SHORTCUTS, matchShortcut, shortcutLabel } from './shortcuts.ts';
+export type { KeyEventLike } from './shortcuts.ts';
