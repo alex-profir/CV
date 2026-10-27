@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,12 +31,14 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers are open, put to the owner as questions:
-  - **FR-012**: does the Terminal also offer a pretend file system (`ls`, `cd`, `cat` over the CV
-    as folders and files), or only the commands FR-008 lists?
-  - **FR-013**: does `specs` show only each spec's number, name and link, or also its status and
-    its count of requirements?
-  - **FR-024**: what is the phone Terminal's odd touch?
+- The three [NEEDS CLARIFICATION] markers were answered by the owner on 2026-10-27 and recorded
+  under Clarifications:
+  - **FR-012**: the Terminal gets a read-only pretend file system, as part of this feature
+    (FR-043 to FR-050), not as a feature of its own.
+  - **FR-013**: `specs` shows each spec's number, name, status and count of active requirements,
+    with a link.
+  - **FR-024**: the phone's odd touch is a pocket terminal look, with command keys (FR-051 to
+    FR-054).
 - Command names (`help`, `work` and so on) and key names (Tab, Enter, the arrows) describe what the
   visitor types and presses, not how it is built. Named standards and tools (WCAG 2.2, Lighthouse,
   Penpot) appear because the constitution names them, as in 004 and 005.
