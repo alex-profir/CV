@@ -194,6 +194,8 @@ Merge requirements:
 - Accessibility (WCAG 2.2 AA, keyboard operation, reduced motion), Lighthouse 90+, offline
   behavior and the one-click/one-tap CV path MUST be verified before merge. They are
   automated in CI wherever tooling allows.
+- Until the interim provision on deferred manual checks ends, checks that only a person can do
+  may be done after merge (see that section).
 - Hardcoded CV data or literal design-token values block merge (Principle IV).
 
 ## Interim Provision: Local Mockups
@@ -232,6 +234,37 @@ Ending the provision, once the Penpot file can be reached again:
    artifacts and the code follow in that feature's follow-up pull request.
 4. A further amendment removes this section once steps 1 to 3 are done for every feature.
 
+## Interim Provision: Deferred Manual Checks
+
+The owner can't do hands-on testing while the first features are built, and would rather test
+several features together. So features don't wait on that, this provision temporarily changes
+when the merge requirements' manual checks are done. It ends only through the steps under
+**Ending the provision**.
+
+While it applies:
+
+- **What may wait**: a check that only a person can do. Examples are a pass with a screen
+  reader, shortcuts tried by hand in each browser and screen reader, forced colors and text-only
+  zoom in a given browser, printing, and comparing the built pages with the approved design
+  exports. These may be done after merge, in a final testing phase that covers several features.
+- **What may not wait**: every automated check still runs and passes before merge, as do the
+  requirement-to-test traceability check (Principle III) and the checks in CI. A deferred manual
+  check doesn't excuse a missing automated check where tooling allows one.
+- **Recording**: a deferred check stays an open task in the feature's `tasks.md`, with a note
+  that it is deferred to the final testing phase. The feature's pull request lists every
+  deferred check.
+- **Defects** a deferred check finds are fixed in follow-up pull requests, with `fix:` commits.
+  A behavior change still goes through the spec first (Principle I).
+- 004-cv-page's manual checks (its T105), deferred before this provision, are covered by it.
+
+Ending the provision:
+
+1. The owner runs the final testing phase: every deferred check of every feature merged under
+   this provision.
+2. Each result is recorded in that feature's `tasks.md`, and the task is ticked. Defects are
+   fixed as above.
+3. A further amendment removes this section once steps 1 and 2 are done for every feature.
+
 ## Governance
 
 - This constitution overrides every other practice, template or guide in the repository. When
@@ -250,4 +283,4 @@ Ending the provision, once the Penpot file can be reached again:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.2.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-23
+**Version**: 1.3.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-27

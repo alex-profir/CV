@@ -153,6 +153,7 @@ Examples of other foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Audit WCAG 2.2 AA, desktop keyboard operation and prefers-reduced-motion (Constitution VIII)
 - [ ] TXXX [P] Run Lighthouse on mobile and desktop profiles; every category scores 90+ (Constitution VIII)
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Owner action, by hand: the checks only a person can do, such as screen readers, forced colors and comparing the built pages with the design exports. Record each result here and in the PR. Under the interim provision on deferred manual checks, they may wait for the final testing phase: record that here, list them in the PR and leave the task open
 - [ ] TXXX Open one PR linking spec.md and tasks.md, with Conventional Commits (Constitution XI)
 
 ---
