@@ -51,24 +51,31 @@ describe('004-cv-page-FR-017: the CV page answers at /cv, with or without a trai
   });
 });
 
-describe('004-cv-page-FR-018: the root address leads to /cv with a temporary redirect', () => {
-  test('/ answers 307 to /cv, keeping the query string, with no cache header that allows storing', async () => {
+describe('005-os-shell-FR-001 005-os-shell-FR-050: the site root is a page', () => {
+  test('/ and / with a query answer 200 with the shell, revalidated on every visit', async () => {
     const { url } = await serveBuilt();
-    for (const [target, location] of [
-      ['/', '/cv'],
-      ['/?x=1', '/cv?x=1'],
-    ] as const) {
+    const page = builtFile('index.html');
+    for (const target of ['/', '/?utm_source=x']) {
       const response = await request(url, target);
-      expect(response.status, target).toBe(307);
-      expect(response.headers.location, target).toBe(location);
-      expect(allowsStoring(response.headers['cache-control']), target).toBe(false);
+      expect(response.status, target).toBe(200);
+      expect(response.headers['content-type'], target).toBe('text/html; charset=utf-8');
+      expect(response.headers['cache-control'], target).toBe('no-cache');
+      expect(response.body.equals(page), target).toBe(true);
+      expect(response.body.toString('utf8'), target).toMatch(/<div id="os"/);
     }
   });
 
-  test('a browser opening / ends at /cv', async () => {
+  test('/index.html is not found', async () => {
     const { url } = await serveBuilt();
-    const page = await openPage(`${url}/`, { width: 1440 });
-    expect(page.url()).toBe(`${url}/cv`);
+    const response = await request(url, '/index.html');
+    expect(response.status).toBe(404);
+    expect(response.body.equals(builtFile('404.html'))).toBe(true);
+  });
+
+  test('the manifest lists / as a page with index.html, and no redirect', () => {
+    const { routes } = builtSite().manifest;
+    expect(routes.pages).toContainEqual({ path: '/', aliases: [], file: 'index.html' });
+    expect(routes.redirects).toEqual([]);
   });
 });
 

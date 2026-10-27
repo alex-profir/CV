@@ -17,8 +17,9 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-// Printable ASCII and the few typographic characters the design uses.
-const ENGLISH = /^[\x20-\x7E–—·’↗]*$/u;
+// Printable ASCII and the few typographic characters the design uses,
+// including the shell's ellipsis (005 `Move…`).
+const ENGLISH = /^[\x20-\x7E–—·’↗…]*$/u;
 
 describe('004-cv-page-FR-006: site text is English, set by the design, and holds no CV fact', () => {
   test('every site text string uses only English characters', () => {

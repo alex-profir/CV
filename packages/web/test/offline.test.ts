@@ -208,23 +208,21 @@ const settled = (page: Page) =>
     return registration !== undefined && registration.installing === null && registration.waiting === null && registration.active !== null;
   });
 
-// Every page, opened offline, shows what it shows online. The root
-// redirects to /cv keeping its query string, as the server does.
+// Every page but the root, opened offline, shows what it shows online. The
+// root is the shell, and 005's shell/offline.test.ts covers it.
 async function expectOfflineCopy(context: BrowserContext, url: string, fields: readonly ExpectedField[], notFoundText: string): Promise<void> {
-  for (const target of ['/cv', '/cv/', '/cv?utm_source=x', '/', '/?utm_source=x']) {
+  for (const target of ['/cv', '/cv/', '/cv?utm_source=x']) {
     const page = await visit(context, `${url}${target}`);
-    const shown = new URL(page.url());
-    if (target.startsWith('/?') || target === '/') expect(`${shown.pathname}${shown.search}`, target).toBe(`/cv${target.slice(1)}`);
     expect(await cvPageProblems(page, fields), target).toEqual([]);
   }
   const page = await visit(context, `${url}/nope`);
   expect(await notFoundProblems(page, notFoundText), '/nope').toEqual([]);
 }
 
-describe('004-cv-page-FR-038: after one visit, every page opens with no network', () => {
+describe('004-cv-page-FR-059: after one visit, /cv and unknown paths open with no network', () => {
   const fields = expectedFields(resume);
 
-  test('after one visit to /cv, with the server stopped, /cv, /cv/, /cv with a query, / with and without a query and an unknown path show their full pages', async () => {
+  test('after one visit to /cv, with the server stopped, /cv, /cv/, /cv with a query and an unknown path show their full pages', async () => {
     const site = builtSite();
     const notFoundText = await builtNotFoundText(site);
     const server = await switchableServer();
@@ -242,7 +240,6 @@ describe('004-cv-page-FR-038: after one visit, every page opens with no network'
     const server = await switchableServer();
     await server.serve(site);
     const page = await firstPage(`${server.url}/`);
-    expect(new URL(page.url()).pathname).toBe('/cv');
     expect(await waitForWorker(page)).toBe(true);
     await server.close();
     await goOffline(page.context());

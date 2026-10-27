@@ -76,8 +76,8 @@ function attributes(tag: string): Record<string, string> {
 // The asset links of the built `cv.html`, so a fixture page uses the same
 // style sheet, scripts and preloaded fonts as the real one.
 export function builtAssets(site: BuiltSite = builtSite()): PageAssets {
-  const page = site.manifest.routes.pages[0];
-  if (page === undefined) throw new Error('the route table has no page');
+  const page = site.manifest.routes.pages.find((candidate) => candidate.path === '/cv');
+  if (page === undefined) throw new Error('the route table has no /cv page');
   const html = fs.readFileSync(path.join(site.dir, page.file), 'utf8');
   const assets: PageAssets = { css: [], scripts: [], preloadFonts: [] };
   for (const [tag] of html.matchAll(/<(?:link|script)\b[^>]*>/g)) {
@@ -117,7 +117,9 @@ export function fixtureSite(resume: Resume, siteData: SiteData = realSiteData, s
   const dir = path.join(copy, 'site');
   fs.cpSync(site.dir, dir, { recursive: true });
   const html = renderFixtureHtml(resume, siteData);
-  for (const page of site.manifest.routes.pages) fs.writeFileSync(path.join(dir, page.file), spacer === undefined ? html : withSpacer(html, spacer));
+  const cvPage = site.manifest.routes.pages.find((page) => page.path === '/cv');
+  if (cvPage === undefined) throw new Error('the route table has no /cv page');
+  fs.writeFileSync(path.join(dir, cvPage.file), spacer === undefined ? html : withSpacer(html, spacer));
   writeServiceWorker(dir);
   const manifest = siteManifest(dir);
   return { dir, manifest, remove: () => fs.rmSync(copy, { recursive: true, force: true }) };

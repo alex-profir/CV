@@ -7,7 +7,7 @@ import type { Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
 
-type Box = { x: number; y: number; width: number; height: number };
+export type Box = { x: number; y: number; width: number; height: number };
 
 type LinkInfo = { index: number; href: string; text: string; box: Box };
 
@@ -77,7 +77,7 @@ export function contrast(a: [number, number, number], b: [number, number, number
 
 // How many pixels changed between two shots of the same box with a contrast
 // of 3:1 or more.
-function indicatorPixels(before: Image, after: Image): number {
+export function indicatorPixels(before: Image, after: Image): number {
   let count = 0;
   const pixels = Math.min(before.width * before.height, after.width * after.height);
   for (let pixel = 0; pixel < pixels; pixel += 1) {
@@ -146,7 +146,7 @@ function focused(page: Page): Promise<Focused> {
 
 // The box enlarged by the focus outline's width and offset, clamped to the
 // viewport.
-function clipOf(page: Page, box: Box, pad: number): Box | null {
+export function clipOf(page: Page, box: Box, pad: number): Box | null {
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
   const x = Math.max(0, Math.floor(box.x - pad));
   const y = Math.max(0, Math.floor(box.y - pad));

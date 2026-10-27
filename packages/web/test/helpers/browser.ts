@@ -16,6 +16,12 @@ export type OpenPageOptions = {
   colorScheme?: BrowserContextOptions['colorScheme'];
   serviceWorkers?: BrowserContextOptions['serviceWorkers'];
   media?: 'screen' | 'print';
+  hasTouch?: boolean;
+  userAgent?: string;
+  // Runs on the new page before it navigates: routes, CDP sessions.
+  beforeGoto?: (page: Page) => Promise<void>;
+  // When `goto` returns: 'load' by default.
+  waitUntil?: 'commit' | 'domcontentloaded' | 'load';
 };
 
 let browser: Promise<Browser> | undefined;
@@ -28,7 +34,7 @@ afterAll(async () => {
 // A new page at `url`, loaded. Call it inside a test.
 export async function openPage(url: string, options: OpenPageOptions): Promise<Page> {
   browser ??= launchChromium();
-  const { width, height = 900, deviceScaleFactor, javaScriptEnabled, forcedColors, reducedMotion, colorScheme, serviceWorkers, media } = options;
+  const { width, height = 900, deviceScaleFactor, javaScriptEnabled, forcedColors, reducedMotion, colorScheme, serviceWorkers, media, hasTouch, userAgent, beforeGoto, waitUntil } = options;
   const context = await (await browser).newContext({
     viewport: { width, height },
     ...(deviceScaleFactor === undefined ? {} : { deviceScaleFactor }),
@@ -37,11 +43,14 @@ export async function openPage(url: string, options: OpenPageOptions): Promise<P
     ...(reducedMotion === undefined ? {} : { reducedMotion }),
     ...(colorScheme === undefined ? {} : { colorScheme }),
     ...(serviceWorkers === undefined ? {} : { serviceWorkers }),
+    ...(hasTouch === undefined ? {} : { hasTouch }),
+    ...(userAgent === undefined ? {} : { userAgent }),
   });
   onTestFinished(() => context.close());
   const page = await context.newPage();
   if (media !== undefined) await page.emulateMedia({ media });
-  await page.goto(url);
+  await beforeGoto?.(page);
+  await page.goto(url, waitUntil === undefined ? {} : { waitUntil });
   return page;
 }
 
