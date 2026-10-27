@@ -46,7 +46,8 @@ type FullAxNode = RawAxNode & { nodeId: string; childIds?: string[]; backendDOMN
 
 // The text assistive technology reads inside each element matching
 // `selector`: every text leaf of its accessibility subtree, joined, with
-// ignored nodes (such as `aria-hidden` ones) left out.
+// ignored text (such as `aria-hidden` text) left out. A generic element
+// that is itself ignored, such as a plain `div`, still has its text read.
 export async function axText(page: Page, selector: string): Promise<string[]> {
   const cdp = await page.context().newCDPSession(page);
   try {
@@ -68,7 +69,7 @@ export async function axText(page: Page, selector: string): Promise<string[]> {
         }
         for (const child of current.childIds ?? []) visit(byId.get(child));
       };
-      if (start !== undefined && !start.ignored) visit(start);
+      if (start !== undefined) visit(start);
       texts.push(parts.join('').replace(/\s+/g, ' ').trim());
     }
     return texts;

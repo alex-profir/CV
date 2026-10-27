@@ -99,7 +99,8 @@ export async function openShellHeld(options: ShellOptions): Promise<{ page: Page
     }),
   );
   await page.waitForSelector('#os', { state: 'attached' });
-  await page.waitForFunction(() => document.readyState !== 'loading' || document.querySelector('#os .dock, #os .home') !== null);
+  // Parsed, with the shell's style sheet applied, as the first paint has it.
+  await page.waitForFunction(() => document.readyState !== 'loading' && [...document.styleSheets].some((sheet) => /\/assets\/os-/.test(sheet.href ?? '')));
   return {
     page,
     release: async () => {
@@ -109,12 +110,12 @@ export async function openShellHeld(options: ShellOptions): Promise<{ page: Page
   };
 }
 
-// A copy of the repository whose CV is `resume`, built and served for the
-// current test, for shell tests that need fixture content: the shell's
-// script reads the CV at build time, so a fixture needs its own build.
-export async function serveShellFixture(resume: Resume, edit?: (root: string) => void): Promise<RunningServer> {
+// A copy of the repository with a fixture CV, or another change made by
+// `edit`, built and served for the current test. The shell's script reads
+// the CV and the app list at build time, so a fixture needs its own build.
+export async function serveShellFixture({ resume, edit }: { resume?: Resume; edit?: (root: string) => void }): Promise<RunningServer> {
   const root = repoCopy();
-  fs.writeFileSync(path.join(root, 'packages/content/resume.json'), `${JSON.stringify(resume, null, 2)}\n`);
+  if (resume !== undefined) fs.writeFileSync(path.join(root, 'packages/content/resume.json'), `${JSON.stringify(resume, null, 2)}\n`);
   edit?.(root);
   const build = buildCopy(root);
   if (build.site === null) throw new Error(`the fixture build failed:\n${build.stderr}`);
