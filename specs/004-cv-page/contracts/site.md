@@ -47,7 +47,7 @@ The local server and, later, the publishing host answer as follows:
 | Request | Status | Body | Headers |
 |---------|--------|------|---------|
 | `GET /cv`, `GET /cv/`, with any query | 200 | `cv.html` | `Content-Type: text/html; charset=utf-8`, `Cache-Control: no-cache` |
-| `GET /`, with any query | 307 | empty | `Location: /cv` plus the original query. No `Cache-Control` that allows storing |
+| `GET /`, with any query | 307 | empty | `Location: /cv` plus the original query. No `Cache-Control` that allows storing. *Amended by 005-os-shell (FR-051): `/` is now a page answering 200 with the OS shell; see [005's site contract](../../005-os-shell/contracts/site.md).* |
 | `GET /sw.js` | 200 | `sw.js` | `Content-Type: text/javascript`, `Cache-Control: no-cache` |
 | `GET /assets/<file>` listed in the manifest | 200 | the file | Its type, `Cache-Control: public, max-age=31536000, immutable` |
 | Anything else, `/cv.html` included | 404 | `404.html` | `Content-Type: text/html; charset=utf-8`, `Cache-Control: no-cache` |
@@ -75,7 +75,7 @@ The build writes `sw.js` as the worker's code with its types stripped, after thr
 and hash and the worker's code, first 16 hex characters. It can't be the site manifest's
 `version`, which covers `sw.js` itself, so the two differ.
 
-**Guarantees** (spec FR-038 to FR-041):
+**Guarantees** (spec FR-038 to FR-041; FR-038 is now FR-059, amended by 005-os-shell):
 
 - After one complete visit to `/cv` or `/`, every page and every file it uses is stored.
 - A stored copy is one version. A failed install leaves the previous version in place.
