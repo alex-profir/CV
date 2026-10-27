@@ -52,6 +52,59 @@ why_failed() {
           | select(. != "")] | unique[]' "$state" 2>/dev/null | tail -n 20 >&2 || true
 }
 
+# A session that hits the usage limit or a passing API error fails its step,
+# and the engine records only the exit code, so the output is kept to tell why.
+# Prints the seconds to wait before resuming, or fails if the cause is anything else.
+retry_wait() {
+  local tail reset tz at now
+  tail=$(tail -n 40 "$1")
+  if grep -Eqi "(session|usage|weekly|[0-9]+-hour) limit|limit reached" <<<"$tail"; then
+    reset=$(grep -Eio "resets [0-9]{1,2}(:[0-9]{2})?[ap]m( \([^)]+\))?" <<<"$tail" | tail -n 1 || true)
+    # No time of day (a weekly limit can name a date): check again in half an hour.
+    [ -n "$reset" ] || { echo 1800; return 0; }
+    tz=$(sed -nE 's/.*\(([^)]+)\)$/\1/p' <<<"$reset")
+    at=$(sed -E 's/^resets ([0-9:]+[apAP][mM]).*/\1/' <<<"$reset" | tr '[:lower:]' '[:upper:]')
+    case $at in *:*) at=${at/AM/:00AM}; at=${at/PM/:00PM} ;; *) at=${at/AM/:00:00AM}; at=${at/PM/:00:00PM} ;; esac
+    now=$(date +%s)
+    at=$(TZ=${tz:-$(date +%Z)} date -j -f %I:%M:%S%p "$at" +%s 2>/dev/null) || { echo 1800; return 0; }
+    [ "$at" -gt "$now" ] || at=$((at + 86400))
+    echo $((at - now + 120))
+  elif grep -Eqi "API Error: (429|5[0-9][0-9])|overloaded|rate_limit_error|ECONNRESET|socket hang up" <<<"$tail"; then
+    echo 0   # backoff() picks the wait
+  else
+    return 1
+  fi
+}
+
+# Runs a workflow command, resuming the run after a usage limit or a passing
+# API error until it pauses, succeeds or fails for another reason.
+# SPECKIT_AUTO_RESUME_MAX caps the resumes (default 30; 0 turns it off).
+with_resume() {
+  local out status wait run="" tries=0 backoff=60
+  # A resume names its run; `workflow run` prints the new run's ID when it stops.
+  [ "${3:-}" != resume ] || run=$4
+  out=$(mktemp -t speckit-auto)
+  while :; do
+    set +e; "$@" 2>&1 | tee "$out"; status=${PIPESTATUS[0]}; set -e
+    [ "$status" -ne 0 ] || break
+    [ -n "$run" ] || run=$(sed -nE 's/^Run ID: ([[:alnum:]_-]+).*/\1/p' "$out" | tail -n 1)
+    [ -n "$run" ] || run=$(basename "$(ls -td .specify/workflows/runs/*/ 2>/dev/null | head -n 1)")
+    [ "$tries" -lt "${SPECKIT_AUTO_RESUME_MAX:-30}" ] && wait=$(retry_wait "$out") || break
+    if [ "$wait" -eq 0 ]; then
+      wait=$backoff; backoff=$((backoff * 2 > 900 ? 900 : backoff * 2))
+    else
+      backoff=60
+    fi
+    tries=$((tries + 1))
+    echo "speckit-auto: resuming run $run at $(date -r $(($(date +%s) + wait)) '+%H:%M %Z') (resume $tries)" >&2
+    sleep "$wait"
+    set -- specify workflow resume "$run"
+  done
+  rm -f "$out"
+  [ "$status" -eq 0 ] || [ -z "$run" ] || why_failed "$run"
+  return "$status"
+}
+
 # What the owner needs to look at after a build.
 summary() {
   [ -f "$feature/tasks.md" ] || return 0
@@ -87,13 +140,9 @@ case "$cmd" in
     # Spec Kit's scripts find the feature through this, not the branch name.
     export SPECIFY_FEATURE_DIRECTORY="$root/$feature"
     status=0
-    specify workflow run "$here/workflows/speckit-build.yml" \
+    with_resume specify workflow run "$here/workflows/speckit-build.yml" \
       -i feature="$feature" -i from="$from" -i plan_verdict="$verdict" -i guidance="$guidance" \
       || status=$?
-    if [ "$status" -ne 0 ]; then
-      run=$(ls -td .specify/workflows/runs/*/ 2>/dev/null | head -n 1 || true)
-      [ -z "$run" ] || why_failed "$(basename "$run")"
-    fi
     summary
     exit "$status"
     ;;
@@ -108,8 +157,7 @@ case "$cmd" in
       export SPECIFY_FEATURE_DIRECTORY="$root/$feature"
     fi
     status=0
-    specify workflow resume "$@" || status=$?
-    [ "$status" -eq 0 ] || why_failed "$1"
+    with_resume specify workflow resume "$@" || status=$?
     [ -z "$feature" ] || summary
     exit "$status"
     ;;
