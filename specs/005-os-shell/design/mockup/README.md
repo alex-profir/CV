@@ -67,7 +67,7 @@ for glass, hairlines and shadows. Translucent colors are 8-digit hex, `#rrggbbaa
 | Token | Type | Value |
 |-------|------|-------|
 | `breakpoint.desktop-width` | dimension | 1024px |
-| `breakpoint.desktop-height` | dimension | 640px |
+| `size.desktop-min-height` | dimension | 640px |
 | `color.base.night` | color | `#0c0d12` |
 | `color.base.dusk` | color | `#171821` |
 | `color.base.carbon` | color | `#1b1c24` |

@@ -6,7 +6,7 @@
 :root {
   /* Breakpoint (FR-001): the desktop shell needs at least this much space. */
   --token-breakpoint-desktop-width: 1024px;
-  --token-breakpoint-desktop-height: 640px;
+  --token-size-desktop-min-height: 640px;
 
   /* Base colors: the Graphite scale, darkest first, and its accents. */
   --token-color-base-night: #0c0d12;
