@@ -1,6 +1,6 @@
 # Design Review: The Terminal
 
-**Status**: Look approved on 2026-10-27. The full set of states is awaiting the owner's sign-off.
+**Status**: Approved
 
 **Design**: the Penpot page **006 Terminal — Glass** (file id
 `eaccfa4c-8a01-81ad-8008-d441a46da254`). The Terminal is a frosted-glass window on 005's Graphite
@@ -101,8 +101,10 @@ On a phone it is a pocket terminal in the same glass.
 ## Sign-off
 
 - Reviewed mockup version: Penpot page **006 Terminal — Glass**, as exported to `exports/` on
-  2026-10-27
-- Date: pending
-- Approved by: pending (Alex Profir, project owner)
-- Notes: The look was approved on 2026-10-27 on review of the first four exports. The full set
-  awaits the owner's review.
+  2026-10-27 (commit `c34fd51`)
+- Date: 2026-10-27
+- Approved by: Alex Profir (project owner)
+- Notes: The look was approved first, on review of the first four exports. The full set of states,
+  with the whole CV as JSON in the vim view, was approved on review of every export in
+  `exports/`, and the owner confirms the look is original as recorded above. The Penpot file's
+  shareable link is still to be added.
