@@ -53,6 +53,20 @@
   and entries? → A: Yes. Each command run is a heading, and inside its output the sections and
   entries are headings one and two levels below it, as on `/cv` (FR-029).
 
+### Session 2026-10-27 (design review)
+
+- Q: The long output of `cv` reads poorly. How should the whole CV show in the Terminal? → A: As
+  the CV document's own JSON, `cv.json` in the home folder, opened in a vim-like view through a
+  pipe that pretty-prints it: `cv` runs `cat cv.json | jq | vim -` (FR-055 to FR-066).
+- Q: What should the pipe turn the JSON into? → A: Pretty JSON: indented, syntax-colored, with
+  line numbers and a fold per top-level section. Dates stay as the JSON writes them (FR-056,
+  FR-061).
+- Q: How much of vim should the view allow, given the file system is read only? → A: A read-only
+  viewer: vim's normal-mode moves, search, folds, `:help` and `:q`. Keys that would edit say the
+  file is read only (FR-060).
+- Q: What happens to `cv` and the per-section commands? → A: `cv` opens the vim view. `work`,
+  `about` and the other section commands keep their short text output (FR-008, FR-009, FR-059).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)
@@ -82,8 +96,9 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
 3. **Given** the Terminal is open, **When** the visitor runs `work`, **Then** every work entry of
    the CV document appears, in the CV document's order, with every field `/cv` shows for it, the
    dates written as `/cv` writes them, and each link working as a link.
-4. **Given** the Terminal is open, **When** the visitor runs `cv`, **Then** every section `/cv`
-   shows appears, in the same order, followed by a link to `/cv`.
+4. **Given** the Terminal is open, **When** the visitor runs `cv`, **Then** the vim view opens
+   on `cv.json`, the CV document's JSON pretty-printed, with each top-level section folded to
+   one line, and the status line says the file is read only.
 5. **Given** the Terminal is open, **When** the visitor runs `wrok`, **Then** the Terminal says
    that `wrok` is not a command, offers `work` as a command they can run with one click, and
    mentions `help`.
@@ -101,6 +116,18 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
     **Then** the CV app opens in a focused window in front, as the dock would open it.
 12. **Given** the CV document's projects section is empty, **When** the visitor runs
     `projects`, **Then** the Terminal says the CV lists no projects, and shows no empty list.
+13. **Given** the vim view on `cv.json`, **When** the visitor clicks the fold line of `"work"`,
+    or moves to it and presses `za`, **Then** the work section opens in place.
+14. **Given** the vim view, **When** the visitor types `/REST` and presses Enter, **Then** every
+    match in view is highlighted, the cursor moves to the first, and the message line says which
+    match of how many it is. `n` moves to the next.
+15. **Given** the vim view, **When** the visitor presses `i` or types `:w`, **Then** nothing
+    changes and the message line says the file is read only.
+16. **Given** the vim view, **When** the visitor types `:q` and presses Enter, or clicks the `:q`
+    control, **Then** the view closes, the Terminal's output is back with `cv` after its prompt,
+    a new prompt follows, and focus is in the command line.
+17. **Given** the Terminal is open, **When** the visitor runs `cat cv.json | jq`, **Then** the
+    JSON appears in the output, pretty-printed and colored, without the vim view.
 
 ---
 
@@ -196,8 +223,9 @@ phone screen reader.
 3. **Given** the visitor taps the command line, **When** the on-screen keyboard opens, **Then** the
    command line and the latest output stay visible above it, and the command keys make room for
    it.
-4. **Given** a 320 px wide phone, **When** the visitor runs `cv`, **Then** every line wraps
-   within the screen and nothing needs horizontal scrolling.
+4. **Given** a 320 px wide phone, **When** the visitor runs `cv`, **Then** the vim view opens
+   in the screen, every line wraps within it, nothing needs horizontal scrolling, and the command
+   keys become vim keys until `:q`.
 5. **Given** the visitor ran commands and went home, **When** they open the Terminal again in the
    same visit, **Then** its output and scroll position are as they left them (005 FR-034).
 6. **Given** the Terminal is open on a phone, **When** the visitor runs `exit`, **Then** the home
@@ -243,8 +271,8 @@ run `help` and `work` and confirm what is announced and that the output can be b
    Either way, focus stays in the command line and the user can type the next command straight
    away.
 5. **Given** several commands were run, **When** a screen reader user moves by heading,
-   **Then** they move from one command to the next, and within the output of `cv` from section to
-   section and from entry to entry. Lists are read as lists, and links as links.
+   **Then** they move from one command to the next, and within the output of `projects` from
+   entry to entry. Lists are read as lists, and links as links.
 6. **Given** focus is on a command name in the output of `help`, **When** the user presses Enter
    or Space, **Then** the command runs and focus returns to the command line.
 7. **Given** the Terminal is the only open window, **When** the user runs `exit`, **Then** the
@@ -275,8 +303,8 @@ nothing is cut off and nothing needs horizontal scrolling.
 3. **Given** forced colors, **When** the visitor looks at the Terminal with output, **Then** the
    prompt, typed commands, output, links, command controls, the command line, its cursor and focus
    indicators are all visible and distinguishable.
-4. **Given** text zoomed to 200%, **When** the visitor runs `cv`, **Then** every line wraps within
-   the window and none is cut off or hidden.
+4. **Given** text zoomed to 200%, **When** the visitor runs `cv`, **Then** every line of the vim
+   view wraps within the window and none is cut off or hidden.
 
 ---
 
@@ -368,7 +396,7 @@ can't merge.
   runs until the visitor presses Enter.
 - **A very long command**: the command line and the echo wrap within the window. The command line
   takes at most the length FR-017 sets.
-- **A very long output**, such as `cv`: the Terminal scrolls to show the new command at the top of
+- **A very long output**, such as `projects`: the Terminal scrolls to show the new command at the top of
   the view, not the end of its output, so the visitor reads from the start.
 - **The visitor scrolled up to read earlier output** when a command is run from the help list:
   the view moves to the new command.
@@ -408,8 +436,25 @@ can't merge.
 - **Reduced motion**: the cursor doesn't blink, output never types itself out, and the pocket
   terminal's keys don't move when pressed.
 - **Forced colors**: every part of the Terminal stays visible and distinguishable (FR-033).
-- **A screen reader and a long output**, such as `cv`: only a one-line summary is announced, not
-  the whole CV, and the user reads the output from its start with their screen reader (FR-028).
+- **Editing keys in the vim view**, such as `i`, `dd` or `:w`: nothing changes, and the message
+  line says the file is read only (FR-060). `:w!` and `:wq` get the same message.
+- **An unknown `:` command** in the vim view, such as `:foo`: the message line names it and says
+  it isn't a command there. Escape cancels a `:` or `/` being typed.
+- **A search with no match**: the message line says the text wasn't found, and the cursor stays.
+- **`vim` with no input**, such as `vim -` with nothing piped, `vim work` on a folder or `vim nowhere`:
+  the usage or path reply, and the view doesn't open (FR-058).
+- **A pipe into a command that reads no input**, such as `ls | work`: the reply names the command
+  and says it doesn't read piped input (FR-057). `jq` on text that isn't JSON, such as
+  `cat about | jq`, says the input isn't JSON.
+- **`jq` with a filter**, such as `jq .work`: the reply says the Terminal's `jq` only pretty-prints,
+  and shows its usage.
+- **The Terminal closed, minimized or the shell switched** with the vim view open: closing ends the
+  view with the rest of the Terminal (FR-021). Minimizing and switching keep it open, with its
+  cursor, folds and search.
+- **Ctrl+D, Ctrl+U or Ctrl+F** in the vim view: they keep the browser's meaning. Page Down and
+  Page Up move by a page instead (FR-060).
+- **A screen reader and a long output**, such as `projects`: only a one-line summary is announced,
+  not every project, and the user reads the output from its start with their screen reader (FR-028).
 
 ## Requirements *(mandatory)*
 
@@ -465,21 +510,25 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `languages` | Every language with its fluency. |
   | `interests` | Every interest with its keywords. |
   | `contact` | The email, the basics URL and every profile. |
-  | `cv` | Every section `/cv` shows, in its order, then a link to `/cv`. |
+  | `cv` | Opens the CV document's JSON in the vim view: runs `cat cv.json \| jq \| vim -` (FR-059). |
   | `site` | What the site is and how it was built, with a link to the repository. |
   | `specs` | The site's feature specs (FR-013). |
   | `ls [path]` | The folders and files of the working folder or of the path (FR-043). |
   | `cd [path]` | Changes the working folder. `cd` alone returns to the home folder. |
   | `cat <path>` | Shows a file. |
+  | `jq [path]` | Pretty-prints JSON from the path or from piped input (FR-056). |
+  | `vim <path>`, `vim -` | Opens the file, or the piped input, in the read-only vim view (FR-058). |
   | `pwd` | The working folder's path. |
   | `open <name>` | Opens the CV app (`open cv`) or About this site (`open about`) in the shell. |
   | `history` | The commands run since the Terminal opened, oldest first. |
   | `clear` | Clears the output. |
   | `exit` | Closes the Terminal on desktop, or returns to the home screen on mobile. |
 
-  `whoami` MUST run `about`, `experience` MUST run `work`, and `?` MUST run `help`. Every command
+  Commands MAY be joined with `|` (FR-057). `whoami` MUST run `about`, `experience` MUST run
+  `work`, and `?` MUST run `help`. Every command
   and alias MUST be listed by `help`, and there MUST be no command `help` doesn't list.
-- **FR-009**: The output of every CV command MUST show the same fields `/cv` shows for that section
+- **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
+  (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
   (004 Key Entities), in the CV document's order, and MUST follow 004's rules for them: an absent
   field is left out with no empty label (004 FR-004), every character is shown as written (004
   FR-007), the location reads as `/cv` writes it (004 FR-008), dates are written and read as `/cv`
@@ -508,7 +557,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 **The file system**
 
 - **FR-043**: The file system MUST start at a home folder, shown as `~`. The home folder MUST hold
-  a file `about` (the CV's basics), a file `contact`, a folder `work` with one file per work
+  a file `cv.json` (FR-055), a file `about` (the CV's basics), a file `contact`, a folder `work` with one file per work
   entry, a folder `projects` with one file per project, a folder `education` with one file per
   education entry, files `skills`, `languages` and `interests`, a file `readme` with what `site`
   shows, and a folder `specs` with one file per feature spec (FR-013). A CV section that is empty
@@ -530,7 +579,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-047**: `cat` on a CV entry's file MUST show exactly what the matching named command shows
   for that entry (FR-009). `cat about`, `cat contact`, `cat skills`, `cat languages` and
   `cat interests` MUST show what `about`, `contact`, `skills`, `languages` and `interests` show,
-  `cat readme` what `site` shows, and a spec's file the entry `specs` shows for it.
+  `cat readme` what `site` shows, a spec's file the entry `specs` shows for it, and `cat cv.json`
+  the JSON as FR-055 sets.
 - **FR-048**: A path that doesn't exist MUST get a reply, in site text, that names the path as
   typed and says there is no such file or folder. `cd` on a file MUST say it is a file and suggest
   `cat`, and `cat` on a folder MUST say it is a folder and suggest `ls`, each as a command control
@@ -583,7 +633,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-023**: Output MUST wrap within the Terminal's width at every window and screen size the
   shell allows, from 320 px wide, so nothing needs horizontal scrolling. A long word or URL MUST
   wrap too (as 004 FR-022 requires of `/cv`). Text in the output MUST be selectable and copyable
-  as it is on a page.
+  as it is on a page. The vim view wraps as FR-063 sets.
 
 **The phone**
 
@@ -599,7 +649,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-051**: The pocket terminal MUST have command keys that run at least `help`, `about`,
   `work`, `projects`, `cv`, `ls` and `clear`, in the order the approved design sets. Every key MUST
   be a command control (FR-015), a button named by the command it runs, with a target of at least
-  44 by 44 CSS px.
+  44 by 44 CSS px. While the vim view is open the keys are vim keys (FR-066).
 - **FR-052**: At every width from 320 px up to the desktop shell's minimum, in portrait and in
   landscape, the pocket terminal's screen and keys MUST fit below the shell's header (005 FR-032)
   with nothing needing horizontal scrolling, and the output MUST scroll inside the screen. At 200%
@@ -611,6 +661,63 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   screen readers, take focus or carry meaning. It MUST be of the site's own design and MUST NOT
   copy or trace any real device (Constitution IX). A pressed key MAY show a pressed state, which
   MUST NOT move or scale when the visitor asks for reduced motion (FR-032).
+
+**The CV as JSON in a vim view**
+
+- **FR-055**: The home folder MUST hold a file `cv.json` whose text is the CV document's JSON
+  exactly as the content source (002) holds it, every key and value in its order, read when the
+  site is built. No part of it may be typed by hand, and `cat cv.json` MUST show it as it is.
+- **FR-056**: `jq` with a path, or with piped input, MUST pretty-print JSON: indented by 2
+  spaces, keys in their order, with syntax colors for keys, strings, numbers, booleans and null
+  that carry no meaning on their own. `jq` accepts no filter but `.`; any other filter MUST get a
+  reply, in site text, that says the Terminal's `jq` only pretty-prints and shows its usage. Input
+  that isn't JSON MUST get a reply that says so and names the path or `|`.
+- **FR-057**: A command line MAY join commands with `|`. Each command's output MUST become the next
+  command's input. Only `jq` and `vim -` read input. Piping into any other command MUST get a
+  reply, in site text, that names the command and says it doesn't read piped input, and a `|`
+  with nothing on one side MUST get the usage reply (FR-017). The Terminal parses the pipe itself
+  and runs no code (FR-018).
+- **FR-058**: `vim <path>` and `vim -` with piped input MUST open the vim view: the text shown in
+  place of the Terminal's output, filling the Terminal window, or the pocket terminal's screen,
+  with line numbers, a status line and a message line. The status line MUST show the mode, the
+  file's name, that it is read only, the file type, the cursor's line and column, and how far
+  through the file the view is. `vim` on a folder or a path that doesn't exist MUST get the
+  replies FR-048 sets, and `vim -` with nothing piped or `vim` alone the usage reply (FR-017),
+  without opening the view.
+- **FR-059**: `cv` MUST run `cat cv.json | jq | vim -` as if typed, and the status line MUST show
+  that pipe. `help` MUST say what `cv` runs.
+- **FR-060**: The vim view MUST be read only. It MUST support at least these keys: `h`, `j`, `k`,
+  `l` and the arrow keys, `w` and `b`, `0` and `$`, `gg` and `G`, `{` and `}`, Page Up and Page
+  Down, `/` with text and Enter to search, `n` and `N`, `za`, `zo`, `zc`, `zR` and `zM` for
+  folds, `:` with a line number, `:set nu` and `:set nonu`, `:help`, and `:q` and `:q!`. Keys and
+  commands that would change the file, such as `i`, `a`, `o`, `x`, `dd`, `p`, `:w` and `:wq`,
+  MUST change nothing and show a message, in site text, that the file is read only. An unknown
+  `:` command MUST show a message that names it. Escape MUST cancel a `/` or `:` being typed. The
+  view MUST take over no key a current main browser or screen reader reserves, such as Ctrl+D,
+  Ctrl+F or Ctrl+U (FR-026).
+- **FR-061**: JSON in the vim view MUST open with each top-level object or array closed to one
+  fold line that names its key and its number of lines, and everything else open. Each fold line
+  MUST be a control that opens or closes the fold when clicked, tapped, or activated with Enter
+  or Space, with a target of at least 24 by 24 CSS px (FR-034).
+- **FR-062**: A search MUST highlight every match in view and mark the current one by more than
+  color. The message line MUST say which match of how many the cursor is on, or that there is no
+  match.
+- **FR-063**: Long lines in the vim view MUST wrap at a space, each continuation indented under its
+  line, at every width from 320 px, so nothing needs horizontal scrolling. Line numbers MUST be
+  shown on a line's first row only.
+- **FR-064**: `:q`, or the `:q` control in the message line, MUST close the vim view and bring
+  back the Terminal's output as it was, with the command that opened the view after its prompt,
+  then a new prompt, with focus in the command line. `:help`, or its control, MUST open the
+  view's keys in a split below the file, and `:q` MUST close that split first.
+- **FR-065**: When the vim view opens, focus MUST move into it, and a screen reader MUST announce the
+  file's name, that it is read only, its number of lines, and that `:q` leaves. The text MUST be
+  readable with the screen reader's own reading keys as a read-only document, fold lines MUST be
+  buttons that say whether they are open, and a change to the status or message line MUST be
+  announced once. Tab and Shift+Tab MUST move focus out of the view, never trapping it (FR-026).
+- **FR-066**: On mobile, while the vim view is open, the pocket terminal's command keys MUST become
+  vim keys: `j`, `k`, `za`, `/`, `n`, `gg`, `G` and `:q`, in the order the approved design sets,
+  each a button named by what it does, at least 44 by 44 CSS px. Closing the view MUST bring the
+  command keys back. Fold lines MUST be tappable.
 
 **Keyboard and screen readers**
 
@@ -626,7 +733,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   be announced in full. Longer output MUST be announced as a one-line summary in site text that
   names the command and how many entries, files or lines it showed, such as "work: 4 entries",
   and the full output MUST stay available to read with the screen reader (FR-029). Output that
-  only scrolls into view, such as earlier output, MUST NOT be announced again.
+  only scrolls into view, such as earlier output, MUST NOT be announced again. Opening the vim view
+  is announced as FR-065 sets.
 - **FR-029**: In the output, each command and its output MUST form one group named by the command.
   The Terminal MUST have one heading that names it, and each command run MUST be a heading one
   level below it, holding the command as typed and not the prompt. In a command's output, each
@@ -659,10 +767,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   target of at least 24 by 24 CSS px (WCAG 2.2 success criterion 2.5.8), or larger where this spec
   (FR-051) or the approved design sets it.
 - **FR-035**: The Terminal MUST conform to WCAG 2.2 Level AA in every state: just opened, after
-  `help`, after `cv`, after an unknown command, after `ls`, inside a folder after `cat`, after
+  `help`, with the vim view open (folded, with a fold open and a search, and with its key help),
+  after an unknown command, after `ls`, inside a folder after `cat`, after
   `clear`, with a long command typed and, on desktop, minimized, maximized, and as one of two open
   windows, and on mobile, as the pocket terminal in portrait and in landscape, and with the
-  on-screen keyboard open. It MUST keep all content and function at 200% browser zoom and text-only
+  on-screen keyboard open, and with the vim view and its vim keys. It MUST keep all content and function at 200% browser zoom and text-only
   zoom, at 400% zoom on a window 1280 px wide, and with text spacing overridden as WCAG 2.2 success
   criterion 1.4.12 describes.
 
@@ -683,12 +792,14 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   and running every command.
 - **FR-039**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
   open the Terminal from the dock, run `help`, run a command from its output with Enter, recall a
-  command with the Up arrow, leave the command line with Tab and come back with Shift+Tab, reach
+  command with the Up arrow, run `cv`, move with `j`, open a fold with `za` and leave the vim view
+  with `:q`, leave the command line with Tab and come back with Shift+Tab, reach
   the dock with the shell's shortcut, and close the Terminal with `exit`, confirming a visible
   focus indicator and where focus lands at each step.
 - **FR-040**: A Terminal content check MUST run every CV command in each shell and confirm that its
   output holds every shown field the CV document holds for that section, in the CV document's
-  order, and that `cv` holds every section in `/cv`'s order. It MUST also list every folder of the
+  order, and that `cat cv.json`, `cat cv.json | jq` and the vim view opened by `cv` hold the CV
+  document's JSON exactly, every key and value in its order. It MUST also list every folder of the
   file system and `cat` every file, confirming there is one file per CV entry and that each shows
   what the matching named command shows for that entry. It MUST read the expected fields and
   entries from the CV document, not from a hand-written list.
@@ -730,6 +841,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **CV document**: the owner's CV from the content source (002), read by the Terminal as `/cv`
   reads it (004).
 - **Site text**: text in the Terminal that isn't CV content, set by the design, in English.
+- **`cv.json`**: the CV document's JSON as the content source holds it, a file in the home folder
+  (FR-055).
+- **Pipe**: commands joined with `|`, each one's output the next one's input (FR-057).
+- **Vim view**: the read-only, vim-like view of a file or piped text, with line numbers, folds,
+  search, a status line and a message line (FR-058 to FR-066).
 
 ## Shell Scope *(mandatory)*
 
@@ -758,9 +874,11 @@ plain server-rendered page.
 **UI change**: design artifacts live in `specs/006-terminal/design/`:
 
 - [x] ASCII wireframes, per shell, of every state: on desktop, the Terminal just opened beside the
-  CV window, after `help`, after `cv`, after an unknown command, after `ls`, inside a folder after
+  CV window, after `help`, the vim view opened by `cv` (folded, with a fold open and a search,
+  and with its key help), after an unknown command, after `ls`, inside a folder after
   `cat`, after `specs`, maximized, and its menu open; on mobile, the pocket terminal just opened,
-  after `help`, after `ls`, with the on-screen keyboard open, at 320 px wide and in landscape
+  after `help`, after `ls`, with the on-screen keyboard open, the vim view with its vim keys, at
+  320 px wide and in landscape
 - [ ] PNG exports of the approved Penpot mockup of the Terminal in both shells, at a phone width
   and a desktop width, and of the pocket terminal at 320 px wide and in landscape (or of the
   interim local mockup, under the constitution's interim provision)
@@ -843,6 +961,11 @@ plain server-rendered page.
 - **Pocket terminal**: the phone's odd touch is visual. It is drawn by the site's designer, so it
   is original by construction, and its keys are the way in for visitors who don't want to type
   on a phone. The design sets which device it evokes, as long as it copies none.
+- **Vim view**: engineers know vim, and the CV document is JSON, so the whole CV is shown as that
+  JSON in a vim-like view rather than as a long page of text. It is a viewer: the file system is
+  read only, so nothing in it can change. It copies vim's keys and layout conventions, not any
+  vim color scheme, so the look stays the site's own (FR-031). The section commands keep their
+  readable text for visitors who don't read JSON, and `/cv` stays the plain CV.
 - **Command keys are big**: they are the phone's main way in, so FR-051 sets 44 by 44 CSS px, the
   common size for touch targets, above WCAG's 24 px minimum (FR-034).
 - **Manual checks**: the screen-reader pass of SC-004 is done by hand, and may be deferred to the

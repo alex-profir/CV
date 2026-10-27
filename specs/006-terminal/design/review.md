@@ -12,8 +12,8 @@ On a phone it is a pocket terminal in the same glass.
 | Artifact | File |
 |----------|------|
 | Wireframes: every state the spec's Design section lists, the design values the spec leaves to the design, keyboard and screen readers, and site text | [wireframes.md](wireframes.md) |
-| Exports: desktop at 1440 × 900, 9 states | `exports/desktop-*-1440.png` |
-| Exports: phone at 375 × 812 (just opened, after `help`, after `ls`, keyboard open), 320 × 568 and 568 × 320 in landscape | `exports/phone-*.png` |
+| Exports: desktop at 1440 × 900, 11 states (3 of them the vim view) | `exports/desktop-*-1440.png` |
+| Exports: phone at 375 × 812 (just opened, after `help`, after `ls`, keyboard open, the vim view), 320 × 568 and 568 × 320 in landscape | `exports/phone-*.png` |
 | Export: the glass recipe, proposed tokens and contrast checks | `exports/glass-recipe-1440.png` |
 | Notes and proposed tokens | [README.md](README.md) |
 | Penpot file | Page **006 Terminal — Glass**. The shareable link is still to be added |
@@ -48,6 +48,14 @@ On a phone it is a pocket terminal in the same glass.
   `Draft`), and the count of active requirements.
 - **Long output** (FR-019): the command sits at the top of the view and the output scrolls inside
   the window, with its own scrollbar.
+- **The whole CV as JSON in a vim view** (FR-055 to FR-066): `cv` runs
+  `cat cv.json | jq | vim -`. `cv.json` is the CV document's own JSON. The view is read only and
+  vim-like: line numbers, a fold per top-level section (closed on opening), search with counted
+  matches, a mode pill and status line, a message line with `:help` and `:q` chips, and a `:help`
+  split listing the keys. JSON colors come from the site's tokens: keys periwinkle, strings haze,
+  numbers amber, literals rose. No key a browser or screen reader reserves is taken: Page Up and
+  Page Down stand in for Ctrl+U and Ctrl+D. On the phone the command keys become vim keys, with
+  `:q` in mint.
 - **Terminal menu** (FR-003): `Clear output`, then 005's window commands with their shortcuts.
 - **Dock icon**: an original glyph, a mint `❯` and a periwinkle `_` on a dark tile with a hairline
   edge, after the CV app.
@@ -80,6 +88,12 @@ On a phone it is a pocket terminal in the same glass.
   Terminal from 600, 196 to 640, 176 by the rule above. The look is unchanged.
 - **The phone's `↵ type` key became `skills`**, and `help` took the indigo accent. FR-051 asks
   every key to run a command, and a key that only opened the keyboard didn't.
+- **2026-10-27, the whole CV as JSON in a vim view**, at the owner's request in design review:
+  the long text output of `cv` read poorly. `cv` now opens `cv.json` in a read-only vim view
+  through `cat cv.json | jq | vim -`. The "after `cv`" state became three vim states on desktop
+  and one on the phone; `help` lists `cv`'s new meaning, `jq` and `vim`; `ls` lists `cv.json`
+  first. The spec gained FR-055 to FR-066 and its `cv` requirements changed to match (see its
+  clarification session "design review").
 - **The unknown-command reply** offers only the suggestions as chips, with `help` as a control in
   the sentence, as FR-016 sets.
 - **`ls` and `help` rows** are 24 px tall, for FR-034's 24 × 24 px targets.

@@ -14,7 +14,9 @@ describes each state.
 |-------|--------|
 | Desktop, just opened in front of the CV window | `exports/desktop-1-just-opened-1440.png` |
 | Desktop, after `help` | `exports/desktop-2-after-help-1440.png` |
-| Desktop, after `cv` | `exports/desktop-3-after-cv-1440.png` |
+| Desktop, after `cv`: the vim view, folded | `exports/desktop-3a-vim-opened-by-cv-1440.png` |
+| Desktop, the vim view with a fold open and a search | `exports/desktop-3b-vim-fold-open-search-1440.png` |
+| Desktop, the vim view's key help | `exports/desktop-3c-vim-key-help-1440.png` |
 | Desktop, after an unknown command | `exports/desktop-4-after-unknown-command-1440.png` |
 | Desktop, after `ls` | `exports/desktop-5-after-ls-1440.png` |
 | Desktop, inside a folder after `cat` | `exports/desktop-6-folder-after-cat-1440.png` |
@@ -27,6 +29,7 @@ describes each state.
 | Phone, the on-screen keyboard open | `exports/phone-4-keyboard-open-375.png` |
 | Phone at 320 × 568, just opened | `exports/phone-5-just-opened-320.png` |
 | Phone in landscape at 568 × 320, just opened | `exports/phone-6-landscape-568.png` |
+| Phone, the vim view with its vim keys | `exports/phone-7-vim-keys-375.png` |
 | The glass recipe, the proposed tokens and the contrast checks | `exports/glass-recipe-1440.png` |
 
 ## The glass
@@ -72,6 +75,19 @@ Every color refers to a base color, an existing one where one fits. Translucent 
 | `color.terminal-error` | color | `{color.base.rose}` |
 | `color.terminal-cursor` | color | `{color.base.haze}` |
 | `color.terminal-control` | color | `{color.base.periwinkle}` |
+| `color.vim-key` | color | `{color.base.periwinkle}` |
+| `color.vim-string` | color | `{color.base.haze}` |
+| `color.vim-number` | color | `{color.base.amber}` |
+| `color.vim-literal` | color | `{color.base.rose}` |
+| `color.vim-punctuation` | color | `{color.base.fog}` |
+| `color.vim-match` | color | `#fcd34d33` |
+| `color.vim-match-current` | color | `#fcd34d6b` |
+| `color.vim-mode` | color | `{color.base.mint}` |
+| `color.vim-mode-help` | color | `{color.base.lilac}` |
+| `color.vim-band` | color | `#ffffff0d` |
+| `color.vim-status` | color | `#ffffff14` |
+| `size.vim-status` | dimension | 24px |
+| `size.vim-message` | dimension | 28px |
 | `size.terminal-blur` | dimension | 32px |
 | `size.terminal-padding` | dimension | 20px |
 | `size.terminal-padding-pocket` | dimension | 14px |
