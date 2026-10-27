@@ -274,6 +274,11 @@ export async function buildSite(out: string): Promise<SiteManifest> {
 async function main(): Promise<void> {
   try {
     const { values } = parseArgs({ options: { out: { type: 'string' } }, strict: true, allowPositionals: false });
+    // Always a production build, React's and the JSX transform's included,
+    // even when the caller's environment says otherwise (a test runner sets
+    // NODE_ENV=test), so every build ships the same script (005 research
+    // R18).
+    process.env.NODE_ENV = 'production';
     await buildSite(path.resolve(values.out ?? DEFAULT_OUT));
   } catch (error) {
     process.stderr.write(`site build failed: ${error instanceof Error ? error.message : String(error)}\n`);

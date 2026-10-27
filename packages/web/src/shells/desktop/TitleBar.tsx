@@ -1,0 +1,72 @@
+// A window's title bar (005 contracts/shell.md, research R8): close,
+// minimize and maximize on the left, the window's name centered. Dragging
+// it moves the window with any pointer (FR-019); a drag that starts on a
+// control doesn't, and the controls act on click, so releasing away from
+// one does nothing. During a keyboard move or resize, the controls give way
+// to the mode's name (FR-020).
+import { useRef } from 'react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { Session, WindowState } from '@cv/os-core';
+import { CloseGlyph } from '../../os/icons/CloseGlyph.tsx';
+import { MaximizeGlyph } from '../../os/icons/MaximizeGlyph.tsx';
+import { MinimizeGlyph } from '../../os/icons/MinimizeGlyph.tsx';
+import { RestoreGlyph } from '../../os/icons/RestoreGlyph.tsx';
+import type { ShellProps } from '../../os/shell-props.ts';
+import { fill, siteText } from '../../site-text.ts';
+import { useFrameBatch } from './frame-batch.ts';
+
+// The id that names a window (`aria-labelledby`) and takes focus when it
+// opens (FR-040).
+export const windowTitleId = (view: string) => `window-title-${view}`;
+
+export function TitleBar({ window, session, dispatch, viewName }: ShellProps & { window: WindowState; session: Session }) {
+  const { view, maximized } = window;
+  const name = viewName(view);
+  const drag = useRef<{ pointer: number; startX: number; startY: number; x: number; y: number } | null>(null);
+  const schedule = useFrameBatch();
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (maximized !== null || event.button !== 0 || (event.target as Element).closest('.control') !== null) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drag.current = { pointer: event.pointerId, startX: event.clientX, startY: event.clientY, x: window.geometry.x, y: window.geometry.y };
+  };
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = drag.current;
+    if (start === null || start.pointer !== event.pointerId) return;
+    const x = start.x + event.clientX - start.startX;
+    const y = start.y + event.clientY - start.startY;
+    schedule(() => dispatch({ type: 'dragMove', view, x, y }));
+  };
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointer === event.pointerId) drag.current = null;
+  };
+
+  return (
+    <div className="title-bar" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerEnd} onPointerCancel={onPointerEnd} data-req="005-os-shell-FR-016 005-os-shell-FR-019">
+      {session === null ? (
+        <div className="controls">
+          <button type="button" className="control control-close" aria-label={fill(siteText.desktop.controls.close, { window: name })} onClick={() => dispatch({ type: 'close', view })} data-req="005-os-shell-FR-016 005-os-shell-FR-023 005-os-shell-FR-028">
+            <CloseGlyph />
+          </button>
+          <button type="button" className="control control-minimize" aria-label={fill(siteText.desktop.controls.minimize, { window: name })} onClick={() => dispatch({ type: 'minimize', view })} data-req="005-os-shell-FR-063">
+            <MinimizeGlyph />
+          </button>
+          <button
+            type="button"
+            className="control control-maximize"
+            aria-label={fill(maximized === null ? siteText.desktop.controls.maximize : siteText.desktop.controls.restore, { window: name })}
+            onClick={() => dispatch({ type: 'toggleMaximize', view })}
+            data-req="005-os-shell-FR-065"
+          >
+            {maximized === null ? <MaximizeGlyph /> : <RestoreGlyph />}
+          </button>
+        </div>
+      ) : (
+        <span className="mode">{session.kind === 'move' ? siteText.desktop.mode.move : siteText.desktop.mode.resize}</span>
+      )}
+      <div className="window-title" id={windowTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
+        {name}
+      </div>
+    </div>
+  );
+}

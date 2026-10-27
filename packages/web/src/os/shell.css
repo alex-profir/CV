@@ -1,2 +1,186 @@
-/* What both shells share (005 research R6): content areas, the About
-   view and the status region. Every value is a token. */
+/* What both shells share (005 research R6): the page under the shell, the
+   CV app, About this site, focus and the status region. Every value is a
+   token. */
+
+html[data-shell] body {
+  margin: 0;
+  background: var(--token-color-wallpaper);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-typography-body-font-family);
+  font-size: var(--token-typography-body-font-size);
+  line-height: var(--token-typography-body-line-height);
+}
+
+/* No specificity, so each control's own rules set its type. */
+:where(#os button) {
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The focus indicator everywhere in the shell (FR-024): an outline, so
+   forced colors keep it, in the shell's accent. Inside the CV, /cv's own
+   indicator applies. */
+#os :focus-visible {
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-space-0-5);
+}
+
+#os .cv a:focus-visible {
+  outline-color: var(--token-color-focus);
+}
+
+/* A title takes focus when its window or app opens (FR-040); it isn't a
+   control, so it shows the indicator only from the keyboard. */
+#os .window-title:focus:not(:focus-visible),
+#os .app-title:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---- The CV app (FR-006 to FR-009) ----------------------------------- */
+
+/* The CV keeps /cv's light look inside the dark shell. */
+.cv-app {
+  min-block-size: 100%;
+  background: var(--token-color-surface);
+  color: var(--token-color-text-primary);
+  font-family: var(--token-typography-body-font-family);
+  font-size: var(--token-typography-body-font-size);
+  font-weight: var(--token-typography-body-font-weight);
+  letter-spacing: var(--token-typography-body-letter-spacing);
+  line-height: var(--token-typography-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+.cv-app .cv {
+  padding-block-end: var(--token-space-12);
+}
+
+/* The link to /cv, above the CV (FR-007). */
+.app-bar {
+  padding: var(--token-space-1-5) var(--token-space-4);
+  background: var(--token-color-title-bar);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-size: var(--token-font-size-small);
+}
+
+.app-bar .standalone {
+  align-items: center;
+  border-block-end: 0;
+  color: var(--token-color-shell-accent);
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--token-border-thin);
+  text-decoration-color: currentColor;
+}
+
+/* ---- About this site (FR-038) ---------------------------------------- */
+
+.about-view {
+  padding: var(--token-space-6) var(--token-space-6) var(--token-space-8);
+  color: var(--token-color-shell-text);
+}
+
+.about-view h1 {
+  font-family: var(--token-typography-h2-narrow-font-family);
+  font-size: var(--token-typography-h2-narrow-font-size);
+  font-weight: var(--token-typography-h2-narrow-font-weight);
+  letter-spacing: var(--token-typography-h2-narrow-letter-spacing);
+  line-height: var(--token-typography-h2-narrow-line-height);
+}
+
+.about-view p {
+  margin-block-start: var(--token-space-3);
+  color: var(--token-color-shell-text-secondary);
+  text-wrap: pretty;
+}
+
+.about-links {
+  display: grid;
+  justify-items: start;
+  gap: var(--token-space-1);
+  margin-block-start: var(--token-space-4);
+}
+
+.about-view a {
+  color: var(--token-color-shell-accent);
+  text-decoration-color: currentColor;
+  text-decoration-thickness: var(--token-border-thin);
+}
+
+.about-view .standalone {
+  align-items: center;
+  border-block-end: 0;
+  text-decoration-line: underline;
+}
+
+.about-view h2 {
+  margin-block: var(--token-space-6) var(--token-space-2-5);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-label-font-family);
+  font-size: var(--token-typography-label-font-size);
+  font-weight: var(--token-typography-label-font-weight);
+  letter-spacing: var(--token-typography-label-letter-spacing);
+  text-transform: var(--token-font-case-label);
+}
+
+.shortcuts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--token-space-1-5) var(--token-space-4);
+  margin: 0;
+  font-size: var(--token-font-size-small);
+}
+
+.shortcut {
+  display: contents;
+}
+
+.shortcuts dt {
+  justify-self: start;
+}
+
+.shortcuts kbd {
+  padding: var(--token-space-0-5) var(--token-space-1-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-shell-raised);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.about-view .note {
+  margin-block-start: var(--token-space-4);
+  font-size: var(--token-font-size-small);
+}
+
+.full-screen .about-view {
+  padding-inline: var(--token-space-5);
+}
+
+/* ---- App icons (FR-044) ---------------------------------------------- */
+
+.app-glyph .tile {
+  rx: var(--token-radius-icon);
+}
+
+.app-glyph .icon-top {
+  stop-color: var(--token-color-icon-top);
+}
+
+.app-glyph .icon-bottom {
+  stop-color: var(--token-color-icon-bottom);
+}
+
+.app-glyph .ink {
+  fill: var(--token-color-icon-glyph);
+}
+
+.app-glyph .line {
+  fill: none;
+  stroke: var(--token-color-icon-glyph);
+  stroke-width: var(--token-border-thick);
+}
+
+.app-glyph .faint {
+  fill: var(--token-color-control-focused);
+}

@@ -1,19 +1,23 @@
-// The shell's root (005 research R1, R2, R4, R10): it holds the OS state,
-// picks the shell once hydrated, runs the reducer's focus moves and
-// announcements, and keeps the page title in step. Its first render is
-// exactly what the build pre-rendered: both shells, with the CV window open
-// on the desktop.
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
+// The shell's root (005 research R1, R2, R4, R10 to R12): it holds the OS
+// state, picks the shell once hydrated and whenever the space crosses the
+// desktop minimum, runs the reducer's focus moves and announcements, keeps
+// the page title in step, and keeps the phone's history entry. Its first
+// render is exactly what the build pre-rendered: both shells, with the CV
+// window open on the desktop.
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Resume, SiteData } from '@cv/content';
 import { initialState, osReducer, shellQuery } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
 import type { App } from '../apps/index.ts';
 import { shellTitle } from '../format/meta.ts';
 import { siteText } from '../site-text.ts';
+import { Desktop } from '../shells/desktop/Desktop.tsx';
+import { Mobile } from '../shells/mobile/Mobile.tsx';
 import { Announcer } from './Announcer.tsx';
 import type { Announcement } from './Announcer.tsx';
 import { focusTarget } from './focus.ts';
 import { METRICS } from './metrics.ts';
+import type { ShellProps } from './shell-props.ts';
 
 declare global {
   interface Window {
@@ -28,7 +32,8 @@ const TEXT: OsText = { aboutName: siteText.os.views.about, ...siteText.os.announ
 
 const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'about';
 
-// The desktop area: the viewport between the menu bar and the dock's space.
+// The desktop area: the viewport between the menu bar and the dock's space,
+// measured when the desktop is in the page.
 export function measureArea(): Area {
   const area = document.querySelector('#os .desktop-area');
   if (area !== null) {
@@ -40,19 +45,34 @@ export function measureArea(): Area {
 
 export const currentShell = (): ShellName => (matchMedia(shellQuery(METRICS)).matches ? 'desktop' : 'mobile');
 
-export function Os({ resume, apps }: OsProps) {
+// Whether shortcut labels read Option rather than Alt (research R9).
+function onMac(): boolean {
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform;
+  return /mac/i.test(platform);
+}
+
+// The open full-screen view's scroll position, saved on going home (FR-034).
+const openScroll = () => document.querySelector('#os .full-screen .view-content')?.scrollTop ?? 0;
+
+export function Os({ resume, siteData, apps }: OsProps) {
   const context: ReducerContext = useMemo(() => ({ apps, metrics: METRICS, text: TEXT }), [apps]);
   const [state, dispatch] = useReducer((current: OsState, action: OsAction) => osReducer(current, action, context), null, () => initialState(apps, METRICS));
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [mac, setMac] = useState(false);
   const ready = useRef(false);
+  // Whether the history entry this visit pushed is the current one, and how
+  // many `popstate` events the shell caused itself (FR-050).
+  const pushed = useRef(false);
+  const ownPops = useRef(0);
 
-  const viewName = (view: ViewId) => (view === 'about' ? TEXT.aboutName : (apps.find((app) => app.id === view)?.name ?? view));
+  const viewName = useCallback((view: ViewId) => (view === 'about' ? TEXT.aboutName : (apps.find((app) => app.id === view)?.name ?? view)), [apps]);
 
   // Hydrated: pick the shell, before the browser paints again.
   useLayoutEffect(() => {
     const shell = currentShell();
     document.documentElement.setAttribute('data-shell', shell);
     dispatch({ type: 'hydrated', shell, area: shell === 'desktop' ? measureArea() : null });
+    setMac(onMac());
   }, []);
 
   // Once only the active shell is rendered: mark the shell ready, and open
@@ -65,6 +85,53 @@ export function Os({ resume, apps }: OsProps) {
     delete window.osEarlyView;
     if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
   }, [state.shell, state.mobile.open]);
+
+  // The shell follows the space available (FR-002, research R12).
+  const hydrated = state.shell !== 'both';
+  useEffect(() => {
+    if (!hydrated) return undefined;
+    const query = matchMedia(shellQuery(METRICS));
+    const onChange = () => {
+      const shell: ShellName = query.matches ? 'desktop' : 'mobile';
+      document.documentElement.setAttribute('data-shell', shell);
+      dispatch({ type: 'shellChanged', shell, area: shell === 'desktop' ? measureArea() : null });
+    };
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, [hydrated]);
+
+  // Opening an app full screen pushes one entry with the same address, so
+  // Back goes home; the desktop never keeps one (FR-050, research R11).
+  useEffect(() => {
+    if (state.shell === 'mobile' && state.mobile.historyEntry && !pushed.current) {
+      history.pushState({ os: 'full-screen' }, '', location.href);
+      pushed.current = true;
+    } else if (state.shell === 'desktop' && pushed.current) {
+      pushed.current = false;
+      ownPops.current += 1;
+      history.back();
+    }
+  }, [state.shell, state.mobile.historyEntry]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (ownPops.current > 0) {
+        ownPops.current -= 1;
+        return;
+      }
+      if (!pushed.current) return;
+      pushed.current = false;
+      dispatch({ type: 'mobileHome', scrollTop: openScroll() });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Home uses the entry up, so the next Back leaves the site.
+  const onHome = useCallback(() => {
+    if (pushed.current) history.back();
+    else dispatch({ type: 'mobileHome', scrollTop: openScroll() });
+  }, []);
 
   // The reducer's focus moves and announcements, once their elements exist.
   useEffect(() => {
@@ -81,12 +148,13 @@ export function Os({ resume, apps }: OsProps) {
     if (state.shell === 'both') return;
     const view = state.shell === 'desktop' ? state.focused : state.mobile.open;
     document.title = shellTitle(resume, view === null ? undefined : viewName(view));
-  }, [state.shell, state.focused, state.mobile.open]);
+  }, [state.shell, state.focused, state.mobile.open, resume, viewName]);
 
+  const shellProps: ShellProps = { state, dispatch, apps, resume, siteData, mac, viewName };
   return (
     <>
-      {state.shell !== 'mobile' && <div className="desktop" />}
-      {state.shell !== 'desktop' && <div className="mobile" />}
+      {state.shell !== 'mobile' && <Desktop {...shellProps} active={state.shell === 'desktop'} />}
+      {state.shell !== 'desktop' && <Mobile {...shellProps} onHome={onHome} />}
       <Announcer announcement={announcement} />
     </>
   );
