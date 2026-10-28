@@ -212,7 +212,7 @@ then every CV command it lists, and compare each output with the CV document and
   - covers 006-terminal-FR-009: on the `every-field`, `nothing-optional`, `partial-dates`, `non-ascii` and `three-projects` fixtures, `about`, `work`, `projects`, `education`, `skills`, `languages`, `interests` and `contact` show the fields of `CV_FIELDS` in order, absent fields with no label, dates as 004's `format/dates.ts` writes and dates them (`time` nodes, ongoing as `Present`), the location as 004's `format/location.ts` writes it, and links named as 004 FR-012 and FR-013 name them; `CV_FIELDS` matches 004's `expectedFields` (`tools/site-check/src/expected.ts`) on `every-field`;
   - covers 006-terminal-FR-010: changing one fact in a fixture CV changes the output, with no other edit (as 004's `one-edit.test.ts`);
   - covers 006-terminal-FR-011: on `empty-sections`, each empty section's command gives `The CV lists no {section}.` with no heading or list, and `help` still lists it.
-- [ ] T022 [P] [US1] Write `packages/web/test/terminal/engine/suggest.test.ts`, covers 006-terminal-FR-016: `wrok` → `work`, `hlep` → `help`, `proj` → `projects`, `experiance` → `experience`, `WROK` → `work` (capitals free), `sudo`, `rm`, `mkdir` → none; `l` → `?`, `ls`, `cv` (distance, then `help` order); at most 3; an alias and its command count once, the chip running the name that matched.
+- [ ] T022 [P] [US1] Write `packages/web/test/terminal/engine/suggest.test.ts`, covers 006-terminal-FR-016: `wrok` → `work`, `hlep` → `help`, `proj` → `projects`, `experiance` → `experience`, `WROK` → `work` (capitals free), `sudo`, `rm`, `mkdir` → none; `l` → `?`, `ls` (distance, then `help` order); `mv` → `cv`; `cta` → `cat` (words of 3 letters or fewer reach names 1 edit away only); at most 3; an alias and its command count once, the chip running the name that matched.
 - [ ] T023 [P] [US1] Write `packages/web/test/terminal/engine/replies.test.ts`:
   - covers 006-terminal-FR-016: the unknown reply names the word exactly as typed, says it is not a command and holds a `help` control, then the suggestions as chips, or only `help`;
   - covers 006-terminal-FR-017: `work 2020`, `cat`, `open` alone, `vim` alone and `help work extra` get `{command} takes {what}. Usage: {usage}`.
@@ -335,6 +335,7 @@ file and `cat` a folder.
 - [ ] T063 [P] [US3] Write `packages/web/test/terminal/files.test.ts`:
   - covers 006-terminal-FR-043: folder names differ from files by their trailing slash, with color removed (computed style forced to one color);
   - covers 006-terminal-FR-046: after `cd work` the next prompt and the window title read `~/work` (`Terminal — ~/work`);
+  - covers 006-terminal-FR-021: after `cd work`, minimize and restore, mobile Home and reopen, and a 1440 → 375 → 1440 resize keep `~/work` in the prompt and in `pwd`; closing and reopening starts at `~`;
   - covers 006-terminal-FR-050: each name in `ls`'s output runs `ls ~/{folder}` or `cat ~/{path}` as typed; a search over controls from `ls` reaches and reads every file without typing.
 
 ### Implementation for User Story 3
@@ -395,7 +396,7 @@ close it. With a screen reader, run `pwd` and `work` and move by heading.
 - [ ] T074 [P] [US5] Write `packages/web/test/terminal/screen-reader.test.ts`:
   - covers 006-terminal-FR-027: the command line's accessible name is `Command`; the prompt is `aria-hidden`; each run's heading name is the command as typed, with no prompt;
   - covers 006-terminal-FR-028: after Enter, `.terminal-status` holds the announcement once, focus stays in the command line, and scrolling earlier output doesn't change it; `cd work` announces `Now in ~/work`; `clear` announces `Cleared`;
-  - covers 006-terminal-FR-029: one `h1` `Terminal`; an `h2` per run; in `projects` an `h3` per project; in a command showing several sections an `h3` per section and `h4` per entry; no level skipped (004's `ax.ts`); lists are `ul`, links `a`, controls `button`s named by their line; the reading order follows the boxes on screen.
+  - covers 006-terminal-FR-029: one `h1` `Terminal`; an `h2` per run; in `projects` and `work` an `h3` per entry, with no section heading between; no level skipped (004's `ax.ts`); lists are `ul`, links `a`, controls `button`s named by their line; the reading order follows the boxes on screen.
 - [ ] T075 [P] [US5] Write `packages/web/test/terminal/keyboard.test.ts`, covers 006-terminal-FR-026: Tab from the command line moves focus on and leaves its value unchanged; Shift+Tab comes back; `Alt+Shift+D` and `Alt+Shift+M` from the command line reach the dock and the menu bar; Ctrl and Alt key events reaching the page aren't `defaultPrevented`; Escape leaves the typed text.
 - [ ] T076 [P] [US5] Extend `packages/web/test/terminal/vim.test.ts`, covers 006-terminal-FR-065: on opening, focus is on `.vim-text`, named and read only; the status region announces the file's name, read only, the line count and `:q`; a message change is announced once; fold lines expose `aria-expanded`; Tab moves to the chips, then out of the Terminal, and Shift+Tab back.
 
@@ -467,7 +468,7 @@ text) and see the matching check fail with the line contracts/cli.md shows.
 
 ### Tests for User Story 8 (REQUIRED) ⚠️
 
-- [ ] T088 [P] [US8] Extend `tools/site-check/test/shell-states.test.ts`, covers 006-terminal-FR-038: every Terminal state of contracts/cli.md (13 desktop, 4 mobile) is reached by real input on the real build; the summary lists `/` under `accessibility` in every Terminal state at both widths.
+- [ ] T088 [P] [US8] Extend `tools/site-check/test/shell-states.test.ts`, covers 006-terminal-FR-038: every Terminal state of contracts/cli.md (13 desktop, 12 mobile) is reached by real input on the real build; the summary lists `/` under `accessibility` in every Terminal state at both widths.
 - [ ] T089 [P] [US8] Write `tools/site-check/test/terminal.test.ts`:
   - covers 006-terminal-FR-040 (SC-003, SC-011): the `terminal` part passes on the real build, with expected fields read from the CV document (a temporary CV with an extra work entry still passes); copies where `work` drops the end date, a project has no file, or the vim view drops a line fail with `missing-field`, `missing-file` and `json-mismatch` lines naming the command, field and shell, or the folder and entry, as contracts/cli.md shows;
   - covers 006-terminal-FR-009: on the real build, every CV command's output in both shells matches `terminalFields(resume, command)`;
@@ -481,7 +482,7 @@ text) and see the matching check fail with the line contracts/cli.md shows.
 
 ### Implementation for User Story 8
 
-- [ ] T095 [US8] Add the Terminal's states to `tools/site-check/src/shell-states.ts` (contracts/cli.md States): `terminal-open`, `terminal-help`, `terminal-vim`, `terminal-vim-search`, `terminal-vim-help`, `terminal-unknown`, `terminal-ls`, `terminal-cat`, `terminal-clear`, `terminal-long-command`, `terminal-minimized`, `terminal-maximized`, `terminal-two-windows`; `pocket`, `pocket-landscape`, `pocket-keyboard`, `pocket-vim`; each reached from a fresh page by clicks, taps and typed keys, the search word read from the CV's first work summary.
+- [ ] T095 [US8] Add the Terminal's states to `tools/site-check/src/shell-states.ts` (contracts/cli.md States): `terminal-open`, `terminal-help`, `terminal-vim`, `terminal-vim-search`, `terminal-vim-help`, `terminal-unknown`, `terminal-ls`, `terminal-cat`, `terminal-clear`, `terminal-long-command`, `terminal-minimized`, `terminal-maximized`, `terminal-two-windows`; `pocket`, `pocket-landscape`, `pocket-keyboard`, `pocket-vim`, `pocket-help`, `pocket-unknown`, `pocket-ls`, `pocket-cat`, `pocket-clear`, `pocket-long-command`, `pocket-vim-search`, `pocket-vim-help`; each reached from a fresh page by clicks, taps and typed keys, the search word read from the CV's first work summary.
 - [ ] T096 [P] [US8] Add `terminalFields(resume, command)` to `tools/site-check/src/expected.ts`, built from 004's `expectedFields` with the Terminal's differences (no section labels, no `/cv`-only links) written once (research R20).
 - [ ] T097 [P] [US8] Extend `tools/site-check/src/report.ts` (data-model.md Site check results): part `terminal` after `cv-app`; problem types `missing-field`, `out-of-order`, `json-mismatch`, `missing-file`, `extra-file`, `file-mismatch`, `offline-mismatch`; variants `<shell>/terminal/<command>/<width>px`, `<shell>/terminal/files/<width>px`, `<shell>/terminal/json/<width>px`, `desktop/terminal-keyboard/1440px`.
 - [ ] T098 [US8] Write `tools/site-check/src/parts/terminal.ts` after T095 to T097 (contracts/cli.md `terminal`): in each shell, run every CV command by typing it and compare each group's text, links and `<time datetime>` in order with `terminalFields`; compare `cat cv.json`, `cat cv.json | jq` and the vim view after `zR` with `JSON.stringify(resume, null, 2)` line by line; list every folder and `cat` every file, checking one file per entry and spec and that each matches the named command. Run it from `tools/site-check/src/check.ts` after `cv-app`. T089 passes.
@@ -662,7 +663,7 @@ Every FR in spec.md and the test task that covers it:
 | 006-terminal-FR-018 | T019, T032 |
 | 006-terminal-FR-019 | T031, T033 |
 | 006-terminal-FR-020 | T026, T035 |
-| 006-terminal-FR-021 | T026, T036 |
+| 006-terminal-FR-021 | T026, T036, T063 |
 | 006-terminal-FR-022 | T037 |
 | 006-terminal-FR-023 | T083 |
 | 006-terminal-FR-024 | T066 |
