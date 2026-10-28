@@ -65,6 +65,9 @@ export function Os({ resume, siteData, apps }: OsProps) {
   // many `popstate` events the shell caused itself (FR-050).
   const pushed = useRef(false);
   const ownPops = useRef(0);
+  // Whether Home's `history.back()` is on its way, so a second Home before
+  // its `popstate` doesn't go back again and leave the site (FR-033, FR-050).
+  const homing = useRef(false);
   // Windows closing or minimizing, until their animation ends (research R13).
   const leaving = useRef(new Map<ViewId, { stop: () => void; action: OsAction }>());
 
@@ -121,7 +124,9 @@ export function Os({ resume, siteData, apps }: OsProps) {
     } else if (state.shell === 'desktop' && pushed.current) {
       pushed.current = false;
       ownPops.current += 1;
-      history.back();
+      // Home's Back, if on its way, uses up the entry already.
+      if (!homing.current) history.back();
+      homing.current = false;
     }
   }, [state.shell, state.mobile.historyEntry]);
 
@@ -133,6 +138,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
       }
       if (!pushed.current) return;
       pushed.current = false;
+      homing.current = false;
       dispatch({ type: 'mobileHome', scrollTop: openScroll() });
     };
     window.addEventListener('popstate', onPopState);
@@ -141,8 +147,11 @@ export function Os({ resume, siteData, apps }: OsProps) {
 
   // Home uses the entry up, so the next Back leaves the site.
   const onHome = useCallback(() => {
-    if (pushed.current) history.back();
-    else dispatch({ type: 'mobileHome', scrollTop: openScroll() });
+    if (!pushed.current) dispatch({ type: 'mobileHome', scrollTop: openScroll() });
+    else if (!homing.current) {
+      homing.current = true;
+      history.back();
+    }
   }, []);
 
   // The reducer's focus moves and announcements, once their elements exist.

@@ -41,6 +41,19 @@ describe('005-os-shell-FR-050: the address stays the root, and Back works as a v
     expect(page.url()).toBe('about:blank');
   });
 
+  test('on a phone, a double click on Home goes home once, and one Back then leaves', async () => {
+    const page = await fromBlank(() => openShell({ width: 375, height: 812, hasTouch: true }));
+    await page.locator('#os .app-icon[data-view="cv"]').tap();
+    await page.locator('#os .full-screen').waitFor();
+    await page.getByRole('button', { name: 'Home' }).dblclick();
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await page.waitForTimeout(200);
+    expect(path(page)).toBe('/');
+    await expect.poll(() => focusedElement(page)).toMatch(/^button\.app-icon\[data-view=cv\]/);
+    await page.goBack();
+    expect(page.url()).toBe('about:blank');
+  });
+
   test('on the desktop the address never changes and one Back leaves', async () => {
     const page = await fromBlank(() => openShell({ width: 1440, height: 900 }));
     await page.click('#menu-title-site');
