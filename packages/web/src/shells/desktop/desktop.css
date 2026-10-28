@@ -100,8 +100,9 @@ span.menu-title {
   inset-inline-start: 0;
   z-index: 1;
   display: grid;
+  gap: var(--token-space-0-5);
   min-inline-size: calc(var(--token-size-section-label) + var(--token-space-6));
-  padding: var(--token-space-1);
+  padding: var(--token-space-1-5);
   background: var(--token-color-chrome-solid);
   border: var(--token-border-thin) solid var(--token-color-window-border-focused);
   border-radius: var(--token-radius-menu);
@@ -126,10 +127,17 @@ span.menu-title {
   white-space: nowrap;
 }
 
-.menu-item:hover,
+/* One item is marked at a time: the pointer moves focus onto the item it
+   is over (Menu.tsx), so the fill follows focus alone. The indicator sits
+   on the item's edge, in the gap between items and the menu's padding,
+   clear of the menu's edge and its neighbours. */
 .menu-item:focus {
   background: var(--token-color-selection);
   color: var(--token-color-selection-text);
+}
+
+#os .menu-item:focus-visible {
+  outline-offset: 0;
 }
 
 .menu-item[aria-disabled="true"] {
@@ -143,8 +151,6 @@ span.menu-title {
   font-size: var(--token-font-size-label);
 }
 
-.menu-item:hover .keys,
-.menu-item:hover .note,
 .menu-item:focus .keys,
 .menu-item:focus .note {
   color: inherit;
@@ -221,6 +227,10 @@ span.menu-title {
 
 .window[data-maximized] :is(.title-bar, .window-content) {
   border-radius: 0;
+}
+
+.window[data-maximized] .window-content {
+  clip-path: none;
 }
 
 .title-bar {
@@ -342,9 +352,30 @@ span.menu-title {
   container-type: inline-size;
   border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thin));
   border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  /* Safari and Firefox draw a scroll bar past the rounded corner; the clip,
+     at the same radius, keeps it inside. */
+  clip-path: inset(0 round 0 0 calc(var(--token-radius-window) - var(--token-border-thin)) calc(var(--token-radius-window) - var(--token-border-thin)));
 }
 
-/* ---- Resize handles (FR-061) ----------------------------------------- */
+/* Browsers that let Tab reach a scrolling area focus the content itself.
+   Its indicator would sit under the title bar and over the window's edge,
+   so the whole window shows it instead, around its rounded corners
+   (FR-024). A maximized window, at the area's clipped edge, shows it
+   inside. */
+#os .window-content:focus-visible {
+  outline: none;
+}
+
+#os .window:has(> .window-content:focus-visible) {
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-space-0-5);
+}
+
+#os .window[data-maximized]:has(> .window-content:focus-visible) {
+  outline-offset: calc(-1 * var(--token-border-thick));
+}
+
+/* ---- Resize handles (FR-061)----------------------------------------- */
 
 /* Each edge reaches 8 px into the window and each corner 16 × 16 px, as the
    design draws them, and each reaches on past the window's edge, 16 px for
@@ -599,6 +630,7 @@ span.menu-title {
   .window[aria-current="true"] .window-content {
     border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thick));
     border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    clip-path: inset(0 round 0 0 calc(var(--token-radius-window) - var(--token-border-thick)) calc(var(--token-radius-window) - var(--token-border-thick)));
   }
 
   .control::before {

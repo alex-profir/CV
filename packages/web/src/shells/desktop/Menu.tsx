@@ -4,7 +4,7 @@
 // and moves on, and Left and Right go to the next menu. Commands with a
 // shortcut show it and carry `aria-keyshortcuts` (FR-029). The menu's own
 // element, with its `data-req`, is written by the menu bar.
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import { shortcutLabel } from '@cv/os-core';
 import type { Shortcut } from '@cv/os-core';
 import { Arrow } from '../../cv/Arrow.tsx';
@@ -16,6 +16,12 @@ export type MenuEntry =
   | { kind: 'separator'; key: string };
 
 const items = (menu: HTMLElement) => [...menu.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
+
+// The pointer moves focus onto the item it's over, so one item is marked at
+// a time and the keys go on from there, as in a desktop menu.
+function focusUnderPointer(event: ReactPointerEvent<HTMLElement>): void {
+  if (document.activeElement !== event.currentTarget) event.currentTarget.focus({ preventScroll: true });
+}
 
 export function focusFirstItem(menu: HTMLElement | null): void {
   menu?.querySelector<HTMLElement>('[role^="menuitem"]')?.focus();
@@ -69,7 +75,7 @@ export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEn
     if (entry.kind === 'separator') return <div key={entry.key} className="menu-separator" role="separator" />;
     if (entry.kind === 'link') {
       return (
-        <a key={entry.key} className="menu-item" role="menuitem" tabIndex={-1} href={entry.href} onClick={onChosen}>
+        <a key={entry.key} className="menu-item" role="menuitem" tabIndex={-1} href={entry.href} onClick={onChosen} onPointerMove={focusUnderPointer}>
           <span className="mark" />
           <span className="label">{entry.label}</span>
           {entry.external === true ? <Arrow kind="up-right" /> : <span className="keys" />}
@@ -87,6 +93,7 @@ export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEn
         aria-disabled={entry.disabled === true ? 'true' : undefined}
         aria-keyshortcuts={entry.shortcut === undefined ? undefined : shortcutLabel(entry.shortcut, false)}
         tabIndex={-1}
+        onPointerMove={focusUnderPointer}
         onClick={() => {
           if (entry.disabled === true) return;
           onChosen();
