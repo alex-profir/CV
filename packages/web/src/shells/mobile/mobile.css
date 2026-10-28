@@ -168,3 +168,10 @@
   overscroll-behavior: contain;
   container-type: inline-size;
 }
+
+/* Forced colors (FR-047): the wallpaper is decoration and goes. */
+@media (forced-colors: active) {
+  .home {
+    background-image: none;
+  }
+}

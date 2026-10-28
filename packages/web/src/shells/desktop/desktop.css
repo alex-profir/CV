@@ -558,3 +558,54 @@ span.menu-title {
   border-radius: var(--token-radius-window);
   pointer-events: none;
 }
+
+/* Forced colors (design/wireframes.md Forced colors and zoom, FR-047):
+   shadows, glass and dark fills drop out, so every window, menu, the pad,
+   the dock and the menu bar keep their borders, which take the system's
+   colors. The focused window's border is thicker and in the highlight
+   color, each control's circle is outlined, and the open marks are a
+   filled and a hollow dot. The wallpaper is decoration and goes. */
+@media (forced-colors: active) {
+  .desktop {
+    background-image: none;
+  }
+
+  .window[aria-current="true"] {
+    border-width: var(--token-border-thick);
+    border-color: Highlight;
+  }
+
+  .control::before {
+    border: var(--token-border-thin) solid CanvasText;
+  }
+
+  /* The open menu's title and the focused item, which a fill marks
+     otherwise. The title's border takes the place of its padding, so
+     nothing moves. */
+  .menu-title.is-open {
+    padding-inline: calc(var(--token-space-2-5) - var(--token-border-thin));
+    border: var(--token-border-thin) solid Highlight;
+  }
+
+  .menu-item:focus {
+    outline: var(--token-border-thin) solid Highlight;
+  }
+
+  /* Links among the menu's commands keep a link's underline. */
+  a.menu-item {
+    text-decoration-line: underline;
+  }
+
+  .open-mark {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+  }
+
+  .dock-item.is-open .open-mark {
+    background: CanvasText;
+  }
+
+  .dock-item.is-minimized .open-mark {
+    background: Canvas;
+  }
+}
