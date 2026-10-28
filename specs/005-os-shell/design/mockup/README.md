@@ -151,6 +151,8 @@ for glass, hairlines and shadows. Translucent colors are 8-digit hex, `#rrggbbaa
 | `size.window-min-width` | dimension | 400px |
 | `size.window-min-height` | dimension | 300px |
 | `size.pad-button` | dimension | 36px |
+| `scale.open-start` | number | 0.96 |
 
 Motion uses the existing `motion.duration.fast` and `motion.easing.standard`, so no motion token is
-added.
+added. `scale.open-start` is the scale windows, full-screen apps and menus grow from as they open
+(the wireframes' 96%). Penpot holds it as a `number` token, so it isn't a motion token.
