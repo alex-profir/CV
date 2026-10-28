@@ -22,7 +22,28 @@ function selector(target: FocusTarget): string {
   }
 }
 
+// Whether the visitor's last input was a key. A browser shows the focus
+// indicator after a focus move made by a script only if a key came last,
+// and Chrome doesn't count a key pressed with Alt, as every shortcut is, so
+// the shell asks for the indicator itself after a key (FR-024).
+let byKey = false;
+
+export function watchInput(): () => void {
+  const onKey = () => (byKey = true);
+  const onPointer = () => (byKey = false);
+  document.addEventListener('keydown', onKey, true);
+  document.addEventListener('pointerdown', onPointer, true);
+  return () => {
+    document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('pointerdown', onPointer, true);
+  };
+}
+
+// Moves focus as the shell does, with the indicator after a key.
+export function moveFocus(element: HTMLElement | null | undefined): void {
+  element?.focus(byKey ? { focusVisible: true } : undefined);
+}
+
 export function focusTarget(target: FocusTarget): void {
-  const element = document.querySelector<HTMLElement>(selector(target));
-  element?.focus();
+  moveFocus(document.querySelector<HTMLElement>(selector(target)));
 }

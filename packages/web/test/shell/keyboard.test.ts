@@ -116,6 +116,17 @@ describe('005-os-shell-FR-024: every desktop action works by keys alone, with a 
     await expectFocus(page, SITE);
     await expectIndicator(page, 'closed About');
   });
+
+  test('a shortcut pressed after a click shows the indicator where focus lands', async () => {
+    const page = await desktop();
+    await openAboutByKeys(page);
+    for (const [keys, target] of [['Alt+Shift+M', SITE], ['Alt+Shift+D', '#os .dock-item'], ['Alt+Shift+N', '#os .window .window-title']] as const) {
+      await page.locator(`${CV} .title-bar`).click();
+      await press(page, keys);
+      await expectFocus(page, target);
+      await expectIndicator(page, `${keys} after a click`);
+    }
+  });
 });
 
 describe('005-os-shell-FR-025: shortcuts and the Window menu reach the menu bar, the dock and the next window', () => {

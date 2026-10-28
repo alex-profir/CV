@@ -15,7 +15,7 @@ import { Desktop } from '../shells/desktop/Desktop.tsx';
 import { Mobile } from '../shells/mobile/Mobile.tsx';
 import { Announcer } from './Announcer.tsx';
 import type { Announcement } from './Announcer.tsx';
-import { focusTarget } from './focus.ts';
+import { focusTarget, watchInput } from './focus.ts';
 import { METRICS } from './metrics.ts';
 import { animateOut } from './motion.ts';
 import type { ShellProps } from './shell-props.ts';
@@ -88,6 +88,9 @@ export function Os({ resume, siteData, apps }: OsProps) {
     delete window.osEarlyView;
     if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
   }, [state.shell, state.mobile.open]);
+
+  // Focus moved after a key shows its indicator (FR-024).
+  useEffect(() => watchInput(), []);
 
   // The shell follows the space available (FR-002, research R12).
   const hydrated = state.shell !== 'both';

@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { SHORTCUTS } from '@cv/os-core';
 import type { Shortcut } from '@cv/os-core';
+import { moveFocus } from '../../os/focus.ts';
 import { SiteMark } from '../../os/icons/SiteMark.tsx';
 import { animateIn } from '../../os/motion.ts';
 import type { ShellProps } from '../../os/shell-props.ts';
@@ -25,11 +26,11 @@ const shortcut = (id: string): Shortcut => SHORTCUTS.find((candidate) => candida
 // Focus on the first menu title, or the first dock item, as the Window
 // menu's commands and their shortcuts do (FR-025).
 export function focusMenuBar(): void {
-  document.querySelector<HTMLElement>('#os .menu-bar [data-title-index="0"]')?.focus();
+  moveFocus(document.querySelector<HTMLElement>('#os .menu-bar [data-title-index="0"]'));
 }
 
 export function focusDock(): void {
-  document.querySelector<HTMLElement>('#os .dock .dock-item')?.focus();
+  moveFocus(document.querySelector<HTMLElement>('#os .dock .dock-item'));
 }
 
 export function MenuBar({ state, dispatch, resume, siteData, mac, viewName }: ShellProps) {
