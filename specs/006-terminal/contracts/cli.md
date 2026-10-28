@@ -19,11 +19,11 @@ fonts, layout, print, modes
 |------|---------------------|
 | `terminal` | In each shell (1440 × 900 and 375 × 812): opens the Terminal and runs every CV command by typing it. Compares each output group's text, links and `<time datetime>` values, in order, with `terminalFields(resume, command)`. Runs `cat cv.json` and `cat cv.json \| jq`, and opens `cv`, comparing each with `JSON.stringify(resume, null, 2)` line by line, with every fold opened by `zR` for the vim view. Lists every folder and `cat`s every file: one file per work, project and education entry and per spec, none more, each showing what the named command shows for its entry (FR-040, SC-003, SC-011) |
 | `accessibility` | axe-core in every Terminal state below (FR-035, FR-038) |
-| `keyboard` | FR-039's flow at 1440 × 900, with the focus target and a visible indicator checked at each step |
+| `keyboard` | FR-039's flow at 1440 × 900, with the focus target and a visible indicator checked at each step. After `Alt+Shift+D` reaches the dock, Enter on the Terminal's dock item brings the window to the front with focus back in the command line, and `exit` is typed there |
 | `offline` | After one visit to `/`, and separately to `/cv` only: with the network off, at 375 and 1440 px, opens the Terminal, runs every command `help` lists and compares each group's text with the same run online (FR-041, SC-006) |
 | `other-sites` | Records requests while the Terminal opens and every command `help` lists runs, in both shells (FR-038, SC-007) |
 | `fonts` | Every text node drawn by a served face in `desktop/terminal-help` and `mobile/pocket-vim` |
-| `layout` | No horizontal scroll in the Terminal at 320 × 568, at 568 × 320, in a 400 px wide window, at 200% and 400% zoom and with text spacing, in `terminal-help`, `terminal-vim` and `pocket` (FR-023, FR-035, FR-052, FR-063, SC-012) |
+| `layout` | No horizontal scroll in the Terminal at 320 × 568, at 568 × 320, in a 400 px wide window, at 200% and 400% zoom and with text spacing, in `terminal-help`, `terminal-vim`, `pocket` and `pocket-vim` (FR-023, FR-035, FR-052, FR-063, SC-012) |
 | `modes` | Reduced motion: opening the Terminal, running commands and pressing pocket keys move or scale nothing, and the cursor never blinks (FR-032, SC-008). Forced colors: the prompt, the command line, the cursor, chips, keys, fold lines and focus indicators are visible, with no background image or color alone (FR-033) |
 
 ## States
@@ -46,6 +46,8 @@ page by real input: clicks, taps and typed keys.
 | desktop | `terminal-minimized` | From `terminal-open`, its minimize control |
 | desktop | `terminal-maximized` | From `terminal-help`, its maximize control |
 | desktop | `terminal-two-windows` | `terminal-open`, with the CV window behind it |
+| desktop | `terminal-specs` | From `terminal-open`, type `specs`, Enter |
+| desktop | `terminal-menu` | From `terminal-open`, click the menu bar's `Terminal` menu |
 | mobile | `pocket` | Tap the Terminal icon |
 | mobile | `pocket-landscape` | `pocket` at 812 × 375 |
 | mobile | `pocket-keyboard` | Tap the command line, then make the page 300 px shorter at the same width (research R15) |

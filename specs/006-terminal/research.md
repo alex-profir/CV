@@ -212,6 +212,13 @@ specs between regenerations, against FR-013); passing the list through `renderSh
   it. The committed `resume.json` is written the same way, with 2-space indents, so `cat cv.json`
   shows the file as it is. A test asserts both: the value with its key order, and the text
   against `packages/content/resume.json`'s, ignoring a final line break.
+- That makes a rule for the content source: `resume.json` stays in the form
+  `JSON.stringify(value, null, 2)` writes, with 2-space indents, no `\u` escapes for characters
+  JSON allows as written, no integer-like keys and every number as JavaScript prints it (`1.5`,
+  not `1.50`). A CV edit that breaks the rule fails that test, naming `cv.json`, and is fixed by
+  rewriting `resume.json` in that form, never by changing the Terminal. Importing the file's raw
+  text instead was weighed and rejected: it would add a second way to read the CV beside
+  `@cv/content` (Constitution IV).
 - **`jq`** doesn't call `JSON.parse`. A small lexer, `engine/json.ts`, reads the text into
   tokens (punctuation, keys, strings, numbers, `true`, `false`, `null`), checks the structure, and
   prints it with 2-space indents. That keeps every key in its order even where `JSON.parse` would
@@ -392,9 +399,11 @@ gives the details.
   `pocket-keyboard` (the command line tapped, then the page made 300 px shorter at the same
   width, R15), `pocket-vim`, and the shared states again at the phone width, so FR-038's phone
   width covers every FR-035 state: `pocket-help`, `pocket-unknown`, `pocket-ls`, `pocket-cat`,
-  `pocket-clear`, `pocket-long-command`, `pocket-vim-search` and `pocket-vim-help`. Each runs in
-  `accessibility`. `fonts` adds `terminal-help` and
-  `pocket-vim`. `layout` adds zoom and text spacing on `terminal-help` and `pocket`.
+  `pocket-clear`, `pocket-long-command`, `pocket-vim-search` and `pocket-vim-help`. Desktop also
+  has `terminal-specs` and `terminal-menu`, the two wireframed states FR-035 names on desktop only.
+  Each runs in `accessibility`. `fonts` adds `terminal-help` and
+  `pocket-vim`. `layout` adds zoom and text spacing on `terminal-help`, `terminal-vim`, `pocket`
+  and `pocket-vim`.
 - **`terminal` part** (FR-040, FR-042): in each shell, it runs every CV command by typing it. It
   reads the output group's text, links and `<time datetime>` in order, and compares them with
   `terminalFields(resume)`. That helper is built from 004's `expectedFields`, with the Terminal's

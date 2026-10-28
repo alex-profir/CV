@@ -17,14 +17,14 @@ div.terminal                          data-shell-look desktop|pocket          FR
 ├── div.terminal-screen               the scroll container; output never scrolls the page   FR-019 FR-023
 │   ├── div.greeting                  aria-labelledby nothing; plain text and controls      FR-005
 │   │   ├── p                         "cv-os terminal · read only · nothing you type leaves your browser" (desktop)
-│   │   ├── p                         {basics.name} — {basics.label}
+│   │   ├── p                         {basics.name} — {basics.label}, or the site heading when the CV has no name
 │   │   ├── p                         "This is my CV as a terminal. … New here? Try " button.command-inline "help" "."
 │   │   └── div.chips                 button.command-chip × 5: help, about, work, projects, cv   FR-015
 │   ├── section.run × entries         aria-labelledby its h2                  FR-029
-│   │   ├── h2.run-command            span.prompt[aria-hidden] (guest · {path} · ◷ {hh:mm} · ❯), then {line as typed}   FR-006 FR-027 FR-029
+│   │   ├── h2.run-command            span.prompt[aria-hidden] (guest · {path} · ◷ {hh:mm} · ❯; FR-027 FR-046), then {line as typed}   FR-006 FR-027 FR-029
 │   │   └── div.run-output            the output block (FR-009 to FR-018, FR-043 to FR-057)
 │   └── form.prompt-line              the live prompt                         FR-006
-│       ├── span.prompt[aria-hidden]  guest · {path} [· ◷ {hh:mm}] · ❯
+│       ├── span.prompt[aria-hidden]  guest · {path} [· ◷ {hh:mm}] · ❯         FR-027 FR-046
 │       ├── label.visually-hidden     "Command"                               FR-027
 │       ├── input.command-line        type=text, maxlength {command-line.max-length}   FR-006 FR-017 FR-018 FR-020 FR-026 FR-027
 │       └── span.cursor-mirror[aria-hidden]  the typed text and the block cursor   FR-032
@@ -33,7 +33,8 @@ div.terminal                          data-shell-look desktop|pocket          FR
 ```
 
 - The window is named by 005's title bar. Its text is `Terminal — {path}`, or `Terminal — vim`
-  while the vim view is open, from the Terminal's `WindowTitle`. On mobile the header shows
+  while the vim view is open, from the Terminal's `WindowTitle`, whose `span` carries
+  `data-req="006-terminal-FR-046"`. On mobile the header shows
   `Terminal` (005 FR-032).
 - `.run` groups are in run order. `clear` and the Terminal menu's `Clear output` remove them all
   and the greeting with them (FR-019).
@@ -52,7 +53,7 @@ div.terminal                          data-shell-look desktop|pocket          FR
 
 ```text
 div.pocket                            data-keyboard while the on-screen keyboard is open   FR-024 FR-052 FR-053
-├── div.pocket-case[aria-hidden=true] the drawn case: power light, "cv-os pocket", grille, {basics.name}   FR-054
+├── div.pocket-case[aria-hidden=true] the drawn case: power light, "cv-os pocket", grille, {basics.name} (left out when the CV has no name)   FR-054
 ├── div.terminal …                    as above, in the recessed screen
 └── div[role=toolbar].pocket-keys     aria-label "Command keys" | "Vim keys"; hidden while data-keyboard   FR-025 FR-051 FR-053 FR-066
     └── button.pocket-key × 8         help, about, work, projects, skills, cv, ls, clear
@@ -132,7 +133,7 @@ Written to `.terminal-status`, once each:
 | After | Announced |
 |-------|-----------|
 | A command whose output is at most 5 rows | The output's text |
-| A longer output | `{command}: {count} {unit}`, such as `work: 4 entries`, `help: 25 commands`, `ls: 11 files` |
+| A longer output | `{command}: {count} {unit}`, such as `work: 4 entries`, `help: 22 commands`, `ls: 11 entries` |
 | `cd` | `Now in {path}` |
 | `clear` | `Cleared` |
 | Opening the vim view | `{file}, read only, {n} lines. Type :q to leave.` |
@@ -167,6 +168,9 @@ Written literally in the TSX, so the traceability check (001) reads them (FR-037
 | `input.command-line` | `006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027` |
 | `span.cursor-mirror` | `006-terminal-FR-032` |
 | `.terminal-status` | `006-terminal-FR-028` |
+| `span.prompt`, live and echoed | `006-terminal-FR-027 006-terminal-FR-046` |
+| the Terminal's `WindowTitle` `span` | `006-terminal-FR-046` |
+| `help` output | `006-terminal-FR-008` |
 | command controls | `006-terminal-FR-015 006-terminal-FR-034`, plus `006-terminal-FR-016` (suggestions), `006-terminal-FR-048` (path replies), `006-terminal-FR-050` (`ls` names) |
 | `ls` output | `006-terminal-FR-043 006-terminal-FR-050` |
 | `specs` output | `006-terminal-FR-013` |
@@ -182,5 +186,5 @@ Written literally in the TSX, so the traceability check (001) reads them (FR-037
 | dock item and home icon (005's, for the Terminal) | `006-terminal-FR-001` |
 | Terminal menu's `Clear output` | `006-terminal-FR-003 006-terminal-FR-019` |
 
-These are Non-UI and carry no target: FR-002, FR-008, FR-012, FR-014, FR-021, FR-022, FR-036 to
-FR-042, FR-044 to FR-047, FR-049, FR-055, FR-057.
+These are Non-UI and carry no target: FR-002, FR-012, FR-014, FR-021, FR-022, FR-036 to FR-042,
+FR-044, FR-045, FR-047, FR-049, FR-055, FR-057.

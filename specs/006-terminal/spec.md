@@ -45,7 +45,8 @@
 - Q: How close must a mistyped command be before the Terminal suggests a real one? → A: Every
   command or alias at most 2 single-letter edits away (a letter added, removed or changed, or two
   neighbouring letters swapped), plus every command the typed word begins, when it is at least 2
-  letters long (FR-016).
+  letters long (FR-016). Refined 2026-10-28: a typed word of 3 letters or fewer reaches only names
+  1 edit away, so a 2-letter word doesn't reach every 2-letter command (FR-016).
 - Q: FR-004 needs 005 FR-040 to let focus go to the Terminal's command line on opening. Where is
   that change made? → A: On 005's branch, before 005 merges: 005 FR-040 now lets an app whose spec
   says so move focus to an input inside it. This spec relies on that and amends nothing (FR-004).
@@ -417,8 +418,9 @@ can't merge.
 - **An empty or absent CV section**: its command still exists, still appears in `help`, and says
   the CV lists nothing for it (FR-011). Its folder or file is left out of the file system, as
   `/cv` leaves out an empty section (FR-043).
-- **The CV document has no name**: the prompt and greeting fall back to the site heading the
-  design sets, as the shell does (005 FR-066).
+- **The CV document has no name**: the greeting falls back to the site heading the design sets,
+  as the shell does (005 FR-066), and the pocket terminal's case leaves the name out. The prompt
+  holds no name, so it doesn't change.
 - **A shortcut a terminal user expects**, such as Ctrl+C or Ctrl+L: it keeps the browser's
   meaning. The Terminal takes over no key a browser or screen reader reserves (005 FR-029).
 - **Escape in the command line**: does what the shell gives it (005 edge cases), and doesn't clear
@@ -769,12 +771,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   (FR-051) or the approved design sets it.
 - **FR-035**: The Terminal MUST conform to WCAG 2.2 Level AA in every state: just opened, after
   `help`, with the vim view open (folded, with a fold open and a search, and with its key help),
-  after an unknown command, after `ls`, inside a folder after `cat`, after
-  `clear`, with a long command typed and, on desktop, minimized, maximized, and as one of two open
-  windows, and on mobile, as the pocket terminal in portrait and in landscape, and with the
-  on-screen keyboard open, and with the vim view and its vim keys. It MUST keep all content and function at 200% browser zoom and text-only
-  zoom, at 400% zoom on a window 1280 px wide, and with text spacing overridden as WCAG 2.2 success
-  criterion 1.4.12 describes.
+  after an unknown command, after `ls`, inside a folder after `cat`, after `clear`, with a long
+  command typed and, on desktop, after `specs`, with its menu open, minimized, maximized, and as one
+  of two open windows, and on mobile, as the pocket terminal in portrait and in landscape, and with
+  the on-screen keyboard open, and with the vim view and its vim keys. It MUST keep all content and
+  function at 200% browser zoom and text-only zoom, at 400% zoom on a window 1280 px wide, and with
+  text spacing overridden as WCAG 2.2 success criterion 1.4.12 describes.
 
 **Offline**
 

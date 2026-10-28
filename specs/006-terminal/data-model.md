@@ -91,7 +91,9 @@ type Announcement = { full: string } | { command: string; count: number; unit: '
 - `tone` only sets a color token. The words carry the meaning, so `Approved` is written, not
   colored (FR-031, design).
 - `Announcement` is `full` when the block is at most 5 rows at the desktop column count (research
-  R13), else the counted summary (FR-028).
+  R13), else the counted summary (FR-028). `help` counts its commands, not their aliases
+  (`help: 22 commands`), and `ls` counts its files and folders together as `entries`
+  (`ls: 11 entries`).
 
 ## CV fields per section
 
