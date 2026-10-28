@@ -338,7 +338,7 @@ file and `cat` a folder.
 - [X] T062 [P] [US3] Extend `packages/web/test/terminal/engine/commands.test.ts` and `replies.test.ts`:
   - covers 006-terminal-FR-046: `pwd` shows `~`, and `~/work` after `cd work`; `cd`, `cd ~`, `cd /` and `cd ..` go home;
   - covers 006-terminal-FR-048: `cat nothing-here`, `cat work/nowhere`, `cd about`, `cat work`, `vim work` and `ls about` give FR-048's replies with the path as typed and `cat` or `ls` as controls; `ls about` lists that file alone.
-- [ ] T063 [P] [US3] Write `packages/web/test/terminal/files.test.ts`:
+- [X] T063 [P] [US3] Write `packages/web/test/terminal/files.test.ts`:
   - covers 006-terminal-FR-043: folder names differ from files by their trailing slash, with color removed (computed style forced to one color);
   - covers 006-terminal-FR-046: after `cd work` the next prompt and the window title read `~/work` (`Terminal — ~/work`);
   - covers 006-terminal-FR-021: after `cd work`, minimize and restore, mobile Home and reopen, and a 1440 → 375 → 1440 resize keep `~/work` in the prompt and in `pwd`; closing and reopening starts at `~`;
@@ -347,7 +347,7 @@ file and `cat` a folder.
 ### Implementation for User Story 3
 
 - [X] T064 [US3] Complete `buildFileSystem` in `packages/web/src/apps/terminal/engine/files.ts` (research R9, data-model.md table): `about`, `contact`, `work/`, `projects/`, `skills`, `education/`, `languages`, `interests`, `readme` and `specs/` in the design's order, left out when empty as the table sets, each file's `show` the matching builder from T044 and T060; `fileName(value)` (NFD, combining marks removed, lower case, `[^a-z0-9]+` → `-`, trimmed, empty → singular site text) and the clash rule. T061 passes.
-- [ ] T065 [US3] Implement `ls`, `cd` and `pwd`, and FR-048's replies for `cat`, `cd`, `ls` and `vim`, in `packages/web/src/apps/terminal/engine/commands.ts` (contracts/commands.md): `ls` returns a `columns` block of `command` controls (`ls ~/{path}` for folders, ending in `/` with tone `folder`; `cat ~/{path}` for files) with the output carrying `data-req="006-terminal-FR-043 006-terminal-FR-050"`; `cd` returns `{ kind: 'cd' }`; `pwd` its path. In `session.ts`, `cd` sets `folder`; the prompt and `WindowTitle` show `formatPath(folder)`. T062 and T063 pass.
+- [X] T065 [US3] Implement `ls`, `cd` and `pwd`, and FR-048's replies for `cat`, `cd`, `ls` and `vim`, in `packages/web/src/apps/terminal/engine/commands.ts` (contracts/commands.md): `ls` returns a `columns` block of `command` controls (`ls ~/{path}` for folders, ending in `/` with tone `folder`; `cat ~/{path}` for files) with the output carrying `data-req="006-terminal-FR-043 006-terminal-FR-050"`; `cd` returns `{ kind: 'cd' }`; `pwd` its path. In `session.ts`, `cd` sets `folder`; the prompt and `WindowTitle` show `formatPath(folder)`. T062 and T063 pass.
 
 **Checkpoint**: The file system is complete and browsable by typing and by clicking.
 
