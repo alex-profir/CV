@@ -58,6 +58,17 @@
   something hidden there. Should the window stay where the visitor put it, or come back into
   view? → A: It comes back into view: when focus moves to something the dock or the screen's
   edge hides, the window moves just enough to show it, so focus is never hidden (FR-024, FR-067).
+- Q: The dock should look like the glass of current macOS, which also bends the light at its
+  edges, something only some browsers can draw. Should it bend where it can, or look the same in
+  every browser? → A: It bends where the browser can draw it. Other browsers show the same glass
+  without the bending (FR-068).
+- Q: Which parts of the shell get the new glass: the desktop dock only, the phone home screen's
+  bar too, or all the shell's chrome? → A: The desktop dock only. The menu bar, the menus and
+  the phone shell keep their look (FR-068).
+- Q: Should minimizing animate the window into the dock as a genie that bends into it, or as a
+  window that shrinks into its dock item? → A: It shrinks into its dock item and grows back out
+  on restore. Maximizing grows the window to fill the desktop and shrinks it back on restore
+  (FR-069, FR-070).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -360,6 +371,10 @@ confirm that the matching check fails with a clear message and that the pull req
   the window first (FR-065).
 - **The browser window shrinks with a window maximized**: the window keeps filling the smaller
   desktop area.
+- **Minimizing, restoring or maximizing again before the animation ends**: the running
+  animation ends at once at its end state, and the new action plays from there (FR-071).
+- **The dock over a light window, such as the CV's white page**: the dock's tint keeps its names,
+  icons and open marks readable (FR-068).
 - **Every open window minimized**: the desktop shows no window, the menu bar shows the desktop's
   own name, and the dock and the Window menu bring each window back.
 - **The shell switches to mobile with a window minimized or maximized**: on mobile, every app
@@ -574,6 +589,30 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   Otherwise the window MUST stay where the visitor put it: pointer moves, scrolling, and focus
   moving to an element already in view MUST NOT move it.
 
+**Desktop: the dock's glass and window animations**
+
+- **FR-068**: The dock MUST be drawn as glass: what is behind it MUST show through blurred and
+  tinted, with a light rim along its edge and a sheen on its upper part. In browsers that can
+  draw it, the glass MUST also bend what is behind it near its edges, as a lens does. Browsers
+  that can't MUST show the same glass without the bending, and nothing else about the dock may
+  change between them. Whatever is behind the dock, a window's content included (FR-010), every
+  dock item's name MUST keep a contrast of at least 4.5:1, and its icon and open mark at least
+  3:1. When the visitor asks for reduced transparency, the dock MUST be solid. The glass is the
+  site's own drawing (FR-044). The menu bar, the menus and the mobile shell keep their look.
+- **FR-069**: Minimizing a window MUST animate it shrinking from its box into its app's dock
+  item, passing behind the dock (FR-010), and restoring it MUST animate it growing back out of
+  that item to its position and size. About this site, which has no dock item, MUST shrink into
+  and grow out of the site menu's title. Each animation MUST last no longer than the design sets.
+- **FR-070**: Maximizing a window MUST animate it growing from its position and size to fill the
+  desktop area, and restoring it MUST animate it back. A change of the desktop area's size while
+  a window is maximized MUST NOT animate.
+- **FR-071**: The animations of FR-069 and FR-070 MUST NOT hold anything up: focus MUST move, and
+  screen readers MUST be told, as FR-063 to FR-065 set, when the action starts, and the visitor
+  MUST be able to act at once. Acting on the window during its animation, or starting another
+  animation of it, MUST end the running animation at once at its end state, then act. None of
+  them plays on first load, on a shell switch, or when a window is restored by the shell rather
+  than by the visitor.
+
 **Mobile: home screen and full-screen apps**
 
 - **FR-031**: The mobile shell MUST show a home screen with one icon per app (FR-003), each with
@@ -634,8 +673,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   design value MUST come from tokens, and motion values from the motion token source. The token
   check (003) MUST pass over the shells with no exception added for them.
 - **FR-046**: When the visitor asks for reduced motion, every non-essential animation of the
-  shells, such as windows or apps opening, closing, minimizing, restoring and maximizing, and
-  menus appearing, MUST be removed or
+  shells, such as windows or apps opening, closing, minimizing, restoring and maximizing
+  (FR-069, FR-070), and menus appearing, MUST be removed or
   replaced with one that doesn't move or scale (Constitution VIII). A window being dragged MUST
   still follow the pointer.
 - **FR-047**: With forced colors active, every shell element MUST stay visible and
@@ -769,7 +808,8 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
 - [x] ASCII wireframes, per shell, of every state: on desktop, first load with the CV window
   open, the desktop with no window open, two windows open, a menu open, the Window menu, a
   window resized, a window minimized, a window maximized, a keyboard move and a keyboard
-  resize in progress, and a window moved behind the dock and past the screen's edge; on
+  resize in progress, a window moved behind the dock and past the screen's edge, the dock's
+  glass, and a frame of a window minimizing into the dock; on
   mobile, the home screen in portrait and landscape, the CV app full screen and About this site
   full screen; and the page shown without scripts
 - [x] PNG exports of the approved Penpot mockup of both shells, at a phone width and a desktop

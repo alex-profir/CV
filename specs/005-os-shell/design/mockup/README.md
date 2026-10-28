@@ -38,6 +38,7 @@ copy. In the shell itself the CV app won't be a frame. That is for the plan to d
 | Desktop, a window maximized | `desktop-maximized-1440.png` |
 | Desktop, a keyboard move in progress | `desktop-keyboard-move-1440.png` |
 | Desktop, a keyboard resize in progress | `desktop-keyboard-resize-1440.png` |
+| Desktop, a window minimizing into the dock: one frame of the animation | `desktop-minimizing-1440.png` |
 | Phone, the home screen | `phone-home-375.png`, `phone-home-320.png`, `phone-home-landscape-812.png` |
 | Phone, the CV app full screen | `phone-cv-375.png` |
 | Phone, About this site full screen | `phone-about-375.png` |
@@ -157,3 +158,20 @@ for glass, hairlines and shadows. Translucent colors are 8-digit hex, `#rrggbbaa
 Motion uses the existing `motion.duration.fast` and `motion.easing.standard`, so no motion token is
 added. `scale.open-start` is the scale windows, full-screen apps and menus grow from as they open
 (the wireframes' 96%). Penpot holds it as a `number` token, so it isn't a motion token.
+
+### Proposed 2026-10-28: the dock's glass (FR-068)
+
+| Token | Type | Value |
+|-------|------|-------|
+| `color.base.glass-deep` | color | `#121218b3` |
+| `color.base.sheen` | color | `#ffffff1f` |
+| `color.dock-glass` | color | `{color.base.glass-deep}` |
+| `color.dock-sheen` | color | `{color.base.sheen}` |
+| `color.dock-rim` | color | `{color.base.rim}` |
+| `scale.dock-saturate` | number | 1.6 |
+| `size.dock-lens` | dimension | 24px |
+
+The lens is an SVG filter in each desktop page, `#dock-lens`: a displacement map that is neutral
+in the middle and pushes toward the edges. An SVG attribute can't read a CSS variable, so the
+mockup writes `size.dock-lens` as its literal 24 there. The plan decides how the shell reads it.
+

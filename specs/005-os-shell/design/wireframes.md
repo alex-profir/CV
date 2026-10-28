@@ -57,6 +57,9 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Wallpaper | One original wallpaper from tokens, proposed: a deep graphite with an indigo glow top left, a teal glow bottom right and a faint dot grid. Set by the mockup | FR-044 |
 | Theme | One theme, Graphite: a dark shell (menu bar, dock, windows, menus, home screen) around the CV app, which keeps `/cv`'s light look. `/cv`'s fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
 | Opening and closing animation | Windows and full-screen apps fade and grow from 96% over `motion.duration.fast` (150 ms) with `motion.easing.standard`. With reduced motion: the same fade with no movement or scaling | FR-046 |
+| Minimize and restore animation | The window's box shrinks and moves to its dock item's icon, behind the dock, over `motion.duration.base` (250 ms) with `motion.easing.standard`, fading out over the last third. Restoring plays it backwards, out of the icon. About this site goes into and comes out of the site mark in the menu bar. With reduced motion: a fade in place over `motion.duration.fast` (150 ms) | FR-069, FR-046 |
+| Maximize and restore animation | The window's box grows from its position and size to the desktop area over `motion.duration.base` (250 ms) with `motion.easing.standard`, and its corners and shadow drop at the end. Restoring plays it backwards. With reduced motion: no animation, the window changes at once | FR-070, FR-046 |
+| Dock glass | A 70% graphite tint (`color.dock-glass`), with what is behind blurred by 24 px and its color lifted by 1.6. A light rim along the top edge and a hairline along the bottom, and a white sheen fading out halfway down. Where the browser can draw it, the outer 16 px or so bend what is behind toward the edge, by up to 24 px (`size.dock-lens`). The tint keeps the names at 5.9:1 over a white window behind the dock, which the sheen doesn't reach. With reduced transparency: the solid `color.chrome-solid`. In forced colors: the dock's border, as today | FR-068, FR-047 |
 
 ## Desktop shell
 
@@ -446,6 +449,56 @@ visible, above the dock's space.
   far enough to show it with its focus outline, and keeps its size (FR-067). Pointer moves and
   scrolling never move it.
 - Page title, menu bar and focus are as on first load.
+
+### A window minimizing into the dock (FR-069)
+
+One frame of the minimize animation, about 70% of the way: the CV window's box shrinks and moves
+toward the CV item's icon, behind the dock, and fades out over the last third. The dock shows its
+glass over the window (FR-068).
+
+```
++--------------------------------------------------------------------------------------------------+
+| [*]  CV   Window                                                                                 |
++--------------------------------------------------------------------------------------------------+
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                    #========================#                                    |
+|                                    # [x][-][^]     CV       #                                    |
+|                                    #========================#                                    |
+|                                    # [NAME]                 #                                    |
+|                                    # [summary ....]  [....] #                                    |
+|                                    # [...........]   [....] #                                    |
+|                                    # [...........]          #                                    |
+|                                    #       +----------------+                                    |
+|                                    #=======|  [ CV icon ]   |                                    |
+|                                            |       CV       |                                    |
+|                                            |       •        |                                    |
+|                                            |                |                                    |
+|                                            +----------------+                                    |
++--------------------------------------------------------------------------------------------------+
+```
+
+- The window ends at the CV item's icon and is hidden. The dock's open mark turns hollow
+  (FR-063). Restoring plays the same frames backwards.
+- Focus has already moved, and screen readers have already been told, when the animation starts.
+  Acting again ends it at once (FR-071).
+- Maximizing has no frame of its own: the window's box grows to the desktop area as in "A window
+  maximized", and back on restore (FR-070).
 
 ### A window minimized, with no other window open (FR-063)
 

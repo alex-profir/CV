@@ -104,4 +104,14 @@
   --token-size-window-min-width: 400px;
   --token-size-window-min-height: 300px;
   --token-size-pad-button: 36px;
+
+  /* Proposed 2026-10-28, the dock's glass (FR-068). The tint is 70%: the
+     dock's names stay at 5.9:1 over a white window behind it. */
+  --token-color-base-glass-deep: #121218b3;
+  --token-color-base-sheen: #ffffff1f;
+  --token-color-dock-glass: var(--token-color-base-glass-deep);
+  --token-color-dock-sheen: var(--token-color-base-sheen);
+  --token-color-dock-rim: var(--token-color-base-rim);
+  --token-scale-dock-saturate: 1.6;
+  --token-size-dock-lens: 24px;
 }

@@ -21,7 +21,9 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 ## Design decisions
 
 - **Look**: Graphite. A deep graphite wallpaper with soft indigo and teal glows and a faint dot
-  grid. The menu bar and the dock are dark glass that blurs what is behind them. Windows have
+  grid. The menu bar and the dock are dark glass that blurs what is behind them. Since
+  2026-10-28 the dock's glass also has a rim, a sheen and, where the browser can draw it, bending
+  edges (see the changes after sign-off). Windows have
   12 px corners, a hairline edge and a soft shadow. Menus and the move and resize pad are solid
   dark panels with 8 px and 12 px corners. A maximized window drops its corners and shadow.
 - **Window controls**: close, minimize and maximize (restore), on the left of the title bar in
@@ -132,6 +134,22 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   `mockup/desktop-past-edge-1440.png`, and a `past-edge` placement in `mockup/shell.css`. Changed:
   [wireframes.md](wireframes.md) (three design values, the first-load notes and the resize
   notes). No other state, export or token changes. **Awaiting the owner's confirmation.**
+- **2026-10-28, the dock's glass and the minimize and maximize animations**, at the owner's
+  request, with the spec's clarifications of 2026-10-28 (FR-068 to FR-071). The dock was dark
+  glass that blurred what was behind it, at a 55% tint, which a white window behind it (now
+  possible, FR-010) would bring to 3.5:1 for its names. It is now a glass in the spirit of
+  current macOS, drawn for this site: a 70% tint (5.9:1 over white), the color behind lifted, a
+  light rim and a sheen, and, where the browser can draw it, edges that bend what is behind as a
+  lens does. Other browsers show the same glass without the bending, and reduced transparency
+  shows a solid dock. The menu bar, the menus and the phone shell are unchanged. Minimizing now
+  shrinks the window into its dock item behind the dock, and maximizing grows it to fill the
+  desktop, each over 250 ms, played backwards on restore. Added: the state "A window minimizing
+  into the dock" in [wireframes.md](wireframes.md), `mockup/desktop-minimizing.html` and its
+  export, the dock's glass and `#dock-lens` in `mockup/shell.css` and every desktop page, and 7
+  proposed tokens in `mockup/proposed-tokens.css`. Changed: [wireframes.md](wireframes.md) (three
+  new design values). Every desktop export is rendered again, as each shows the dock: apart from
+  the dock, they differ from the earlier exports only in text anti-aliasing, from a different
+  renderer. **Awaiting the owner's confirmation.**
 
 ## Sign-off
 

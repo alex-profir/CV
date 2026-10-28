@@ -213,7 +213,38 @@ a {
   padding: var(--token-space-2) var(--token-space-2-5) var(--token-space-1-5);
   border: var(--token-border-thin) solid var(--token-color-chrome-border);
   border-radius: var(--token-radius-dock);
-  box-shadow: var(--token-shadow-dock);
+  /* Glass (FR-068): a tint dark enough for the names' contrast over white,
+     what is behind blurred and lifted, a bright rim, and, where the browser
+     can draw it, the edges bent as through a lens (the page's #dock-lens). */
+  background: var(--token-color-dock-glass);
+  backdrop-filter: url(#dock-lens) blur(var(--token-size-chrome-blur)) saturate(var(--token-scale-dock-saturate));
+  box-shadow:
+    inset 0 var(--token-border-thin) 0 var(--token-color-dock-rim),
+    inset 0 calc(-1 * var(--token-border-thin)) 0 var(--token-color-chrome-border),
+    var(--token-shadow-dock);
+}
+
+/* The glass's sheen, light on its upper half, behind the items. */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, var(--token-color-dock-sheen), transparent 45%);
+  pointer-events: none;
+}
+
+/* Reduced transparency: a solid dock (FR-068). */
+@media (prefers-reduced-transparency: reduce) {
+  .dock {
+    background: var(--token-color-chrome-solid);
+    backdrop-filter: none;
+  }
+
+  .dock::before {
+    content: none;
+  }
 }
 
 .dock-item {
