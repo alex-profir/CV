@@ -44,6 +44,9 @@
   the app implements, including ones no element can carry? → A: Only those its elements carry.
   Each spec's group also says how many of that spec's requirements the view doesn't list, with a
   link to the whole spec (FR-006).
+- Q: When the site is built from a copy of the repository with uncommitted changes, what should
+  the spec view's links point at? → A: The last commit the build sits on, and the spec view says
+  in site text that the build includes uncommitted changes, so its links may not match (FR-010).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -296,6 +299,9 @@ request can't merge.
 - **Offline storage unavailable or cleared**: the inspector works online and shows no error.
 - **Printing a spec view**: printing the shell is not designed (005). The repository holds the
   specs.
+- **A build with uncommitted changes**, such as a local build mid-edit: the spec view shows the
+  text as it is in that copy, links to the last commit, and says that its links may not match
+  (FR-010). Published builds and pull-request builds come from a commit, so they never show it.
 - **Reloading the page, or a later visit**: every app opens showing the app (FR-004).
 
 ## Requirements *(mandatory)*
@@ -362,7 +368,10 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
 - **FR-010**: Each spec link and test link MUST lead to the line in the repository where the
   requirement or the test is, in the version of the repository the site was built from, so the
   text the spec view shows is the text the link shows. A spec group's link MUST lead to the top of
-  the spec, in the same version.
+  the spec, in the same version. When the site is built from a copy with uncommitted changes, the
+  links MUST lead to the last commit that copy sits on, and every spec view MUST say in site text
+  that the build includes uncommitted changes, so its links may not match. A build from a commit
+  with no uncommitted changes MUST NOT say it.
 
 **The shell's specs**
 
@@ -382,8 +391,8 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   them. Nothing in it may be typed by hand: a requirement or a test added, changed or removed MUST
   show at the next build with no edit to the inspector.
 - **FR-014**: The requirement data MUST hold only what the repository makes public: spec titles,
-  statuses, requirement IDs and text, test names, file paths and line numbers, and the version the
-  site was built from.
+  statuses, requirement IDs and text, test names, file paths and line numbers, the version the
+  site was built from, and whether that copy had uncommitted changes.
 - **FR-015**: The inspector MUST NOT delay the shell or the CV: the site root's first load MUST
   show the shell and the CV as soon as it does without this feature, and the requirement data MUST
   NOT be needed before a visitor shows a spec view.
@@ -446,8 +455,9 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   view lists exactly the requirements its app or the shell carries, that each spec group's count
   of requirements it doesn't list is right, that every requirement's text matches its spec and its
   tests match what the traceability check (001) finds, that every requirement carried anywhere in
-  the shell or its apps appears in at least one view, and that going back restores the app's scroll position and state. It MUST read what it expects from the
-  built site and the repository, not from a hand-written list.
+  the shell or its apps appears in at least one view, and that going back restores the app's
+  scroll position and state. It MUST read what it expects from the built site and the repository,
+  not from a hand-written list.
 - **FR-031**: The accessibility check (004, 005 FR-056) MUST cover every inspector state FR-024
   lists. The other-site check MUST cover showing every spec view.
 - **FR-032**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
@@ -476,7 +486,8 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
 - **App's requirements**: the set of requirements the elements of one app carry, or of the shell
   for About this site, gathered when the site is built.
 - **Requirement data**: every requirement record, test reference and app's requirements, with the
-  version of the repository the site was built from.
+  version of the repository the site was built from and whether that copy had uncommitted
+  changes.
 - **Site text**: text in the inspector that isn't CV content or spec content, such as "What's
   this?", set by the design, in English.
 
@@ -569,7 +580,9 @@ desktop and one tap away on mobile, and `/cv` remains a plain server-rendered pa
 - **"What's this?"**: one short text for the whole inspector, set by the design. It explains the
   view, not each requirement. Each requirement's own reasons are in its spec, a link away.
 - **Links point at the built version**: links name the version the site was built from, so line
-  numbers and text match what the spec view shows, even after the main branch moves on.
+  numbers and text match what the spec view shows, even after the main branch moves on. A build
+  with uncommitted changes links to its last commit and says its links may not match, so local
+  work in progress isn't blocked.
 - **Requirement data is read like 001 reads it**: the inspector, the Terminal's `specs` (006
   FR-013) and the traceability check read specs and tests the same way, so they never disagree.
 - **Test results**: every test passes on the main branch before merge (001, Constitution), so the
