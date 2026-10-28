@@ -208,36 +208,36 @@ then every CV command it lists, and compare each output with the CV document and
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [US1] Write `packages/web/test/terminal/engine/parse.test.ts`:
+- [X] T019 [P] [US1] Write `packages/web/test/terminal/engine/parse.test.ts`:
   - covers 006-terminal-FR-007: ` HELP `, `work\t`, `help   work`, tabs and capitals parse to the same command and arguments; an empty or blank line is `{ kind: 'empty' }`;
   - covers 006-terminal-FR-018: the parser builds no block node from typed text except `text`; `<b>hi</b>` stays one word;
   - covers 006-terminal-FR-057: `cat cv.json | jq` is two stages with input passed on; `ls | work` gets the "doesn't read piped input" reply naming `work`; `ls |`, `| jq` and `ls || jq` are `pipe-usage`; `$(ls)`, `` `ls` `` and `;` are plain words, never run.
-- [ ] T020 [P] [US1] Write `packages/web/test/terminal/engine/help.test.ts`, covers 006-terminal-FR-008: `COMMANDS` names exactly the 22 commands of FR-008, with `whoami`, `experience` and `?` as aliases of `about`, `work` and `help`; every name and alias is lower case and unique; `help`'s rows list every name and alias as a `command` node and nothing else; 200 generated words not in the table parse as unknown; `help work` gives `work`'s own help.
-- [ ] T021 [P] [US1] Write `packages/web/test/terminal/engine/cv-output.test.ts`:
+- [X] T020 [P] [US1] Write `packages/web/test/terminal/engine/help.test.ts`, covers 006-terminal-FR-008: `COMMANDS` names exactly the 22 commands of FR-008, with `whoami`, `experience` and `?` as aliases of `about`, `work` and `help`; every name and alias is lower case and unique; `help`'s rows list every name and alias as a `command` node and nothing else; 200 generated words not in the table parse as unknown; `help work` gives `work`'s own help.
+- [X] T021 [P] [US1] Write `packages/web/test/terminal/engine/cv-output.test.ts`:
   - covers 006-terminal-FR-009: on the `every-field`, `nothing-optional`, `partial-dates`, `non-ascii` and `three-projects` fixtures, `about`, `work`, `projects`, `education`, `skills`, `languages`, `interests` and `contact` show the fields of `CV_FIELDS` in order, absent fields with no label, dates as 004's `format/dates.ts` writes and dates them (`time` nodes, ongoing as `Present`), the location as 004's `format/location.ts` writes it, and links named as 004 FR-012 and FR-013 name them; `CV_FIELDS` matches 004's `expectedFields` (`tools/site-check/src/expected.ts`) on `every-field`;
   - covers 006-terminal-FR-010: changing one fact in a fixture CV changes the output, with no other edit (as 004's `one-edit.test.ts`);
   - covers 006-terminal-FR-011: on `empty-sections`, each empty section's command gives `The CV lists no {section}.` with no heading or list, and `help` still lists it.
-- [ ] T022 [P] [US1] Write `packages/web/test/terminal/engine/suggest.test.ts`, covers 006-terminal-FR-016: `wrok` → `work`, `hlep` → `help`, `proj` → `projects`, `experiance` → `experience`, `WROK` → `work` (capitals free), `sudo`, `rm`, `mkdir` → none; `l` → `?`, `ls` (distance, then `help` order); `mv` → `cv`; `cta` → `cat` (words of 3 letters or fewer reach names 1 edit away only); `cl` → `cv`, `cd`, `clear` (a prefix match sorts by its own distance, after nearer names); at most 3; an alias and its command count once, the chip running the name that matched.
-- [ ] T023 [P] [US1] Write `packages/web/test/terminal/engine/replies.test.ts`:
+- [X] T022 [P] [US1] Write `packages/web/test/terminal/engine/suggest.test.ts`, covers 006-terminal-FR-016: `wrok` → `work`, `hlep` → `help`, `proj` → `projects`, `experiance` → `experience`, `WROK` → `work` (capitals free), `sudo`, `rm`, `mkdir` → none; `l` → `?`, `ls` (distance, then `help` order); `mv` → `cv`; `cta` → `cat` (words of 3 letters or fewer reach names 1 edit away only); `cl` → `cv`, `cd`, `clear` (a prefix match sorts by its own distance, after nearer names); at most 3; an alias and its command count once, the chip running the name that matched.
+- [X] T023 [P] [US1] Write `packages/web/test/terminal/engine/replies.test.ts`:
   - covers 006-terminal-FR-016: the unknown reply names the word exactly as typed, says it is not a command and holds a `help` control, then the suggestions as chips, or only `help`;
   - covers 006-terminal-FR-017: `work 2020`, `cat`, `open` alone, `vim` alone and `help work extra` get `{command} takes {what}. Usage: {usage}`.
-- [ ] T024 [P] [US1] Write `packages/web/test/terminal/engine/json.test.ts`:
+- [X] T024 [P] [US1] Write `packages/web/test/terminal/engine/json.test.ts`:
   - covers 006-terminal-FR-055: `cvJson` equals `JSON.stringify(resume, null, 2)` and `packages/content/resume.json`'s text without its final line break, and the printer's text parses to the CV with every key in order;
   - covers 006-terminal-FR-056: 2-space indents; key order kept, integer-like keys (`{"2":1,"1":2}`) included; numbers kept as written (`1.50`, `1e3`); token classes `key`, `string`, `number`, `literal`, `punctuation`; top-level folds with key, start and end; `jq .` accepted; `jq .work` gets the "only pretty-prints" reply; `{` alone, `cat about | jq` and `jq readme` get `jq: {path or |} is not JSON.`.
-- [ ] T025 [P] [US1] Write `packages/web/test/terminal/engine/vim.test.ts`:
+- [X] T025 [P] [US1] Write `packages/web/test/terminal/engine/vim.test.ts`:
   - covers 006-terminal-FR-060: every key of data-model.md's transition table (`h` `j` `k` `l`, arrows, `w` `b`, `0` `$`, `gg` `G`, `{` `}`, Page Up and Page Down, `:12`, `:set nu`, `:set nonu`) moves as set, skipping closed folds as one line; `i`, `a`, `o`, `x`, `dd`, `p`, `:w`, `:wq`, `:w!` and `:x` change nothing and set `read-only`; `:foo` sets `unknown` naming `foo`; Escape cancels `/`, `:` and a pending `g`, `z` or `d`; a Ctrl, Alt or Meta key is ignored; the text never changes and the cursor is never inside a closed fold;
   - covers 006-terminal-FR-061: on opening, each top-level object or array is one closed fold and everything else is open; `za`, `zo`, `zc`, `zR`, `zM` and `{ fold: n }` toggle, open, close, open all and close all;
   - covers 006-terminal-FR-062: `/REST` Enter finds every match case-insensitively across the file, opens the fold holding the current one, `n` and `N` move between them with wrap, a missing word gives `not-found` and the cursor stays;
   - covers 006-terminal-FR-064: `:help` opens the split; the first `:q` closes it, the second returns `'quit'`; `:q!` likewise.
-- [ ] T026 [P] [US1] Write `packages/web/test/terminal/engine/session.test.ts`:
+- [X] T026 [P] [US1] Write `packages/web/test/terminal/engine/session.test.ts`:
   - covers 006-terminal-FR-020: Up and Down step newest first, Down past the newest restores the saved draft, Up with no history changes nothing; empty lines don't enter `history`;
   - covers 006-terminal-FR-021: `reset()` empties entries, history, folder, draft, scroll and `vim`; `run('cv')` sets `vim` and appends its entry only on `'quit'`.
-- [ ] T027 [P] [US1] Write `packages/web/test/terminal/engine/commands.test.ts`:
+- [X] T027 [P] [US1] Write `packages/web/test/terminal/engine/commands.test.ts`:
   - covers 006-terminal-FR-058: `vim cv.json` and `cat cv.json | vim -` return `open-vim` with the JSON rows and folds; `vim nowhere`, `vim -` with nothing piped and `vim` alone give their replies without `open-vim`;
   - covers 006-terminal-FR-059: `cv`'s result equals running `cat cv.json | jq | vim -`, with that pipe on the source; `help` describes `cv` with that pipe;
   - covers 006-terminal-FR-014: `open cv` and `open about` return the `os` action; `open settings` gives `open takes cv or about.` with both as controls.
-- [ ] T028 [P] [US1] Write the first cases of `packages/web/test/terminal/engine/files.test.ts`, covers 006-terminal-FR-045: `resolve` handles relative names, `.`, `..`, `~`, `~/x`, `/x` and capitals from the home folder; `..` and `../..` at home stay home; `formatPath([])` is `~`. `cat cv.json` shows `cvJson` as a text block (covers 006-terminal-FR-055).
-- [ ] T029 [P] [US1] Extend `packages/os-core/test/apps.test.ts`, covers 006-terminal-FR-001: `appsFor` on a `[cv, terminal]` declaration list with both shells returns `[cv, terminal]` in order for `desktop` and `mobile`.
+- [X] T028 [P] [US1] Write the first cases of `packages/web/test/terminal/engine/files.test.ts`, covers 006-terminal-FR-045: `resolve` handles relative names, `.`, `..`, `~`, `~/x`, `/x` and capitals from the home folder; `..` and `../..` at home stay home; `formatPath([])` is `~`. `cat cv.json` shows `cvJson` as a text block (covers 006-terminal-FR-055).
+- [X] T029 [P] [US1] Extend `packages/os-core/test/apps.test.ts`, covers 006-terminal-FR-001: `appsFor` on a `[cv, terminal]` declaration list with both shells returns `[cv, terminal]` in order for `desktop` and `mobile`.
 - [ ] T030 [P] [US1] Write `packages/web/test/terminal/open.test.ts`:
   - covers 006-terminal-FR-001: the dock and the home screen show CV, then Terminal; the Terminal declares both shells and no network need;
   - covers 006-terminal-FR-002: on first load at 1440 only the CV window is open, at 375 the home screen with nothing open; after 5 s nothing else has opened;
