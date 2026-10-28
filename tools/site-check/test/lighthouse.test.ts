@@ -6,6 +6,7 @@ import path from 'node:path';
 import { describe, expect, inject, onTestFinished, test, vi } from 'vitest';
 import { launchChromium } from '../src/browser.ts';
 import { runCheck } from '../src/check.ts';
+import { screenEmulationMetrics } from 'lighthouse/core/config/constants.js';
 import { lighthouseRuns, median } from '../src/parts/lighthouse.ts';
 import { startServer } from '../src/server.ts';
 import { fixture, siteProject } from './helpers/sites.ts';
@@ -67,5 +68,32 @@ describe('the name and role are visible within 2.5 s on the mobile profile (SC-0
       expect(box.y + box.height, selector).toBeLessThanOrEqual(667);
       expect(box.x + box.width, selector).toBeLessThanOrEqual(375);
     }
+  });
+});
+
+describe('the CV icon is visible within 2.5 s on the mobile profile, on the root (SC-003)', () => {
+  test.skipIf(process.env.CI)("on the real build's root, the median first contentful paint is under 2,500 ms and the CV icon is in the first paint's viewport", async () => {
+    const out = inject('siteDir');
+    const manifest = JSON.parse(fs.readFileSync(path.join(out, 'site-manifest.json'), 'utf8'));
+    const server = await startServer({ siteDir: path.join(out, 'site'), manifest });
+    onTestFinished(() => server.close());
+    const runs = await lighthouseRuns(`${server.url}/`, 'mobile');
+    expect(median(runs.map((run) => run.firstContentfulPaint))).toBeLessThan(2500);
+
+    // The first paint comes before the shell's script: the page as parsed,
+    // with the script held back, in Lighthouse's mobile viewport.
+    const { width, height } = screenEmulationMetrics.mobile as { width: number; height: number };
+    const browser = await launchChromium();
+    onTestFinished(() => browser.close());
+    const page = await browser.newPage({ viewport: { width, height }, hasTouch: true });
+    await page.route(/\/assets\/os-[^/]*\.js$/, (route) => route.abort());
+    await page.goto(`${server.url}/`);
+    const icon = page.locator('#os .app-icon[data-view="cv"]');
+    expect(await icon.isVisible()).toBe(true);
+    const box = (await icon.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y + box.height).toBeLessThanOrEqual(height);
   });
 });

@@ -3,6 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { renderProblem } from '../src/report.ts';
+import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -25,5 +26,31 @@ describe('004-cv-page-FR-053: offline, /cv, the root and an unknown path show th
   test('minimal/ passes for /cv, / and an unknown path', async () => {
     const report = await runCheck(fixture('minimal'), { parts: ['offline'] });
     expect(report.results.map((result) => `${result.page} ${result.variant} ${result.status}`)).toEqual(['/cv 375px pass', '/ 375px pass', '/missing-page 375px pass']);
+  });
+});
+
+describe('005-os-shell-FR-059: offline, the root opens in both shells after one visit, with the CV app complete', () => {
+  test('on the real build the root passes at both widths, after a visit to / and after a visit to /cv only', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['offline'] });
+    expect(report.results.map((result) => `${result.page} ${result.variant} ${result.status}`)).toEqual([
+      '/cv 375px pass',
+      '/ mobile/cv-app/375px pass',
+      '/ desktop/cv-app/1440px pass',
+      '/ mobile/cv-app-after-cv/375px pass',
+      '/ desktop/cv-app-after-cv/1440px pass',
+      '/missing-page 375px pass',
+    ]);
+  });
+
+  test("a copy whose worker doesn't store the os script fails on / at both widths, naming the shell and the width", async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'const entries = PRECACHE.map(precacheEntry);', "const entries = PRECACHE.filter((path) => !/^\\/assets\\/os-[^/]*\\.js$/.test(path)).map(precacheEntry);"),
+    );
+    const report = await runCheck(root, { parts: ['offline'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of ['mobile/cv-app/375px', 'desktop/cv-app/1440px', 'mobile/cv-app-after-cv/375px', 'desktop/cv-app-after-cv/1440px']) {
+      expect(lines).toContain(`offline / ${variant} not-ready #os: the shell did not start with the network off`);
+    }
+    expect(report.problems.every((problem) => problem.page === '/')).toBe(true);
   });
 });

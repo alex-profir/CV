@@ -8,7 +8,8 @@ import path from 'node:path';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { nodeVersionProblem } from '../src/main.js';
-import { PARTS } from '../src/report.ts';
+import { PARTS, renderProblem, renderReport } from '../src/report.ts';
+import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { REPO_ROOT, fixture, makeProject, maskScores, runCli, siteProject } from './helpers/sites.ts';
 
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'));
@@ -54,6 +55,42 @@ describe('004-cv-page-FR-049: one local command runs the checks, with the same r
     expect(first.status).toBe(second.status);
     expect(maskScores(first.stdout)).toBe(maskScores(second.stdout));
     expect(maskScores(first.stdout)).toContain('/cv mobile:  performance <n>,');
+  }, 300_000);
+});
+
+// Every part but Lighthouse, whose scores vary between runs and which
+// 004's test above already runs twice.
+const WITHOUT_LIGHTHOUSE = PARTS.filter((part) => part !== 'lighthouse');
+
+// The root's variant (005 contracts/cli.md Variants on the root). Lighthouse
+// keeps its profiles and no-script its plain widths.
+const ROOT_VARIANT = /^(?:desktop|mobile)\/[a-z0-9%-]+\/\d+px$/;
+
+const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
+
+describe('005-os-shell-FR-060: the shell checks run in the same one command as the pull-request run', () => {
+  test('npm run --silent site-check is the CI step, and the script builds then runs the check', () => {
+    expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
+    expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
+  });
+
+  test('every result and problem line on / has a <shell>/<state>/<width>px variant, and two runs on the real build give the same report', async () => {
+    const root = realSiteProject();
+    const first = await runCheck(root, { parts: WITHOUT_LIGHTHOUSE });
+    const onRoot = first.results.filter((result) => result.page === '/' && !PLAIN_ON_ROOT.has(result.part));
+    expect(onRoot.length).toBeGreaterThan(0);
+    expect(onRoot.filter((result) => !ROOT_VARIANT.test(result.variant)).map((result) => `${result.part} ${result.variant}`)).toEqual([]);
+    const second = await runCheck(root, { parts: WITHOUT_LIGHTHOUSE });
+    expect(renderReport(second)).toBe(renderReport(first));
+    expect(first.result).toBe('pass');
+  }, 300_000);
+
+  test('problem lines on / name the shell, the state and the width', async () => {
+    const copy = seededCopy((repo) => replaceIn(repo, 'packages/web/src/shells/desktop/TitleBar.tsx', 'className="control control-close" aria-label={fill(siteText.desktop.controls.close, { window: name })}', 'className="control control-close"'));
+    const report = await runCheck(copy, { parts: ['accessibility', 'keyboard'] });
+    const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line.split(' ')[2]).toMatch(ROOT_VARIANT);
   }, 300_000);
 });
 
@@ -190,7 +227,9 @@ describe('004-cv-page-FR-058: the check exits 2 with one stderr line when it can
 //   `invisible-separator hr.rule` in forced colors; `.date` has a 200 ms
 //   transition -> `motion p.date` at 375 px, 1440 px and with reduced motion.
 // The offline part's `missing-font` isn't seeded: its detail names the
-// system's fallback font, which differs between macOS and Linux.
+// system's fallback font, which differs between macOS and Linux. The
+// `cv-app` part passes: the sample's root redirects, so there's no CV app
+// (005's broken cases are in `cv-app.test.ts`).
 describe('seeded sample (SC-009)', () => {
   test('the check on seeded/ exits 1 and its report, scores masked, is expected-report.txt byte for byte', () => {
     const root = fixture('seeded');

@@ -37,7 +37,13 @@ assets with `cache.addAll`, and the two pages by their routes (`/cv`, and `/miss
 | `certificates/` | `resume.json` has 2 `certificates` entries, `basics.phone` and `work[0].contact` | `content` |
 | `empty-unsupported/` | `resume.json` holds only `$schema`, `meta` and `"awards": []` | `content` |
 | `second-page/` | The manifest lists a second page, `/about` (`about.html`), beside `/cv` | every page part, `lighthouse` |
-| `seeded/` | The seeded sample: at least one problem in every part, listed in the comment above its test in `cli.test.ts`. Its worker doesn't store the not-found page and answers `/` offline with a network error | all |
+| `seeded/` | The seeded sample: at least one problem in every part but `cv-app`, listed in the comment above its test in `cli.test.ts`. Its worker doesn't store the not-found page and answers `/` offline with a network error | all |
+
+These fixtures keep 004's redirect at `/`, and the check treats a redirect there as 004 did: the
+`cv-app` part has no CV app to open, so it passes with nothing measured. The cases on the site root,
+the OS shell (005), use no fixture here. A hand-written shell would have to pass every keyboard
+flow, so they run on copies of the real build, or on a temporary copy of the repository with one
+change, built (`test/helpers/root.ts`).
 
 The Lighthouse part's own test makes its page with a 2 MB blocking script with `siteProject` from
 `test/helpers/sites.ts`. The seeded sample commits one, `seeded/packages/web/dist/site/assets/big.js`,
