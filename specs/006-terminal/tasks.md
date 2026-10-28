@@ -307,11 +307,11 @@ how it was built, the repository link leads to the repository, and `specs` match
 
 - [X] T057 [P] [US2] Write `packages/web/test/spec-list.test.ts`, covers 006-terminal-FR-013: on a fixture repository in a temporary directory (an approved spec, a draft, one with a removed requirement, a folder without `spec.md`), `readSpecList` gives numbered order, names, statuses and active counts equal to 001's `runCheck`; on the real repository it equals `npm run traceability`'s per-spec counts; an empty `specs/` fails the build with `site build failed: the spec list is empty`.
 - [X] T058 [P] [US2] Extend `packages/web/test/terminal/engine/commands.test.ts`, covers 006-terminal-FR-013: on a fixture spec list, `specs` shows the lead with `{n}`, one row per spec with number, name as a link to `{repository}/blob/main/specs/{folder}/spec.md`, the status in words and `{n} requirements`, then the tail with the repository link; `site` ends with `Source code, specs and history:` and the repository link from `siteData`; both hold no CV fact typed by hand.
-- [ ] T059 [P] [US2] Write `packages/web/test/terminal/specs.test.ts`, covers 006-terminal-FR-013: on the real build, `specs` lists every folder of `specs/` with a `spec.md` in numbered order, and each link's `href` is the pattern above; a build from a temporary copy of the repository with one more spec shows it with no change to the Terminal.
+- [X] T059 [P] [US2] Write `packages/web/test/terminal/specs.test.ts`, covers 006-terminal-FR-013: on the real build, `specs` lists every folder of `specs/` with a `spec.md` in numbered order, and each link's `href` is the pattern above; a build from a temporary copy of the repository with one more spec shows it with no change to the Terminal.
 
 ### Implementation for User Story 2
 
-- [ ] T060 [US2] Implement `site` and `specs` in `packages/web/src/apps/terminal/engine/commands.ts` (contracts/commands.md), from site text, `siteData.repository` and `RunContext.specs` (passed from `data.ts`'s `specList`), with the `specs` output block carrying `data-req="006-terminal-FR-013"` through its renderer node. Export both block builders for `readme` and spec files (T064). T057 to T059 pass.
+- [X] T060 [US2] Implement `site` and `specs` in `packages/web/src/apps/terminal/engine/commands.ts` (contracts/commands.md), from site text, `siteData.repository` and `RunContext.specs` (passed from `data.ts`'s `specList`), with the `specs` output block carrying `data-req="006-terminal-FR-013"` through its renderer node. Export both block builders for `readme` and spec files (T064). T057 to T059 pass.
 
 **Checkpoint**: The site's story and the spec list are in the Terminal.
 
