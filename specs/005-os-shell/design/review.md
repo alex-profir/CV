@@ -90,8 +90,7 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   the window's edge, 16 px for an edge and 8 px for a corner, so the pointer has 24 px. Nothing
   drawn changes: the part inside the window and the grip stay where they were, and the window's
   look matches the exports. Changed: [wireframes.md](wireframes.md) (the resize handles row). No
-  state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
-  changes above.
+  state, mockup, export or token changes. Confirmed by the owner on 2026-10-28.
 - **2026-10-28, the CV window opened while About this site is open** (T131, after
   `/speckit-converge`). The CV always opened centered, so with About open alone (centered the
   same way) the CV's title bar covered About's, against FR-018. The CV still opens centered when
@@ -100,8 +99,7 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   covers no title bar, never shorter than 300 px. Stepping right as About does can't help: at
   1000 px wide the CV has no room to move sideways. At 1440 × 900 with About open the CV opens
   1000 × 668 at x 220, y 104. Changed: [wireframes.md](wireframes.md) (the CV window row). No
-  state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
-  changes above.
+  state, mockup, export or token changes. Confirmed by the owner on 2026-10-28.
 - **2026-10-28, the Tab order between windows** (T124). The design said Tab visits the open
   windows front to back, but the windows keep the order they were opened in when one is raised,
   as T079 found that following the stacking sends Tab back and forth between two windows for ever
@@ -126,8 +124,8 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
 - Date: 2026-10-26
 - Approved by: Alex Profir (project owner)
-- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two at the owner's request. The owner confirms them in
-  the 005 pull request.
+- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two at the owner's request.
+  The owner confirmed every change on 2026-10-28.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
   the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's
