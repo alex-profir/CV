@@ -50,8 +50,8 @@ view, on 005's Graphite desktop and 006's Terminal.
 - **Menus**: `Show specs` (or `Back to [app]`) in each app's menu after its first command, with
   no shortcut.
 - **Motion**: a 150 ms cross-fade, no movement or scaling; reduced motion drops the fade.
-- **Layout**: content at most 760 px wide; two columns from 480 px of content; the spec's count
-  and link wrap below its title under 700 px, as in About this site's 560 px window.
+- **Layout**: content at most 760 px wide; two columns from 480 px of content; 24 px padding
+  under 700 px, as in About this site's 560 px window.
 - **New tokens**: listed in [README.md](README.md#proposed-tokens).
 
 ## Original look (FR-021)

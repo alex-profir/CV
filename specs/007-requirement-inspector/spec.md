@@ -516,14 +516,14 @@ desktop and one tap away on mobile, and `/cv` remains a plain server-rendered pa
 
 **UI change**: design artifacts live in `specs/007-requirement-inspector/design/`:
 
-- [ ] ASCII wireframes, per shell, of every state: on desktop, the CV window with "Show specs", the
+- [x] ASCII wireframes, per shell, of every state: on desktop, the CV window with "Show specs", the
   CV app's spec view, with "What's this?" open, the Terminal's spec view, About this site's spec
   view, a requirement with no tests yet, the offline note, and one window showing specs beside one
   showing its app; on mobile, the CV app's header with "Show specs", the CV app's spec view, the
   pocket terminal's spec view, and About this site's spec view, at 320 px wide and in landscape
-- [ ] PNG exports of the approved Penpot mockup of the inspector in both shells, at a phone width
+- [x] PNG exports of the approved Penpot mockup of the inspector in both shells, at a phone width
   and a desktop width (or of the interim local mockup, under the constitution's interim provision)
-- [ ] Penpot file link
+- [x] Penpot file link: [007 Requirement inspector — Graphite](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=83c58681-afbf-80ee-8008-dc17f0627e87)
 - [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-021)
 
