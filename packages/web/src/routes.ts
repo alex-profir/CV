@@ -27,9 +27,14 @@ export type RouteMatch =
   | { kind: 'redirect'; to: string; status: number }
   | { kind: 'not-found'; file: string; status: number };
 
+// The root is the OS shell (005 research R14). The redirect type stays: the
+// server, the worker and the checks read it.
 export const ROUTES: Routes = deepFreeze({
-  pages: [{ path: '/cv', aliases: ['/cv/'], file: 'cv.html' }],
-  redirects: [{ from: '/', to: '/cv', status: 307 }],
+  pages: [
+    { path: '/', aliases: [], file: 'index.html' },
+    { path: '/cv', aliases: ['/cv/'], file: 'cv.html' },
+  ],
+  redirects: [],
   notFound: { file: '404.html', status: 404 },
 });
 

@@ -4,27 +4,36 @@
 // not-found page at a fixed unknown path, so a later page is checked with no
 // change here (FR-056). A run that throws becomes an `error` result, and
 // every other run still happens (FR-058).
+//
+// When the manifest lists the site root as a page, the OS shell (005
+// contracts/cli.md), every part but `print` also runs on it, in its shells
+// and states, with variants `<shell>/<state>/<width>px`. When the root
+// redirects, as in 004's fixture sites, the check runs as 004's.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Browser, BrowserContextOptions, Page } from 'playwright';
 import type { Resume } from '@cv/content';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
 import { launchChromium } from './browser.ts';
+import { siteText } from '../../../packages/web/src/site-text.ts';
 import { expectedFields } from './expected.ts';
 import { axeProblems } from './parts/accessibility.ts';
 import { contentProblems } from './parts/content.ts';
+import { cvAppProblems } from './parts/cv-app.ts';
 import { fontProblems } from './parts/fonts.ts';
-import { keyboardProblems } from './parts/keyboard.ts';
-import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, clippedOrOverlapping, horizontalScroll, isOneColumn } from './parts/layout.ts';
+import { desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems } from './parts/keyboard.ts';
+import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
-import { forcedColorsProblems, motionProblems } from './parts/modes.ts';
-import { noScriptProblems } from './parts/no-script.ts';
-import { OFFLINE_VARIANT, offlineProblems } from './parts/offline.ts';
+import { forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
+import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
+import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
 import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
 import type { CheckResult, Part, Problem, Report } from './report.ts';
 import { startServer } from './server.ts';
+import { CV_APP_ROOT, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, reachState, shellContext, stateVariant, waitForShell } from './shell-states.ts';
+import type { Shell } from './shell-states.ts';
 
 // Where the built site and the CV document are, from the repository root.
 export const SITE_DIR = 'packages/web/dist/site';
@@ -44,6 +53,18 @@ const ACCESSIBILITY_WIDTHS = [320, 375, 1440];
 const NO_SCRIPT_WIDTHS = [320, 1440];
 
 const PAGE_WIDTHS = [375, 1440];
+
+// The site root's path when it's the shell's page.
+const ROOT = '/';
+
+const SHELLS: readonly Shell[] = ['desktop', 'mobile'];
+
+// The root's extra layout runs (contracts/cli.md Parts): the CV window
+// narrowed as far as a resize goes, which must still fit 400 px with no
+// horizontal scroll, and text-only zoom at 200% on the desktop.
+const NARROW_WINDOW_MAX = 400;
+
+const TEXT_ZOOM = 2;
 
 export type CheckOptions = { parts?: readonly Part[] };
 
@@ -98,6 +119,22 @@ async function withPage<T>(browser: Browser, url: string, options: BrowserContex
   }
 }
 
+// The root in a fresh context for `shell` at a size, once the shell has
+// hydrated.
+function withShell<T>(browser: Browser, url: string, target: { shell: Shell; width: number; height: number }, options: BrowserContextOptions, body: (page: Page) => Promise<T>): Promise<T> {
+  return withPage(browser, url, { ...shellContext(target), ...options }, async (page) => {
+    await waitForShell(page);
+    return body(page);
+  });
+}
+
+const shellAt = (shell: Shell) => ({ shell, ...SHELL_SIZES[shell] });
+
+// The site's name as the root's no-script page shows it: the CV document's
+// name, else the site heading (005 FR-066). The site's own `siteName` is in
+// a module Node can't load without the build.
+const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' && resume.basics.name !== '' ? resume.basics.name : siteText.siteHeading);
+
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
 export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {}): Promise<Report> {
@@ -111,7 +148,8 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
   const routes = manifest.routes;
   const cvPath = (routes.pages.find((page) => page.path === '/cv') ?? routes.pages[0])?.path;
   if (cvPath === undefined) throw new Error('the site manifest lists no page');
-  const rootPath = routes.redirects.find((redirect) => redirect.to === cvPath)?.from ?? '/';
+  const rootPath = routes.redirects.find((redirect) => redirect.to === cvPath)?.from ?? ROOT;
+  const shellRoot = routes.pages.some((page) => page.path === ROOT);
 
   const server = await startServer({ siteDir, manifest });
   let browser: Browser | undefined;
@@ -120,9 +158,12 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
     const pages: Report['pages'] = [];
     for (const page of routes.pages) pages.push({ path: page.path, status: await status(page.path), notFound: false });
     pages.push({ path: NOT_FOUND_PATH, status: await status(NOT_FOUND_PATH), notFound: true });
-    const allPaths = pages.map((page) => page.path);
     const okPaths = pages.filter((page) => page.status === 200).map((page) => page.path);
+    // The pages 004's runs measure: every page but the shell's root, which
+    // has runs of its own.
+    const allPaths = pages.map((page) => page.path).filter((pagePath) => !(shellRoot && pagePath === ROOT));
     const url = (pagePath: string) => `${server.url}${pagePath}`;
+    const rootUrl = url(ROOT);
     browser = await launchChromium();
     const chromium = browser;
 
@@ -131,12 +172,40 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
       content: async () => {
         results.push(await run('content', '-', '-', async () => contentProblems(readResume())));
       },
+      'cv-app': async () => {
+        // With no shell at the root there's no CV app to open: the part
+        // passes with nothing measured, and keeps its line in the summary.
+        if (!shellRoot) {
+          results.push(result('cv-app', '-', '-', []));
+          return;
+        }
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          const variant = stateVariant(shell, 'cv-app', target.width);
+          results.push(await run('cv-app', ROOT, variant, async () => {
+            const fields = expectedFields(readResume());
+            return withShell(chromium, rootUrl, target, {}, (page) => cvAppProblems(page, shell, fields, ROOT, variant));
+          }));
+        }
+      },
       accessibility: async () => {
         for (const pagePath of allPaths) {
           for (const width of ACCESSIBILITY_WIDTHS) {
             const variant = `${width}px`;
             results.push(await run('accessibility', pagePath, variant, () => withPage(chromium, url(pagePath), viewport(width), (page) => axeProblems(page, pagePath, variant))));
           }
+        }
+        if (!shellRoot) return;
+        for (const state of SHELL_STATES) {
+          const variant = stateVariant(state.shell, state.state, state.width);
+          results.push(
+            await run('accessibility', ROOT, variant, () =>
+              withShell(chromium, rootUrl, state, {}, async (page) => {
+                await reachState(page, state);
+                return axeProblems(page, ROOT, variant);
+              }),
+            ),
+          );
         }
       },
       lighthouse: async () => {
@@ -160,16 +229,25 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
               return withPage(chromium, url(cvPath), { ...viewport(width), javaScriptEnabled: false }, (page) => noScriptProblems(page, fields, cvPath, variant));
             }),
           );
+          if (!shellRoot) continue;
+          results.push(
+            await run('no-script', ROOT, variant, () =>
+              withPage(chromium, rootUrl, { ...viewport(width), javaScriptEnabled: false }, (page) => rootNoScriptProblems(page, siteName(readResume()), cvPath, ROOT, variant)),
+            ),
+          );
         }
       },
       offline: async () => {
         const targets = [cvPath, rootPath, NOT_FOUND_PATH];
         try {
           const fields = expectedFields(readResume());
-          const outcome = await offlineProblems(chromium, { siteDir, manifest, fields, families, cvPath, rootPath, notFoundPath: NOT_FOUND_PATH });
-          for (const { page, problems } of outcome) results.push(result('offline', page, OFFLINE_VARIANT, problems));
+          const outcome = await offlineProblems(chromium, { siteDir, manifest, fields, families, cvPath, rootPath, notFoundPath: NOT_FOUND_PATH, shellRoot });
+          for (const { page, variant, problems } of outcome) results.push(result('offline', page, variant, problems));
         } catch (error) {
-          for (const target of targets) results.push(crashed('offline', target, OFFLINE_VARIANT, error));
+          // The shell root's lines keep their `<shell>/<state>/<width>px`.
+          for (const target of targets) {
+            for (const variant of shellRoot && target === rootPath ? rootOfflineVariants() : [OFFLINE_VARIANT]) results.push(crashed('offline', target, variant, error));
+          }
         }
       },
       keyboard: async () => {
@@ -178,6 +256,13 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             const variant = `${width}px`;
             results.push(await run('keyboard', pagePath, variant, () => withPage(chromium, url(pagePath), viewport(width), (page) => keyboardProblems(page, pagePath, variant))));
           }
+        }
+        if (!shellRoot) return;
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          const variant = stateVariant(shell, 'keyboard', target.width);
+          const flow = shell === 'desktop' ? desktopKeyboardProblems : mobileKeyboardProblems;
+          results.push(await run('keyboard', ROOT, variant, () => withShell(chromium, rootUrl, target, {}, (page) => flow(page, ROOT, variant))));
         }
       },
       'other-sites': async () => {
@@ -197,6 +282,25 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             );
           }
         }
+        if (!shellRoot) return;
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          const variant = stateVariant(shell, 'cv-app', target.width);
+          results.push(
+            await run('other-sites', ROOT, variant, async () => {
+              const context = await chromium.newContext(shellContext(target));
+              try {
+                const foreign = await recordRequests(context, server.url);
+                return await otherSiteProblems(context, foreign, rootUrl, ROOT, variant, async (page) => {
+                  await waitForShell(page);
+                  await openCvApp(page, shell);
+                });
+              } finally {
+                await context.close();
+              }
+            }),
+          );
+        }
       },
       fonts: async () => {
         for (const pagePath of allPaths) {
@@ -204,6 +308,18 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             const variant = `${width}px`;
             results.push(await run('fonts', pagePath, variant, () => withPage(chromium, url(pagePath), viewport(width), (page) => fontProblems(page, families, pagePath, variant))));
           }
+        }
+        if (!shellRoot) return;
+        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app')]) {
+          const variant = stateVariant(state.shell, state.state, state.width);
+          results.push(
+            await run('fonts', ROOT, variant, () =>
+              withShell(chromium, rootUrl, state, {}, async (page) => {
+                await reachState(page, state);
+                return fontProblems(page, families, ROOT, variant);
+              }),
+            ),
+          );
         }
       },
       layout: async () => {
@@ -223,6 +339,40 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             );
           }
         }
+        if (!shellRoot) return;
+        for (const layout of LAYOUT_VARIANTS) {
+          const { shell, variant } = rootLayoutVariant(layout);
+          const { width, height, deviceScaleFactor, textSpacing } = layout;
+          results.push(
+            await run('layout', ROOT, variant, () =>
+              withShell(chromium, rootUrl, { shell, width, height }, { deviceScaleFactor }, async (page) => {
+                if (textSpacing) await page.addStyleTag({ content: TEXT_SPACING_CSS });
+                return [...(await horizontalScroll(page, ROOT, variant)), ...(await clippedOrOverlapping(page, ROOT, variant))];
+              }),
+            ),
+          );
+        }
+        const desktop = shellAt('desktop');
+        const narrowVariant = stateVariant('desktop', 'narrow-window', desktop.width);
+        results.push(
+          await run('layout', ROOT, narrowVariant, () =>
+            withShell(chromium, rootUrl, desktop, {}, async (page) => {
+              const width = await narrowWindow(page, SHELL.cvWindow);
+              const found = await boxScroll(page, CV_APP_ROOT.desktop, ROOT, narrowVariant);
+              if (width > NARROW_WINDOW_MAX) found.push({ part: 'layout', page: ROOT, variant: narrowVariant, type: 'too-wide', subject: SHELL.cvWindow, detail: `narrows only to ${Math.round(width)}px, wider than ${NARROW_WINDOW_MAX}px` });
+              return found;
+            }),
+          ),
+        );
+        const zoomVariant = stateVariant('desktop', 'text-zoom', desktop.width);
+        results.push(
+          await run('layout', ROOT, zoomVariant, () =>
+            withShell(chromium, rootUrl, desktop, {}, async (page) => {
+              await zoomText(page, TEXT_ZOOM);
+              return clippedLabels(page, ROOT, zoomVariant);
+            }),
+          ),
+        );
       },
       print: async () => {
         for (const paper of PAPER_SIZES) {
@@ -243,6 +393,16 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
               withPage(chromium, url(pagePath), { ...viewport(375), reducedMotion: 'reduce' }, (page) => motionProblems(page, pagePath, 'reduced-motion')),
             ),
           );
+        }
+        if (!shellRoot) return;
+        // The shell animates without reduced motion (005 research R13), so
+        // the root is measured with forced colors and with reduced motion.
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          const forced = stateVariant(shell, 'forced-colors', target.width);
+          results.push(await run('modes', ROOT, forced, () => withShell(chromium, rootUrl, target, { forcedColors: 'active' }, (page) => shellForcedColorsProblems(page, shell, ROOT, forced))));
+          const reduced = stateVariant(shell, 'reduced-motion', target.width);
+          results.push(await run('modes', ROOT, reduced, () => withShell(chromium, rootUrl, target, { reducedMotion: 'reduce' }, (page) => shellMotionProblems(page, shell, ROOT, reduced))));
         }
       },
     };

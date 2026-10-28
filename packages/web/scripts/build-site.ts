@@ -27,6 +27,7 @@ import { resume, siteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
+import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
@@ -41,6 +42,10 @@ const STYLE_ENTRY = 'src/styles/global.css';
 
 // The client build's entry for the service worker's registration script.
 const REGISTER_ENTRY = 'src/client/register-sw.ts';
+
+// The client build's entry for the shell: its one script and style sheet
+// (005 research R14).
+const SHELL_ENTRY = 'src/client/os.tsx';
 
 const SSR_ENTRY = 'src/render.tsx';
 
@@ -64,6 +69,7 @@ const CONTENT_TYPES: Record<string, string> = {
 type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[] };
 
 type RenderModule = {
+  renderShell(input: { resume: Resume; siteData: SiteData; assets: PageAssets }): string;
   renderCv(input: { resume: Resume; siteData: SiteData; assets: PageAssets }): string;
   renderNotFound(input: { siteData: SiteData; assets: PageAssets }): string;
 };
@@ -120,6 +126,27 @@ function pageAssets(manifest: Manifest): PageAssets {
   const register = manifest[REGISTER_ENTRY];
   if (register === undefined) throw new Error(`Vite's manifest has no entry for ${REGISTER_ENTRY}`);
   return { css, scripts: [`/${register.file}`], preloadFonts };
+}
+
+// The root page's asset links (005 contracts/site.md): the shell's style
+// sheet and its one script, then the registration script, and the same
+// font preloads as /cv. The shell's script must be one file: a chunk loaded
+// later could be gone from the cache after an update (FR-053).
+function shellAssets(manifest: Manifest, page: PageAssets): PageAssets {
+  const entry = manifest[SHELL_ENTRY];
+  if (entry === undefined) throw new Error(`Vite's manifest has no entry for ${SHELL_ENTRY}`);
+  if ((entry.imports ?? []).length > 0 || (entry.dynamicImports ?? []).length > 0) throw new Error(`the os entry has more than one script file`);
+  const css = (entry.css ?? []).map((file) => `/${file}`);
+  if (css.length === 0) throw new Error(`Vite's manifest gives no style sheet for ${SHELL_ENTRY}`);
+  return { css, scripts: [`/${entry.file}`, ...page.scripts], preloadFonts: page.preloadFonts };
+}
+
+// The root page holds what the shell needs before and without its script
+// (contracts/site.md step 4).
+function checkShellPage(html: string): void {
+  if (!/<head><script>[^<]*data-shell/.test(html)) throw new Error('index.html lacks the inline shell script');
+  if (!html.includes('<div id="os"')) throw new Error('index.html lacks #os');
+  if (!html.includes('class="no-script"')) throw new Error('index.html lacks the no-script page');
 }
 
 function listFiles(dir: string, base = dir): string[] {
@@ -181,6 +208,18 @@ export function writeServiceWorker(siteDir: string): void {
   fs.writeFileSync(path.join(siteDir, WORKER_FILE), `${header}\n${code}`);
 }
 
+// Every breakpoint in a query was replaced by its condition (005 research
+// R5): a browser would ignore a container or media query that still names
+// one. The token output's custom properties of the same name are values,
+// not queries, and stay.
+function checkContainerBreakpoints(siteDir: string): void {
+  for (const file of listFiles(siteDir).filter((name) => name.endsWith('.css'))) {
+    const css = fs.readFileSync(path.join(siteDir, file), 'utf8');
+    const queries = css.match(/@(?:container|media)[^{]*/g) ?? [];
+    if (queries.some((query) => query.includes(BREAKPOINT_PREFIX))) throw new Error(`${file} still holds ${BREAKPOINT_PREFIX}`);
+  }
+}
+
 export async function buildSite(out: string): Promise<SiteManifest> {
   const siteDir = path.join(out, 'site');
   const manifestFile = path.join(out, 'site-manifest.json');
@@ -194,6 +233,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
   const viteDir = path.join(siteDir, '.vite');
   const viteManifest: Manifest = JSON.parse(fs.readFileSync(path.join(viteDir, 'manifest.json'), 'utf8'));
   fs.rmSync(viteDir, { recursive: true, force: true });
+  checkContainerBreakpoints(siteDir);
   const assets = pageAssets(viteManifest);
 
   // 2. SSR build, into a temporary directory.
@@ -205,6 +245,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     // 3. Every route's page, each by its own render function. A route with
     // none fails the build, rather than getting a copy of another page.
     const renderers: Record<string, () => string> = {
+      '/': () => render.renderShell({ resume, siteData, assets: shellAssets(viteManifest, assets) }),
       '/cv': () => render.renderCv({ resume, siteData, assets }),
     };
     const pages: Record<string, string> = {};
@@ -213,6 +254,8 @@ export async function buildSite(out: string): Promise<SiteManifest> {
       if (renderPage === undefined) throw new Error(`no render function for the route ${page.path}`);
       pages[page.file] = renderPage();
     }
+    const shellPage = ROUTES.pages.find((page) => page.path === '/');
+    if (shellPage !== undefined) checkShellPage(pages[shellPage.file]!);
     pages[ROUTES.notFound.file] = render.renderNotFound({ siteData, assets });
     for (const [file, html] of Object.entries(pages)) fs.writeFileSync(path.join(siteDir, file), html);
   } finally {
@@ -231,6 +274,11 @@ export async function buildSite(out: string): Promise<SiteManifest> {
 async function main(): Promise<void> {
   try {
     const { values } = parseArgs({ options: { out: { type: 'string' } }, strict: true, allowPositionals: false });
+    // Always a production build, React's and the JSX transform's included,
+    // even when the caller's environment says otherwise (a test runner sets
+    // NODE_ENV=test), so every build ships the same script (005 research
+    // R18).
+    process.env.NODE_ENV = 'production';
     await buildSite(path.resolve(values.out ?? DEFAULT_OUT));
   } catch (error) {
     process.stderr.write(`site build failed: ${error instanceof Error ? error.message : String(error)}\n`);

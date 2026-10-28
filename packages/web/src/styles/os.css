@@ -1,0 +1,96 @@
+/* The site root's style sheet (005 research R6): the shell, the CV app and
+   the page shown without scripts. Every value is a token. The inline script
+   sets `data-shell` before the first paint; without scripting it is never
+   set, and only the no-script page shows (FR-049). */
+@import "virtual:cv-fonts.css";
+@import "@cv/tokens/tokens.css";
+@import "./cv.css";
+/* After cv.css, as on /cv. */
+@import "./base.css";
+@import "../os/shell.css";
+@import "../shells/desktop/desktop.css";
+@import "../shells/mobile/mobile.css";
+
+html:not([data-shell]) #os,
+html[data-shell] .no-script {
+  display: none;
+}
+
+/* Until hydration drops the inactive shell, the style sheet hides it, so
+   neither shell ever shows on the other's screen (research R2). */
+html[data-shell="desktop"] #os .mobile,
+html[data-shell="mobile"] #os .desktop {
+  display: none;
+}
+
+/* ---- The page without scripts (FR-049): /cv's look -------------------- */
+
+.no-script {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+  background: var(--token-color-surface);
+  color: var(--token-color-text-primary);
+  font-family: var(--token-typography-body-font-family);
+  font-size: var(--token-typography-body-font-size);
+  font-weight: var(--token-typography-body-font-weight);
+  letter-spacing: var(--token-typography-body-letter-spacing);
+  line-height: var(--token-typography-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+html:not([data-shell]) body {
+  margin: 0;
+  background: var(--token-color-surface);
+}
+
+.no-script-main {
+  flex-grow: 1;
+  inline-size: 100%;
+  max-inline-size: var(--token-size-page);
+  margin-inline: auto;
+  padding: var(--token-space-11) var(--token-space-5) var(--token-space-12);
+}
+
+.no-script h1 {
+  margin-block-start: var(--token-space-5);
+  font-family: var(--token-typography-name-narrow-font-family);
+  font-size: var(--token-typography-name-narrow-font-size);
+  font-weight: var(--token-typography-name-narrow-font-weight);
+  letter-spacing: var(--token-typography-name-narrow-letter-spacing);
+  line-height: var(--token-typography-name-narrow-line-height);
+}
+
+.no-script-text {
+  max-inline-size: var(--token-size-notfound-title);
+  margin-block: var(--token-space-6) var(--token-space-8);
+  font-family: var(--token-typography-lead-narrow-font-family);
+  font-size: var(--token-typography-lead-narrow-font-size);
+  font-weight: var(--token-typography-lead-narrow-font-weight);
+  letter-spacing: var(--token-typography-lead-narrow-letter-spacing);
+  line-height: var(--token-typography-lead-narrow-line-height);
+}
+
+@container (--token-breakpoint-wide) {
+  .no-script-main {
+    padding-inline: var(--token-space-14);
+    padding-block-start: var(--token-space-22);
+  }
+
+  .no-script h1 {
+    font-family: var(--token-typography-name-wide-font-family);
+    font-size: var(--token-typography-name-wide-font-size);
+    font-weight: var(--token-typography-name-wide-font-weight);
+    letter-spacing: var(--token-typography-name-wide-letter-spacing);
+    line-height: var(--token-typography-name-wide-line-height);
+  }
+
+  .no-script-text {
+    font-family: var(--token-typography-lead-wide-font-family);
+    font-size: var(--token-typography-lead-wide-font-size);
+    font-weight: var(--token-typography-lead-wide-font-weight);
+    letter-spacing: var(--token-typography-lead-wide-letter-spacing);
+    line-height: var(--token-typography-lead-wide-line-height);
+  }
+}

@@ -1,0 +1,669 @@
+/* The desktop shell (005 design/wireframes.md Desktop shell, research R3,
+   R6): the menu bar, the desktop area with its windows, and the dock. Every
+   value is a token. The shell is fixed to the viewport and never scrolls;
+   each window's content does (FR-022). */
+
+html[data-shell="desktop"],
+html[data-shell="desktop"] body {
+  overflow: hidden;
+}
+
+.desktop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--token-color-wallpaper);
+  background-image:
+    radial-gradient(var(--token-size-wallpaper-glow) at 18% 12%, var(--token-color-wallpaper-glow), transparent 62%),
+    radial-gradient(var(--token-size-wallpaper-glow) at 88% 86%, var(--token-color-wallpaper-glow-second), transparent 60%),
+    radial-gradient(var(--token-color-wallpaper-dots) var(--token-border-thin), transparent calc(var(--token-border-thin) * 1.4)),
+    linear-gradient(160deg, var(--token-color-wallpaper-top), var(--token-color-wallpaper));
+  background-size: auto, auto, var(--token-size-wallpaper-dots) var(--token-size-wallpaper-dots), auto;
+}
+
+/* Glass: the menu bar and the dock blur what is behind them. Without
+   backdrop-filter, the translucent color alone keeps the contrast. */
+.menu-bar,
+.dock {
+  background: var(--token-color-chrome);
+  backdrop-filter: blur(var(--token-size-chrome-blur));
+}
+
+/* ---- The menu bar ---------------------------------------------------- */
+
+.menu-bar {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--token-space-0-5);
+  min-block-size: var(--token-size-menu-bar);
+  padding-inline: var(--token-space-2);
+  color: var(--token-color-chrome-text);
+  border-block-end: var(--token-border-thin) solid var(--token-color-chrome-border);
+  font-size: var(--token-font-size-small);
+}
+
+.menu-slot {
+  position: relative;
+  display: flex;
+}
+
+.menu-title {
+  display: flex;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-inline-size: var(--token-size-control);
+  min-block-size: var(--token-size-control);
+  padding-inline: var(--token-space-2-5);
+  border: 0;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.menu-title.is-app {
+  font-weight: var(--token-font-weight-semibold);
+}
+
+span.menu-title {
+  cursor: default;
+}
+
+.menu-title.is-open {
+  background: var(--token-color-shell-raised);
+}
+
+.site-mark {
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+}
+
+.site-mark .shadow {
+  fill: var(--token-color-icon-top);
+}
+
+.site-mark .face {
+  fill: var(--token-color-shell-surface);
+  stroke: currentColor;
+  stroke-width: var(--token-border-thin);
+}
+
+/* ---- Menus ----------------------------------------------------------- */
+
+.menu {
+  position: absolute;
+  inset-block-start: calc(100% + var(--token-space-1));
+  inset-inline-start: 0;
+  z-index: 1;
+  display: grid;
+  gap: var(--token-space-0-5);
+  min-inline-size: calc(var(--token-size-section-label) + var(--token-space-6));
+  padding: var(--token-space-1-5);
+  background: var(--token-color-chrome-solid);
+  border: var(--token-border-thin) solid var(--token-color-window-border-focused);
+  border-radius: var(--token-radius-menu);
+  box-shadow: var(--token-shadow-menu);
+  color: var(--token-color-shell-text);
+  font-size: var(--token-font-size-small);
+}
+
+.menu-item {
+  display: grid;
+  grid-template-columns: var(--token-space-4) 1fr auto;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-block-size: var(--token-size-menu-item);
+  padding-inline: var(--token-space-1-5) var(--token-space-3);
+  border: 0;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* One item is marked at a time: the pointer moves focus onto the item it
+   is over (Menu.tsx), so the fill follows focus alone. The indicator sits
+   on the item's edge, in the gap between items and the menu's padding,
+   clear of the menu's edge and its neighbours. */
+.menu-item:focus {
+  background: var(--token-color-selection);
+  color: var(--token-color-selection-text);
+}
+
+#os .menu-item:focus-visible {
+  outline-offset: 0;
+}
+
+.menu-item[aria-disabled="true"] {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.menu-item .keys,
+.menu-item .note {
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.menu-item:focus .keys,
+.menu-item:focus .note {
+  color: inherit;
+}
+
+.menu-item .mark {
+  display: grid;
+  place-items: center;
+}
+
+.menu-item .check {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thick);
+}
+
+.menu-separator {
+  margin: var(--token-space-1) var(--token-space-1-5);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+/* ---- The desktop area and its windows -------------------------------- */
+
+/* Between the menu bar and the dock's space (FR-010). Its own stacking
+   context, clipped at its edges, so no window ever draws over the menu bar
+   or the dock, even one moved low with only its title bar inside. */
+.desktop-area {
+  position: absolute;
+  inset-block: var(--token-size-menu-bar) var(--token-size-dock-reserve);
+  inset-inline: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Not clipped, so the resize handles can reach past its edge (FR-037):
+   the title bar and the content round their own corners instead. */
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--token-color-shell-surface);
+  border: var(--token-border-thin) solid var(--token-color-window-border);
+  border-radius: var(--token-radius-window);
+  box-shadow: var(--token-shadow-window);
+  color: var(--token-color-shell-text);
+}
+
+.window[hidden] {
+  display: none;
+}
+
+.window[aria-current="true"] {
+  border-color: var(--token-color-window-border-focused);
+  box-shadow: var(--token-shadow-window-focused);
+}
+
+/* The pre-rendered CV window, placed by the same rule as os-core's
+   placeWindow until the client measures the area (research R3). */
+.window[data-placement="initial"] {
+  inset-block-start: var(--token-space-6);
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  inline-size: min(var(--token-size-window-cv-width), 100% - 2 * var(--token-space-8));
+  block-size: calc(100% - var(--token-space-12));
+}
+
+/* A maximized window fills the area edge to edge (FR-065). */
+.window[data-maximized] {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.window[data-maximized] :is(.title-bar, .window-content) {
+  border-radius: 0;
+}
+
+.window[data-maximized] .window-content {
+  clip-path: none;
+}
+
+.title-bar {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-block-size: var(--token-size-title-bar);
+  padding-inline: var(--token-space-2);
+  border-start-start-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  border-start-end-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  background: var(--token-color-title-bar);
+  color: var(--token-color-title-bar-text);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-size: var(--token-font-size-small);
+  font-weight: var(--token-font-weight-semibold);
+  touch-action: none;
+  user-select: none;
+}
+
+.window[aria-current="true"] .title-bar {
+  background: var(--token-color-title-bar-focused);
+  color: var(--token-color-title-bar-focused-text);
+}
+
+/* The window's name, centered over the whole title bar, clear of the
+   controls on both sides. Centered by its margins, not a transform: a
+   transform by half a pixel draws the focus outline between pixels, too
+   faint to see (FR-024). */
+.window-title {
+  position: absolute;
+  inset-inline: calc(3 * var(--token-size-control) + var(--token-space-2));
+  inline-size: fit-content;
+  margin-inline: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Close, minimize and maximize: small circles in one neutral color, never
+   three colors (FR-044), each in a 24 px button (FR-037). The focused
+   window's circles are light and show their glyphs; another window's are
+   slate and show them under the pointer or keyboard focus. */
+.controls {
+  position: relative;
+  z-index: 1;
+  display: flex;
+}
+
+.control {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: var(--token-size-control);
+  block-size: var(--token-size-control);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: transparent;
+}
+
+.control::before {
+  content: "";
+  position: absolute;
+  inset: calc((var(--token-size-control) - var(--token-size-control-dot)) / 2);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-control);
+}
+
+.window[aria-current="true"] .control,
+.controls:hover .control,
+.controls:focus-within .control {
+  color: var(--token-color-control-glyph);
+}
+
+.window[aria-current="true"] .control::before,
+.controls:hover .control::before,
+.controls:focus-within .control::before {
+  background: var(--token-color-control-focused);
+}
+
+.control .glyph {
+  position: relative;
+  inline-size: var(--token-size-control-glyph);
+  block-size: var(--token-size-control-glyph);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thick);
+  stroke-linecap: round;
+}
+
+.control .glyph-filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* During a keyboard move or resize, the mode's name where the controls
+   are. */
+.mode {
+  position: relative;
+  z-index: 1;
+  padding-inline-start: var(--token-space-1);
+  color: var(--token-color-shell-accent);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+/* The window's content scrolls on its own and is the CV's layout
+   container (research R5). */
+.window-content {
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+  /* A focused element scrolled into view keeps its whole outline (FR-024). */
+  scroll-padding: calc(var(--token-border-thick) + var(--token-space-0-5));
+  overscroll-behavior: contain;
+  container-type: inline-size;
+  border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  /* Safari and Firefox draw a scroll bar past the rounded corner; the clip,
+     at the same radius, keeps it inside. */
+  clip-path: inset(0 round 0 0 calc(var(--token-radius-window) - var(--token-border-thin)) calc(var(--token-radius-window) - var(--token-border-thin)));
+}
+
+/* Browsers that let Tab reach a scrolling area focus the content itself.
+   Its indicator would sit under the title bar and over the window's edge,
+   so the whole window shows it instead, around its rounded corners
+   (FR-024). A maximized window, at the area's clipped edge, shows it
+   inside. */
+#os .window-content:focus-visible {
+  outline: none;
+}
+
+#os .window:has(> .window-content:focus-visible) {
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-space-0-5);
+}
+
+#os .window[data-maximized]:has(> .window-content:focus-visible) {
+  outline-offset: calc(-1 * var(--token-border-thick));
+}
+
+/* ---- Resize handles (FR-061)----------------------------------------- */
+
+/* Each edge reaches 8 px into the window and each corner 16 × 16 px, as the
+   design draws them, and each reaches on past the window's edge, 16 px for
+   an edge and 8 px for a corner, so the pointer has 24 px (FR-037). */
+.resize-handle {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+
+.resize-n,
+.resize-s {
+  inset-inline: var(--token-space-4);
+  block-size: var(--token-space-6);
+  cursor: ns-resize;
+}
+
+.resize-n {
+  inset-block-start: calc(-1 * var(--token-space-4));
+}
+
+.resize-s {
+  inset-block-end: calc(-1 * var(--token-space-4));
+}
+
+.resize-e,
+.resize-w {
+  inset-block: var(--token-space-4);
+  inline-size: var(--token-space-6);
+  cursor: ew-resize;
+}
+
+.resize-e {
+  inset-inline-end: calc(-1 * var(--token-space-4));
+}
+
+.resize-w {
+  inset-inline-start: calc(-1 * var(--token-space-4));
+}
+
+.resize-nw,
+.resize-ne,
+.resize-sw,
+.resize-se {
+  inline-size: var(--token-space-6);
+  block-size: var(--token-space-6);
+}
+
+.resize-nw {
+  inset-block-start: calc(-1 * var(--token-space-2));
+  inset-inline-start: calc(-1 * var(--token-space-2));
+  cursor: nwse-resize;
+}
+
+.resize-ne {
+  inset-block-start: calc(-1 * var(--token-space-2));
+  inset-inline-end: calc(-1 * var(--token-space-2));
+  cursor: nesw-resize;
+}
+
+.resize-sw {
+  inset-block-end: calc(-1 * var(--token-space-2));
+  inset-inline-start: calc(-1 * var(--token-space-2));
+  cursor: nesw-resize;
+}
+
+.resize-se {
+  inset-block-end: calc(-1 * var(--token-space-2));
+  inset-inline-end: calc(-1 * var(--token-space-2));
+  cursor: nwse-resize;
+}
+
+/* 4 px inside the window's corner, past the 8 px the handle reaches out. */
+.grip {
+  position: absolute;
+  inset-block-end: calc(var(--token-space-2) + var(--token-space-1));
+  inset-inline-end: calc(var(--token-space-2) + var(--token-space-1));
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  fill: none;
+  stroke: var(--token-color-control);
+  stroke-width: var(--token-border-thin);
+  pointer-events: none;
+}
+
+/* ---- The move and resize pad (FR-020, FR-062) ------------------------ */
+
+.pad {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  z-index: 3;
+  translate: -50% -50%;
+  display: grid;
+  gap: var(--token-space-3);
+  padding: var(--token-space-4) var(--token-space-5);
+  background: var(--token-color-chrome-solid);
+  border: var(--token-border-thin) solid var(--token-color-window-border-focused);
+  border-radius: var(--token-radius-window);
+  box-shadow: var(--token-shadow-menu);
+  color: var(--token-color-shell-text);
+  font-size: var(--token-font-size-small);
+}
+
+.pad-head {
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: center;
+  gap: var(--token-space-1-5);
+}
+
+.pad button {
+  min-inline-size: var(--token-size-pad-button);
+  min-block-size: var(--token-size-pad-button);
+  padding-inline: var(--token-space-3);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-shell-raised);
+  color: inherit;
+}
+
+.pad .pad-up,
+.pad .pad-down {
+  grid-column: 2;
+}
+
+.pad .pad-left {
+  grid-column: 1;
+}
+
+.pad .pad-right {
+  grid-column: 3;
+}
+
+.pad-hint {
+  display: grid;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  text-align: center;
+}
+
+.pad-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--token-space-2);
+}
+
+.pad .pad-done {
+  border-color: var(--token-color-selection);
+  background: var(--token-color-selection);
+  color: var(--token-color-selection-text);
+}
+
+/* ---- The dock -------------------------------------------------------- */
+
+.dock {
+  position: absolute;
+  inset-block-end: var(--token-space-2);
+  inset-inline-start: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  display: flex;
+  gap: var(--token-space-2);
+  padding: var(--token-space-2) var(--token-space-2-5) var(--token-space-1-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-dock);
+  box-shadow: var(--token-shadow-dock);
+}
+
+/* Each item shows its name below its icon at all times (FR-011), and its
+   open mark: filled when open, hollow when minimized, none when closed. */
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--token-space-1);
+  min-inline-size: var(--token-size-control);
+  padding: 0 var(--token-space-1);
+  border: 0;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-chrome-text);
+  font-size: var(--token-font-size-label);
+  line-height: 1;
+}
+
+.dock-icon,
+.dock-icon .app-glyph {
+  display: block;
+  inline-size: var(--token-size-dock-icon);
+  block-size: var(--token-size-dock-icon);
+}
+
+.dock-name {
+  max-inline-size: calc(var(--token-size-dock-icon) + 2 * var(--token-space-2));
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.open-mark {
+  inline-size: var(--token-size-open-mark);
+  block-size: var(--token-size-open-mark);
+  border: var(--token-border-thin) solid currentColor;
+  border-radius: var(--token-radius-pill);
+  visibility: hidden;
+}
+
+.dock-item.is-open .open-mark {
+  visibility: visible;
+  background: currentColor;
+}
+
+.dock-item.is-minimized .open-mark {
+  visibility: visible;
+  background: none;
+}
+
+/* Where a window was when a keyboard move or resize started. */
+.ghost {
+  position: absolute;
+  border: var(--token-border-thick) dashed var(--token-color-ghost);
+  border-radius: var(--token-radius-window);
+  pointer-events: none;
+}
+
+/* Forced colors (design/wireframes.md Forced colors and zoom, FR-047):
+   shadows, glass and dark fills drop out, so every window, menu, the pad,
+   the dock and the menu bar keep their borders, which take the system's
+   colors. The focused window's border is thicker and in the highlight
+   color, each control's circle is outlined, and the open marks are a
+   filled and a hollow dot. The wallpaper is decoration and goes. */
+@media (forced-colors: active) {
+  .desktop {
+    background-image: none;
+  }
+
+  .window[aria-current="true"] {
+    border-width: var(--token-border-thick);
+    border-color: Highlight;
+  }
+
+  .window[aria-current="true"] .title-bar {
+    border-start-start-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    border-start-end-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+  }
+
+  .window[aria-current="true"] .window-content {
+    border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    clip-path: inset(0 round 0 0 calc(var(--token-radius-window) - var(--token-border-thick)) calc(var(--token-radius-window) - var(--token-border-thick)));
+  }
+
+  .control::before {
+    border: var(--token-border-thin) solid CanvasText;
+  }
+
+  /* The open menu's title and the focused item, which a fill marks
+     otherwise. The title's border takes the place of its padding, so
+     nothing moves. */
+  .menu-title.is-open {
+    padding-inline: calc(var(--token-space-2-5) - var(--token-border-thin));
+    border: var(--token-border-thin) solid Highlight;
+  }
+
+  .menu-item:focus {
+    outline: var(--token-border-thin) solid Highlight;
+  }
+
+  /* Links among the menu's commands keep a link's underline. */
+  a.menu-item {
+    text-decoration-line: underline;
+  }
+
+  .open-mark {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+  }
+
+  .dock-item.is-open .open-mark {
+    background: CanvasText;
+  }
+
+  .dock-item.is-minimized .open-mark {
+    background: Canvas;
+  }
+}

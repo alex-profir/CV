@@ -3,6 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { renderProblem } from '../src/report.ts';
+import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture, siteProject } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -34,5 +35,25 @@ describe('004-cv-page-FR-016: every page loads everything it uses from the site 
     const root = siteProject({ 'packages/web/dist/site/cv.html': html });
     const report = await runCheck(root, { parts: ['other-sites'] });
     expect(report.problems.filter((problem) => problem.page === '/cv')).toEqual([]);
+  });
+});
+
+describe('005-os-shell-FR-054: the shell loads everything it uses from the site itself', () => {
+  test('on the real build nothing from / goes to another site, while loading or opening the CV app, in either shell', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
+    expect(report.problems).toEqual([]);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['desktop/cv-app/1440px', 'mobile/cv-app/375px']);
+  });
+
+  test("a copy whose root loads a script from another site fails with the root's variants", async () => {
+    const script = 'https://cdn.example.com/x.js';
+    const root = seededCopy((copy) =>
+      replaceIn(copy, 'packages/web/src/pages/ShellPage.tsx', '          <script key={src} type="module" src={src} />\n        ))}\n', `          <script key={src} type="module" src={src} />\n        ))}\n        <script src="${script}" />\n`),
+    );
+    const report = await runCheck(root, { parts: ['other-sites'] });
+    expect(report.problems.map(renderProblem)).toEqual([
+      `other-sites / desktop/cv-app/1440px other-site-request ${script}: requested by the page`,
+      `other-sites / mobile/cv-app/375px other-site-request ${script}: requested by the page`,
+    ]);
   });
 });

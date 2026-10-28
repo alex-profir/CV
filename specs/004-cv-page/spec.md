@@ -470,11 +470,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   change what the page shows. Until the publishing feature adds the domain, the page MUST NOT
   declare an address of its own, for search engines or for link previews. That feature adds the
   full address of `/cv`.
-- **FR-018**: Until the shells feature changes it, the site root MUST open the CV with no click,
-  tap or other step in front of it (Constitution VII). It does so by sending the visitor on to
-  `/cv` with a temporary redirect, one that browsers don't remember, so the address bar shows
-  `/cv` and the shells feature can later give the root a page of its own. The root MUST NOT
-  show the CV at its own address.
+- ~~**FR-018**~~: Removed 2026-10-28 – replaced by 005-os-shell-FR-001: the
+  site root shows the OS shell.
 - **FR-019**: An unknown path MUST answer with a not-found status and a not-found page that says
   the page doesn't exist and links to `/cv`. The not-found page MUST meet the same requirements
   as `/cv` for accessibility, tokens, fonts and requests to other sites.
@@ -540,10 +537,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 
 **Offline**
 
-- **FR-038**: After one complete online visit to `/cv` or the site root, opening `/cv`, the site
-  root or an unknown path with no network MUST show the same page as online, with all its
-  content, styles and fonts (Constitution VI). Opening the site root offline MUST lead to `/cv`,
-  as it does online.
+- ~~**FR-038**~~: Removed 2026-10-28 – replaced by 004-cv-page-FR-059.
 - **FR-039**: An online visit after a new version is published MUST show the new version on
   that visit, and MUST replace the stored copy with it. A stored copy MUST always be one complete
   version, never a mix of parts from two versions.
@@ -613,6 +607,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   page, the width or profile, and what failed: the rule and element, the category and score, the
   missing field, the link, the font or the address requested. Every run MUST end with a summary
   of every check's result and every Lighthouse score.
+- **FR-059**: After one complete online visit to `/cv` or the site root, opening `/cv` or an
+  unknown path with no network MUST show the same page as online, with all its content, styles
+  and fonts. 005-os-shell-FR-052 covers the site root.
 
 ### Key Entities
 
@@ -661,6 +658,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 **CV path**: Changed. Until the shells feature changes it, the site root sends the visitor on to
 `/cv` with no click or tap, through a temporary redirect (FR-018). Once the shells exist, the CV stays one click (desktop) or one tap
 (mobile) from first load, and `/cv` remains a plain server-rendered page.
+*Amended by 005-os-shell (FR-051): FR-018 is removed and the site root now shows the OS shell
+(005-os-shell-FR-001), with the CV open on desktop and one tap away on mobile.*
 
 ## Offline Behavior *(mandatory)*
 
@@ -668,6 +667,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **Available offline**: the whole of `/cv`, with all its content, styles and fonts, and the
   site root and the not-found page, after one visit to `/cv` or the site root (FR-038). The
   checks also run without network access beyond the machine running them (FR-057).
+  *Amended by 005-os-shell (FR-051): FR-038 is replaced by FR-059 for `/cv` and unknown paths;
+  005-os-shell-FR-052 covers the site root, which now shows the OS shell.*
 - **Needs the network**: the first visit, which has to fetch the page before it can be stored.
   Following a profile or project link leads to another site, which needs the network.
 - **Offline state shown**: the page itself, complete. It shows no offline banner, because
@@ -740,7 +741,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   adds them to this page, through a change to this spec and its design (FR-005).
 - **Offline needs scripts**: storing the page for offline use relies on browser features that
   need scripting. With scripting off, the page reads in full online, and offline is not
-  promised (FR-014, FR-038).
+  promised (FR-014, FR-038; amended by 005-os-shell: now FR-059).
 - **Updates on the next visit**: "the next online visit gets it" (FR-039) means the visit itself
   shows the new version, not the one after it. How long the page waits for a slow network before
   using the stored copy is a plan decision, within the Lighthouse and SC-003 targets.

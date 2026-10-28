@@ -19,3 +19,17 @@ export function pageMeta(basics: ResumeBasics | undefined): PageMeta {
   const description = shown(summary) ? summary : shown(label) ? label : undefined;
   return description === undefined ? { title } : { title, description };
 }
+
+// The site's name: the CV document's name, else the site heading, as /cv's
+// h1 (005 FR-066, data-model.md Site name and title).
+export function siteName(resume: { basics?: ResumeBasics | undefined }): string {
+  const name = resume.basics?.name;
+  return shown(name) ? name : siteText.siteHeading;
+}
+
+// The shell's page title: the focused window's or open app's name, then
+// the site name, or the site name alone (005 FR-042).
+export function shellTitle(resume: { basics?: ResumeBasics | undefined }, appName?: string): string {
+  const site = siteName(resume);
+  return appName === undefined ? site : `${appName}${siteText.os.titleSeparator}${site}`;
+}

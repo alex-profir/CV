@@ -57,10 +57,11 @@ function readByCss(css: string): Set<string> {
   );
 }
 
-// Breakpoints are read as custom media, which the build replaces with the
-// token's value: `(width>=900px)` in the built CSS.
+// Breakpoints are read as custom media, or since 005 as container
+// queries, which the build replaces with the token's value: `(width>=900px)`
+// in the built CSS.
 function readAsMedia(css: string): Set<string> {
-  const conditions = new Set([...css.matchAll(/@media\s*([^{]*)\{/g)].map((match) => match[1]!.replace(/\s+/g, '')));
+  const conditions = new Set([...css.matchAll(/@(?:media|container)\s*([^{]*)\{/g)].map((match) => match[1]!.replace(/\s+/g, '')));
   return new Set(
     EXPORT_TOKENS.filter(
       (token) => token.name.startsWith('breakpoint.') && conditions.has(`(width>=${tokenValue(token.name as CssVarTokenName)})`),
@@ -85,10 +86,25 @@ function withReferences(read: Set<string>): Set<string> {
   return all;
 }
 
+// The tokens the shell's scripts read, all through `src/os/metrics.ts`
+// (005 research R7): each is named there as a string.
+const METRICS_FILE = 'packages/web/src/os/metrics.ts';
+
+function readByMetrics(): Set<string> {
+  const source = fs.readFileSync(path.join(REPO_ROOT, METRICS_FILE), 'utf8');
+  const named = new Set([...source.matchAll(/\b(?:px|ms|plain|tokenValue)\('([^']+)'\)/g)].map((match) => match[1]!));
+  return new Set(EXPORT_TOKENS.map((token) => token.name).filter((name) => named.has(name)));
+}
+
+// Every token the site reads, directly or through a reference.
+function readTokens(): Set<string> {
+  const css = builtCss();
+  return withReferences(new Set([...readByCss(css), ...readAsMedia(css), ...readByMetrics(), ...fonts.families.map((entry) => entry.token)]));
+}
+
 describe('004-cv-page-FR-043: the export holds the approved tokens, and the site reads every one', () => {
-  test('every token in the export is read: in the built CSS, through a token that refers to it, or in fonts.json', () => {
-    const css = builtCss();
-    const read = withReferences(new Set([...readByCss(css), ...readAsMedia(css), ...fonts.families.map((entry) => entry.token)]));
+  test('every token in the export is read: in the built CSS, by the shell metrics, through a token that refers to it, or in fonts.json', () => {
+    const read = readTokens();
     expect(EXPORT_TOKENS.length).toBeGreaterThan(0);
     expect(EXPORT_TOKENS.map((token) => token.name).filter((name) => !read.has(name))).toEqual([]);
   });
@@ -128,6 +144,21 @@ function sourceFiles(dir: string): string[] {
     return TEXT_FILES.test(entry.name) ? [file] : [];
   });
 }
+
+// The shell's tokens, as the design proposed them (005 design/mockup), with
+// the desktop height renamed (research R7).
+const SHELL_TOKENS_FILE = 'specs/005-os-shell/design/mockup/proposed-tokens.css';
+
+describe('005-os-shell-FR-045: every one of the shell tokens is read by a style sheet or by the metrics', () => {
+  test('the 85 tokens the design added are in the export, and each is read', () => {
+    const css = fs.readFileSync(path.join(REPO_ROOT, SHELL_TOKENS_FILE), 'utf8');
+    const names = new Set([...css.matchAll(/^\s*(--token-[a-z0-9-]+)\s*:/gm)].map((match) => match[1]!));
+    const shell = EXPORT_TOKENS.filter((token) => names.has(codeName(token.name))).map((token) => token.name);
+    expect(shell).toHaveLength(85);
+    const read = readTokens();
+    expect(shell.filter((name) => !read.has(name))).toEqual([]);
+  });
+});
 
 describe('004-cv-page-FR-044: the site reads every design value from tokens, with no exception', () => {
   test('no file under packages/web/src or packages/web/scripts holds a skip marker for either check', () => {

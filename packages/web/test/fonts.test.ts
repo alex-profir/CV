@@ -22,11 +22,16 @@ const FAMILIES = fonts.families.map((entry) => entry.family);
 const FONTS_DIR = path.join(REPO_ROOT, 'packages/web/src/fonts');
 
 // The built style sheets, as one text.
-function builtCss(): string {
+// Each built style sheet: /cv's and, since 005, the shell's. Each declares
+// the fonts it uses.
+function builtSheets(): { file: string; css: string }[] {
   const { dir, manifest } = builtSite();
-  return manifest.files
-    .filter((file) => file.type === 'text/css')
-    .map((file) => fs.readFileSync(path.join(dir, file.path), 'utf8'))
+  return manifest.files.filter((file) => file.type === 'text/css').map((file) => ({ file: file.path, css: fs.readFileSync(path.join(dir, file.path), 'utf8') }));
+}
+
+function builtCss(): string {
+  return builtSheets()
+    .map((sheet) => sheet.css)
     .join('\n');
 }
 
@@ -133,18 +138,22 @@ describe('004-cv-page-FR-046: the fonts are declared without a literal the token
     }
   });
 
-  test('the built CSS holds one @font-face per fonts.json file', () => {
-    const faces = fontFaces(builtCss());
-    expect(faces).toHaveLength(fonts.families.reduce((count, entry) => count + entry.files.length, 0));
+  test('each built style sheet holds one @font-face per fonts.json file', () => {
+    const sheets = builtSheets();
+    expect(sheets.length).toBeGreaterThan(0);
     const family = (face: string) => /font-family:\s*(["']?)([^;"'}]+)\1/.exec(face)?.[2]?.trim();
-    for (const entry of fonts.families) {
-      for (const { file } of entry.files) {
-        // The file's hashed asset, `assets/<family-dir>-<subset>-<hash>.woff2`,
-        // with Vite's eight-character hash.
-        const asset = new RegExp(String.raw`url\(["']?/assets/${file.replace('/', '-').replace(/\.woff2$/, '')}-[\w-]{8}\.woff2["']?\)`);
-        const own = faces.filter((face) => asset.test(face));
-        expect(own, file).toHaveLength(1);
-        expect(family(own[0]!), file).toBe(entry.family);
+    for (const sheet of sheets) {
+      const faces = fontFaces(sheet.css);
+      expect(faces, sheet.file).toHaveLength(fonts.families.reduce((count, entry) => count + entry.files.length, 0));
+      for (const entry of fonts.families) {
+        for (const { file } of entry.files) {
+          // The file's hashed asset, `assets/<family-dir>-<subset>-<hash>.woff2`,
+          // with Vite's eight-character hash.
+          const asset = new RegExp(String.raw`url\(["']?/assets/${file.replace('/', '-').replace(/\.woff2$/, '')}-[\w-]{8}\.woff2["']?\)`);
+          const own = faces.filter((face) => asset.test(face));
+          expect(own, `${sheet.file} ${file}`).toHaveLength(1);
+          expect(family(own[0]!), file).toBe(entry.family);
+        }
       }
     }
   });

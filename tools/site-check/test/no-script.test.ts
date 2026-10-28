@@ -6,6 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { expectedFields } from '../src/expected.ts';
 import { renderProblem } from '../src/report.ts';
+import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture, siteProject } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -74,5 +75,23 @@ describe('004-cv-page-FR-015: no page shows a control that needs a script', () =
   test('has-button/ fails, naming the button', async () => {
     const report = await runCheck(fixture('has-button'), { parts: ['no-script'] });
     expect(report.problems.map((problem) => `${problem.variant} ${problem.type} ${problem.subject}`)).toEqual(['320px script-only-control button', '1440px script-only-control button']);
+  });
+});
+
+describe('005-os-shell-FR-049: with scripting off, the root leads to the CV and shows no control', () => {
+  test("on the real build the root passes at 320 and 1440 px: the site's name, the link to /cv, styled, no control", async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['no-script'] });
+    expect(report.problems).toEqual([]);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['320px', '1440px']);
+  });
+
+  test('a copy whose root shows the dock with scripting off fails with visible-control', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/styles/os.css', 'html:not([data-shell]) #os,\nhtml[data-shell] .no-script {', 'html[data-shell] .no-script {'));
+    const report = await runCheck(root, { parts: ['no-script'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of ['320px', '1440px']) {
+      expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^no-script / ${variant} visible-control button\\.dock-item\\S*: a control is shown with scripting off$`)));
+    }
+    expect(report.problems.filter((problem) => problem.page === '/cv')).toEqual([]);
   });
 });
