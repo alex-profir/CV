@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { AppDeclaration, ShellName } from '@cv/os-core';
 import type { Resume, SiteData } from '@cv/content';
 import { cvApp } from './cv/app.tsx';
+import { terminalApp } from './terminal/app.tsx';
 
 // What an app's content may ask of the shell (006 contracts/shell.md): the
 // shell it is rendered in, to open the CV or About this site as the dock or
@@ -32,4 +33,4 @@ export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   onClose?: () => void;
 };
 
-export const APPS: readonly App[] = Object.freeze([cvApp]);
+export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp]);

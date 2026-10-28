@@ -10,6 +10,8 @@
 @import "../os/shell.css";
 @import "../shells/desktop/desktop.css";
 @import "../shells/mobile/mobile.css";
+@import "../apps/terminal/terminal.css";
+@import "../apps/terminal/pocket.css";
 
 html:not([data-shell]) #os,
 html[data-shell] .no-script {

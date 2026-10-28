@@ -45,3 +45,29 @@ describe('006-terminal-FR-017: a wrong argument gets the usage reply', () => {
     expect(textOf('WORK 2020', context())).toBe('WORK takes no arguments. Usage: work');
   });
 });
+
+describe('006-terminal-FR-048: a path that is missing, or the wrong kind', () => {
+  test('the replies name the path as typed, with cat or ls as controls', () => {
+    const cases: [string, string, string[]][] = [
+      ['cat nothing-here', 'nothing-here: no such file or folder.', []],
+      ['cat work/Nowhere', 'work/Nowhere: no such file or folder.', []],
+      ['cd About', 'About is a file. Try cat About.', ['cat About']],
+      ['cat work', 'work is a folder. Try ls work.', ['ls work']],
+      ['vim work', 'work is a folder. Try ls work.', ['ls work']],
+      ['ls nowhere', 'nowhere: no such file or folder.', []],
+      ['cd nowhere', 'nowhere: no such file or folder.', []],
+    ];
+    for (const [line, reply, lines] of cases) {
+      const block = output(run(line, context()));
+      expect(plainText(block), line).toBe(reply);
+      const commands = nodes(block).filter((node) => node.kind === 'command');
+      expect(commands.map((node) => node.kind === 'command' && node.line), line).toEqual(lines);
+      for (const node of commands) expect(node).toMatchObject({ req: 'path' });
+    }
+  });
+
+  test('ls on a file lists that file alone', () => {
+    expect(textOf('ls about', context())).toBe('about');
+    expect(nodes(output(run('ls about', context()))).filter((node) => node.kind === 'command').map((node) => node.kind === 'command' && node.line)).toEqual(['cat ~/about']);
+  });
+});

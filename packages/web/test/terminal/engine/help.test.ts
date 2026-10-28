@@ -20,7 +20,7 @@ function generator(seed: number): () => number {
 }
 
 describe("006-terminal-FR-008: help lists every command and alias, and there is no command it doesn't list", () => {
-  test('COMMANDS names exactly the 22 commands of FR-008, in that order, with the three aliases', () => {
+  test('COMMANDS names exactly the 22 commands the requirement lists, in that order, with the three aliases', () => {
     expect(COMMANDS.map((command) => command.name)).toEqual(FR_008);
     const aliases = Object.fromEntries(COMMANDS.filter((command) => command.aliases.length > 0).map((command) => [command.name, command.aliases]));
     expect(aliases).toEqual({ help: ['?'], about: ['whoami'], work: ['experience'] });

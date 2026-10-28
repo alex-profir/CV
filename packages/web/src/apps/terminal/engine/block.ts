@@ -12,6 +12,13 @@ export type Path = readonly string[];
 // last line, 0-based, for the vim view's folds.
 export type JsonToken = { kind: 'key' | 'string' | 'number' | 'literal' | 'punctuation' | 'space'; text: string };
 export type JsonRow = { indent: number; tokens: readonly JsonToken[] };
+
+// A wrapped line's next rows start this many characters past its indent
+// (FR-063).
+export const WRAP_INDENT = 2;
+
+// A row's indent and wrap, as the style sheet reads them, in characters.
+export const rowIndent = (indent: number) => ({ '--indent': `${indent}ch`, '--wrap': `${indent + WRAP_INDENT}ch` });
 export type JsonFold = { key: string; start: number; end: number };
 
 // What the vim view shows (data-model.md Vim view): `name` as the status
@@ -32,7 +39,7 @@ export type Node =
   | { kind: 'time'; datetime: string; text: string; spoken?: string }
   // A command control (FR-015): `line` is the exact command line it runs,
   // `label` the shorter text it may show.
-  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls' }
+  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone }
   // `ls`'s names (FR-043).
   | { kind: 'columns'; cells: readonly Node[]; req?: 'ls' }
   // `help`'s and `specs`' table rows.
@@ -50,8 +57,9 @@ export type Announcement = { full: string } | { command: string; count: number; 
 export type OsAction = { open: 'cv' | 'about' } | { exit: true };
 
 export type Result =
-  // `text`: what a pipe passes on to the next command.
-  | { kind: 'output'; block: Block; announce: Announcement; text?: string }
+  // `text`: what a pipe passes on to the next command; `name` the file it
+  // came from, kept through the pipe for the vim view's status line.
+  | { kind: 'output'; block: Block; announce: Announcement; text?: string; name?: string }
   | { kind: 'clear' }
   | { kind: 'open-vim'; file: VimSource }
   | { kind: 'os'; action: OsAction; block: Block }
@@ -70,7 +78,7 @@ export const link = (href: string, children: Block, external: boolean): Node => 
 export const time = (datetime: string, value: string, spoken?: string): Node =>
   spoken === undefined ? { kind: 'time', datetime, text: value } : { kind: 'time', datetime, text: value, spoken };
 
-export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls' } = {}): Node => ({
+export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone } = {}): Node => ({
   kind: 'command',
   line: commandLine,
   style,

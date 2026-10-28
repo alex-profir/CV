@@ -53,13 +53,14 @@ div.terminal                          data-shell-look desktop|pocket          FR
 
 ```text
 div.pocket                            data-keyboard while the on-screen keyboard is open   FR-024 FR-052 FR-053
-├── div.pocket-case[aria-hidden=true] the drawn case: power light, "cv-os pocket", grille, {basics.name} (left out when the CV has no name)   FR-054
+├── div.pocket-case[aria-hidden=true] the drawn case's top: power light, "cv-os pocket"   FR-054
 ├── div.terminal …                    as above, in the recessed screen
-└── div[role=toolbar].pocket-keys     aria-label "Command keys" | "Vim keys"; hidden while data-keyboard   FR-025 FR-051 FR-053 FR-066
-    └── button.pocket-key × 8         help, about, work, projects, skills, cv, ls, clear
-                                      — or, with the vim view open —
-                                      j, k, za, /, n, gg, G, :q, named Down, Up, Open or close fold,
-                                      Search, Next match, Top, Bottom, Quit
+├── div[role=toolbar].pocket-keys     aria-label "Command keys" | "Vim keys"; hidden while data-keyboard   FR-025 FR-051 FR-053 FR-066
+│   └── button.pocket-key × 8         help, about, work, projects, skills, cv, ls, clear
+│                                     — or, with the vim view open —
+│                                     j, k, za, /, n, gg, G, :q, named Down, Up, Open or close fold,
+│                                     Search, Next match, Top, Bottom, Quit
+└── div.pocket-foot[aria-hidden=true] the drawn case's foot: grille, {basics.name} (left out when the CV has no name); in the page after the keys, as it is seen (004 FR-027)   FR-054
 ```
 
 - Keys are at least 44 × 44 CSS px: 52 px tall in portrait, 48 px below 375 px wide, at least 44 px
@@ -176,6 +177,7 @@ Written literally in the TSX, so the traceability check (001) reads them (FR-037
 | `specs` output | `006-terminal-FR-013` |
 | `div.pocket` | `006-terminal-FR-024 006-terminal-FR-025 006-terminal-FR-052 006-terminal-FR-053` |
 | `div.pocket-case` | `006-terminal-FR-054` |
+| `div.pocket-foot` | `006-terminal-FR-054` |
 | `div.pocket-keys` | `006-terminal-FR-051 006-terminal-FR-066` |
 | `section.vim` | `006-terminal-FR-058 006-terminal-FR-059 006-terminal-FR-065` |
 | `div.vim-text` | `006-terminal-FR-060 006-terminal-FR-063` |

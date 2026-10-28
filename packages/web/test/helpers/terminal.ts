@@ -72,3 +72,61 @@ export const vimView = (page: Page) => page.locator('.terminal section.vim');
 export function fixtureBuild(name: FixtureName): Promise<RunningServer> {
   return serveShellFixture({ resume: fixture(name) });
 }
+
+// The line a run's heading shows, exactly as typed: its text without the
+// prompt.
+export function typedLine(group: Locator): Promise<string> {
+  return group.locator('h2.run-command').evaluate((heading) => {
+    const copy = heading.cloneNode(true) as HTMLElement;
+    for (const prompt of copy.querySelectorAll('.prompt')) prompt.remove();
+    return copy.textContent ?? '';
+  });
+}
+
+// Every run's line, in order.
+export function typedLines(page: Page): Promise<string[]> {
+  return page.locator('.terminal section.run h2.run-command').evaluateAll((headings) =>
+    headings.map((heading) => {
+      const copy = heading.cloneNode(true) as HTMLElement;
+      for (const prompt of copy.querySelectorAll('.prompt')) prompt.remove();
+      return copy.textContent ?? '';
+    }),
+  );
+}
+
+// Whether focus is in the command line.
+export const commandLineFocused = (page: Page) => page.evaluate((selector) => document.activeElement?.matches(selector) ?? false, COMMAND_LINE);
+
+// Runs `history` and gives back what it lists: each row's number and line.
+export async function historyRows(page: Page): Promise<{ number: number; line: string }[]> {
+  const group = await runGroup(page, 'history');
+  const text = await group.locator('.run-output').evaluate((output) => (output as HTMLElement).innerText);
+  return text
+    .split('\n')
+    .map((row) => /^\s*(\d+)\s+(.*?)\s*$/.exec(row))
+    .filter((match) => match !== null)
+    .map((match) => ({ number: Number(match[1]), line: match[2]! }));
+}
+
+// Types `/` or `:` in the vim view, then the text and Enter, as a visitor
+// does: the key opens the entry, which takes the text.
+export async function vimEntry(page: Page, kind: '/' | ':', text: string): Promise<void> {
+  await page.locator('.terminal section.vim .vim-text').focus();
+  await page.keyboard.press(kind);
+  await page.waitForFunction(() => document.activeElement?.matches('.terminal section.vim input.vim-entry') ?? false);
+  await page.keyboard.type(text);
+  await page.keyboard.press('Enter');
+}
+
+// Runs `cv` and waits for the vim view.
+export async function openVimView(page: Page): Promise<void> {
+  await typeLine(page, 'cv');
+  await vimView(page).waitFor();
+  await settle(page);
+}
+
+// `:q` in the vim view, until the command line is back.
+export async function quitVim(page: Page): Promise<void> {
+  await vimEntry(page, ':', 'q');
+  await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+}

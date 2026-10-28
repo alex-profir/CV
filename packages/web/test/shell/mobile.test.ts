@@ -36,8 +36,8 @@ describe('005-os-shell-FR-031: the home screen shows every app and About this si
       const page = await phone(width, height);
       const label = `${width} × ${height}`;
       expect(await page.locator('#os .home').getAttribute('aria-label'), label).toBe('Home screen');
-      expect(await page.locator('#os .app-icon').evaluateAll((icons) => icons.map((icon) => icon.textContent)), label).toEqual(['CV']);
-      expect(await page.locator('#os .app-icon .app-glyph').count(), label).toBe(1);
+      expect(await page.locator('#os .app-icon').evaluateAll((icons) => icons.map((icon) => icon.textContent)), label).toEqual(['CV', 'Terminal']);
+      expect(await page.locator('#os .app-icon .app-glyph').count(), label).toBe(2);
       expect(await page.locator('#os .home .about').isVisible(), label).toBe(true);
       expect(await scrolls(page), label).toEqual({ x: 0, body: 0 });
       await page.context().close();
@@ -119,6 +119,9 @@ describe('005-os-shell-FR-036: the phone shell works with an external keyboard',
     await page.keyboard.press('Enter');
     await expect.poll(() => focusIs(page, '#os .app-icon[data-view="cv"]')).toBe(true);
     await expectIndicator(page, 'back home');
+    // The Terminal's icon comes after the CV's (006).
+    await page.keyboard.press('Tab');
+    expect(await focusIs(page, '#os .app-icon[data-view="terminal"]')).toBe(true);
     await page.keyboard.press('Tab');
     expect(await focusIs(page, '#os .home .about')).toBe(true);
     await expectIndicator(page, 'About this site');

@@ -75,7 +75,7 @@ describe('005-os-shell-FR-045: the shell keeps the design values', () => {
       edit: (root) => {
         const file = path.join(root, 'packages/web/src/apps/index.ts');
         const source = fs.readFileSync(file, 'utf8');
-        fs.writeFileSync(file, source.replace('Object.freeze([cvApp])', 'Object.freeze([cvApp, ...Array.from({ length: 11 }, (_, index) => ({ ...cvApp, id: `cv${index + 2}` }))])'));
+        fs.writeFileSync(file, source.replace('Object.freeze([cvApp, terminalApp])', 'Object.freeze([cvApp, terminalApp, ...Array.from({ length: 10 }, (_, index) => ({ ...cvApp, id: `cv${index + 2}` }))])'));
       },
     });
     for (const [width, height, expected] of [

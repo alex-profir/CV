@@ -196,6 +196,6 @@ describe('006-terminal-FR-011: an empty or absent section says the CV lists none
       expect(plainText(output(run('help', context)))).toContain(command);
     }
     expect(plainText(output(run('contact', context)))).toBe('The CV lists no contact details.');
-    expect(plainText(output(run('about', contextOf({})))).toBe('The CV lists no basics.');
+    expect(plainText(output(run('about', contextOf({}))))).toBe('The CV lists no basics.');
   });
 });

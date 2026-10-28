@@ -109,6 +109,15 @@ describe('004-cv-page-FR-043: the export holds the approved tokens, and the site
     expect(EXPORT_TOKENS.map((token) => token.name).filter((name) => !read.has(name))).toEqual([]);
   });
 
+  // 006-terminal-FR-031: the Terminal's tokens (006 T005) are each read by
+  // a style sheet or by `metrics.ts`, not only listed in the export.
+  test('006-terminal-FR-031: every token the Terminal added is read by a style sheet or by metrics.ts', () => {
+    const read = readTokens();
+    const terminal = EXPORT_TOKENS.map((token) => token.name).filter((name) => /terminal|pocket|command-line/.test(name));
+    expect(terminal.length).toBeGreaterThan(40);
+    expect(terminal.filter((name) => !read.has(name))).toEqual([]);
+  });
+
   test("the export holds design/review.md's five colors, compared without regard to case", () => {
     const review = fs.readFileSync(path.join(REPO_ROOT, 'specs/004-cv-page/design/review.md'), 'utf8');
     const bullet = /^- \*\*Color\*\*:[\s\S]*?(?=\n- |\n\n)/m.exec(review)?.[0] ?? '';

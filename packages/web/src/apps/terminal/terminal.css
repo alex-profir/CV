@@ -1,0 +1,633 @@
+/* The Terminal (006 design/README.md The glass, design/wireframes.md): the
+   window's glass and everything inside it. Every value is a token. Output
+   wraps and never scrolls sideways (FR-023); nothing blinks or types out
+   (FR-032). */
+
+/* ---- The glass window ------------------------------------------------- */
+
+.window[data-view="terminal"] {
+  border-color: var(--token-color-terminal-rim);
+  background:
+    linear-gradient(var(--token-color-terminal-sheen), transparent calc(5 * var(--token-size-terminal-control-row))),
+    var(--token-color-terminal-glass);
+  box-shadow: var(--token-shadow-window), inset 0 var(--token-border-thin) 0 var(--token-color-terminal-rim);
+  color: var(--token-color-terminal-text);
+  backdrop-filter: blur(var(--token-size-terminal-blur));
+}
+
+.window[data-view="terminal"] .title-bar {
+  border-block-end: 0;
+  background: none;
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.window[data-view="terminal"][aria-current="true"] .title-bar {
+  background: none;
+  color: var(--token-color-terminal-text);
+}
+
+.window[data-view="terminal"] .window-content {
+  background: none;
+}
+
+/* ---- The icon (FR-001, FR-031) ---------------------------------------- */
+
+.terminal-glyph .terminal-tile {
+  rx: var(--token-radius-icon);
+  fill: var(--token-color-terminal-glass);
+  stroke: var(--token-color-terminal-rim);
+  stroke-width: var(--token-border-thin);
+}
+
+.terminal-glyph .terminal-mark,
+.terminal-glyph .terminal-underscore {
+  fill: none;
+  stroke-width: var(--token-border-thick);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.terminal-glyph .terminal-mark {
+  stroke: var(--token-color-terminal-caret);
+}
+
+.terminal-glyph .terminal-underscore {
+  stroke: var(--token-color-terminal-control);
+}
+
+/* ---- The Terminal ----------------------------------------------------- */
+
+.terminal {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+  color: var(--token-color-terminal-text);
+  font-family: var(--token-typography-terminal-font-family);
+  font-size: var(--token-typography-terminal-font-size);
+  font-weight: var(--token-typography-terminal-font-weight);
+  letter-spacing: var(--token-typography-terminal-letter-spacing);
+  line-height: var(--token-typography-terminal-line-height);
+}
+
+.full-screen .terminal {
+  background: var(--token-color-terminal-glass);
+}
+
+.terminal-screen {
+  flex: 1;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--token-size-terminal-padding);
+  overflow-wrap: anywhere;
+}
+
+.terminal p,
+.terminal h2,
+.terminal h3,
+.terminal h4,
+.terminal ul {
+  margin: 0;
+  font: inherit;
+}
+
+.terminal ::selection {
+  background: var(--token-color-selection);
+  color: var(--token-color-selection-text);
+}
+
+.terminal a {
+  color: var(--token-color-terminal-control);
+  text-decoration-color: var(--token-color-link-underline);
+  text-underline-offset: var(--token-border-thick);
+}
+
+.terminal a .arrow {
+  inline-size: var(--token-space-2);
+  block-size: var(--token-space-2);
+  margin-inline-start: var(--token-space-0-5);
+  stroke-width: var(--token-border-thick);
+}
+
+/* ---- The greeting ----------------------------------------------------- */
+
+.greeting {
+  display: grid;
+  gap: var(--token-space-1);
+  margin-block-end: var(--token-space-4);
+}
+
+.greeting-status {
+  color: var(--token-color-terminal-dim);
+}
+
+.greeting-name {
+  color: var(--token-color-terminal-heading);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.greeting-intro {
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--token-space-2);
+  margin-block-start: var(--token-space-2);
+}
+
+/* ---- Command controls (FR-015, FR-034) -------------------------------- */
+
+.command-chip,
+.command-inline {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--token-color-terminal-control);
+  font: inherit;
+  cursor: pointer;
+}
+
+.command-chip {
+  min-block-size: var(--token-size-terminal-chip);
+  min-inline-size: var(--token-size-terminal-control-row);
+  padding-inline: var(--token-space-2-5);
+  border: var(--token-border-thin) solid var(--token-color-terminal-rim);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-vim-status);
+  font-family: var(--token-typography-chip-font-family);
+  font-size: var(--token-typography-chip-font-size);
+  font-weight: var(--token-typography-chip-font-weight);
+  letter-spacing: var(--token-typography-chip-letter-spacing);
+  line-height: var(--token-typography-chip-line-height);
+}
+
+.command-inline {
+  display: inline-block;
+  min-block-size: var(--token-size-terminal-control-row);
+  min-inline-size: var(--token-size-terminal-control-row);
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--token-color-link-underline);
+  text-underline-offset: var(--token-border-thick);
+}
+
+.command-inline.tone-folder {
+  color: var(--token-color-terminal-path);
+}
+
+/* ---- Prompts and runs ------------------------------------------------- */
+
+.prompt {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  margin-inline-end: var(--token-space-2);
+  color: var(--token-color-terminal-dim);
+}
+
+.prompt-user {
+  padding-inline: var(--token-space-1-5);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-terminal-user);
+  color: var(--token-color-terminal-user-text);
+}
+
+.prompt-path {
+  color: var(--token-color-terminal-path);
+}
+
+.prompt-time {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1);
+}
+
+.prompt-mark,
+.prompt-clock {
+  inline-size: var(--token-space-2-5);
+  block-size: var(--token-space-2-5);
+  stroke-width: var(--token-border-thick);
+}
+
+.prompt-mark {
+  color: var(--token-color-terminal-caret);
+}
+
+.run {
+  margin-block-end: var(--token-space-3);
+}
+
+.run-command {
+  color: var(--token-color-terminal-text);
+}
+
+.run-output {
+  display: grid;
+  gap: var(--token-space-1);
+  margin-block-start: var(--token-space-1);
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.out-heading {
+  margin-block-start: var(--token-space-2);
+  color: var(--token-color-terminal-heading);
+}
+
+.out-list {
+  padding-inline-start: var(--token-space-5);
+}
+
+/* `help`'s descriptions line up in one column, and wrap under themselves. */
+.out-rows {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--token-space-0-5) var(--token-space-5);
+}
+
+.out-specs {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.out-row {
+  display: contents;
+}
+
+.out-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--token-space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.out-json .json-row,
+.out-json {
+  white-space: pre-wrap;
+}
+
+/* A wrapped line's next rows start past its own text (FR-063). */
+.out-json .json-row {
+  padding-inline-start: var(--wrap);
+  text-indent: calc(var(--indent) - var(--wrap));
+}
+
+/* Tones only color the words; the words carry the meaning (FR-031). */
+.tone-primary {
+  color: var(--token-color-terminal-text);
+}
+
+.tone-secondary {
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.tone-dim {
+  color: var(--token-color-terminal-dim);
+}
+
+.tone-heading {
+  color: var(--token-color-terminal-heading);
+}
+
+.tone-error {
+  color: var(--token-color-terminal-error);
+}
+
+.tone-approved {
+  color: var(--token-color-terminal-approved);
+}
+
+.tone-draft {
+  color: var(--token-color-terminal-draft);
+}
+
+.json-key {
+  color: var(--token-color-vim-key);
+}
+
+.json-string {
+  color: var(--token-color-vim-string);
+}
+
+.json-number,
+.json-literal {
+  color: var(--token-color-vim-literal);
+}
+
+.json-punctuation {
+  color: var(--token-color-vim-punctuation);
+}
+
+/* ---- The command line and its cursor (FR-032) ------------------------- */
+
+.prompt-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+}
+
+/* The mirror sets the field's height, wrapping a long line; the input lies
+   over it, so no rule places a box out of the page's order (004 FR-027). */
+.command-field {
+  position: relative;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.command-line,
+.cursor-mirror {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+.command-line {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  border: 0;
+  outline-offset: var(--token-border-thick);
+  background: none;
+  color: transparent;
+  caret-color: transparent;
+}
+
+.command-line::selection {
+  color: transparent;
+}
+
+.cursor-mirror {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--token-color-terminal-text);
+  pointer-events: none;
+}
+
+.cursor-block {
+  background: var(--token-color-terminal-cursor);
+  color: var(--token-color-terminal-glass);
+}
+
+.command-field:not(:focus-within) .cursor-block {
+  background: none;
+  color: inherit;
+  outline: var(--token-border-thin) solid var(--token-color-terminal-cursor);
+  outline-offset: calc(-1 * var(--token-border-thin));
+}
+
+/* ---- The vim view (FR-058 to FR-065) ---------------------------------- */
+
+.vim {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.vim-text {
+  flex: 1;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: var(--token-space-2);
+  color: var(--token-color-vim-string);
+}
+
+.vim-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vim-text[data-numbers] .vim-line {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--token-space-2);
+}
+
+.vim-number {
+  min-inline-size: var(--token-space-8);
+  color: var(--token-color-vim-number);
+  text-align: end;
+}
+
+.vim-code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-inline-start: var(--wrap);
+  text-indent: calc(var(--indent) - var(--wrap));
+}
+
+.vim-fold {
+  min-block-size: var(--token-size-terminal-control-row);
+  min-inline-size: var(--token-size-terminal-control-row);
+  padding: 0;
+  border: 0;
+  background: var(--token-color-vim-band);
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-indent: inherit;
+  white-space: inherit;
+  cursor: pointer;
+}
+
+.vim-fold[aria-expanded="true"] {
+  background: none;
+}
+
+.vim-cursor {
+  background: var(--token-color-terminal-cursor);
+  color: var(--token-color-terminal-glass);
+}
+
+.vim-cursor > * {
+  color: inherit;
+}
+
+.vim-match {
+  background: var(--token-color-vim-match);
+  color: inherit;
+}
+
+.vim-match.is-current {
+  background: var(--token-color-vim-match-current);
+  outline: var(--token-border-thin) solid var(--token-color-terminal-draft);
+}
+
+.vim-help {
+  max-block-size: 50%;
+  overflow-y: auto;
+  padding: var(--token-space-2) var(--token-size-terminal-padding);
+  border-block-start: var(--token-border-thin) solid var(--token-color-terminal-rim);
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.vim-help-heading {
+  color: var(--token-color-vim-mode-help);
+}
+
+.vim-help-rows,
+.vim-help-rows dd {
+  margin: 0;
+}
+
+.vim-help-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--token-space-4);
+}
+
+.vim-help-row dt {
+  min-inline-size: var(--token-space-16);
+  color: var(--token-color-terminal-heading);
+}
+
+.vim-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--token-space-4);
+  min-block-size: var(--token-size-vim-status);
+  padding-inline: var(--token-size-terminal-padding);
+  background: var(--token-color-vim-status);
+  color: var(--token-color-terminal-text-secondary);
+}
+
+.vim-mode {
+  color: var(--token-color-vim-mode);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.vim-mode.is-help {
+  color: var(--token-color-vim-mode-help);
+}
+
+.vim-pipe {
+  color: var(--token-color-terminal-dim);
+}
+
+.vim-scroll {
+  margin-inline-start: auto;
+}
+
+.vim-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--token-space-2);
+  min-block-size: var(--token-size-vim-message);
+  padding-inline: var(--token-size-terminal-padding);
+  padding-block: var(--token-space-1);
+}
+
+.vim-message-text,
+.vim-entry-form {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.vim-entry-form {
+  display: flex;
+}
+
+.vim-entry {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.vim-chips {
+  display: flex;
+  gap: var(--token-space-2);
+}
+
+/* ---- Modes (FR-033, research R19) ------------------------------------- */
+
+/* Less transparency, and forced colors: the glass is solid, with no blur,
+   sheen or rim light. */
+@media (prefers-reduced-transparency: reduce) {
+  .window[data-view="terminal"],
+  .pocket,
+  .pocket-screen {
+    background: var(--token-color-shell-surface);
+    box-shadow: var(--token-shadow-window);
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .window[data-view="terminal"],
+  .pocket,
+  .pocket-screen {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .terminal,
+  .terminal :is(.tone-primary, .tone-secondary, .tone-dim, .tone-heading, .tone-error, .tone-approved, .tone-draft, .prompt, .prompt-path) {
+    color: CanvasText;
+  }
+
+  .prompt-user {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .command-chip,
+  .pocket-key,
+  .vim-fold {
+    border: var(--token-border-thin) solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .command-inline {
+    color: LinkText;
+  }
+
+  .cursor-block,
+  .vim-cursor {
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .command-field:not(:focus-within) .cursor-block {
+    outline-color: Highlight;
+  }
+
+  .vim-match {
+    background: Mark;
+    color: MarkText;
+  }
+
+  .vim-match.is-current {
+    outline: var(--token-border-thick) solid Highlight;
+  }
+
+  .vim-status {
+    border-block-start: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+  }
+
+  .terminal-glyph .terminal-tile {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .terminal-glyph :is(.terminal-mark, .terminal-underscore) {
+    stroke: CanvasText;
+  }
+}

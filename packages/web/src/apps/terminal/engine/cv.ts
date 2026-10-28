@@ -106,7 +106,9 @@ export function shownEntries(resume: Resume, section: EntrySection | ListSection
 
 // `The CV lists no {section}.` (FR-011).
 export function emptySection(input: CvInput, section: Section): Block {
-  const names: Record<Section, string> = { ...input.text.terminal.emptyNames, ...Object.fromEntries(Object.entries(input.text.sections).map(([key, name]) => [key, name.toLowerCase()])) } as Record<Section, string>;
+  const { emptyNames } = input.text.terminal;
+  const sections = Object.fromEntries(Object.entries(input.text.sections).map(([key, name]) => [key, name.toLowerCase()]));
+  const names = { ...sections, basics: emptyNames.about, contact: emptyNames.contact } as Record<Section, string>;
   return [line(text(input.text.terminal.replies.emptySection.replace('{section}', names[section]), 'secondary'))];
 }
 

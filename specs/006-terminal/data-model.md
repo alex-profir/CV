@@ -235,6 +235,7 @@ type Session = {
   draft: string;               // what is typed (FR-021)
   stepping: { index: number; saved: string } | null;   // Up and Down (FR-020)
   scrollTop: number;           // the output's scroll position (FR-021)
+  shellScroll: Partial<Record<'desktop' | 'mobile', number>>;  // each shell's, as a position fits its width only
   vim: VimState | null;        // the open vim view (FR-058)
   announcement: { text: string; id: number } | null;  // FR-028
 };

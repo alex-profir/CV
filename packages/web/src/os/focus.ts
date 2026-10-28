@@ -40,9 +40,12 @@ export function watchInput(): () => void {
   };
 }
 
-// Moves focus as the shell does, with the indicator after a key.
-export function moveFocus(element: HTMLElement | null | undefined): void {
-  element?.focus(byKey ? { focusVisible: true } : undefined);
+// Moves focus as the shell does, with the indicator after a key. An app's
+// own target inside its content is focused where it is, as the app keeps
+// its own scroll position (006 FR-021).
+export function moveFocus(element: HTMLElement | null | undefined, preventScroll = false): void {
+  const options = { ...(byKey ? { focusVisible: true } : {}), ...(preventScroll ? { preventScroll: true } : {}) };
+  element?.focus(Object.keys(options).length === 0 ? undefined : options);
 }
 
 // Where a target's focus goes, first match first: an app that declares
@@ -58,8 +61,9 @@ export function focusSelectors(target: FocusTarget, apps: readonly App[]): strin
 }
 
 export function focusTarget(target: FocusTarget, apps: readonly App[] = []): void {
-  for (const candidate of focusSelectors(target, apps)) {
+  const candidates = focusSelectors(target, apps);
+  for (const [index, candidate] of candidates.entries()) {
     const element = document.querySelector<HTMLElement>(candidate);
-    if (element !== null) return moveFocus(element);
+    if (element !== null) return moveFocus(element, index < candidates.length - 1);
   }
 }
