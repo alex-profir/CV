@@ -35,6 +35,11 @@ taken from the repository at commit `917c7a3`: 004's and 005's requirement texts
 names are real. 006's test names and lines are stand-ins, as 006 isn't merged yet. The real view
 reads all of it from the repository when the site is built (FR-013).
 
+The counts of requirements each group doesn't list are worked out from the specs' active
+requirements: 004 has 57, of which the CV app carries 21 (36 not shown); 005 has 66, of which the
+CV app carries 3 (63 not shown) and the shell 46 (20 not shown). The Terminal's and 007's counts
+are stand-ins.
+
 ## Proposed tokens
 
 Once the plan is written, these go into `packages/tokens/penpot/tokens.json` in Penpot's form. The

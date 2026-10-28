@@ -42,7 +42,7 @@ else is site text, set by this design (FR-009). The full list is under [Site tex
 | The spec view's surface | 005's window surface, `color.shell-surface`, in every app, the CV included. The light CV page turns into the dark shell surface, so the change of view is plain at a glance. In the Terminal's glass window the spec view has no surface of its own: the glass shows through, as the Terminal's own screen does (006) | FR-002, FR-021 |
 | Reading width | The view's content is at most 760 px wide, from the left padding. Padding: 40 px in a window 700 px or wider, 24 px in a narrower window, 20 px on mobile | FR-020 |
 | Requirement layout | Two columns while the view's content is at least 480 px wide: the short ID in a 64 px column, then the text, its spec link and its tests. Narrower (phones in portrait), the ID sits above the text | FR-007, FR-020 |
-| A spec's heading row | Its number, title and status on one line, with the count and "Open the spec ↗" at the right. When the view's content is under 700 px wide, the count and link go on a second line | FR-006 |
+| A spec's heading row | Its number, title and status on one line. Below it, in JetBrains Mono 12, fog: how many of the spec's requirements the view doesn't list, `[n] more requirements in this spec aren't shown here` (`1 more requirement …`), then `Open the spec ↗`, a link to the top of the spec. When the view lists all of the spec's requirements, only the link shows. Removed requirements aren't counted | FR-006, FR-010 |
 | Short ID form | `FR-###` inside a spec's group, in JetBrains Mono 13 / 500, periwinkle. Screen readers and links use the full ID, such as `004-cv-page-FR-001` | FR-007 |
 | Requirement text | In full, in Schibsted Grotesk 14 on 22 px lines. Code shows in JetBrains Mono in haze. A reference to another requirement, such as `005 FR-013`, is a link to it, underlined | FR-007 |
 | Spec link | `In the spec, line [n] ↗`, under the text | FR-007, FR-010 |
@@ -51,6 +51,7 @@ else is site text, set by this design (FR-009). The full list is under [Site tex
 | Build line | Under the lede: `[n] requirements · [n] specs · built from [commit] ↗`, the commit as a link to it in the repository | FR-010, FR-013 |
 | "What's this?" | A disclosure. Open, a raised panel (`color.shell-raised`, hairline edge, 8 px corners, `radius.menu`) at the top of the view's content, above the heading, pushing the rest down. It never covers anything | FR-009 |
 | Offline note | A dashed hairline box under the build line: a crossed-out signal glyph and one sentence. Only offline | FR-027 |
+| Uncommitted-changes note | The same dashed box, with an original glyph of a commit dot and an open ring, and one sentence. Only in a build from a copy with uncommitted changes, so never on the published site. With both notes, this one comes first | FR-010 |
 | Showing and leaving the spec view | The content cross-fades over `motion.duration.fast` (150 ms) with `motion.easing.standard`. Nothing moves or scales, so reduced motion needs no other version, and the fade is dropped with it | FR-022 |
 | The app's menu | `Show specs` follows the app's first command (Open the CV as a page, Clear output), in the same group. About this site's menu has it first. While the spec view shows it reads `Back to [app]`. No shortcut | FR-001, FR-003 |
 
@@ -110,8 +111,9 @@ After "Show specs". The window keeps its place, size, frame and controls. Its ti
 |              #   it.                                                            | #              |
 |              #   [24] requirements · [2] specs · built from [917c7a3] ↗         | #              |
 |              #   ------------------------------------------------------------   | #              |
-|              #   [004]  [The /cv Page]  [● APPROVED]   [21] requirements        | #              |
-|              #                                          Open the spec ↗         | #              |
+|              #   [004]  [The /cv Page]  [● APPROVED]                            | #              |
+|              #   [36] more requirements in this spec aren't shown here ·        | #              |
+|              #   Open the spec ↗                                                | #              |
 |              #   FR-001  [/cv MUST show every section of the CV document ...    | #              |
 |              #           ......................................................]| #              |
 |              #           In the spec, line [408] ↗                              | #              |
@@ -123,7 +125,8 @@ After "Show specs". The window keeps its place, size, frame and controls. Its ti
 |              #   FR-002  [For each supported section, the page MUST show ...]   | #              |
 |              #           ...                                                    | #              |
 |              #   ------------------------------------------------------------   | #              |
-|              #   [005]  [The OS Shell]  [● APPROVED]    [3] requirements        | #              |
+|              #   [005]  [The OS Shell]  [● APPROVED]                            | #              |
+|              #   [63] more requirements in this spec aren't shown here · ...    | #              |
 |              #   FR-006  ...                                                    v #              |
 |              #====================================================================#              |
 |                                     (dock, as in 1)                                              |
@@ -131,7 +134,9 @@ After "Show specs". The window keeps its place, size, frame and controls. Its ti
 ```
 
 - The view lists every requirement any element of the CV app carries, and no other, grouped by
-  spec in number order, each group in ID order, each requirement once (FR-006). The CV app's own
+  spec in number order, each group in ID order, each requirement once (FR-006). Each group says
+  how many of its spec's requirements aren't listed, so the view is never taken for the whole
+  spec. The CV app's own
   frame and the "Show specs" control belong to the shell (About this site's view).
 - The view scrolls inside the window. The top bar stays put.
 - Focus moves to the heading `Specs for CV` (FR-017).
@@ -193,8 +198,9 @@ The Terminal shows its specs in front. The CV window behind still shows the CV, 
 |              | [...................]     # < Back to Terminal          (? What's this? v)#      |
 |              | [...................]     #   Specs for Terminal                       ^ #      |
 |              | [...................]     #   Every requirement the Terminal app ...   | #      |
-|              |                           #   [66] requirements · [1] spec · built ... | #      |
-|              |                           #   [006] [The Terminal] [● APPROVED] ...    | #      |
+|              |                           #   [40] requirements · [1] spec · built ... | #      |
+|              |                           #   [006] [The Terminal] [● APPROVED]        | #      |
+|              |                           #   [26] more requirements in this spec ...  | #      |
 |              |                           #   FR-001  [The Terminal MUST be an app of  | #      |
 |              |                           #           the OS shell (005 FR-003) ...]   | #      |
 |              |                           #           In the spec, line [475] ↗        | #      |
@@ -232,10 +238,11 @@ of its title bar, as on every app.
 |              |     #   implements: the menu bar, the dock, the | #                                 |
 |              |     #   windows' frames and controls, the home  | #                                 |
 |              |     #   screen, and these spec controls. ...    | #                                 |
-|              |     #   [63] requirements · [2] specs · ...     | #                                 |
+|              |     #   [51] requirements · [2] specs · ...     | #                                 |
 |              |     #   ---------------------------------------  | #                                 |
 |              |     #   [005] [The OS Shell] [● APPROVED]        | #                                 |
-|              |     #   [58] requirements  Open the spec ↗      | #                                 |
+|              |     #   [20] more requirements in this spec     | #                                 |
+|              |     #   aren't shown here · Open the spec ↗     | #                                 |
 |              |     #   FR-010  [The desktop shell MUST show a  | #                                 |
 |              |     #           menu bar along the top, ...]    v #                                 |
 |              |     #=============================================#                                 |
@@ -257,7 +264,8 @@ requirements have no tests until it is built.
 ```
 |              |     #   [007] [The Requirement Inspector]        ^ #                                 |
 |              |     #         [○ DRAFT]                          | #                                 |
-|              |     #   [5] requirements  Open the spec ↗        | #                                 |
+|              |     #   [29] more requirements in this spec     | #                                 |
+|              |     #   aren't shown here · Open the spec ↗     | #                                 |
 |              |     #   FR-001  [Every app MUST have a "Show     | #                                 |
 |              |     #           specs" control at the top of its | #                                 |
 |              |     #           window ... (005 FR-013) ...]     | #                                 |
@@ -293,6 +301,24 @@ line, says the links need a connection.
 - The note isn't announced by itself. It is read in order after the build line.
 - Online the note is absent (FR-027). The links stay links offline: following one shows the
   browser's own offline page, as any link to another site does.
+
+### 7b. A build with uncommitted changes (FR-010)
+
+Only a local build from a copy with uncommitted changes shows this note. Published and
+pull-request builds come from a commit, so they never do. The view shows the text as it is in that
+copy, and its links lead to the last commit.
+
+```
+|              #   [24] requirements · [2] specs · built from [917c7a3] ↗         | #              |
+|              #   + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +  | #              |
+|              #   : (commit glyph)  This build includes uncommitted changes.   :  | #              |
+|              #   : Its links lead to the last commit, [917c7a3], so they may  :  | #              |
+|              #   : not match what you see here.                               :  | #              |
+|              #   + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +  | #              |
+```
+
+- Not drawn in Penpot: it is the offline note's box with another glyph and sentence, and the
+  published site never shows it.
 
 ### 8. The CV menu with "Show specs" (FR-001, FR-003)
 
@@ -357,7 +383,9 @@ The app's menu in the menu bar holds the same command as the control.
 | built from [917c7a3] ↗          | |
 | ------------------------------- | |
 | [004] [The /cv Page] [● APPROVED] |
-| [21] requirements  Open the spec ↗|
+| [36] more requirements in this  | |
+| spec aren't shown here ·        | |
+| Open the spec ↗                 | |
 |                                 | |
 | FR-001                          | |
 | [/cv MUST show every section of | |
@@ -388,10 +416,13 @@ Terminal's state is kept behind it.
 | Specs for Terminal              ^ |
 | Every requirement the Terminal  | |
 | app implements, ...             | |
-| [66] requirements · [1] spec ·  | |
+| [40] requirements · [1] spec ·  | |
 | built from [917c7a3] ↗          | |
 | ------------------------------- | |
 | [006] [The Terminal] [● APPROVED] |
+| [26] more requirements in this  | |
+| spec aren't shown here ·        | |
+| Open the spec ↗                 | |
 | FR-001                          | |
 | [The Terminal MUST be an app of | |
 | the OS shell (005 FR-003) ...]  v |
@@ -410,7 +441,7 @@ Terminal's state is kept behind it.
 | Specs for the shell             ^ |
 | Every requirement the shell     | |
 | itself implements: ...          | |
-| [63] requirements · [2] specs · | |
+| [51] requirements · [2] specs · | |
 | ------------------------------- | |
 | [005] [The OS Shell] [● APPROVED] |
 | FR-010                          | |
@@ -462,7 +493,8 @@ use the two-column layout.
 | Every requirement the CV app implements, grouped by spec. ...               | |
 | [24] requirements · [2] specs · built from [917c7a3] ↗                      | |
 | --------------------------------------------------------------------------  | |
-| [004] [The /cv Page] [● APPROVED]            [21] requirements Open the spec ↗|
+| [004] [The /cv Page] [● APPROVED]                                           | |
+| [36] more requirements in this spec aren't shown here · Open the spec ↗     | |
 | FR-001  [/cv MUST show every section of the CV document ...]                v |
 +-------------------------------------------------------------------------------+
 ```
@@ -505,7 +537,7 @@ No new shortcut. Escape does nothing in the spec view, as it does nothing to a w
 | Its heading | Heading `Specs for [app]`, one level below the window's name, as About this site's is in 005 (FR-018) |
 | `Back to [app]` | Button `Back to [app]` |
 | "What's this?" | Button `What's this?`, expanded or collapsed. The panel's own heading is one level below the view's |
-| A spec's heading | Heading, one level below the view's: `[number] [title], [status]`, such as `004 The /cv Page, Approved` |
+| A spec's heading | Heading, one level below the view's: `[number] [title], [status]`, such as `004 The /cv Page, Approved`. The count of requirements not listed follows it as text, then the link `Open the spec` |
 | A spec's requirements | A list. Each item starts with the full ID, such as `004-cv-page-FR-001`; the short `FR-001` is what shows |
 | A requirement's tests | A list, after the text `Tests, [n]` or `No test covers this yet.` |
 | Links | `In the spec, line [n]`, `Open the spec`, the test's name, the commit, each as a link that opens another site |
@@ -541,8 +573,9 @@ Everything the inspector says that isn't read from the repository. Nothing here 
 | Lede, apps | `Every requirement the [app] app implements, grouped by spec. Each one links to its line in the spec and to the tests that check it.` |
 | Lede, About this site | `Every requirement the shell itself implements: the menu bar, the dock, the windows' frames and controls, the home screen, and these spec controls. Each one links to its line in the spec and to the tests that check it.` |
 | Build line | `[n] requirements`, `[n] specs` (`1 spec`), `built from` |
-| A spec's heading | `[n] requirements` (`1 requirement`), `Open the spec`, `Approved`, `Draft` |
+| A spec's heading | `[n] more requirements in this spec aren't shown here` (`1 more requirement in this spec isn't shown here`), `Open the spec`, `Approved`, `Draft` |
 | A requirement | `In the spec, line [n]`, `Tests`, `No test covers this yet.` |
 | "What's this?" | The heading `What's this?`; `This site is built spec first. Every feature starts as a spec in the site's repository: a list of numbered requirements, each one thing the site must do. Every part of the interface that meets a requirement carries its ID, and every test that checks it names the ID too. A check on every pull request makes sure nothing ships without both.`; the chain `Feature`, `Spec`, `Requirement FR-###`, `Interface`, `Tests`; `This view lists the requirements this app's interface carries, read from the repository when the site was built, with a link to each one in its spec and to the tests that check it.`; `The site's repository on GitHub` |
 | Offline note | `You're offline. Everything here is saved on this device, but the links to GitHub need a connection.` |
+| Uncommitted-changes note | `This build includes uncommitted changes. Its links lead to the last commit, [commit], so they may not match what you see here.` |
 | Screen readers | `[app] specs`, `then`, as listed under Screen readers |

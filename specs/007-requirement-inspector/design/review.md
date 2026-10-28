@@ -32,7 +32,9 @@ view, on 005's Graphite desktop and 006's Terminal.
   turns dark, so the change of view is plain at a glance. In the Terminal's glass window the glass
   shows through.
 - **Reading the view**: a heading, a one-sentence lede and a build line naming the commit. Then
-  one group per spec: number, title and status chip, with the count and "Open the spec ↗". Each
+  one group per spec: number, title and status chip, then how many of the spec's requirements the
+  view doesn't list, such as `36 more requirements in this spec aren't shown here`, and "Open the
+  spec ↗". With every requirement listed, only the link shows (FR-006). Each
   requirement shows the short ID in a 64 px column, its full text (code in mono, references as
   links), `In the spec, line [n] ↗` and its tests, each by name with its path and line.
 - **Status without color**: `APPROVED` has a filled dot and a solid outline in mint, `DRAFT` a
@@ -42,6 +44,9 @@ view, on 005's Graphite desktop and 006's Terminal.
   content that explains spec-first in two short paragraphs, with the chain
   `Feature > Spec > Requirement FR-### > Interface > Tests` and a link to the repository.
 - **Offline**: one dashed note under the build line. Nothing else changes.
+- **Uncommitted changes**: a local build from a copy with uncommitted changes shows the same
+  dashed note with its own sentence, naming the commit its links lead to (FR-010). Wireframed only:
+  the published site never shows it.
 - **Menus**: `Show specs` (or `Back to [app]`) in each app's menu after its first command, with
   no shortcut.
 - **Motion**: a 150 ms cross-fade, no movement or scaling; reduced motion drops the fade.
