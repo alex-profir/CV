@@ -457,11 +457,12 @@ every command `help` lists; each output equals the online one.
 
 ### Tests for User Story 7 (REQUIRED) ⚠️
 
-- [ ] T086 [P] [US7] Write `packages/web/test/terminal/offline.test.ts`, with 005's `test/helpers/offline.ts`, covers 006-terminal-FR-036 (SC-006): after one visit to `/`, and separately to `/cv` only, `/` offline at 375 and 1440 px opens the Terminal in the site's fonts (`document.fonts` loaded, no fallback face), every command `help` lists gives the same group text as online, and no offline message shows.
+- [X] T086 [P] [US7] Write `packages/web/test/terminal/offline.test.ts`, with 005's `test/helpers/offline.ts`, covers 006-terminal-FR-036 (SC-006): after one visit to `/`, and separately to `/cv` only, `/` offline at 375 and 1440 px opens the Terminal in the site's fonts (`document.fonts` loaded, no fallback face), every command `help` lists gives the same group text as online, and no offline message shows.
 
 ### Implementation for User Story 7
 
-- [ ] T087 [US7] Confirm the Terminal needs nothing new offline (research R21, contracts/site.md Output): the `os` script and style sheet hold the Terminal and the spec list, the service worker's precache list and version follow them, and no command fetches. Fix only what T086 finds, in `packages/web/src/apps/terminal/` (never in the service worker unless the precache list misses a Terminal file). T086 passes.
+- [X] T087 [US7] Confirm the Terminal needs nothing new offline (research R21, contracts/site.md Output): the `os` script and style sheet hold the Terminal and the spec list, the service worker's precache list and version follow them, and no command fetches. Fix only what T086 finds, in `packages/web/src/apps/terminal/` (never in the service worker unless the precache list misses a Terminal file). T086 passes.
+  - Confirmed with nothing to fix: the build's one `os` script and style sheet hold the Terminal and the spec list, the service worker precaches them, T086 passes after `/` and after `/cv` only, and `requests.test.ts` sees no request but `127.0.0.1`. The shell has no offline message of its own; T086 checks for no alert and nothing about the network in the shell's status region.
 
 **Checkpoint**: The Terminal works offline, in both shells.
 
