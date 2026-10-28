@@ -6,6 +6,7 @@
 import { durationMs, tokenValue } from '@cv/tokens';
 import type { CssVarTokenName, DurationTokenName } from '@cv/tokens';
 import type { Metrics } from '@cv/os-core';
+import fonts from '../fonts/fonts.json' with { type: 'json' };
 
 function px(name: CssVarTokenName): number {
   const value = tokenValue(name);
@@ -44,6 +45,10 @@ export const METRICS: Metrics = Object.freeze({
   step: px('space.4'),
   bigStep: px('space.16'),
   motionMs: ms('motion.duration.fast'),
+  terminalWidth: px('size.terminal-window-width'),
+  terminalHeight: px('size.terminal-window-height'),
+  terminalMargin: px('size.terminal-window-margin'),
+  terminalOffset: px('size.terminal-window-offset'),
 });
 
 // The easing of the open and close animations (research R13), outside
@@ -53,3 +58,28 @@ export const MOTION_EASING: string = tokenValue('motion.easing.standard');
 // The scale a window, full-screen app or menu grows from as it opens, the
 // wireframes' 96%: also outside `Metrics`, for the same reason.
 export const MOTION_START_SCALE: number = plain('scale.open-start');
+
+// The advance width of the family `font.family.mono` names, in em: a fact of
+// the font file, recorded beside it in fonts.json (006 research R13).
+function monoAdvance(): number {
+  const family = fonts.families.find((entry) => entry.token === 'font.family.mono') as { advance?: number } | undefined;
+  if (typeof family?.advance !== 'number') throw new Error('fonts.json gives no advance for the font.family.mono family');
+  return family.advance;
+}
+
+const windowWidth = px('size.terminal-window-width');
+const padding = px('size.terminal-padding');
+const fontSize = px('font.size.terminal');
+const advance = monoAdvance();
+
+// The design values the Terminal's scripts need (006 research R13, R22): the
+// command line's limit, and the desktop window's column count, which the
+// announcements count rows by on both shells.
+export const TERMINAL = Object.freeze({
+  maxLength: plain('command-line.max-length'),
+  windowWidth,
+  padding,
+  fontSize,
+  advance,
+  columns: Math.floor((windowWidth - 2 * padding) / (fontSize * advance)),
+});

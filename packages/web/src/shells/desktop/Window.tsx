@@ -55,7 +55,7 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
     >
       <TitleBar {...props} session={session} />
       <div className="window-content" data-req="005-os-shell-FR-022">
-        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="desktop" mac={mac} />
+        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="desktop" mac={mac} dispatch={dispatch} />
       </div>
       {maximized === null && session === null && <ResizeHandles window={window} dispatch={dispatch} />}
       {session !== null && <Pad {...props} session={session} />}

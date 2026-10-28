@@ -2,7 +2,7 @@
 // frozen states and checks every invariant after each action (helpers.ts).
 import { describe, expect, test } from 'vitest';
 import { initialState } from '../src/index.ts';
-import { APPS, AREA, METRICS, desktop, mobile, run } from './helpers.ts';
+import { APPS, AREA, METRICS, THREE_APPS, THREE_CONTEXT, desktop, mobile, run } from './helpers.ts';
 
 describe('005-os-shell-FR-005: the CV window is open and focused on first load, and the phone starts on its home screen', () => {
   test('initialState has the CV window open, placed by CSS until measured, focused, with no effect', () => {
@@ -318,5 +318,69 @@ describe('005-os-shell-FR-002: the shell changes while the site is open, keeping
     expect(state.windows).toEqual([]);
     expect(state.focused).toBeNull();
     expect(state.effects).toEqual([]);
+  });
+});
+
+describe('006-terminal-FR-003: the Terminal window works as every other window, with three views', () => {
+  const three = (actions: Parameters<typeof run>[1]) => run(desktop(AREA, THREE_CONTEXT), actions, THREE_CONTEXT);
+
+  test('open adds it in front, focused, with its title focused; a second open brings it forward', () => {
+    const state = three([{ type: 'open', view: 'terminal' }]);
+    expect(state.windows.map((window) => window.view)).toEqual(['terminal', 'cv']);
+    expect(state.focused).toBe('terminal');
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'window-title', view: 'terminal' } }]);
+    const again = run(state, [{ type: 'effectsDone' }, { type: 'open', view: 'about' }, { type: 'open', view: 'terminal' }], THREE_CONTEXT);
+    expect(again.windows.map((window) => window.view)).toEqual(['terminal', 'about', 'cv']);
+  });
+
+  test("close moves focus to the next window's title, or to the Terminal's dock item when it was the only one", () => {
+    const state = three([{ type: 'open', view: 'terminal' }, { type: 'effectsDone' }, { type: 'close', view: 'terminal' }]);
+    expect(state.windows.map((window) => window.view)).toEqual(['cv']);
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'window-title', view: 'cv' } }]);
+    const alone = three([{ type: 'close', view: 'cv' }, { type: 'open', view: 'terminal' }, { type: 'effectsDone' }, { type: 'close', view: 'terminal' }]);
+    expect(alone.windows).toEqual([]);
+    expect(alone.effects).toEqual([{ kind: 'focus', target: { kind: 'dock-item', app: 'terminal' } }]);
+  });
+
+  test('minimize keeps it open and moves focus on; open restores it where it was', () => {
+    const open = three([{ type: 'open', view: 'terminal' }, { type: 'effectsDone' }]);
+    const geometry = open.windows[0]!.geometry;
+    const minimized = run(open, [{ type: 'minimize', view: 'terminal' }], THREE_CONTEXT);
+    expect(minimized.windows.map((window) => [window.view, window.minimized])).toEqual([
+      ['cv', false],
+      ['terminal', true],
+    ]);
+    expect(minimized.focused).toBe('cv');
+    const restored = run(minimized, [{ type: 'effectsDone' }, { type: 'open', view: 'terminal' }], THREE_CONTEXT);
+    expect(restored.windows[0]).toMatchObject({ view: 'terminal', minimized: false, geometry });
+    expect(restored.focused).toBe('terminal');
+  });
+
+  test('maximize fills the area and restore brings its box back', () => {
+    const open = three([{ type: 'open', view: 'terminal' }, { type: 'effectsDone' }]);
+    const box = open.windows[0]!.geometry;
+    const maximized = run(open, [{ type: 'toggleMaximize', view: 'terminal' }], THREE_CONTEXT);
+    expect(maximized.windows[0]).toMatchObject({ geometry: { x: 0, y: 0, ...AREA }, maximized: { restore: box } });
+    expect(maximized.effects).toEqual([{ kind: 'announce', message: 'Terminal maximized.' }]);
+    const restored = run(maximized, [{ type: 'toggleMaximize', view: 'terminal' }], THREE_CONTEXT);
+    expect(restored.windows[0]).toMatchObject({ geometry: box, maximized: null });
+  });
+
+  test('next cycles through all three shown windows', () => {
+    let state = three([{ type: 'open', view: 'about' }, { type: 'open', view: 'terminal' }, { type: 'effectsDone' }]);
+    const seen: string[] = [];
+    for (let step = 0; step < 3; step += 1) {
+      state = run(state, [{ type: 'next' }, { type: 'effectsDone' }], THREE_CONTEXT);
+      seen.push(state.focused!);
+    }
+    expect(new Set(seen)).toEqual(new Set(['cv', 'terminal', 'about']));
+  });
+
+  test('a tap on the home screen opens it full screen, and the reducer is the same with two apps or three', () => {
+    const phone = run(mobile(THREE_CONTEXT), [{ type: 'mobileOpen', view: 'terminal' }], THREE_CONTEXT);
+    expect(phone.mobile.open).toBe('terminal');
+    expect(phone.effects).toEqual([{ kind: 'focus', target: { kind: 'mobile-title', view: 'terminal' } }]);
+    expect(THREE_APPS.slice(0, APPS.length)).toEqual(APPS);
+    expect(run(desktop(), [{ type: 'open', view: 'about' }]).windows).toEqual(three([{ type: 'open', view: 'about' }]).windows);
   });
 });

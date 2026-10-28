@@ -2,6 +2,7 @@
 // Focus). The shells mark the elements with data attributes, so focus moves
 // never depend on markup order.
 import type { FocusTarget } from '@cv/os-core';
+import type { App } from '../apps/index.ts';
 
 function selector(target: FocusTarget): string {
   switch (target.kind) {
@@ -44,6 +45,21 @@ export function moveFocus(element: HTMLElement | null | undefined): void {
   element?.focus(byKey ? { focusVisible: true } : undefined);
 }
 
-export function focusTarget(target: FocusTarget): void {
-  moveFocus(document.querySelector<HTMLElement>(selector(target)));
+// Where a target's focus goes, first match first: an app that declares
+// `focusOnOpen` gets the element it names inside its window's or view's
+// content, before its title (006 contracts/shell.md, FR-004).
+export function focusSelectors(target: FocusTarget, apps: readonly App[]): string[] {
+  const title = selector(target);
+  if (target.kind !== 'window-title' && target.kind !== 'mobile-title') return [title];
+  const inside = apps.find((app) => app.id === target.view)?.focusOnOpen;
+  if (inside === undefined) return [title];
+  const content = target.kind === 'window-title' ? `#os .desktop .window[data-view="${target.view}"] .window-content` : `#os .full-screen[data-view="${target.view}"] .view-content`;
+  return [`${content} ${inside}`, title];
+}
+
+export function focusTarget(target: FocusTarget, apps: readonly App[] = []): void {
+  for (const candidate of focusSelectors(target, apps)) {
+    const element = document.querySelector<HTMLElement>(candidate);
+    if (element !== null) return moveFocus(element);
+  }
 }

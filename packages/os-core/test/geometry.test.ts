@@ -3,7 +3,7 @@
 import { describe, expect, test } from 'vitest';
 import { clampMove, clampResize, fitToArea, placeWindow } from '../src/index.ts';
 import type { Edge, Geometry, WindowState } from '../src/index.ts';
-import { APPS, AREA, METRICS, desktop, run } from './helpers.ts';
+import { APPS, AREA, METRICS, THREE_CONTEXT, desktop, run } from './helpers.ts';
 
 describe('005-os-shell-FR-005 005-os-shell-FR-018: the CV window opens where the design puts it', () => {
   test('1000 × 716 at 220, 24 in the 1440 × 764 area', () => {
@@ -35,7 +35,7 @@ describe('005-os-shell-FR-005 005-os-shell-FR-018: the CV window opens where the
 const titleBarsMeet = (a: Geometry, b: Geometry) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + METRICS.titleBar && b.y < a.y + METRICS.titleBar;
 const boxMeetsTitleBar = (box: Geometry, other: Geometry) =>
   box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + METRICS.titleBar && other.y < box.y + box.height;
-const shown = (view: 'cv' | 'about', geometry: Geometry): WindowState => ({ view, geometry, minimized: false, maximized: null, placement: 'set' });
+const shown = (view: 'cv' | 'terminal' | 'about', geometry: Geometry): WindowState => ({ view, geometry, minimized: false, maximized: null, placement: 'set' });
 
 describe("005-os-shell-FR-018: the CV opens off About's title bar", () => {
   test("1000 × 668 at 220, 72 in the 1440 × 764 area, with About centered", () => {
@@ -129,6 +129,72 @@ describe('005-os-shell-FR-018: About opens clear of the window in front', () => 
       state = run(state, [{ type: 'close', view: 'about' }, { type: 'effectsDone' }]);
     }
     expect(APPS).toHaveLength(1);
+  });
+});
+
+describe("006-terminal-FR-031: the Terminal opens where the design puts it", () => {
+  const cv = shown('cv', { x: 220, y: 24, width: 1000, height: 716 });
+  const whole = (box: Geometry) => Object.values(box).every(Number.isInteger);
+
+  test('760 × 536 at 640, 144 in the 1440 × 764 area, in front of the CV at its first-load place', () => {
+    const box = placeWindow('terminal', [cv], AREA, METRICS);
+    // 640, 176 in the page, below the 32 px menu bar.
+    expect(box).toEqual({ x: 640, y: 144, width: 760, height: 536 });
+    expect(boxMeetsTitleBar(box, cv.geometry)).toBe(false);
+  });
+
+  test('centered in the area when no window is shown', () => {
+    expect(placeWindow('terminal', [], AREA, METRICS)).toEqual({ x: 340, y: 114, width: 760, height: 536 });
+  });
+
+  test('with the CV minimized, none is shown, so it is centered', () => {
+    expect(placeWindow('terminal', [{ ...cv, minimized: true }], AREA, METRICS)).toEqual({ x: 340, y: 114, width: 760, height: 536 });
+  });
+
+  test('with the CV maximized, 120 px below its top', () => {
+    const maximized: WindowState = { ...cv, geometry: { x: 0, y: 0, width: 1440, height: 764 }, maximized: { restore: cv.geometry } };
+    expect(placeWindow('terminal', [maximized], AREA, METRICS)).toEqual({ x: 640, y: 120, width: 760, height: 536 });
+  });
+
+  test('after About has cascaded, in front of About, with both title bars in view', () => {
+    const about = shown('about', placeWindow('about', [cv], AREA, METRICS));
+    expect(about.geometry).toEqual({ x: 268, y: 72, width: 560, height: 520 });
+    const box = placeWindow('terminal', [about, cv], AREA, METRICS);
+    expect(box).toEqual({ x: 640, y: 192, width: 760, height: 536 });
+    for (const other of [about, cv]) expect(boxMeetsTitleBar(box, other.geometry)).toBe(false);
+  });
+
+  test('fitted to the 1024 × 504 area with at least 24 px below it, never below the minimum', () => {
+    const area = { width: 1024, height: 504 };
+    const small = shown('cv', placeWindow('cv', [], area, METRICS));
+    const box = placeWindow('terminal', [small], area, METRICS);
+    expect(box).toEqual({ x: 224, y: 144, width: 760, height: 336 });
+    expect(box.y + box.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+    const alone = placeWindow('terminal', [], area, METRICS);
+    expect(alone.y + alone.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+    // A front window low in the area: the minimum height holds, the box moves up.
+    const low = placeWindow('terminal', [shown('cv', { x: 32, y: 300, width: 960, height: 204 })], area, METRICS);
+    expect(low.height).toBe(METRICS.minHeight);
+    expect(low.y + low.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+  });
+
+  test('always whole pixels, inside the area, at least the minimum size', () => {
+    for (const area of [AREA, { width: 1025, height: 505 }, { width: 1333, height: 777 }, { width: 2560, height: 1304 }, { width: 401, height: 301 }]) {
+      for (const windows of [[], [shown('cv', placeWindow('cv', [], area, METRICS))]]) {
+        const box = placeWindow('terminal', windows, area, METRICS);
+        expect(whole(box), JSON.stringify({ area, box })).toBe(true);
+        expect(box.x >= 0 && box.x + box.width <= area.width && box.y >= 0 && box.y + METRICS.titleBar <= area.height, JSON.stringify({ area, box })).toBe(true);
+        expect(box.width).toBeGreaterThanOrEqual(Math.min(METRICS.minWidth, area.width));
+        expect(box.height).toBeGreaterThanOrEqual(Math.min(METRICS.minHeight, area.height));
+      }
+    }
+  });
+
+  test('the reducer opens it there, focused, in front', () => {
+    const state = run(desktop(AREA, THREE_CONTEXT), [{ type: 'open', view: 'terminal' }], THREE_CONTEXT);
+    expect(state.windows.map((window) => window.view)).toEqual(['terminal', 'cv']);
+    expect(state.windows[0]!.geometry).toEqual({ x: 640, y: 144, width: 760, height: 536 });
+    expect(state.focused).toBe('terminal');
   });
 });
 

@@ -5,7 +5,7 @@
 export type ShellName = 'desktop' | 'mobile';
 
 // An app id, or 'about' for About this site, which is a view and not an app.
-export type ViewId = 'cv' | 'about';
+export type ViewId = 'cv' | 'terminal' | 'about';
 
 // CSS pixels, relative to the desktop area.
 export type Geometry = { x: number; y: number; width: number; height: number };
@@ -96,6 +96,11 @@ export type Metrics = {
   step: number;
   bigStep: number;
   motionMs: number;
+  // The Terminal's window (006 contracts/shell.md).
+  terminalWidth: number;
+  terminalHeight: number;
+  terminalMargin: number;
+  terminalOffset: number;
 };
 
 // The edge or corner a resize drags.

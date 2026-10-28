@@ -31,7 +31,7 @@ export type OsProps = { resume: Resume; siteData: SiteData; apps: readonly App[]
 
 const TEXT: OsText = { aboutName: siteText.os.views.about, ...siteText.os.announce };
 
-const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'about';
+const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'about';
 
 // The desktop area: the viewport between the menu bar and the dock's space,
 // measured when the desktop is in the page.
@@ -73,6 +73,21 @@ export function Os({ resume, siteData, apps }: OsProps) {
 
   const viewName = useCallback((view: ViewId) => nameOf(view, context), [context]);
 
+  // The state as last rendered, for `finish`.
+  const current = useRef(state);
+  current.current = state;
+
+  // Applies an action. Once a close has been applied to an open window, its
+  // app's `onClose` runs, whatever started it (006 contracts/shell.md).
+  const finish = useCallback(
+    (action: OsAction) => {
+      const closing = action.type === 'close' && current.current.windows.some((window) => window.view === action.view);
+      dispatch(action);
+      if (closing) apps.find((app) => app.id === action.view)?.onClose?.();
+    },
+    [apps],
+  );
+
   // Hydrated: pick the shell, before the browser paints again.
   useLayoutEffect(() => {
     const shell = currentShell();
@@ -104,7 +119,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
       // A window still closing or minimizing does so at once, before the switch.
       for (const { stop, action } of leaving.current.values()) {
         stop();
-        dispatch(action);
+        finish(action);
       }
       leaving.current.clear();
       const shell: ShellName = query.matches ? 'desktop' : 'mobile';
@@ -113,7 +128,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
     };
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
-  }, [hydrated]);
+  }, [hydrated, finish]);
 
   // Opening an app full screen pushes one entry with the same address, so
   // Back goes home; the desktop never keeps one (FR-050, research R11).
@@ -164,7 +179,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
   useEffect(() => {
     if (state.effects.length === 0) return;
     for (const effect of state.effects) {
-      if (effect.kind === 'focus') focusTarget(effect.target);
+      if (effect.kind === 'focus') focusTarget(effect.target, apps);
       else setAnnouncement((previous) => ({ message: effect.message, id: (previous?.id ?? 0) + 1 }));
     }
     dispatch({ type: 'effectsDone', count: state.effects.length });
@@ -188,7 +203,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
       const stop = animateOut(document.querySelector(`#os .desktop .window[data-view="${view}"]`), () => {
         done = true;
         leaving.current.delete(view);
-        dispatch(action);
+        finish(action);
       });
       if (!done) leaving.current.set(view, { stop, action });
       return;
@@ -198,7 +213,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
       leaving.current.delete(action.view);
     }
     dispatch(action);
-  }, []);
+  }, [finish]);
 
   const shellProps: ShellProps = { state, dispatch: act, apps, resume, siteData, mac, viewName };
   return (

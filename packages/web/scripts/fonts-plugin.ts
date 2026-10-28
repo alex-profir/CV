@@ -20,7 +20,9 @@ export const FONTS_FILE = path.join(FONTS_DIR, 'fonts.json');
 
 export type FontFile = { file: string; subset: string; weight: string; style: string; unicodeRange: string };
 
-export type FontFamily = { family: string; token: string; license: string; files: FontFile[] };
+// `advance`: the face's advance width in em, for a fixed-width family only
+// (006 research R13). A fact of the font file, read by `metrics.ts`.
+export type FontFamily = { family: string; token: string; license: string; advance?: number; files: FontFile[] };
 
 export type FontsDescription = { families: FontFamily[] };
 

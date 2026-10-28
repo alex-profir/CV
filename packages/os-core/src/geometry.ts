@@ -86,6 +86,7 @@ function boxMeetsTitleBar(box: Geometry, other: Geometry, metrics: Metrics): boo
 // gives such a box, as when a window moved low leaves no room below its
 // title bar, the first step whose title bar is on no other window's stands.
 export function placeWindow(view: ViewId, windows: readonly WindowState[], area: Area, metrics: Metrics): Geometry {
+  if (view === 'terminal') return placeTerminal(windows, area, metrics);
   const size =
     view === 'cv'
       ? fitSize(Math.min(metrics.cvWidth, area.width - 2 * metrics.sideMargin), area.height - metrics.bottomMargin, area, metrics)
@@ -119,4 +120,28 @@ export function placeWindow(view: ViewId, windows: readonly WindowState[], area:
     box = { ...box, x: box.x + metrics.cascade, y: box.y + metrics.cascade };
   }
   return clampMove(clearTitleBar ?? box, area, metrics);
+}
+
+// The Terminal's box (006 contracts/shell.md): `terminalWidth` ×
+// `terminalHeight`, fitted to the area with at least `firstTop` left below
+// it. With a shown window in front, its right edge `terminalMargin` inside
+// the area's and its top `terminalOffset` below the front window's, so that
+// title bar stays in view; shortened to keep `firstTop` below it, never under
+// the minimum, and moved up when even that doesn't fit. With none, centered.
+function placeTerminal(windows: readonly WindowState[], area: Area, metrics: Metrics): Geometry {
+  const room = { width: area.width, height: Math.max(0, area.height - metrics.firstTop) };
+  const size = fitSize(metrics.terminalWidth, metrics.terminalHeight, room.height < minimumOf(area, metrics).height ? area : room, metrics);
+  const front = windows.find((window) => !window.minimized && window.view !== 'terminal' && window.placement === 'set');
+  if (front === undefined) {
+    const y = Math.max(0, Math.min(Math.round((area.height - size.height) / 2), room.height - size.height));
+    return clampMove({ x: Math.round((area.width - size.width) / 2), y, ...size }, area, metrics);
+  }
+  const minimum = minimumOf(area, metrics).height;
+  let y = front.geometry.y + metrics.terminalOffset;
+  let height = size.height;
+  if (y + height > room.height) {
+    height = Math.max(Math.min(minimum, size.height), room.height - y);
+    y = Math.max(0, Math.min(y, room.height - height));
+  }
+  return clampMove({ x: area.width - metrics.terminalMargin - size.width, y, width: size.width, height }, area, metrics);
 }

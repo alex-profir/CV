@@ -11,7 +11,7 @@ import { Arrow } from '../../cv/Arrow.tsx';
 import { CheckGlyph } from '../../os/icons/CheckGlyph.tsx';
 
 export type MenuEntry =
-  | { kind: 'action'; key: string; label: string; onChoose: () => void; shortcut?: Shortcut; disabled?: boolean; checked?: boolean; note?: string }
+  | { kind: 'action'; key: string; label: string; onChoose: () => void; shortcut?: Shortcut; disabled?: boolean; checked?: boolean; note?: string; 'data-req'?: string | undefined }
   | { kind: 'link'; key: string; label: string; href: string; external?: boolean }
   | { kind: 'separator'; key: string };
 
@@ -93,6 +93,7 @@ export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEn
         aria-disabled={entry.disabled === true ? 'true' : undefined}
         aria-keyshortcuts={entry.shortcut === undefined ? undefined : shortcutLabel(entry.shortcut, false)}
         tabIndex={-1}
+        data-req={entry['data-req']}
         onPointerMove={focusUnderPointer}
         onClick={() => {
           if (entry.disabled === true) return;
