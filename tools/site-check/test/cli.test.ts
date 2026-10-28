@@ -62,9 +62,15 @@ describe('004-cv-page-FR-049: one local command runs the checks, with the same r
 // 004's test above already runs twice.
 const WITHOUT_LIGHTHOUSE = PARTS.filter((part) => part !== 'lighthouse');
 
-// The root's variant (005 contracts/cli.md Variants on the root). Lighthouse
-// keeps its profiles and no-script its plain widths.
-const ROOT_VARIANT = /^(?:desktop|mobile)\/[a-z0-9%-]+\/\d+px$/;
+// The root's variant (005 contracts/cli.md Variants on the root): only the
+// states that list names. Lighthouse keeps its profiles and no-script its
+// plain widths.
+const ROOT_STATES = [
+  ...['first-load', 'no-window', 'about', 'two-windows', 'site-menu', 'window-menu', 'minimized', 'maximized', 'keyboard-move', 'keyboard-resize'],
+  ...['home', 'home-landscape', 'cv-app'],
+  ...['cv-app-after-cv', 'keyboard', 'reduced-motion', 'forced-colors', 'narrow-window', 'text-zoom', '200%-zoom', '400%-zoom', 'text-spacing'],
+];
+const ROOT_VARIANT = new RegExp(`^(?:desktop|mobile)/(?:${ROOT_STATES.join('|')})/\\d+px$`);
 
 const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
 

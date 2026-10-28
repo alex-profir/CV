@@ -121,6 +121,25 @@ describe('005-os-shell-FR-018: About opens clear of the CV window', () => {
     const bar = await titleBar(page, CV);
     expect(meet(about, { ...bar, height: bar.height - 1 })).toBe(false);
   });
+
+  test("the CV opened from the dock while About is open alone leaves About's title bar uncovered", async () => {
+    const page = await desktop();
+    await page.getByRole('button', { name: 'Close CV' }).click();
+    await settle(page);
+    await openAbout(page);
+    await settle(page);
+    await page.click('#os .dock-item[data-app="cv"]');
+    await page.locator(CV).waitFor();
+    await settle(page);
+    const area = (await box(page, '#os .desktop-area'))!;
+    const cv = (await box(page, CV))!;
+    expect({ x: cv.x - area.x, y: cv.y - area.y, width: cv.width, height: cv.height }).toEqual({ x: 220, y: 72, width: 1000, height: 668 });
+    expect(await frontWindow(page)).toBe('cv');
+    const bar = await titleBar(page, ABOUT);
+    expect(meet(cv, bar)).toBe(false);
+    const { x, y } = centre(bar);
+    expect(await page.evaluate(([px, py]) => document.elementFromPoint(px!, py!)?.closest('.window')?.getAttribute('data-view'), [x, y])).toBe('about');
+  });
 });
 
 describe('005-os-shell-FR-019: a window moves with any pointer dragging its title bar', () => {

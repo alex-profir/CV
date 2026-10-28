@@ -35,11 +35,22 @@ What each part does on the root, `/`, beyond what it does on `/cv` and the not-f
 <shell>/<state>/<width>px
 ```
 
-`<shell>` is `desktop` or `mobile`. `<state>` is a shell state of data-model.md, or, for a part
-that runs a sequence through several states, the sequence's name: `keyboard`, `reduced-motion`,
-`forced-colors`. Examples: `desktop/two-windows/1440px`, `mobile/cv-app/375px`,
-`desktop/keyboard/1440px`. Lighthouse keeps its profile names, and the `no-script` part keeps
-004's plain width (`320px`), since no shell shows without scripting.
+`<shell>` is `desktop` or `mobile`. `<state>` is one of these names, and no other:
+
+| `<state>` | Part | What it names |
+|-----------|------|---------------|
+| A shell state of data-model.md | `accessibility`, `fonts`; `layout` (`first-load`, `home`) | The shell in that state |
+| `cv-app` | `cv-app`, `other-sites`, `offline` | The CV app's content: in its window on the desktop, full screen on the phone |
+| `cv-app-after-cv` | `offline` | The CV app, offline, after one visit to `/cv` only |
+| `keyboard` | `keyboard` | The keyboard flow, a sequence through several states |
+| `reduced-motion`, `forced-colors` | `modes` | Each mode's sequence through several states |
+| `narrow-window` | `layout` | The CV window narrowed to 400 px |
+| `text-zoom` | `layout` | Text-only zoom at 200% |
+| `200%-zoom`, `400%-zoom`, `text-spacing` | `layout` | 004's zoom and text spacing variants, on the shell |
+
+Examples: `desktop/two-windows/1440px`, `mobile/cv-app/375px`, `desktop/keyboard/1440px`.
+Lighthouse keeps its profile names, and the `no-script` part keeps 004's plain width (`320px`),
+since no shell shows without scripting.
 
 ## Problem lines (examples)
 

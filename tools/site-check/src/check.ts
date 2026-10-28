@@ -26,7 +26,7 @@ import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrO
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
 import { forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
-import { OFFLINE_VARIANT, offlineProblems } from './parts/offline.ts';
+import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
 import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
@@ -244,7 +244,10 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           const outcome = await offlineProblems(chromium, { siteDir, manifest, fields, families, cvPath, rootPath, notFoundPath: NOT_FOUND_PATH, shellRoot });
           for (const { page, variant, problems } of outcome) results.push(result('offline', page, variant, problems));
         } catch (error) {
-          for (const target of targets) results.push(crashed('offline', target, OFFLINE_VARIANT, error));
+          // The shell root's lines keep their `<shell>/<state>/<width>px`.
+          for (const target of targets) {
+            for (const variant of shellRoot && target === rootPath ? rootOfflineVariants() : [OFFLINE_VARIANT]) results.push(crashed('offline', target, variant, error));
+          }
         }
       },
       keyboard: async () => {

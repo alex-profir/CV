@@ -208,6 +208,24 @@ describe('005-os-shell-FR-027: a keyboard move steps the window, announces it, a
     await expect.poll(() => status(page).textContent()).toBe('Move cancelled.');
     await expectFocus(page, CV_TITLE);
   });
+
+  test('Enter on Cancel puts the window back, and Enter on Done confirms', async () => {
+    const page = await desktop();
+    await page.locator(CV_TITLE).focus();
+    const start = (await box(page, CV))!;
+    await press(page, 'Alt+Shift+P', 'ArrowRight', 'ArrowRight');
+    await page.locator(`${CV} .pad-cancel`).focus();
+    await press(page, 'Enter');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
+    expect(await box(page, CV)).toEqual(start);
+    await expect.poll(() => status(page).textContent()).toBe('Move cancelled.');
+    await press(page, 'Alt+Shift+P', 'ArrowRight');
+    await page.locator(`${CV} .pad-done`).focus();
+    await press(page, 'Enter');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
+    expect((await box(page, CV))!.x - start.x).toBe(STEP);
+    await expect.poll(() => status(page).textContent()).toBe('CV moved.');
+  });
 });
 
 describe('005-os-shell-FR-028: the focused window closes by Alt+Shift+W or from its close control', () => {
@@ -290,6 +308,18 @@ describe('005-os-shell-FR-062: a keyboard resize steps the window, announces it,
     await press(page, 'Alt+Shift+S', 'Shift+ArrowLeft', 'Escape');
     await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
     expect(await box(page, CV)).toEqual(resized);
+    await expect.poll(() => status(page).textContent()).toBe('Resize cancelled.');
+  });
+
+  test('Enter on Cancel restores the size', async () => {
+    const page = await desktop();
+    await page.locator(CV_TITLE).focus();
+    const start = (await box(page, CV))!;
+    await press(page, 'Alt+Shift+S', 'ArrowLeft', 'ArrowUp');
+    await page.locator(`${CV} .pad-cancel`).focus();
+    await press(page, 'Enter');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
+    expect(await box(page, CV)).toEqual(start);
     await expect.poll(() => status(page).textContent()).toBe('Resize cancelled.');
   });
 

@@ -156,7 +156,7 @@ div[role=status].visually-hidden     announcements                              
 | Menu bar | `←` `→`, `Enter` `Space` `↓`, `Home` `End` | Move between titles, open a menu |
 | Menu | `↑` `↓`, `Enter` `Space`, `Escape`, `Tab` | Move, choose, close to its title (FR-015), close and move on |
 | Dock | `←` `→`, `Enter` `Space` | Move between items, activate (FR-012) |
-| Pad | arrows, `Shift`+arrows, `Enter`, `Escape`, `Tab` | 16 px, 64 px, confirm, cancel (FR-027, FR-062), move between pad buttons |
+| Pad | arrows, `Shift`+arrows, `Enter`, `Escape`, `Tab` | 16 px, 64 px, confirm (cancel on Cancel), cancel (FR-027, FR-062), move between pad buttons |
 | Window controls | `Enter` `Space` | Activate (FR-028) |
 
 On a Mac the modifier is `Option+Shift`. `Escape` never closes a window. No other key is taken.

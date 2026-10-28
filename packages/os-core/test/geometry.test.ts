@@ -33,6 +33,47 @@ describe('005-os-shell-FR-005 005-os-shell-FR-018: the CV window opens where the
 });
 
 const titleBarsMeet = (a: Geometry, b: Geometry) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + METRICS.titleBar && b.y < a.y + METRICS.titleBar;
+const boxMeetsTitleBar = (box: Geometry, other: Geometry) =>
+  box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + METRICS.titleBar && other.y < box.y + box.height;
+const shown = (view: 'cv' | 'about', geometry: Geometry): WindowState => ({ view, geometry, minimized: false, maximized: null, placement: 'set' });
+
+describe("005-os-shell-FR-018: the CV opens off About's title bar", () => {
+  test("1000 × 668 at 220, 72 in the 1440 × 764 area, with About centered", () => {
+    const about = shown('about', placeWindow('about', [], AREA, METRICS));
+    expect(about.geometry).toEqual({ x: 440, y: 24, width: 560, height: 520 });
+    const cv = placeWindow('cv', [about], AREA, METRICS);
+    expect(cv).toEqual({ x: 220, y: 72, width: 1000, height: 668 });
+    expect(boxMeetsTitleBar(cv, about.geometry)).toBe(false);
+  });
+
+  test("960 × 408 at 32, 72 in the 1024 × 504 area, with About centered", () => {
+    const area = { width: 1024, height: 504 };
+    const about = shown('about', placeWindow('about', [], area, METRICS));
+    expect(about.geometry).toEqual({ x: 232, y: 0, width: 560, height: 504 });
+    const cv = placeWindow('cv', [about], area, METRICS);
+    expect(cv).toEqual({ x: 32, y: 72, width: 960, height: 408 });
+    expect(boxMeetsTitleBar(cv, about.geometry)).toBe(false);
+  });
+
+  test('centered as on first load when About is minimized or out of the way', () => {
+    const minimized = { ...shown('about', { x: 440, y: 24, width: 560, height: 520 }), minimized: true };
+    expect(placeWindow('cv', [minimized], AREA, METRICS)).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
+    const low = shown('about', { x: 440, y: 744, width: 560, height: 520 });
+    expect(placeWindow('cv', [low], AREA, METRICS)).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
+  });
+
+  test('with About too low for a box below its title bar, the title bars still keep apart', () => {
+    const about = shown('about', { x: 440, y: 500, width: 560, height: 264 });
+    const cv = placeWindow('cv', [about], AREA, METRICS);
+    expect(cv).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
+    expect(titleBarsMeet(cv, about.geometry)).toBe(false);
+    const nearTop = shown('about', { x: 440, y: 400, width: 560, height: 364 });
+    const below = placeWindow('cv', [nearTop], AREA, METRICS);
+    expect(below.y + below.height).toBeLessThanOrEqual(AREA.height);
+    expect(below.height).toBeGreaterThanOrEqual(METRICS.minHeight);
+    expect(titleBarsMeet(below, nearTop.geometry)).toBe(false);
+  });
+});
 
 describe('005-os-shell-FR-018: About opens clear of the window in front', () => {
   test('560 × 520, 48 px right of and below the front window', () => {

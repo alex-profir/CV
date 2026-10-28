@@ -1,8 +1,8 @@
 // The move and resize pad (005 contracts/shell.md, FR-020, FR-027, FR-062):
 // it shows on the window during a keyboard move or resize, started from
 // the window's menu or a shortcut. One click or arrow key is one step;
-// Shift with an arrow is a big step; Enter or Done confirms; Escape or
-// Cancel puts the window back. A pointer down outside the window counts as
+// Shift with an arrow is a big step; Enter or Done confirms; Escape,
+// Cancel or Enter on Cancel puts the window back. A pointer down outside the window counts as
 // Done. The steps are the design's, read from tokens through METRICS.
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -21,6 +21,7 @@ export function Pad({ window, session, dispatch, viewName }: ShellProps & { wind
   const text = siteText.desktop.pad;
   const name = viewName(window.view);
   const root = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
   const step = (direction: Direction, size: number) => {
     const [dx, dy] = DELTAS[direction];
     dispatch({ type: 'sessionStep', dx: dx * size, dy: dy * size });
@@ -46,8 +47,9 @@ export function Pad({ window, session, dispatch, viewName }: ShellProps & { wind
       event.preventDefault();
       step(direction, event.shiftKey ? METRICS.bigStep : METRICS.step);
     } else if (event.key === 'Enter') {
+      // Enter confirms anywhere in the pad but on Cancel, which cancels.
       event.preventDefault();
-      dispatch({ type: 'sessionEnd', confirm: true });
+      dispatch({ type: 'sessionEnd', confirm: event.target !== cancel.current });
     } else if (event.key === 'Escape') {
       event.preventDefault();
       dispatch({ type: 'sessionEnd', confirm: false });
@@ -85,7 +87,7 @@ export function Pad({ window, session, dispatch, viewName }: ShellProps & { wind
         <button type="button" className="pad-done" onClick={() => dispatch({ type: 'sessionEnd', confirm: true })}>
           {text.done}
         </button>
-        <button type="button" className="pad-cancel" onClick={() => dispatch({ type: 'sessionEnd', confirm: false })}>
+        <button ref={cancel} type="button" className="pad-cancel" onClick={() => dispatch({ type: 'sessionEnd', confirm: false })}>
           {text.cancel}
         </button>
       </div>

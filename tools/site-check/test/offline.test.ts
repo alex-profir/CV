@@ -1,5 +1,7 @@
 // The offline part (research R4, R16): one visit online, then the network
 // off and the server stopped.
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { renderProblem } from '../src/report.ts';
@@ -52,5 +54,22 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
       expect(lines).toContain(`offline / ${variant} not-ready #os: the shell did not start with the network off`);
     }
     expect(report.problems.every((problem) => problem.page === '/')).toBe(true);
+  });
+
+  test("when the part crashes, every line for / still names the shell, the state and the width", async () => {
+    const root = realSiteProject();
+    fs.writeFileSync(path.join(root, 'packages/content/resume.json'), '{ not json');
+    const report = await runCheck(root, { parts: ['offline'] });
+    expect(report.results.map((result) => `${result.page} ${result.variant} ${result.status}`)).toEqual([
+      '/cv 375px error',
+      '/ mobile/cv-app/375px error',
+      '/ desktop/cv-app/1440px error',
+      '/ mobile/cv-app-after-cv/375px error',
+      '/ desktop/cv-app-after-cv/1440px error',
+      '/missing-page 375px error',
+    ]);
+    const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
+    expect(lines).toHaveLength(4);
+    for (const line of lines) expect(line).toMatch(/^offline \/ (?:desktop|mobile)\/[a-z-]+\/\d+px error offline: the part crashed: /);
   });
 });

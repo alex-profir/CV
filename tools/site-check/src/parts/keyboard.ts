@@ -230,6 +230,9 @@ export async function keyboardProblems(page: Page, pageLabel: string, variant: s
 
 const FOCUS_PROBE = 'data-cv-focus-probe';
 
+// Takes focus from an item in an open menu while it is shot unfocused.
+const MENU_PROBE = 'data-cv-menu-probe';
+
 // How long a step's change may take to show, animations included.
 const STEP_WAIT_MS = 3_000;
 
@@ -266,7 +269,9 @@ export function describeFocus(page: Page): Promise<string> {
 // against the same box unfocused must cover at least its perimeter at the
 // outline's width, less what rounded corners take off (WCAG 2.4.13), and
 // nothing may sit on its centre. Focus is put back afterwards, with its
-// indicator. Null when it passes, else what's wrong.
+// indicator. Inside an open menu, losing focus would close the menu, so
+// focus moves to a probe in the menu, out of view, instead. Null when it
+// passes, else what's wrong.
 export async function indicatorProblem(page: Page): Promise<string | null> {
   const outline = px(tokenValue('border.thick'));
   const pad = outline + px(tokenValue('space.0_5')) + 2;
@@ -288,17 +293,28 @@ export async function indicatorProblem(page: Page): Promise<string | null> {
     if (clip === null) return 'the focused element is outside the viewport';
     const needed = (2 * (state.box.width + state.box.height) - (8 - 2 * Math.PI) * state.radius) * outline;
     const focused = await page.screenshot({ clip, animations: 'disabled', caret: 'hide' });
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.evaluate((probe) => {
+      const active = document.activeElement as HTMLElement | null;
+      const menu = active?.closest('[role="menu"]');
+      if (menu === null || menu === undefined) return active?.blur();
+      const away = document.createElement('span');
+      away.setAttribute(probe, '');
+      away.tabIndex = -1;
+      away.style.cssText = 'position: fixed; inset-inline-start: -100px; inset-block-start: -100px; inline-size: 1px; block-size: 1px; overflow: hidden';
+      menu.append(away);
+      away.focus();
+    }, MENU_PROBE);
     const unfocused = await page.screenshot({ clip, animations: 'disabled', caret: 'hide' });
     const scale = decodePng(focused).width / clip.width;
     const changed = indicatorPixels(decodePng(unfocused), decodePng(focused)) / (scale * scale);
     return changed >= needed ? null : 'no visible change when focused';
   } finally {
-    await page.evaluate((probe) => {
+    await page.evaluate(([probe, away]) => {
       const element = document.querySelector<HTMLElement>(`[${probe}]`);
       element?.removeAttribute(probe);
       element?.focus({ focusVisible: true } as FocusOptions);
-    }, FOCUS_PROBE);
+      document.querySelector(`[${away}]`)?.remove();
+    }, [FOCUS_PROBE, MENU_PROBE] as const);
   }
 }
 
@@ -413,7 +429,7 @@ export async function desktopKeyboardProblems(page: Page, pageLabel: string, var
     if (!(await step('go to the dock', { keys: ['Alt+Shift+D'], done: () => focusIn(page, '#os .dock'), failed: { subject: 'Alt+Shift+D', detail: 'focus did not move to the dock' }, target: S.cvDockItem, targetName: 'the CV dock item' }))) return;
     if (!(await step('open the CV from the dock', { keys: ['Enter'], done: () => visible(page, S.cvWindow), failed: { subject: 'Enter', detail: 'the CV dock item did not open the CV window' }, target: S.cvTitle, targetName: cvName }))) return;
     if (!(await step('go to the menu bar', { keys: ['Alt+Shift+M'], done: () => focusIn(page, '#os .menu-bar'), failed: { subject: 'Alt+Shift+M', detail: 'focus did not move to the menu bar' }, target: S.siteMenuTitle, targetName: "the site menu's title" }))) return;
-    if (!(await step('open the site menu', { keys: ['Enter'], done: () => visible(page, S.siteMenu), failed: { subject: 'Enter', detail: 'the site menu did not open' }, target: S.aboutItem, targetName: 'About this site in the site menu', indicator: false }))) return;
+    if (!(await step('open the site menu', { keys: ['Enter'], done: () => visible(page, S.siteMenu), failed: { subject: 'Enter', detail: 'the site menu did not open' }, target: S.aboutItem, targetName: 'About this site in the site menu' }))) return;
     if (!(await step('open About this site', { keys: ['Enter'], done: () => visible(page, S.aboutWindow), failed: { subject: 'Enter', detail: 'About this site did not open' }, target: S.aboutTitle, targetName: aboutName }))) return;
 
     // No trap: Tab leaves About, then the CV it reaches.

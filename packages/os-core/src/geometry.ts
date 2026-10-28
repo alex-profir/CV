@@ -76,7 +76,10 @@ function boxMeetsTitleBar(box: Geometry, other: Geometry, metrics: Metrics): boo
 // A new window's box (FR-018). The CV: centered, `firstTop` below the top,
 // at most `cvWidth` wide with `sideMargin` each side, the area's height less
 // `bottomMargin` (the same box the style sheet gives the pre-rendered
-// window, research R3). About this site: `cascade` right of and below the
+// window, research R3). When that box is on a shown window's title bar, its
+// top steps down by `cascade` with its bottom edge kept, no shorter than the
+// minimum, until it isn't; with no such box, the first step whose title bar
+// is on no other window's stands, or else the centered box. About this site: `cascade` right of and below the
 // front window, or placed as the CV when none is shown, stepping on by
 // `cascade`, and back to the area's top left, until its whole box is on no
 // other window's title bar, so every title bar stays in view. When no step
@@ -89,10 +92,21 @@ export function placeWindow(view: ViewId, windows: readonly WindowState[], area:
       : fitSize(metrics.aboutWidth, metrics.aboutHeight, area, metrics);
   const centred = { x: Math.round((area.width - size.width) / 2), y: Math.min(metrics.firstTop, area.height - size.height), ...size };
   const shown = windows.filter((window) => !window.minimized && window.view !== view && window.placement === 'set');
-  const front = shown[0];
-  if (view === 'cv' || front === undefined) return clampMove(centred, area, metrics);
-
   const others = shown.map((window) => window.geometry);
+  const front = shown[0];
+  if (view === 'cv') {
+    const bottom = centred.y + centred.height;
+    const minimum = minimumOf(area, metrics).height;
+    let clearTitleBar: Geometry | undefined;
+    for (let y = centred.y; bottom - y >= minimum || y === centred.y; y += Math.max(1, metrics.cascade)) {
+      const box = { ...centred, y, height: bottom - y };
+      if (!others.some((other) => boxMeetsTitleBar(box, other, metrics))) return clampMove(box, area, metrics);
+      if (clearTitleBar === undefined && !others.some((other) => titleBarsMeet(box, other, metrics))) clearTitleBar = box;
+    }
+    return clampMove(clearTitleBar ?? centred, area, metrics);
+  }
+  if (front === undefined) return clampMove(centred, area, metrics);
+
   let box = { ...size, x: front.geometry.x + metrics.cascade, y: front.geometry.y + metrics.cascade };
   const fits = (candidate: Geometry) => candidate.x + candidate.width <= area.width && candidate.y + candidate.height <= area.height;
   let clearTitleBar: Geometry | undefined;

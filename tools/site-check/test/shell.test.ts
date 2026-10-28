@@ -16,6 +16,8 @@ const REDUCER = 'packages/os-core/src/reducer.ts';
 
 const STYLES = 'packages/web/src/styles/os.css';
 
+const DESKTOP_STYLES = 'packages/web/src/shells/desktop/desktop.css';
+
 const rootLines = (lines: string[]) => lines.filter((line) => line.split(' ')[1] === '/');
 
 describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile flows with keys alone', () => {
@@ -23,6 +25,15 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
     const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
     expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass']);
+  });
+
+  test('a copy whose menu items show nothing when focused fails keyboard with no-focus-indicator at the site menu step', async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, DESKTOP_STYLES, '.menu-item:hover,\n.menu-item:focus {\n', '#os .menu-item:focus-visible {\n  outline: none;\n}\n\n.menu-item:hover {\n'),
+    );
+    const report = await runCheck(root, { parts: ['keyboard'] });
+    const lines = rootLines(report.problems.map(renderProblem)).filter((line) => line.includes(' desktop/'));
+    expect(lines).toEqual([expect.stringMatching(/^keyboard \/ desktop\/keyboard\/1440px no-focus-indicator step \d+ "open the site menu": no visible change when focused \(button[^)]*\)$/)]);
   });
 
   test("a copy with the close control's name removed fails accessibility with axe:button-name", async () => {

@@ -29,6 +29,11 @@ import { fieldProblems, mainSequence, unstyledDetail } from './no-script.ts';
 
 export const OFFLINE_VARIANT = '375px';
 
+// The shell root's variants, in the order `offlineProblems` gives them:
+// after the visit to the root, then after the visit to the CV page.
+export const rootOfflineVariants = (): string[] =>
+  ['cv-app', 'cv-app-after-cv'].flatMap((state) => (['mobile', 'desktop'] as const).map((shell) => stateVariant(shell, state, SHELL_SIZES[shell].width)));
+
 export type OfflineTargets = {
   // The CV page, the root and the fixed unknown path. The root redirects to
   // the CV page unless `shellRoot` says it's the shell's page.
