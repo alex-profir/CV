@@ -119,6 +119,20 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   [wireframes.md](wireframes.md) (the focus indicator row). The menu's exports keep 4 px and no
   gap; no state or token changes. At the owner's request.
 
+- **2026-10-28, windows move behind the dock and past the screen's edge**, at the owner's request,
+  with the spec's clarifications of 2026-10-28 (FR-010, FR-021, FR-061, FR-067). A move stopped
+  when the title bar reached the desktop area's edge, and the window was cut off above the dock.
+  Now, as on a Mac, a window passes behind the dock, which stays in front and usable, and past
+  the left, right and bottom edges. Its title bar stays between the menu bar and the dock's
+  space, and at least 120 px of it stays on screen sideways. A resize's dragged edge stops at the
+  menu bar and the browser window's edges, and a bottom edge passes behind the dock. When keyboard
+  focus moves to an element the dock or an edge hides, the window moves just far enough to show
+  it. Added: the state "A window moved behind the dock and past the screen's edge" in
+  [wireframes.md](wireframes.md), `mockup/desktop-past-edge.html` and its export
+  `mockup/desktop-past-edge-1440.png`, and a `past-edge` placement in `mockup/shell.css`. Changed:
+  [wireframes.md](wireframes.md) (three design values, the first-load notes and the resize
+  notes). No other state, export or token changes. **Awaiting the owner's confirmation.**
+
 ## Sign-off
 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)

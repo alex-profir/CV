@@ -33,6 +33,7 @@ copy. In the shell itself the CV app won't be a frame. That is for the plan to d
 | Desktop, the focused window's menu open | `desktop-window-own-menu-1440.png` |
 | Desktop, the Window menu open, with the CV minimized | `desktop-window-menu-1440.png` |
 | Desktop, a window resized | `desktop-resized-1440.png` |
+| Desktop, a window moved behind the dock and past the screen's edge | `desktop-past-edge-1440.png` |
 | Desktop, the only window minimized | `desktop-minimized-1440.png` |
 | Desktop, a window maximized | `desktop-maximized-1440.png` |
 | Desktop, a keyboard move in progress | `desktop-keyboard-move-1440.png` |

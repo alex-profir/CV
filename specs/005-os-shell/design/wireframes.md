@@ -37,6 +37,9 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Menu bar height | 32 px | FR-010 |
 | Space the dock keeps at the bottom | 104 px: the dock is 88 px tall, 8 px above the bottom edge, with 8 px between it and the desktop area | FR-010 |
 | Desktop area | The window minus the menu bar and the dock's space: 1440 × 764 at 1440 × 900 | FR-010, FR-021 |
+| How far a window moves | Its title bar stays between the menu bar and the dock's space: its top runs from the desktop area's top to its height less the 40 px title bar. Sideways, at least 120 px of the title bar stays inside the browser window, so its left edge runs from 120 px less its width to the area's width less 120 px. Below the title bar, the window passes behind the dock and past the bottom edge. 120 px keeps the three window controls on screen when a window goes past the right edge | FR-010, FR-021 |
+| How far a resize goes | A dragged edge stops at the menu bar and at the browser window's edges. A bottom edge passes behind the dock. The window stays between 400 × 300 and the desktop area's size | FR-061 |
+| Bringing a focused element into view | The window moves the least distance that shows the element and its focus outline inside the desktop area, at once, never animated | FR-067 |
 | CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56. When that box would cover a shown window's title bar, as when About this site is open, its top moves down 48 px at a time, its bottom edge staying where it is, until it covers no title bar, never shorter than the 300 px minimum. With no such box, the first whose title bar is on no other window's stands, or else the centered box. With About open alone at 1440 × 900, the CV opens 1000 × 668 at x 220, y 104 | FR-005, FR-018 |
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
@@ -104,7 +107,8 @@ dock's CV item has a filled open mark.
 
 - The CV window holds the whole CV, as `/cv` does (FR-006), below a link to `/cv` (FR-007). Its
   content scrolls inside the window, and the desktop never scrolls.
-- The menu bar and the dock are never covered: windows stay between them (FR-010).
+- The menu bar and the dock are never covered: they stay in front of every window. A window moved
+  down passes behind the dock (FR-010).
 - Page title: `CV – [Site name]` (FR-042).
 
 ### The desktop with no window open (FR-013)
@@ -388,10 +392,60 @@ content width the CV uses `/cv`'s phone layout, so it reads without scrolling si
 +--------------------------------------------------------------------------------------------------+
 ```
 
-- Every edge and corner resizes. A resize stops at the smallest window size (400 × 300) and at
-  the edges of the desktop area (FR-061).
+- Every edge and corner resizes. A resize stops at the smallest window size (400 × 300), at the
+  menu bar and at the browser window's edges, and a bottom edge passes behind the dock (FR-061).
 - Dragging a resize handle never moves the window, and dragging a control does nothing (spec:
   edge cases).
+
+### A window moved behind the dock and past the screen's edge (FR-010, FR-021, FR-067)
+
+The CV window after its title bar was dragged down and to the right. The window passes behind the
+dock, which stays in front, and goes past the right and bottom edges. Its title bar stays fully
+visible, above the dock's space.
+
+```
++--------------------------------------------------------------------------------------------------+
+| [*]  CV   Window                                                                                 |
++--------------------------------------------------------------------------------------------------+
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                          #=======================================================|
+|                                          # [x] [-] [^]                     CV                    |
+|                                          #=======================================================|
+|                                          # Open as a page to print or share ->                   |
+|                                          # ----------------------------------------------------  |
+|                                          # [label]                                               |
+|                                          # [NAME]                                                |
+|                                          #                                                       |
+|                                          # [summary ...............]     Based in      [city], [c|
+|                                          # [.......................]     Email               [ema|
+|                                        +----------------+..........]     [network]       [usern  |
+|                                        |  [ CV icon ]   |======================================  |
+|                                        |       CV       || o [start] – [end]                     |
+|                                        |       •        || | [position]                          |
+|                                        |                || | [company]                           |
+|                                        +----------------+| | [summary ............               |
+|                                          # ... the rest of the window is past the bottom edge    |
++--------------------------------------------------------------------------------------------------+
+```
+
+- A move stops when the title bar reaches the menu bar or the dock's space, or when only 120 px of
+  it is left on screen sideways (FR-021). The window can always be grabbed again by its title bar.
+- The dock stays usable over the window: its items, names and open marks are drawn on top
+  (FR-010).
+- When keyboard focus moves to an element behind the dock or past an edge, the window moves just
+  far enough to show it with its focus outline, and keeps its size (FR-067). Pointer moves and
+  scrolling never move it.
+- Page title, menu bar and focus are as on first load.
 
 ### A window minimized, with no other window open (FR-063)
 

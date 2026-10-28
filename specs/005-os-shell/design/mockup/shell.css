@@ -479,6 +479,14 @@ a {
   block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve) - 2 * var(--token-space-6) - 8 * var(--token-space-4));
 }
 
+/* Dragged 25 steps right and 25 down, 620 px from the left at 1440 px: the
+   window passes behind the dock and past the right and bottom edges, with
+   its title bar on screen (FR-010, FR-021). */
+.at-cv.past-edge {
+  inset-inline-start: calc((100vw - var(--token-size-window-cv-width)) / 2 + 25 * var(--token-space-4));
+  inset-block-start: calc(var(--token-size-menu-bar) + var(--token-space-6) + 25 * var(--token-space-4));
+}
+
 /* Where a window was when a keyboard move or resize started. */
 .ghost {
   position: fixed;
