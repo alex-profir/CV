@@ -81,7 +81,7 @@ describe('005-os-shell-FR-046: windows, apps and menus animate, and only fade wi
     expect(await started(page)).toEqual([]);
   });
 
-  test('each window action and a menu fade and grow over motion.duration.fast with the standard easing', async () => {
+  test('each window action and a menu fade and grow from scale.open-start over motion.duration.fast with the standard easing', async () => {
     const page = await desktop('no-preference');
     const expected = { close: 'window[cv]', open: 'window[cv]', minimize: 'window[cv]', restore: 'window[cv]', maximize: 'window[cv]', 'restore the size': 'window[cv]', menu: 'menu' };
     for (const { action, animations } of await desktopActions(page)) {
@@ -92,7 +92,7 @@ describe('005-os-shell-FR-046: windows, apps and menus animate, and only fade wi
       expect(easing(animation!.easing), action).toBe(easing(tokenValue('motion.easing.standard')));
       const scales = animation!.frames.map((frame) => Number(frame.scale));
       expect(new Set(scales).size, action).toBeGreaterThan(1);
-      for (const scale of scales) expect(scale, action).toBeGreaterThanOrEqual(0.96);
+      for (const scale of scales) expect(scale, action).toBeGreaterThanOrEqual(Number(tokenValue('scale.open-start')));
     }
   });
 

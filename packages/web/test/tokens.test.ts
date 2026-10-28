@@ -92,7 +92,7 @@ const METRICS_FILE = 'packages/web/src/os/metrics.ts';
 
 function readByMetrics(): Set<string> {
   const source = fs.readFileSync(path.join(REPO_ROOT, METRICS_FILE), 'utf8');
-  const named = new Set([...source.matchAll(/\b(?:px|ms|tokenValue)\('([^']+)'\)/g)].map((match) => match[1]!));
+  const named = new Set([...source.matchAll(/\b(?:px|ms|plain|tokenValue)\('([^']+)'\)/g)].map((match) => match[1]!));
   return new Set(EXPORT_TOKENS.map((token) => token.name).filter((name) => named.has(name)));
 }
 

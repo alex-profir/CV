@@ -118,6 +118,7 @@
   --token-radius-pill: 999px;
   --token-radius-small: 6px;
   --token-radius-window: 12px;
+  --token-scale-open-start: 0.96;
   --token-shadow-dock: 0px 16px 40px 0px #00000073;
   --token-shadow-menu: 0px 12px 32px 0px #00000073;
   --token-shadow-window: 0px 14px 40px 0px #00000073;
