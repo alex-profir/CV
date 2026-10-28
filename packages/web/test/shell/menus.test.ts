@@ -2,7 +2,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume, siteData } from '@cv/content';
-import { focusedElement, frontWindow, openShell } from '../helpers/shell.ts';
+import { focusedElement, frontWindow, openShell, settle } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -24,6 +24,7 @@ describe('005-os-shell-FR-013: the menu bar holds the site menu, the focused win
     expect((await page.locator('#menu-title-app').textContent())?.trim()).toBe('CV');
     expect((await page.locator('#menu-title-window').textContent())?.trim()).toBe('Window');
     await page.getByRole('button', { name: 'Close CV' }).click();
+    await settle(page);
     const name = page.locator('#os .menu-bar span.menu-title');
     expect((await name.textContent())?.trim()).toBe(resume.basics!.name);
     expect(await name.getAttribute('aria-disabled')).toBe('true');
@@ -42,6 +43,7 @@ describe('005-os-shell-FR-014: the Window menu lists the open windows, and the f
     const page = await openShell({ width: 1440, height: 900 });
     await openAbout(page);
     await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
     await page.click('#menu-title-window');
     expect(await items(page, 'window')).toEqual(['Go to the menu bar', 'Go to the dock', 'Next window', 'About this site', 'CV (minimized)']);
     expect(await page.locator('#menu-window [role="menuitemradio"]').evaluateAll((list) => list.map((item) => item.getAttribute('aria-checked')))).toEqual(['true', 'false']);
@@ -57,7 +59,7 @@ describe('005-os-shell-FR-014: the Window menu lists the open windows, and the f
     await page.click('#menu-title-app');
     expect(await items(page, 'app')).toEqual(['Open the CV as a page', 'Move…', 'Resize…', 'Minimize', 'Maximize', 'Close']);
     await page.getByRole('menuitem', { name: 'Close' }).click();
-    expect(await page.locator('#os .window').count()).toBe(0);
+    await expect.poll(() => page.locator('#os .window').count()).toBe(0);
   });
 });
 

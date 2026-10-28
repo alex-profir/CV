@@ -3,7 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { axNodes } from '../helpers/ax.ts';
-import { focusedElement, focusIndicator, openShell, resize } from '../helpers/shell.ts';
+import { focusedElement, focusIndicator, openShell, resize, settle } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -12,6 +12,7 @@ const phone = (width = 375, height = 812) => openShell({ width, height, hasTouch
 async function openCv(page: Page): Promise<void> {
   await page.locator('#os .app-icon[data-view="cv"]').tap();
   await page.locator('#os .full-screen[data-view="cv"]').waitFor();
+  await settle(page);
 }
 
 const focusIs = (page: Page, selector: string) => page.evaluate((target) => document.activeElement?.matches(target) ?? false, selector);

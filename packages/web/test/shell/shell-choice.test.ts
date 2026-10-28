@@ -71,9 +71,9 @@ describe('005-os-shell-FR-002: crossing 1024 px changes the shell without a relo
     await page.getByRole('button', { name: 'Close CV' }).click();
     await page.setViewportSize({ width: 1000, height: 900 });
     await page.locator('#os .home').waitFor();
-    expect(await page.locator('#os .full-screen').count()).toBe(0);
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.locator('#os .desktop').waitFor();
-    expect(await page.locator('#os .window').count()).toBe(0);
+    await expect.poll(() => page.locator('#os .window').count()).toBe(0);
   });
 });

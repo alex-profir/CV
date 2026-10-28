@@ -64,7 +64,7 @@ describe('005-os-shell-FR-004: nothing stands between the visitor and the CV (SC
   test('at 1440 × 900, after closing the CV, one click on its dock item opens it in front and focused', async () => {
     const page = await openShell({ width: 1440, height: 900 });
     await page.getByRole('button', { name: 'Close CV' }).click();
-    expect(await page.locator('#os .window').count()).toBe(0);
+    await expect.poll(() => page.locator('#os .window').count()).toBe(0);
     await page.locator('#os .dock-item[data-app="cv"]').click();
     const window = page.locator('#os .window[data-view="cv"]');
     await expect.poll(() => window.getAttribute('aria-current')).toBe('true');

@@ -4,7 +4,7 @@
 // standalone links are measured.
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
-import { openShell, press } from '../helpers/shell.ts';
+import { openShell, press, settle } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -27,6 +27,7 @@ const small = (page: Page) =>
   });
 
 async function expectNoSmall(page: Page, state: string): Promise<void> {
+  await settle(page);
   expect(await small(page), state).toEqual([]);
 }
 

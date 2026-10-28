@@ -3,7 +3,7 @@
 // clicked.
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
-import { openShell } from '../helpers/shell.ts';
+import { openShell, settle } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -31,10 +31,12 @@ describe('005-os-shell-FR-011: each dock item shows its name and its state', () 
     expect((await name.textContent())?.trim()).toBe('CV');
     const open = await mark(page);
     await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
     expect(await item.getAttribute('aria-label')).toBe('CV, minimized');
     const minimized = await mark(page);
     await item.click();
     await page.getByRole('button', { name: 'Close CV' }).click();
+    await settle(page);
     expect(await item.getAttribute('aria-label')).toBe('CV');
     const closed = await mark(page);
     expect(new Set([open, minimized, closed]).size).toBe(3);
@@ -51,6 +53,7 @@ describe('005-os-shell-FR-012: an app has one window, however its dock item is c
   test('a click and a fast triple click give one CV window, in front and focused', async () => {
     const page = await openShell({ width: 1440, height: 900 });
     await page.getByRole('button', { name: 'Close CV' }).click();
+    await settle(page);
     await page.locator(ITEM).click();
     expect(await page.locator('#os .window[data-view="cv"]').count()).toBe(1);
     await page.locator(ITEM).click({ clickCount: 3 });

@@ -2,7 +2,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume } from '@cv/content';
-import { box, centre, drag, focusedElement, frontWindow, openShell, resize } from '../helpers/shell.ts';
+import { box, centre, drag, focusedElement, frontWindow, openShell, resize, settle } from '../helpers/shell.ts';
 import type { Box } from '../helpers/shell.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -204,10 +204,12 @@ describe('005-os-shell-FR-023: closing a window removes it, and the menu bar fol
     const page = await desktop();
     await openAbout(page);
     await page.getByRole('button', { name: 'Close About this site' }).click();
-    expect(await page.locator(ABOUT).count()).toBe(0);
+    await settle(page);
+    await expect.poll(() => page.locator(ABOUT).count()).toBe(0);
     expect((await page.locator('#menu-title-app').textContent())?.trim()).toBe('CV');
     await page.getByRole('button', { name: 'Close CV' }).click();
-    expect(await page.locator('#os .window').count()).toBe(0);
+    await settle(page);
+    await expect.poll(() => page.locator('#os .window').count()).toBe(0);
     expect(await page.locator('#os .dock-item[data-app="cv"]').getAttribute('aria-label')).toBe('CV');
     expect((await page.locator('#os .menu-bar span.menu-title').textContent())?.trim()).toBe(resume.basics!.name);
   });
@@ -239,6 +241,7 @@ describe('005-os-shell-FR-063: minimizing hides a window, which stays open', () 
   test('the window hides, the dock mark goes hollow, and the Window menu notes it', async () => {
     const page = await desktop();
     await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
     expect(await page.locator(CV).isVisible()).toBe(false);
     expect(await page.locator(CV).count()).toBe(1);
     expect(await page.locator('#os .dock-item[data-app="cv"]').getAttribute('class')).toContain('is-minimized');
@@ -254,11 +257,13 @@ describe('005-os-shell-FR-064: a minimized window comes back where it was', () =
     const about = (await box(page, ABOUT))!;
     const cv = (await box(page, CV))!;
     await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
     await page.locator('#os .dock-item[data-app="cv"]').click();
     expect(await box(page, CV)).toEqual(cv);
     expect(await page.locator(CV).getAttribute('aria-current')).toBe('true');
     expect(await focusedElement(page)).toMatch(/^div#window-title-cv/);
     await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
     await page.click('#menu-title-window');
     await page.getByRole('menuitemradio', { name: 'CV (minimized)' }).click();
     expect(await box(page, CV)).toEqual(cv);
@@ -268,6 +273,7 @@ describe('005-os-shell-FR-064: a minimized window comes back where it was', () =
     await page.click('#menu-title-window');
     await page.getByRole('menuitemradio', { name: 'About this site' }).click();
     await page.getByRole('button', { name: 'Minimize About this site' }).click();
+    await settle(page);
     expect(await page.locator(ABOUT).isVisible()).toBe(false);
     await openAbout(page);
     expect(await box(page, ABOUT)).toEqual(about);

@@ -22,6 +22,8 @@ export type { Box };
 export type ShellOptions = {
   width: number;
   height: number;
+  // Browser zoom: a 1440 px window at 200% is a 720 px viewport at scale 2.
+  deviceScaleFactor?: number;
   javaScriptEnabled?: boolean;
   reducedMotion?: OpenPageOptions['reducedMotion'];
   forcedColors?: OpenPageOptions['forcedColors'];
@@ -37,6 +39,9 @@ export type ShellOptions = {
   // The platform the page reads from `navigator` (research R9's labels),
   // such as `Windows` or `macOS`; the test machine's by default.
   platform?: 'Windows' | 'macOS';
+  // Run before the page is opened, such as an init script that records
+  // what the page does.
+  beforeGoto?: (page: Page) => Promise<void>;
 };
 
 export const PHONE_USER_AGENT =
@@ -46,10 +51,11 @@ export const PHONE_USER_AGENT =
 const OS_SCRIPT = /\/assets\/os-[\w-]{8}\.js$/;
 
 function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}): OpenPageOptions {
-  const { width, height, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform } = options;
+  const { width, height, deviceScaleFactor, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform } = options;
   return {
     width,
     height,
+    ...(deviceScaleFactor === undefined ? {} : { deviceScaleFactor }),
     ...(javaScriptEnabled === undefined ? {} : { javaScriptEnabled }),
     ...(reducedMotion === undefined ? {} : { reducedMotion }),
     ...(forcedColors === undefined ? {} : { forcedColors }),
@@ -69,6 +75,7 @@ function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}
           Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => ({ platform: name, mobile: false, brands: [] }), configurable: true });
         }, platform);
       }
+      await options.beforeGoto?.(page);
       await extra.beforeGoto?.(page);
     },
   };
@@ -169,8 +176,26 @@ export async function drag(page: Page, from: Point, to: Point, { pointerType = '
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-// An element's box in the viewport, or null when it isn't rendered.
-export function box(page: Page, selector: string): Promise<Box | null> {
+// Waits for the shell's animations to end, as a visitor sees the result of
+// an action once its motion is over (research R13): every finite animation
+// running, then two frames for what a finished closing animation changes.
+export async function settle(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    for (let round = 0; round < 5; round += 1) {
+      const running = document.getAnimations().filter((animation) => animation.playState === 'running' && animation.effect?.getComputedTiming().endTime !== Infinity);
+      if (running.length === 0 && round > 0) return;
+      await Promise.all(running.map((animation) => animation.finished.catch(() => undefined)));
+      await frame();
+      await frame();
+    }
+  });
+}
+
+// An element's box in the viewport, or null when it isn't rendered, once
+// the shell's animations have ended.
+export async function box(page: Page, selector: string): Promise<Box | null> {
+  await settle(page);
   return page.evaluate((target) => {
     const element = document.querySelector(target);
     if (element === null || element.getClientRects().length === 0) return null;
@@ -230,6 +255,7 @@ export async function focusIndicator(page: Page): Promise<Indicator> {
   const px = (value: string) => Number.parseFloat(value);
   const outline = px(tokenValue('border.thick'));
   const pad = outline + px(tokenValue('space.0_5')) + 2;
+  await settle(page);
   const state = await page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null;
     if (active === null || active === document.body) return null;
