@@ -40,6 +40,10 @@
   specs, requirements, the interface and tests tie together (FR-009).
 - Q: How are the menu bar, the dock and the home screen covered, as they aren't apps? → A: About
   this site has its own "Show specs", whose spec view lists the shell's own requirements (FR-011).
+- Q: Should an app's spec view list only the requirements its elements carry, or every requirement
+  the app implements, including ones no element can carry? → A: Only those its elements carry.
+  Each spec's group also says how many of that spec's requirements the view doesn't list, with a
+  link to the whole spec (FR-006).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -69,8 +73,9 @@ wide with the CV app full screen.
    inspector shows.
 2. **Given** the CV window is open, **When** the visitor activates "Show specs", **Then** the
    window's content turns into the CV app's spec view: every requirement the CV app implements,
-   grouped by spec in numbered order, each with its ID and text. The window keeps its place,
-   size and title bar, and the title says it shows specs.
+   grouped by spec in numbered order, each with its ID and text, and each spec's group saying how
+   many of its requirements the view doesn't list, with a link to the spec. The window keeps its
+   place, size and title bar, and the title says it shows specs.
 3. **Given** the CV app's spec view, **When** the visitor opens "What's this?", **Then** a short
    text explains what the spec view is and how features, specs, requirements, the interface and
    tests tie together, with a link to the repository.
@@ -263,6 +268,10 @@ request can't merge.
   app. It doesn't leave the spec view first.
 - **A requirement carried by several elements of one app**: listed once in that app's view.
 - **A requirement carried by an app and by the shell**: listed in the app's view and the shell's.
+- **A requirement no element carries**, such as one about offline behavior, speed or the checks:
+  no view lists it. Every view that shows its spec counts it among the requirements it doesn't
+  list (FR-006).
+- **A spec whose requirements all show in a view**: its group shows no count.
 - **A requirement only an element that isn't shown yet carries**, such as one in Terminal output
   not produced yet or in a folded section: it is listed, as the view lists everything the app can
   show (FR-006).
@@ -334,7 +343,10 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   in a `data-req` attribute, whether or not the element is shown at that moment, such as Terminal
   output not produced yet, and no other requirement. Requirements MUST be grouped by spec, in
   numbered order, and each group MUST show the spec's number, title and status. Inside a group,
-  requirements MUST be in ID order, each listed once.
+  requirements MUST be in ID order, each listed once. Each group MUST also say in site text how
+  many of the spec's requirements the view doesn't list, such as "12 more requirements in this
+  spec aren't shown here", with a link to the spec, and MUST say nothing of the kind when it lists
+  them all. Removed requirements (Constitution III) aren't counted.
 - **FR-007**: Each requirement in a spec view MUST show its ID, in the short form the approved
   design sets, such as `FR-011` under its spec, its text in full as its spec states it, a link to
   the requirement in its spec, and the tests that reference it, each with its name and a link to
@@ -349,7 +361,8 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   MUST hold no CV fact (005 FR-043).
 - **FR-010**: Each spec link and test link MUST lead to the line in the repository where the
   requirement or the test is, in the version of the repository the site was built from, so the
-  text the spec view shows is the text the link shows.
+  text the spec view shows is the text the link shows. A spec group's link MUST lead to the top of
+  the spec, in the same version.
 
 **The shell's specs**
 
@@ -430,10 +443,10 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   requirement traceability check (001) MUST pass.
 - **FR-030**: An inspector check MUST build the site and, in each shell, at a phone width and a
   desktop width, show the spec view of every app and of About this site. It MUST confirm that each
-  view lists exactly the requirements its app or the shell carries, that every requirement's text
-  matches its spec and its tests match what the traceability check (001) finds, that every
-  requirement carried anywhere in the shell or its apps appears in at least one view, and that
-  going back restores the app's scroll position and state. It MUST read what it expects from the
+  view lists exactly the requirements its app or the shell carries, that each spec group's count
+  of requirements it doesn't list is right, that every requirement's text matches its spec and its
+  tests match what the traceability check (001) finds, that every requirement carried anywhere in
+  the shell or its apps appears in at least one view, and that going back restores the app's scroll position and state. It MUST read what it expects from the
   built site and the repository, not from a hand-written list.
 - **FR-031**: The accessibility check (004, 005 FR-056) MUST cover every inspector state FR-024
   lists. The other-site check MUST cover showing every spec view.
@@ -453,7 +466,8 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
 - **Show specs control**: the control at the top of each app, and of About this site, that turns
   its window or full-screen view into its spec view.
 - **Spec view**: what a window or full-screen view shows instead of its app: the app's
-  requirements, grouped by spec, with "What's this?" and a control back to the app. Each app has
+  requirements, grouped by spec, each group with a count of its spec's requirements the view
+  doesn't list, with "What's this?" and a control back to the app. Each app has
   its own, and About this site's covers the shell.
 - **Requirement record**: what the build gathers for one requirement: its full ID, its feature and
   spec title, the spec's status, its text, and the file and line where it is defined (as 001's
@@ -542,7 +556,10 @@ desktop and one tap away on mobile, and `/cv` remains a plain server-rendered pa
   owner reads the check results on pull requests.
 - **Per app, not per element**: the spec view lists everything an app implements, so a visitor sees
   the whole set at once. It doesn't point at the element behind each requirement. Picking an
-  element or outlining the elements of a requirement may come in a later feature.
+  element or outlining the elements of a requirement may come in a later feature. Requirements no
+  element carries, such as offline, speed or check requirements, show in no view. Each spec's group
+  counts what it doesn't list and links to the spec, so a visitor never takes the view for the
+  whole spec.
 - **What an app carries**: an app's requirements are those in the `data-req` attributes of every
   element the app can show, read when the site is built. Constitution III requires such an
   attribute on every element that implements a requirement. The window's frame belongs to the
