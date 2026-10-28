@@ -9,7 +9,8 @@ import type { Effect, FocusTarget, Geometry, OsAction, OsState, ReducerContext, 
 const fill = (pattern: string, values: Record<string, string | number>) =>
   pattern.replace(/\{(\w+)\}/g, (match, key: string) => (Object.hasOwn(values, key) ? String(values[key]) : match));
 
-function viewName(view: ViewId, context: ReducerContext): string {
+// A view's name: About's from the site text, an app's from its declaration.
+export function viewName(view: ViewId, context: ReducerContext): string {
   return view === 'about' ? context.text.aboutName : (context.apps.find((app) => app.id === view)?.name ?? view);
 }
 
@@ -86,11 +87,13 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       if (state.shell === 'both' || state.shell === action.shell) return state;
       if (action.shell === 'mobile') {
         // The focused window's view opens full screen, or the home screen
-        // shows; windows keep their flags for the way back (research R12).
+        // shows; windows keep their flags for the way back (research R12). A
+        // keyboard move or resize ends where it is.
         const open = state.focused !== null && supports(state.focused, 'mobile', context) ? state.focused : null;
         return {
           ...state,
           shell: 'mobile',
+          session: null,
           mobile: { ...state.mobile, open, historyEntry: open !== null },
           effects: open === null ? state.effects : withEffects(focusOn({ kind: 'mobile-title', view: open })),
         };
@@ -169,7 +172,12 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
           geometry: { x: 0, y: 0, width: area.width, height: area.height },
           maximized: { restore: current.geometry },
         }));
-        return { ...state, windows, effects: withEffects({ kind: 'announce', message: fill(context.text.maximized, { window: name }) }) };
+        const announce: Effect = { kind: 'announce', message: fill(context.text.maximized, { window: name }) };
+        // A keyboard move or resize of this window ends, and focus leaves its
+        // pad for the window's title.
+        return state.session?.view === action.view
+          ? { ...state, windows, effects: withEffects(announce, focusOn({ kind: 'window-title', view: action.view })) }
+          : { ...state, windows, effects: withEffects(announce) };
       }
       const restore = window.maximized.restore;
       const windows = update(state.windows, action.view, (current) => fitToArea({ ...current, geometry: restore, maximized: null }, area, metrics));
@@ -197,7 +205,10 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       const window = view === null ? undefined : windowOf(view);
       if (!onDesktop || view === null || window === undefined || window.maximized !== null) return state;
       if (state.session !== null && state.session.view === view && state.session.kind === action.kind) return state;
-      return { ...state, session: { kind: action.kind, view, start: window.geometry }, effects: withEffects(focusOn({ kind: 'pad', view })) };
+      // Switching from a move to a resize keeps where the window started, so
+      // a cancel still goes back there.
+      const start = state.session !== null && state.session.view === view ? state.session.start : window.geometry;
+      return { ...state, session: { kind: action.kind, view, start }, effects: withEffects(focusOn({ kind: 'pad', view })) };
     }
 
     case 'sessionStep': {
@@ -257,8 +268,11 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       };
     }
 
-    case 'effectsDone':
-      return state.effects.length === 0 ? state : { ...state, effects: [] };
+    case 'effectsDone': {
+      // The effects that were run, leaving any appended since.
+      const count = action.count ?? state.effects.length;
+      return count === 0 || state.effects.length === 0 ? state : { ...state, effects: state.effects.slice(count) };
+    }
 
     default:
       return state;

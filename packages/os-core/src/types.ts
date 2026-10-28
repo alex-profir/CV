@@ -132,4 +132,5 @@ export type OsAction =
   | { type: 'sessionEnd'; confirm: boolean }
   | { type: 'mobileOpen'; view: ViewId }
   | { type: 'mobileHome'; scrollTop: number }
-  | { type: 'effectsDone' };
+  // `count`: how many effects from the front were run; all when absent.
+  | { type: 'effectsDone'; count?: number };

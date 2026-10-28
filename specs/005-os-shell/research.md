@@ -68,7 +68,7 @@ The build doesn't know the visitor's screen. FR-001 picks the shell by the space
 - A classic inline script, the first thing in `<head>`, sets `data-shell="desktop"` or
   `data-shell="mobile"` on `<html>` before the first paint. It's one statement:
   `matchMedia(<query>).matches`. The build writes the query from tokens:
-  `(width >= <breakpoint.desktop-width>) and (height >= <size.desktop-min-height>)` (R7).
+  `(min-width: <breakpoint.desktop-width>) and (min-height: <size.desktop-min-height>)` (R7).
   `@cv/os-core`'s `shellQuery()` builds that text, and the browser code uses the same function.
 - The style sheet shows only the shell named by `data-shell`. The other one is `display: none`,
   so it is out of the accessibility tree and out of the tab order.

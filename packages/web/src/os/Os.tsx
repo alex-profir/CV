@@ -6,7 +6,7 @@
 // window open on the desktop.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Resume, SiteData } from '@cv/content';
-import { initialState, osReducer, shellQuery } from '@cv/os-core';
+import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
 import type { App } from '../apps/index.ts';
 import { shellTitle } from '../format/meta.ts';
@@ -71,7 +71,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
   // Windows closing or minimizing, until their animation ends (research R13).
   const leaving = useRef(new Map<ViewId, { stop: () => void; action: OsAction }>());
 
-  const viewName = useCallback((view: ViewId) => (view === 'about' ? TEXT.aboutName : (apps.find((app) => app.id === view)?.name ?? view)), [apps]);
+  const viewName = useCallback((view: ViewId) => nameOf(view, context), [context]);
 
   // Hydrated: pick the shell, before the browser paints again.
   useLayoutEffect(() => {
@@ -131,6 +131,12 @@ export function Os({ resume, siteData, apps }: OsProps) {
   }, [state.shell, state.mobile.historyEntry]);
 
   useEffect(() => {
+    // A full-screen entry left by an earlier load of the page, as after a
+    // reload with an app open, is gone back over, so the next Back leaves.
+    if ((history.state as { os?: unknown } | null)?.os === 'full-screen') {
+      ownPops.current += 1;
+      history.back();
+    }
     const onPopState = () => {
       if (ownPops.current > 0) {
         ownPops.current -= 1;
@@ -161,7 +167,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
       if (effect.kind === 'focus') focusTarget(effect.target);
       else setAnnouncement((previous) => ({ message: effect.message, id: (previous?.id ?? 0) + 1 }));
     }
-    dispatch({ type: 'effectsDone' });
+    dispatch({ type: 'effectsDone', count: state.effects.length });
   }, [state.effects]);
 
   // The title: the focused window's or open app's name, then the site name.

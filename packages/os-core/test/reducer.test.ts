@@ -236,6 +236,35 @@ describe('005-os-shell-FR-020 005-os-shell-FR-027 005-os-shell-FR-062: keyboard 
     expect(state.windows[0]!.geometry).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
     expect(state.effects[0]).toEqual({ kind: 'announce', message: 'Resize cancelled.' });
   });
+
+  test('switching from a move to a resize keeps the start, so a cancel goes back before the move', () => {
+    const state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, { type: 'sessionStep', dx: 64, dy: 64 }, { type: 'sessionStart', kind: 'resize' }, { type: 'effectsDone' }, { type: 'sessionEnd', confirm: false }]);
+    expect(state.windows[0]!.geometry).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
+  });
+
+  test('maximizing during a session ends it and moves focus from the pad to the title', () => {
+    const state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, { type: 'effectsDone' }, { type: 'toggleMaximize', view: 'cv' }]);
+    expect(state.session).toBeNull();
+    expect(state.effects).toEqual([
+      { kind: 'announce', message: 'CV maximized.' },
+      { kind: 'focus', target: { kind: 'window-title', view: 'cv' } },
+    ]);
+  });
+
+  test('changing to the phone ends a session', () => {
+    const state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, { type: 'shellChanged', shell: 'mobile' }, { type: 'effectsDone' }, { type: 'shellChanged', shell: 'desktop', area: AREA }]);
+    expect(state.session).toBeNull();
+  });
+});
+
+describe('effects', () => {
+  test('effectsDone with a count leaves the effects appended after them', () => {
+    const state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, { type: 'sessionEnd', confirm: true }, { type: 'effectsDone', count: 1 }]);
+    expect(state.effects).toEqual([
+      { kind: 'announce', message: 'CV moved.' },
+      { kind: 'focus', target: { kind: 'window-title', view: 'cv' } },
+    ]);
+  });
 });
 
 describe('005-os-shell-FR-034: going home keeps the place in the app', () => {

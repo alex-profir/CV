@@ -191,7 +191,10 @@ export function MenuBar({ state, dispatch, resume, siteData, mac, viewName }: Sh
       role="menubar"
       aria-label={siteText.desktop.menuBar}
       onBlur={(event) => {
-        if (open !== null && bar.current !== null && !bar.current.contains(event.relatedTarget as Node | null)) setOpen(null);
+        // Focus going nowhere, as a tap on an item does in Safari, leaves the
+        // menu open; a pointer down outside closes it instead.
+        const to = event.relatedTarget as Node | null;
+        if (open !== null && to !== null && bar.current !== null && !bar.current.contains(to)) setOpen(null);
       }}
       data-req="005-os-shell-FR-013 005-os-shell-FR-039 005-os-shell-FR-066"
     >

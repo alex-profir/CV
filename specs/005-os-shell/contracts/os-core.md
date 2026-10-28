@@ -10,10 +10,11 @@ as declarations. Types are in [data-model.md](../data-model.md).
 | Export | Kind | Contract |
 |--------|------|----------|
 | `ShellName`, `ViewId`, `Geometry`, `WindowState`, `Session`, `OsState`, `Effect`, `FocusTarget`, `Metrics`, `AppDeclaration`, `Shortcut` | types | As data-model.md |
-| `shellQuery(metrics)` | function | `'(width >= {desktopMinWidth}px) and (height >= {desktopMinHeight}px)'`, for the inline script and `matchMedia` (FR-001) |
+| `shellQuery(metrics)` | function | `'(min-width: {desktopMinWidth}px) and (min-height: {desktopMinHeight}px)'`, for the inline script and `matchMedia` (FR-001) |
 | `appsFor(apps, shell)` | function | The apps whose `shells` include `shell`, in list order (FR-003) |
 | `initialState(apps, metrics)` | function | The state the build renders: CV window open with `placement: 'initial'`, focused, no effects (FR-005) |
 | `osReducer(state, action, context)` | function | Pure. `context` is `{ apps, metrics, text }`, `text` being the announcement and window-name patterns from `site-text.ts`. Returns the next state with effects appended. Every action of data-model.md's table. Unknown or inapplicable actions return `state` unchanged |
+| `viewName(view, context)` | function | About's name from `context.text`, or the app's from `context.apps`; the menu bar, title and announcements share it |
 | `placeWindow(view, windows, area, metrics)` | function | A new window's geometry (FR-018): the CV centered as the design sets, its top stepped down 48 px at a time with its bottom edge kept (no shorter than the minimum) while that box is on a shown window's title bar; About cascaded 48 px from the front window, stepping until its whole box is on no other window's title bar, or, when no step allows that, until its title bar is on no other title bar; both fitted to `area` |
 | `clampMove(geometry, area, metrics)` | function | The nearest geometry whose title bar is inside `area` (FR-021) |
 | `clampResize(geometry, edge, area, metrics)` | function | Within the minimum size and `area`, keeping the opposite edge fixed (FR-061) |
