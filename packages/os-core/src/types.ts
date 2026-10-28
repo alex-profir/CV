@@ -84,6 +84,8 @@ export type Metrics = {
   menuBar: number;
   dockReserve: number;
   titleBar: number;
+  // How much of the title bar stays on screen sideways (FR-021).
+  grab: number;
   cvWidth: number;
   aboutWidth: number;
   aboutHeight: number;
@@ -126,6 +128,8 @@ export type OsAction =
   | { type: 'minimize'; view: ViewId }
   | { type: 'toggleMaximize'; view: ViewId }
   | { type: 'dragMove'; view: ViewId; x: number; y: number }
+  // `box`: the focused element with its outline, relative to the area (FR-067).
+  | { type: 'reveal'; view: ViewId; box: Geometry }
   | { type: 'dragResize'; view: ViewId; edge: Edge; geometry: Geometry }
   | { type: 'sessionStart'; kind: 'move' | 'resize' }
   | { type: 'sessionStep'; dx: number; dy: number }

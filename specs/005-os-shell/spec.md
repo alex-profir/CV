@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-23
 
-**Status**: Draft
+**Status**: Approved
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -816,7 +816,7 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
   width (or of the interim local mockup, under the constitution's interim provision)
 - [ ] Penpot file link: to be added (not needed for an interim local mockup until the provision
   ends)
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-044)
 
 ## Success Criteria *(mandatory)*

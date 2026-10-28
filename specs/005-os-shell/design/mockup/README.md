@@ -170,8 +170,11 @@ added. `scale.open-start` is the scale windows, full-screen apps and menus grow 
 | `color.dock-rim` | color | `{color.base.rim}` |
 | `scale.dock-saturate` | number | 1.6 |
 | `size.dock-lens` | dimension | 24px |
+| `size.title-bar-grab` | dimension | 120px |
 
 The lens is an SVG filter in each desktop page, `#dock-lens`: a displacement map that is neutral
 in the middle and pushes toward the edges. An SVG attribute can't read a CSS variable, so the
 mockup writes `size.dock-lens` as its literal 24 there. The plan decides how the shell reads it.
+`size.title-bar-grab` is the wireframes' 120 px of title bar kept on screen (How far a window
+moves); the mockup draws no state that needs it.
 

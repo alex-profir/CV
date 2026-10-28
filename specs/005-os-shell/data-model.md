@@ -29,6 +29,7 @@ tokens (R7). All numbers are CSS pixels, or milliseconds for `motionMs`.
 | `menuBar` | `size.menu-bar` | 32 | Desktop area's top |
 | `dockReserve` | `size.dock-reserve` | 104 | Desktop area's bottom |
 | `titleBar` | `size.title-bar` | 40 | Clamping: the title bar stays inside (FR-021) |
+| `grab` | `size.title-bar-grab` | 120 | Clamping: this much of the title bar stays on screen sideways (FR-021) |
 | `cvWidth` | `size.window-cv-width` | 1000 | CV window placement |
 | `aboutWidth`, `aboutHeight` | `size.window-about-width`, `size.window-about-height` | 560, 520 | About window placement |
 | `minWidth`, `minHeight` | `size.window-min-width`, `size.window-min-height` | 400, 300 | Resizing (FR-061) |
@@ -136,7 +137,7 @@ Checked by `os-core` tests after every action, on random action sequences as wel
 |-----------|-------------|
 | At most one `WindowState` per `view` | FR-012 |
 | `focused` is `null` or `windows[0].view`, and that window isn't minimized | FR-017 |
-| Every non-maximized window's title bar is inside `area` (`0 ≤ x`, `x + width ≤ area.width`, `0 ≤ y`, `y + titleBar ≤ area.height`), and it is no larger than `area` | FR-021, FR-061 |
+| Every non-maximized window's title bar is placed as FR-021 sets (`0 ≤ y`, `y + titleBar ≤ area.height`, and with `g = min(grab, width)`, `x + width ≥ g` and `x ≤ area.width - g`), and it is no larger than `area` | FR-021, FR-061 |
 | Every non-maximized window is at least `minWidth × minHeight`, unless `area` is smaller, in which case it is fitted to `area` | FR-061, spec edge cases |
 | A maximized window's geometry equals `{ 0, 0, area.width, area.height }` | FR-065 |
 | `session` is `null` or names a focused, non-maximized window | FR-027, FR-062, FR-065 |
@@ -156,6 +157,7 @@ Checked by `os-core` tests after every action, on random action sequences as wel
 | `minimize { view }` | `minimized: true`; focus the next shown window | as `close`, by FR-063 |
 | `toggleMaximize { view }` | Save `restore` and fill `area`, or restore it (FR-065) | announce `{window} maximized.` or `{window} restored.` |
 | `dragMove { view, x, y }` | Clamp to `area` (FR-021); ignored while maximized | none |
+| `reveal { view, box }` | Move by `revealMove()` so `box`, relative to the area, is inside it (FR-067); ignored while maximized or minimized | none |
 | `dragResize { view, edge, geometry }` | Clamp to min size and `area` (FR-061); ignored while maximized | none |
 | `sessionStart { kind }` | `session` with the focused window's geometry; ignored while maximized | focus `pad` |
 | `sessionStep { dx, dy }` | Move by, or resize from the top-left corner by, `dx`, `dy` (step or big step), clamped | none |

@@ -1,7 +1,10 @@
 /* The desktop shell (005 design/wireframes.md Desktop shell, research R3,
    R6): the menu bar, the desktop area with its windows, and the dock. Every
    value is a token. The shell is fixed to the viewport and never scrolls;
-   each window's content does (FR-022). */
+   each window's content does (FR-022). It clips rather than hides what
+   passes its edges: a hidden overflow can still be scrolled, and focus on
+   an element past the screen's edge would scroll the whole desktop. FR-067
+   moves the window instead (research R20). */
 
 html[data-shell="desktop"],
 html[data-shell="desktop"] body {
@@ -11,7 +14,7 @@ html[data-shell="desktop"] body {
 .desktop {
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   background-color: var(--token-color-wallpaper);
   background-image:
     radial-gradient(var(--token-size-wallpaper-glow) at 18% 12%, var(--token-color-wallpaper-glow), transparent 62%),
@@ -22,7 +25,8 @@ html[data-shell="desktop"] body {
 }
 
 /* Glass: the menu bar and the dock blur what is behind them. Without
-   backdrop-filter, the translucent color alone keeps the contrast. */
+   backdrop-filter, the translucent color alone keeps the contrast. The
+   dock's own glass is in its section (FR-068). */
 .menu-bar,
 .dock {
   background: var(--token-color-chrome);
@@ -177,14 +181,15 @@ span.menu-title {
 /* ---- The desktop area and its windows -------------------------------- */
 
 /* Between the menu bar and the dock's space (FR-010). Its own stacking
-   context, clipped at its edges, so no window ever draws over the menu bar
-   or the dock, even one moved low with only its title bar inside. */
+   context, below the menu bar's and the dock's, and not clipped: a window
+   moved low or past a side draws on behind the dock and to the screen's
+   edge, where the desktop clips it (FR-021). Its title bar never goes
+   above the area, so nothing draws over the menu bar. */
 .desktop-area {
   position: absolute;
   inset-block: var(--token-size-menu-bar) var(--token-size-dock-reserve);
   inset-inline: 0;
   z-index: 0;
-  overflow: hidden;
 }
 
 /* Not clipped, so the resize handles can reach past its edge (FR-037):
@@ -200,7 +205,8 @@ span.menu-title {
   color: var(--token-color-shell-text);
 }
 
-.window[hidden] {
+/* A minimizing window stays drawn until it has gone into the dock (FR-069). */
+.window[hidden]:not([data-leaving]) {
   display: none;
 }
 
@@ -360,8 +366,8 @@ span.menu-title {
 /* Browsers that let Tab reach a scrolling area focus the content itself.
    Its indicator would sit under the title bar and over the window's edge,
    so the whole window shows it instead, around its rounded corners
-   (FR-024). A maximized window, at the area's clipped edge, shows it
-   inside. */
+   (FR-024). A maximized window, whose edges meet the menu bar and the
+   dock, shows it inside. */
 #os .window-content:focus-visible {
   outline: none;
 }
@@ -547,7 +553,72 @@ span.menu-title {
   padding: var(--token-space-2) var(--token-space-2-5) var(--token-space-1-5);
   border: var(--token-border-thin) solid var(--token-color-chrome-border);
   border-radius: var(--token-radius-dock);
-  box-shadow: var(--token-shadow-dock);
+  /* The dock's glass (FR-068, research R20): a tint dark enough for its
+     names over a white window behind it, what is behind blurred and its
+     color lifted, a rim along the top and a hairline along the bottom.
+     The lens below it is anchored to it. */
+  anchor-name: --dock;
+  background: var(--token-color-dock-glass);
+  backdrop-filter: blur(var(--token-size-chrome-blur)) saturate(var(--token-scale-dock-saturate));
+  box-shadow:
+    inset 0 var(--token-border-thin) 0 var(--token-color-dock-rim),
+    inset 0 calc(-1 * var(--token-border-thin)) 0 var(--token-color-chrome-border),
+    var(--token-shadow-dock);
+}
+
+/* The glass's sheen, on its upper half, behind the items. */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, var(--token-color-dock-sheen), transparent 45%);
+  pointer-events: none;
+}
+
+/* The lens: on the dock's box, between the windows and the dock, it bends
+   what is behind near the edges, and the dock blurs what it bent. Where
+   the browser can't anchor it or can't draw an SVG filter as a backdrop
+   filter, it draws nothing and the dock's glass is unchanged. */
+.dock-lens {
+  display: none;
+}
+
+@supports (anchor-name: --dock) {
+  .dock-lens {
+    position: absolute;
+    position-anchor: --dock;
+    inset-block-start: anchor(top);
+    inset-inline-end: anchor(right);
+    inset-block-end: anchor(bottom);
+    inset-inline-start: anchor(left);
+    z-index: 1;
+    display: block;
+    border-radius: var(--token-radius-dock);
+    backdrop-filter: url(#dock-lens);
+    pointer-events: none;
+  }
+}
+
+/* The lens's filter: in the page, but with no box of its own. */
+.dock-lens-filter {
+  position: absolute;
+  inline-size: 0;
+  block-size: 0;
+}
+
+/* Reduced transparency: a solid dock, with no lens or sheen (FR-068). */
+@media (prefers-reduced-transparency: reduce) {
+  .dock {
+    background: var(--token-color-chrome-solid);
+    backdrop-filter: none;
+  }
+
+  .dock::before,
+  .dock-lens {
+    display: none;
+  }
 }
 
 /* Each item shows its name below its icon at all times (FR-011), and its
@@ -657,6 +728,12 @@ span.menu-title {
   .open-mark {
     forced-color-adjust: none;
     border-color: CanvasText;
+  }
+
+  /* The glass's lens and sheen are decoration. */
+  .dock::before,
+  .dock-lens {
+    display: none;
   }
 
   .dock-item.is-open .open-mark {

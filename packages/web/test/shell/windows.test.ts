@@ -32,29 +32,30 @@ async function grip(page: Page, window: string): Promise<{ x: number; y: number 
   return { x: bar.x + bar.width * 0.75, y: bar.y + bar.height / 2 };
 }
 
-// The part of a window that is drawn: the desktop area clips it.
-async function drawn(page: Page, selector: string): Promise<Box> {
-  const window = (await box(page, selector))!;
-  const area = (await box(page, '#os .desktop-area'))!;
-  const x = Math.max(window.x, area.x);
-  const y = Math.max(window.y, area.y);
-  return { x, y, width: Math.min(window.x + window.width, area.x + area.width) - x, height: Math.min(window.y + window.height, area.y + area.height) - y };
-}
+// The element on top at a point, as its closest match of `selector`, or null.
+const topAt = (page: Page, point: { x: number; y: number }, selector: string) =>
+  page.evaluate(({ x, y, selector }) => document.elementFromPoint(x, y)?.closest(selector)?.className ?? null, { ...point, selector });
 
-describe('005-os-shell-FR-010: windows never cover the menu bar or the dock', () => {
-  test('dragged, resized and maximized, a window stays between them', async () => {
+describe('005-os-shell-FR-010: windows never cover the menu bar, and pass behind the dock', () => {
+  test('dragged up a window stops at the menu bar; dragged down and resized it passes behind the dock, which stays usable', async () => {
     const page = await desktop();
     const { menuBar, dock } = await chrome(page);
     const from = await grip(page, CV);
     await drag(page, from, { x: from.x, y: from.y - 300 });
-    expect(meet(await drawn(page, CV), menuBar)).toBe(false);
+    expect(meet((await box(page, CV))!, menuBar)).toBe(false);
     await drag(page, await grip(page, CV), { x: from.x, y: 2000 });
-    expect(meet(await drawn(page, CV), dock)).toBe(false);
-    expect(await page.evaluate(() => getComputedStyle(document.querySelector('#os .desktop-area')!).overflow)).toBe('hidden');
+    expect(meet((await box(page, CV))!, dock)).toBe(true);
+    expect(await topAt(page, centre(dock), '.dock')).toContain('dock');
+    expect(await topAt(page, { x: menuBar.x + menuBar.width / 2, y: menuBar.y + menuBar.height / 2 }, '.menu-bar')).toContain('menu-bar');
+    // The dock still works over the window: its CV item focuses the CV.
+    await page.click('#os .dock-item[data-app="cv"]');
+    await settle(page);
+    expect(await focusedElement(page)).toContain('window-title');
     await drag(page, await grip(page, CV), { x: from.x, y: from.y });
     const corner = (await box(page, `${CV} .resize-se`))!;
     await drag(page, centre(corner), { x: 1439, y: 899 });
-    expect(meet((await box(page, CV))!, dock)).toBe(false);
+    expect(meet((await box(page, CV))!, dock)).toBe(true);
+    expect(await topAt(page, centre(dock), '.dock')).toContain('dock');
     await page.getByRole('button', { name: 'Maximize CV' }).click();
     const maximized = (await box(page, CV))!;
     expect(meet(maximized, menuBar)).toBe(false);
@@ -192,32 +193,96 @@ describe('005-os-shell-FR-020: Move… and Resize… work by single clicks', () 
   });
 });
 
-describe('005-os-shell-FR-021: a window keeps its title bar inside the desktop', () => {
-  test('dragging toward each edge stops with the title bar fully inside', async () => {
-    const page = await desktop();
-    const area = (await box(page, '#os .desktop-area'))!;
+// How much of a box is inside the 1440 px wide screen.
+const onScreen = (rect: Box) => Math.min(rect.x + rect.width, 1440) - Math.max(rect.x, 0);
+
+describe('005-os-shell-FR-021: a window moves past the edges with its title bar kept on screen', () => {
+  test('dragged past each edge, the title bar stays between the menu bar and the dock, with 120 px of it on screen', async () => {
     for (const target of [
       { x: -2000, y: 400 },
       { x: 4000, y: 400 },
       { x: 700, y: -2000 },
       { x: 700, y: 4000 },
     ]) {
+      const page = await desktop();
+      const area = (await box(page, '#os .desktop-area'))!;
       const from = await grip(page, CV);
       await drag(page, from, target);
+      const window = (await box(page, CV))!;
       const bar = await titleBar(page, CV);
       const label = JSON.stringify(target);
-      expect(bar.x, label).toBeGreaterThanOrEqual(area.x);
-      expect(bar.x + bar.width, label).toBeLessThanOrEqual(area.x + area.width);
       expect(bar.y, label).toBeGreaterThanOrEqual(area.y);
       expect(bar.y + bar.height, label).toBeLessThanOrEqual(area.y + area.height + 1);
+      expect(onScreen(window), label).toBeGreaterThanOrEqual(120);
+      if (target.x < 0) expect(window.x + window.width, label).toBe(120);
+      if (target.x > 1440) expect(window.x, label).toBe(1440 - 120);
+      if (target.y > 900) expect(window.y + window.height, label).toBeGreaterThan(900);
     }
   });
 
-  test('narrowing the viewport to 1100 px brings a window near the right edge back inside', async () => {
+  test('narrowing the viewport to 1100 px moves a window past the right edge back only until 120 px of the title bar is on screen', async () => {
     const page = await desktop();
     await drag(page, await grip(page, CV), { x: 4000, y: 300 });
+    expect((await box(page, CV))!.x).toBe(1320);
     await resize(page, 1100, 900);
-    await expect.poll(async () => (await box(page, CV))!.x + (await box(page, CV))!.width).toBeLessThanOrEqual(1100);
+    await expect.poll(async () => (await box(page, CV))!.x).toBe(1100 - 120);
+  });
+});
+
+describe('005-os-shell-FR-067: focus by key on a hidden element brings its window into view', () => {
+  // The CV's last link, at the end of its content, scrolled into the window's view.
+  async function moveLowRight(page: Page): Promise<void> {
+    const from = await grip(page, CV);
+    await drag(page, from, { x: from.x + 700, y: from.y + 560 });
+  }
+
+  test('Tab to a link behind the dock or past the right edge moves the window just enough, keeping its size', async () => {
+    const page = await desktop();
+    await moveLowRight(page);
+    const before = (await box(page, CV))!;
+    expect(before.x + before.width).toBeGreaterThan(1440);
+    expect(before.y + before.height).toBeGreaterThan(900 - 104);
+    const area = (await box(page, '#os .desktop-area'))!;
+    // Every link in the CV in turn: each one focused by Tab ends up inside the area with its outline.
+    await page.focus(`${CV} .window-title`);
+    for (let step = 0; step < 12; step += 1) {
+      await page.keyboard.press('Tab');
+      await settle(page);
+      const focused = await page.evaluate(() => {
+        const element = document.activeElement!;
+        const rect = element.getBoundingClientRect();
+        return { inCv: element.closest('.window[data-view="cv"]') !== null, x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      });
+      if (!focused.inCv) break;
+      expect(focused.x - 4, `step ${step}`).toBeGreaterThanOrEqual(area.x - 1);
+      expect(focused.x + focused.width + 4, `step ${step}`).toBeLessThanOrEqual(area.x + area.width + 1);
+      expect(focused.y - 4, `step ${step}`).toBeGreaterThanOrEqual(area.y - 1);
+      expect(focused.y + focused.height + 4, `step ${step}`).toBeLessThanOrEqual(area.y + area.height + 1);
+    }
+    const after = (await box(page, CV))!;
+    expect({ width: after.width, height: after.height }).toEqual({ width: before.width, height: before.height });
+    expect(after.x !== before.x || after.y !== before.y).toBe(true);
+  });
+
+  test('a click, a drag and the wheel never move it', async () => {
+    const page = await desktop();
+    // As low as it goes: the title bar on the dock's space, and the CV's
+    // first link, below it, under the desktop area (whose bottom is at 796).
+    const from = await grip(page, CV);
+    await drag(page, from, { x: from.x + 700, y: 4000 });
+    const before = (await box(page, CV))!;
+    // A click on that link focuses it; the click itself is kept from following it.
+    await page.evaluate(() => document.addEventListener('click', (event) => event.preventDefault(), true));
+    const link = (await page.locator(CV).getByRole('link', { name: /Open as a page/ }).boundingBox())!;
+    expect(link.y).toBeGreaterThan(796);
+    await page.mouse.click(link.x + 2, link.y + 2);
+    await settle(page);
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('A');
+    expect(await box(page, CV)).toEqual(before);
+    await page.mouse.move(before.x + 200, before.y + 100);
+    await page.mouse.wheel(0, 600);
+    await settle(page);
+    expect(await box(page, CV)).toEqual(before);
   });
 });
 
@@ -259,6 +324,12 @@ describe('005-os-shell-FR-061: windows resize from every edge, down to 400 × 30
       const after = (await box(page, CV))!;
       expect(before.width - after.width + before.height - after.height, edge).toBe(Math.abs(inward.x) + Math.abs(inward.y));
     }
+    // The bottom edge dragged down passes behind the dock, to the screen's bottom.
+    const bottom = centre((await box(page, `${CV} .resize-s`))!);
+    await drag(page, bottom, { x: bottom.x, y: 2000 });
+    const taller = (await box(page, CV))!;
+    expect(taller.y + taller.height).toBeGreaterThan(900 - 104);
+    expect(taller.height).toBeLessThanOrEqual(764);
     const corner = centre((await box(page, `${CV} .resize-se`))!);
     await drag(page, corner, { x: 0, y: 0 });
     const smallest = (await box(page, CV))!;

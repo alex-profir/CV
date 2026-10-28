@@ -146,15 +146,16 @@ function sourceFiles(dir: string): string[] {
 }
 
 // The shell's tokens, as the design proposed them (005 design/mockup), with
-// the desktop height renamed (research R7).
+// the desktop height renamed (research R7): 85, then 7 for the dock's glass
+// in the amendment of 2026-10-28 (FR-068).
 const SHELL_TOKENS_FILE = 'specs/005-os-shell/design/mockup/proposed-tokens.css';
 
 describe('005-os-shell-FR-045: every one of the shell tokens is read by a style sheet or by the metrics', () => {
-  test('the 85 tokens the design added are in the export, and each is read', () => {
+  test('the 92 tokens the design added are in the export, and each is read', () => {
     const css = fs.readFileSync(path.join(REPO_ROOT, SHELL_TOKENS_FILE), 'utf8');
     const names = new Set([...css.matchAll(/^\s*(--token-[a-z0-9-]+)\s*:/gm)].map((match) => match[1]!));
     const shell = EXPORT_TOKENS.filter((token) => names.has(codeName(token.name))).map((token) => token.name);
-    expect(shell).toHaveLength(85);
+    expect(shell).toHaveLength(92);
     const read = readTokens();
     expect(shell.filter((name) => !read.has(name))).toEqual([]);
   });

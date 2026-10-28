@@ -133,7 +133,7 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   [wireframes.md](wireframes.md), `mockup/desktop-past-edge.html` and its export
   `mockup/desktop-past-edge-1440.png`, and a `past-edge` placement in `mockup/shell.css`. Changed:
   [wireframes.md](wireframes.md) (three design values, the first-load notes and the resize
-  notes). No other state, export or token changes. **Awaiting the owner's confirmation.**
+  notes). No other state, export or token changes. Confirmed by the owner on 2026-10-28.
 - **2026-10-28, the dock's glass and the minimize and maximize animations**, at the owner's
   request, with the spec's clarifications of 2026-10-28 (FR-068 to FR-071). The dock was dark
   glass that blurred what was behind it, at a 55% tint, which a white window behind it (now
@@ -149,15 +149,15 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   proposed tokens in `mockup/proposed-tokens.css`. Changed: [wireframes.md](wireframes.md) (three
   new design values). Every desktop export is rendered again, as each shows the dock: apart from
   the dock, they differ from the earlier exports only in text anti-aliasing, from a different
-  renderer. **Awaiting the owner's confirmation.**
+  renderer. Confirmed by the owner on 2026-10-28.
 
 ## Sign-off
 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
 - Date: 2026-10-26
 - Approved by: Alex Profir (project owner)
-- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two at the owner's request.
-  The owner confirmed every change on 2026-10-28.
+- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two and the last two at the
+  owner's request. The owner confirmed every change on 2026-10-28.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
   the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's

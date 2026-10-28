@@ -443,7 +443,8 @@ tested without a browser and once more in one.
   keyboard moves are never animated, so a dragged window always follows the pointer.
 - Only actions the visitor takes animate. The first load, hydration and shell switches don't.
 - Closing waits for the animation's `finished` promise before the reducer removes the window, and
-  focus moves when the window is gone.
+  focus moves when the window is gone. (Since the amendment of 2026-10-28, minimizing no longer
+  waits, and minimize, restore and maximize animate their boxes: R20.)
 
 **Rationale**: the WAAPI runs closing animations without keeping removed elements in the DOM by
 hand. It reads token values in the same way the README of `@cv/tokens` shows, so the token check
@@ -451,6 +452,71 @@ can see where values come from.
 
 **Alternatives considered**: *CSS `@starting-style` transitions* animate opening only, run on the
 first load too, and closing still needs a script.
+
+## R20. The amendment of 2026-10-28: windows past the edges, the dock's glass, box animations
+
+**Decision**:
+
+- **Moves** (FR-021): `clampMove` keeps the title bar's top between 0 and the area's height less
+  the title bar, as before, so the title bar stays between the menu bar and the dock's space.
+  Sideways, `x` runs from `grab - width` to `area.width - grab`, with `grab` the smaller of the
+  window's width and `size.title-bar-grab` (120 px), a new metric. `fitToArea` and `placeWindow`
+  go through `clampMove`, so a shrinking area moves windows back only as far as that, and new
+  windows still open inside (their boxes are placed inside before clamping).
+- **Resizes** (FR-061): `clampResize` takes the window's box before the drag too. A dragged edge
+  stops at the area's top and sides and at the browser's bottom (`area.height + dockReserve`),
+  or, when the edge is already past that limit (a window moved past the edge), where it was, so
+  a keyboard resize of such a window can shrink it but never makes it jump. The size limits are
+  unchanged.
+- **Drawing behind the dock** (FR-010): `.desktop-area` is no longer clipped, so a window's lower
+  part draws below the area, under the dock (the dock and the menu bar are later in the same
+  stacking context). `.desktop` uses `overflow: clip` rather than `hidden`: an element with
+  `overflow: hidden` is still a scroll container, and focusing an element past the screen's
+  edge would scroll the whole desktop to it. With `clip` it can't scroll, and FR-067 moves the
+  window instead.
+- **Focus into view** (FR-067): a window's `focus` listener waits one animation frame, as the
+  browser scrolls the window's content to the element after the focus event, then measures the
+  element with its focus outline (`border.thick` plus `space.0-5`) against the desktop area and
+  dispatches `reveal { view, box }`. The reducer moves the window by `revealMove`, the least
+  distance that brings the box inside the area (its start when it is larger), clamped as a move.
+  Focus a pointer gives doesn't count: a `pointerdown` on the window marks the focus that
+  follows it, so a click on a link half behind the dock leaves the window where the visitor put
+  it (spec edge cases).
+- **The dock's glass** (FR-068): the dock gets `color.dock-glass` (70%), a backdrop blur of
+  `size.chrome-blur` with `saturate(scale.dock-saturate)`, a rim and a hairline as inset shadows,
+  and a sheen as a `::before` behind its items. The lens is a separate `.dock-lens` element just
+  before the dock, with `backdrop-filter: url(#dock-lens)` and the dock's radius, placed on the
+  dock by CSS anchor positioning (`anchor-name: --dock`). The dock then blurs what the lens has
+  bent. An element with a backdrop filter is a backdrop root for its children, so the lens can't
+  be inside the dock. A browser without anchor positioning gives the lens no size, and one that
+  can't apply an SVG filter as a backdrop filter draws nothing for it: either way the dock's own
+  glass is unchanged. `#dock-lens` is an SVG filter in the dock's markup: an `feImage` of a
+  displacement map (a data URI, neutral in the middle) and an `feDisplacementMap` whose scale is
+  `size.dock-lens`. `prefers-reduced-transparency: reduce` gives the solid `color.chrome-solid`
+  and hides the lens and the sheen. Forced colors keep the dock's border (FR-047).
+- **Minimize and restore** (FR-069, FR-071): the reducer runs at once, so focus moves and the
+  status region speaks when the action starts. The window, already `hidden` by React, is shown
+  again by the animation for its 250 ms (`motion.duration.base`): `animateInto` moves and scales
+  its box to the dock item's icon (the site menu's title for About), fading out over the last
+  third, with `fill: 'forwards'`, then the element is hidden again. The window is `inert` while
+  it goes. Restoring plays the same keyframes backwards from the icon. With reduced motion, a
+  fade over `motion.duration.fast`. Closing keeps R13's animation and its wait.
+- **Maximize and restore** (FR-070): `animateBox` plays the window's change of box as a transform
+  from the old box to the new one (translate and scale, from its top left corner) over
+  `motion.duration.base`. With reduced motion, no animation. A change of the area while
+  maximized isn't a toggle, so it never animates.
+- **Interruption** (FR-071): each window keeps its running animation; a new one, or a pointer
+  down on the window, calls `finish()` on it first, which jumps to its end state. Windows mounted
+  with the shell don't animate (R13).
+
+**Rationale**: the clamps stay pure functions in `os-core`, with one new metric. CSS alone draws
+the glass, and the lens fails safe in browsers that can't draw it, with no script and no
+browser detection. Transforms animate without reflowing the CV.
+
+**Alternatives considered**: *A genie effect* (owner's choice, spec clarifications): needs a
+snapshot of the window in WebGL. *Detecting the browser for the lens*: the anchor and the
+backdrop filter fail safe without it. *Keeping the minimize animation before the reducer runs*
+(R13): focus would wait for it, against FR-071.
 
 ## R14. Routes, build output and offline
 

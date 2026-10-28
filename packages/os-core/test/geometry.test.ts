@@ -1,7 +1,7 @@
 // Window geometry (FR-005, FR-018): where windows open, in whole pixels,
 // never larger than the desktop area.
 import { describe, expect, test } from 'vitest';
-import { clampMove, clampResize, fitToArea, placeWindow } from '../src/index.ts';
+import { clampMove, clampResize, fitToArea, placeWindow, revealMove } from '../src/index.ts';
 import type { Edge, Geometry, WindowState } from '../src/index.ts';
 import { APPS, AREA, METRICS, desktop, run } from './helpers.ts';
 
@@ -132,25 +132,35 @@ describe('005-os-shell-FR-018: About opens clear of the window in front', () => 
   });
 });
 
-describe('005-os-shell-FR-021: windows keep their title bar inside the desktop area', () => {
+describe('005-os-shell-FR-021: a window moves past the edges with its title bar kept on screen', () => {
   const start = { x: 220, y: 24, width: 1000, height: 716 };
 
-  test('clampMove stops a move past each edge with the title bar inside', () => {
-    expect(clampMove({ ...start, x: -500 }, AREA, METRICS).x).toBe(0);
-    expect(clampMove({ ...start, x: 5000 }, AREA, METRICS).x).toBe(AREA.width - 1000);
+  test('clampMove keeps the title bar between the menu bar and the dock, and 120 px of it on screen', () => {
+    expect(clampMove({ ...start, x: -5000 }, AREA, METRICS).x).toBe(METRICS.grab - 1000);
+    expect(clampMove({ ...start, x: 5000 }, AREA, METRICS).x).toBe(AREA.width - METRICS.grab);
+    expect(clampMove({ ...start, x: -500 }, AREA, METRICS).x).toBe(-500);
+    expect(clampMove({ ...start, x: 1000 }, AREA, METRICS).x).toBe(1000);
     expect(clampMove({ ...start, y: -50 }, AREA, METRICS).y).toBe(0);
     expect(clampMove({ ...start, y: 5000 }, AREA, METRICS).y).toBe(AREA.height - METRICS.titleBar);
     expect(clampMove({ ...start, x: 10.4, y: 20.6 }, AREA, METRICS)).toEqual({ ...start, x: 10, y: 21 });
   });
 
-  test('fitToArea moves windows back inside, and fits ones larger than the area', () => {
-    const window: WindowState = { view: 'cv', geometry: { x: 400, y: 24, width: 1000, height: 716 }, minimized: false, maximized: null, placement: 'set' };
-    expect(fitToArea(window, { width: 1100, height: 764 }, METRICS).geometry).toEqual({ x: 100, y: 24, width: 1000, height: 716 });
-    expect(fitToArea(window, { width: 900, height: 500 }, METRICS).geometry).toEqual({ x: 0, y: 24, width: 900, height: 500 });
+  test('a window narrower than the strip stays wholly on screen sideways', () => {
+    const narrow = { x: 0, y: 0, width: 100, height: 300 };
+    expect(clampMove({ ...narrow, x: -500 }, AREA, METRICS).x).toBe(0);
+    expect(clampMove({ ...narrow, x: 5000 }, AREA, METRICS).x).toBe(AREA.width - 100);
+  });
+
+  test('fitToArea moves windows back only until 120 px of the title bar is on screen, and fits ones larger than the area', () => {
+    const window: WindowState = { view: 'cv', geometry: { x: 1300, y: 600, width: 1000, height: 716 }, minimized: false, maximized: null, placement: 'set' };
+    expect(fitToArea(window, { width: 1100, height: 500 }, METRICS).geometry).toEqual({ x: 980, y: 460, width: 1000, height: 500 });
+    expect(fitToArea(window, { width: 900, height: 764 }, METRICS).geometry).toEqual({ x: 780, y: 600, width: 900, height: 716 });
+    const inside: WindowState = { ...window, geometry: { x: 400, y: 24, width: 1000, height: 716 } };
+    expect(fitToArea(inside, { width: 1100, height: 764 }, METRICS).geometry).toEqual(inside.geometry);
   });
 });
 
-describe('005-os-shell-FR-061: resizing stops at 400 × 300 and at the area, keeping the opposite edge', () => {
+describe('005-os-shell-FR-061: resizing stops at 400 × 300, at the size of the area and at the edges of the screen, keeping the opposite edge', () => {
   const start = { x: 220, y: 24, width: 1000, height: 716 };
   const shrink: Record<Edge, Geometry> = {
     n: { ...start, y: 700, height: 40 },
@@ -165,7 +175,7 @@ describe('005-os-shell-FR-061: resizing stops at 400 × 300 and at the area, kee
 
   test('from each of the eight edges and corners, at the minimum size', () => {
     for (const [edge, geometry] of Object.entries(shrink) as [Edge, Geometry][]) {
-      const box = clampResize(geometry, edge, AREA, METRICS);
+      const box = clampResize(geometry, edge, AREA, METRICS, start);
       const right = start.x + start.width;
       const bottom = start.y + start.height;
       if (edge.includes('n')) expect(box, edge).toMatchObject({ y: bottom - 300, height: 300 });
@@ -175,11 +185,47 @@ describe('005-os-shell-FR-061: resizing stops at 400 × 300 and at the area, kee
     }
   });
 
-  test('at the edges of the area', () => {
-    expect(clampResize({ ...start, width: 5000 }, 'e', AREA, METRICS)).toEqual({ ...start, width: AREA.width - start.x });
-    expect(clampResize({ ...start, height: 5000 }, 's', AREA, METRICS)).toEqual({ ...start, height: AREA.height - start.y });
-    expect(clampResize({ ...start, x: -100, width: 1320 }, 'w', AREA, METRICS)).toEqual({ ...start, x: 0, width: 1220 });
-    expect(clampResize({ ...start, y: -100, height: 840 }, 'n', AREA, METRICS)).toEqual({ ...start, y: 0, height: 740 });
+  test('at the menu bar, the sides and the bottom of the screen, below the dock', () => {
+    expect(clampResize({ ...start, width: 5000 }, 'e', AREA, METRICS, start)).toEqual({ ...start, width: AREA.width - start.x });
+    expect(clampResize({ ...start, x: -100, width: 1320 }, 'w', AREA, METRICS, start)).toEqual({ ...start, x: 0, width: 1220 });
+    expect(clampResize({ ...start, y: -100, height: 840 }, 'n', AREA, METRICS, start)).toEqual({ ...start, y: 0, height: 740 });
+    // Never taller than the area: from y 24, the bottom stops 24 px behind the dock.
+    expect(clampResize({ ...start, height: 5000 }, 's', AREA, METRICS, start)).toEqual({ ...start, height: AREA.height });
+    const low = { x: 220, y: 400, width: 1000, height: 400 };
+    expect(clampResize({ ...low, height: 5000 }, 's', AREA, METRICS, low)).toEqual({ ...low, height: AREA.height + METRICS.dockReserve - 400 });
+  });
+
+  test('an edge already past the edge of the screen stays where it was, and can come back', () => {
+    const past = { x: 900, y: 500, width: 1000, height: 700 };
+    expect(clampResize({ ...past, width: 1016, height: 716 }, 'se', AREA, METRICS, past)).toEqual(past);
+    expect(clampResize({ ...past, width: 984, height: 684 }, 'se', AREA, METRICS, past)).toEqual({ ...past, width: 984, height: 684 });
+    const left = { x: -400, y: 24, width: 1000, height: 716 };
+    expect(clampResize({ ...left, x: -416, width: 1016 }, 'w', AREA, METRICS, left)).toEqual(left);
+  });
+});
+
+describe('005-os-shell-FR-067: a hidden focused element brings its window into view by the least move', () => {
+  const window = { x: 700, y: 500, width: 1000, height: 716 };
+
+  test('revealMove moves the least distance that brings the box inside', () => {
+    // Behind the dock: 40 px below the area's bottom.
+    expect(revealMove(window, { x: 760, y: 744, width: 200, height: 60 }, AREA, METRICS)).toEqual({ ...window, y: 460 });
+    // Past the right edge.
+    expect(revealMove(window, { x: 1400, y: 600, width: 100, height: 30 }, AREA, METRICS)).toEqual({ ...window, x: 640 });
+    // Past the left edge.
+    const left = { ...window, x: -400 };
+    expect(revealMove(left, { x: -380, y: 600, width: 100, height: 30 }, AREA, METRICS)).toEqual({ ...left, x: -20 });
+  });
+
+  test('a box larger than the area shows its start, and one inside moves nothing', () => {
+    expect(revealMove(window, { x: 720, y: 600, width: 100, height: 900 }, AREA, METRICS)).toEqual({ ...window, y: 0 });
+    expect(revealMove(window, { x: 720, y: 600, width: 100, height: 30 }, AREA, METRICS)).toBe(window);
+  });
+
+  test('the move keeps the title bar between the menu bar and the dock', () => {
+    const moved = revealMove(window, { x: 720, y: 5000, width: 100, height: 30 }, AREA, METRICS);
+    expect(moved.y).toBe(0);
+    expect(moved.width).toBe(window.width);
   });
 });
 

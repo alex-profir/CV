@@ -41,6 +41,9 @@ describe('004-cv-page-FR-015: no page shows a control that needs a script', () =
 
 describe('004-cv-page-FR-016: every page loads everything it uses from the site itself', () => {
   const local = (address: string) => (address.startsWith('/') && !address.startsWith('//')) || address.startsWith('data:');
+  // A style sheet's `url(#id)` names an element of the page, such as the
+  // dock lens's SVG filter (005-os-shell-FR-068), and loads nothing.
+  const inPage = (address: string) => /^#[\w-]+$/.test(address);
 
   test('every src, resource href and CSS url() in the build is a path on the site or a data: address', () => {
     const files = builtFiles();
@@ -57,7 +60,7 @@ describe('004-cv-page-FR-016: every page loads everything it uses from the site 
     for (const file of files.filter((entry) => entry.type === 'text/css')) {
       for (const [, raw = ''] of file.text.matchAll(/url\(\s*([^)]*?)\s*\)/g)) {
         const address = raw.replace(/^["']|["']$/g, '');
-        expect(local(address), `${file.path}: url(${raw})`).toBe(true);
+        expect(local(address) || inPage(address), `${file.path}: url(${raw})`).toBe(true);
         checked += 1;
       }
       expect(file.text, file.path).not.toMatch(/@import\s/);

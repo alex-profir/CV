@@ -2,7 +2,7 @@
 // the next state, with the focus moves and announcements it causes appended
 // to `effects` for the Os root to run, and never mutates its arguments. An
 // action that doesn't apply returns `state` itself.
-import { clampMove, clampResize, fitToArea, placeWindow } from './geometry.ts';
+import { clampMove, clampResize, fitToArea, placeWindow, revealMove } from './geometry.ts';
 import type { Effect, FocusTarget, Geometry, OsAction, OsState, ReducerContext, ShellName, ViewId, WindowState } from './types.ts';
 
 // A pattern with each `{key}` replaced, as the site's `fill` does.
@@ -192,10 +192,18 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       return { ...state, windows: update(state.windows, action.view, (current) => ({ ...current, geometry })) };
     }
 
+    case 'reveal': {
+      const window = windowOf(action.view);
+      if (!onDesktop || window === undefined || window.maximized !== null || window.minimized) return state;
+      const geometry = revealMove(window.geometry, action.box, area, metrics);
+      if (sameBox(geometry, window.geometry)) return state;
+      return { ...state, windows: update(state.windows, action.view, (current) => ({ ...current, geometry })) };
+    }
+
     case 'dragResize': {
       const window = windowOf(action.view);
       if (!onDesktop || window === undefined || window.maximized !== null || window.minimized) return state;
-      const geometry = clampResize(action.geometry, action.edge, area, metrics);
+      const geometry = clampResize(action.geometry, action.edge, area, metrics, window.geometry);
       if (sameBox(geometry, window.geometry)) return state;
       return { ...state, windows: update(state.windows, action.view, (current) => ({ ...current, geometry })) };
     }
@@ -219,7 +227,7 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       const geometry =
         session.kind === 'move'
           ? clampMove({ x: x + action.dx, y: y + action.dy, width, height }, area, metrics)
-          : clampResize({ x, y, width: width + action.dx, height: height + action.dy }, 'se', area, metrics);
+          : clampResize({ x, y, width: width + action.dx, height: height + action.dy }, 'se', area, metrics, window.geometry);
       if (sameBox(geometry, window.geometry)) return state;
       return { ...state, windows: update(state.windows, session.view, (current) => ({ ...current, geometry })) };
     }

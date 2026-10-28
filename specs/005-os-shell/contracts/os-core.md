@@ -16,8 +16,9 @@ as declarations. Types are in [data-model.md](../data-model.md).
 | `osReducer(state, action, context)` | function | Pure. `context` is `{ apps, metrics, text }`, `text` being the announcement and window-name patterns from `site-text.ts`. Returns the next state with effects appended. Every action of data-model.md's table. Unknown or inapplicable actions return `state` unchanged |
 | `viewName(view, context)` | function | About's name from `context.text`, or the app's from `context.apps`; the menu bar, title and announcements share it |
 | `placeWindow(view, windows, area, metrics)` | function | A new window's geometry (FR-018): the CV centered as the design sets, its top stepped down 48 px at a time with its bottom edge kept (no shorter than the minimum) while that box is on a shown window's title bar; About cascaded 48 px from the front window, stepping until its whole box is on no other window's title bar, or, when no step allows that, until its title bar is on no other title bar; both fitted to `area` |
-| `clampMove(geometry, area, metrics)` | function | The nearest geometry whose title bar is inside `area` (FR-021) |
-| `clampResize(geometry, edge, area, metrics)` | function | Within the minimum size and `area`, keeping the opposite edge fixed (FR-061) |
+| `clampMove(geometry, area, metrics)` | function | The nearest geometry whose title bar stays between the area's top and bottom, with at least `grab` px of it on screen sideways (FR-021) |
+| `revealMove(geometry, box, area, metrics)` | function | The geometry moved by the least distance that brings `box` inside `area`, clamped as a move (FR-067) |
+| `clampResize(geometry, edge, area, metrics, from?)` | function | Within the minimum size and `area`'s size, keeping the opposite edge fixed; a dragged edge stops at the area's top and sides, the screen's bottom, or where it was in `from` when already past (FR-061) |
 | `fitToArea(window, area, metrics)` | function | After `area` changes: moved inside, fitted if larger, filling if maximized (FR-021, FR-065) |
 | `SHORTCUTS` | constant | The eight shortcuts, in About this site's order (FR-029) |
 | `matchShortcut(event, mac)` | function | The shortcut a key event means, or `null` (research R9) |
