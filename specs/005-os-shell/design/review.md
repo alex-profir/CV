@@ -85,13 +85,20 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 - **2026-10-27, focus after closing About this site** (finding C2): the wireframes' focus table
   now says that closing About this site, like minimizing it, with no window left shown, moves
   focus to the site menu's title, as FR-023 now says.
+- **2026-10-28, the resize handles' reach** (T127, after `/speckit-converge`). The handles were
+  8 px edges and 16 × 16 px corners, pointer targets under FR-037's 24 px. Each now reaches on past
+  the window's edge, 16 px for an edge and 8 px for a corner, so the pointer has 24 px. Nothing
+  drawn changes: the part inside the window and the grip stay where they were, and the window's
+  look matches the exports. Changed: [wireframes.md](wireframes.md) (the resize handles row). No
+  state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
+  changes above.
 
 ## Sign-off
 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
 - Date: 2026-10-26
 - Approved by: Alex Profir (project owner)
-- Amended: 2026-10-27, by the changes above, at the owner's request. The owner confirms them in
+- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two at the owner's request. The owner confirms them in
   the 005 pull request.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on

@@ -41,7 +41,7 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
 | Title bar height | 40 px. The controls are 24 × 24 px buttons with no space between them, each showing a 14 px circle and a 10 px glyph, 8 px from the window's left edge | FR-016, FR-037 |
-| Resize handles | Every edge (8 px wide) and corner (16 × 16 px). The bottom-right corner shows a grip | FR-061 |
+| Resize handles | Every edge (8 px wide) and corner (16 × 16 px) inside the window. Each also reaches past the window's edge, 16 px for an edge and 8 px for a corner, so the pointer has 24 px. Nothing is drawn there. The bottom-right corner shows a grip | FR-061, FR-037 |
 | Keyboard move and resize steps | 16 px per arrow key press, 64 px with Shift. The same steps for the on-screen buttons | FR-027, FR-062 |
 | Non-dragging alternative for moving and resizing | Move… and Resize… in the window's menu open a control pad on the window, with one button per direction plus Done and Cancel. One click is one step. The same pad shows during a keyboard move or resize | FR-020, FR-062 |
 | Dock names without hover | Every dock item shows its name below its icon all the time, so hover isn't needed on touch | FR-011 |
