@@ -37,7 +37,7 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Menu bar height | 32 px | FR-010 |
 | Space the dock keeps at the bottom | 104 px: the dock is 88 px tall, 8 px above the bottom edge, with 8 px between it and the desktop area | FR-010 |
 | Desktop area | The window minus the menu bar and the dock's space: 1440 × 764 at 1440 × 900 | FR-010, FR-021 |
-| CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56 | FR-005, FR-018 |
+| CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56. When that box would cover a shown window's title bar, as when About this site is open, its top moves down 48 px at a time, its bottom edge staying where it is, until it covers no title bar, never shorter than the 300 px minimum. With no such box, the first whose title bar is on no other window's stands, or else the centered box. With About open alone at 1440 × 900, the CV opens 1000 × 668 at x 220, y 104 | FR-005, FR-018 |
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
 | Title bar height | 40 px. The controls are 24 × 24 px buttons with no space between them, each showing a 14 px circle and a 10 px glyph, 8 px from the window's left edge | FR-016, FR-037 |

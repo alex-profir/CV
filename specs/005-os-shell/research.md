@@ -294,7 +294,9 @@ steps and sizes in `os-core`*: literal design values, which FR-045 forbids.
   relative to the desktop area, `minimized`, `maximized` with the geometry to restore, and a place
   in the front-to-back order (the array order). One window, or none, is focused (FR-017).
   Maximize keeps `restore` geometry, and minimize keeps the geometry as it is (FR-064, FR-065).
-- **Placement** (FR-018): the CV window as R3. About this site at 560 × 520, fitted to the area,
+- **Placement** (FR-018): the CV window as R3 when that box is on no shown window's title bar;
+  otherwise its top steps down 48 px at a time, its bottom edge kept, until it isn't, never
+  shorter than the minimum (design/review.md, 2026-10-28). About this site at 560 × 520, fitted to the area,
   48 px right of and below the window in front, or centered when no window is shown. If that
   would put its title bar on another window's title bar, it steps a further 48 px, wrapping to the
   area's top left, until it doesn't (`placeWindow()`).

@@ -92,6 +92,16 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   look matches the exports. Changed: [wireframes.md](wireframes.md) (the resize handles row). No
   state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
   changes above.
+- **2026-10-28, the CV window opened while About this site is open** (T131, after
+  `/speckit-converge`). The CV always opened centered, so with About open alone (centered the
+  same way) the CV's title bar covered About's, against FR-018. The CV still opens centered when
+  that box covers no shown window's title bar, so first load and the empty desktop don't change.
+  Otherwise its top moves down 48 px at a time, its bottom edge staying where it is, until it
+  covers no title bar, never shorter than 300 px. Stepping right as About does can't help: at
+  1000 px wide the CV has no room to move sideways. At 1440 × 900 with About open the CV opens
+  1000 × 668 at x 220, y 104. Changed: [wireframes.md](wireframes.md) (the CV window row). No
+  state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
+  changes above.
 
 ## Sign-off
 
