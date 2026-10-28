@@ -603,8 +603,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-016**: A command the Terminal doesn't know MUST get a reply, in site text, that names what
   was typed, shown exactly as typed, says it is not a command, and mentions `help`. The reply MUST
   offer, as controls (FR-015), every command or alias whose name is at most 2 single-letter edits
-  from the typed word (a letter added, removed or changed, or two neighbouring letters swapped),
-  and every command whose name begins with the typed word when it is at least 2 letters long,
+  from the typed word, or at most 1 when the typed word has 3 letters or fewer (a letter added,
+  removed or changed, or two neighbouring letters swapped), and every command whose name begins with the typed word when it is at least 2 letters long,
   closest first and at most 3. Capitals don't count as edits. When none qualifies, the reply
   offers only `help`.
 - **FR-017**: A command with an argument it doesn't take, or missing one it needs, MUST get a reply
@@ -762,7 +762,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-033**: With forced colors active, the prompt, typed commands, output, links, command
   controls, the command line, its cursor, focus indicators and, on mobile, the pocket terminal's
   screen and keys MUST stay visible and distinguishable. None may rely on a background image or a
-  background color alone.
+  background color alone. When the visitor asks for reduced transparency, the Terminal's glass
+  MUST become a solid surface, with nothing behind it showing through.
 - **FR-034**: Every control in the Terminal, including command controls in the output, MUST have a
   target of at least 24 by 24 CSS px (WCAG 2.2 success criterion 2.5.8), or larger where this spec
   (FR-051) or the approved design sets it.
@@ -956,7 +957,8 @@ plain server-rendered page.
 - **File system**: the CV is laid out as files so engineers can browse it with the commands they
   know. It is part of this feature, not a feature of its own, because no other app in the first
   release browses files. If a later app does, such as a Files app, its spec can move the file
-  system into the shared core. Files have no extensions, and `cat` is the only way to read one.
+  system into the shared core. Files have no extensions except `cv.json` (FR-055), and `cat`,
+  `jq` and `vim` read them.
 - **Pocket terminal**: the phone's odd touch is visual. It is drawn by the site's designer, so it
   is original by construction, and its keys are the way in for visitors who don't want to type
   on a phone. The design sets which device it evokes, as long as it copies none.
@@ -973,7 +975,8 @@ plain server-rendered page.
   - Settings, Contact and the requirement inspector, each a separate feature.
   - Running real programs, reaching the network, or any command that changes the site.
   - A file system shared with other apps, or a Files app. A later feature may add them.
-  - Tab completion, pipes, scripts, variables and a command language beyond FR-008.
+  - Tab completion, quotes, scripts, variables, and a command language beyond FR-008 and the `|`
+    of FR-057.
   - Changing the file system, hidden files, file permissions, and any file not built from the CV
     document or the spec list.
   - Commands for apps that don't exist yet. `open` gains names as later features add apps.

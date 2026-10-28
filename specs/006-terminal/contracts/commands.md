@@ -83,16 +83,16 @@ and `help work` shows `work`'s own help (edge cases).
 
 For a typed word `w`, in lower case:
 
-1. Every command name and alias `n` with `osa(w, n) ≤ 2`, where `osa` is the optimal string
-   alignment distance (an insertion, deletion, substitution or swap of two neighbouring letters
-   each cost 1).
+1. Every command name and alias `n` with `osa(w, n) ≤ 2`, or `≤ 1` when `w` has 3 letters or
+   fewer, where `osa` is the optimal string alignment distance (an insertion, deletion,
+   substitution or swap of two neighbouring letters each cost 1).
 2. When `w` is at least 2 letters long, every command name that starts with `w` (distance 0).
 3. Sorted by distance, then `help` order. An alias and its command count once, by the nearer
    name, and the chip runs the name that matched. At most 3.
 
 `wrok` → `work`. `hlep` → `help`. `proj` → `projects`. `sudo` → none. Short words reach the
-one-character alias: `l` is 1 edit from `ls` and from `?`, and 2 from `cv`, `cd` and `jq`. So it
-gets `?`, then `ls`, then `cv`, in `help` order within each distance.
+one-character alias: `l` is 1 edit from `ls` and from `?`, so it gets `?`, then `ls`, in `help`
+order. `rm` is 1 edit from nothing and gets only `help`; `mv` gets `cv`; `cta` gets `cat`.
 
 ## The vim view's keys
 

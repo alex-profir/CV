@@ -50,6 +50,14 @@ page by real input: clicks, taps and typed keys.
 | mobile | `pocket-landscape` | `pocket` at 812 × 375 |
 | mobile | `pocket-keyboard` | Tap the command line, then make the page 300 px shorter at the same width (research R15) |
 | mobile | `pocket-vim` | Tap the `cv` key |
+| mobile | `pocket-help` | From `pocket`, tap the `help` key |
+| mobile | `pocket-unknown` | From `pocket`, tap the command line, type `wrok`, Enter |
+| mobile | `pocket-ls` | From `pocket`, tap the `ls` key |
+| mobile | `pocket-cat` | From `pocket-ls`, tap `work/`, then the first file |
+| mobile | `pocket-clear` | From `pocket-help`, tap the `clear` key |
+| mobile | `pocket-long-command` | From `pocket`, tap the command line, type 500 characters |
+| mobile | `pocket-vim-search` | From `pocket-vim`, tap the work fold, then the `/` key, a word from the CV's first work summary, Enter |
+| mobile | `pocket-vim-help` | From `pocket-vim`, tap the `:help` chip |
 
 ## Variants
 

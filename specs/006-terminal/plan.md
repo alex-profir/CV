@@ -104,7 +104,7 @@ offline with the same output (FR-036, R21).
   FR-002).
 
 **Scale/Scope**: 66 requirements; 2 shells; 22 commands and 3 aliases; a file system of about 30
-files; a vim view of about 290 lines; 13 desktop and 4 mobile check states; about 60 new tokens;
+files; a vim view of about 290 lines; 13 desktop and 12 mobile check states; about 60 new tokens;
 1 new site check part and 6 parts extended.
 
 ## Constitution Check

@@ -143,11 +143,12 @@ Constitution X); regular expressions per command (the command list would be spre
 
 **Decision**: optimal string alignment distance (Levenshtein with adjacent transposition, each
 pair swapped at most once), computed on lower-case words, over every command name and alias. A
-word gets each name at distance 1 or 2, and, when it is at least 2 letters long, each command
+word gets each name at distance 1 or 2 (only 1 for a word of 3 letters or fewer, so a 2-letter
+word doesn't reach every 2-letter command), and, when it is at least 2 letters long, each command
 whose name starts with it (FR-016). The list is sorted by distance (a prefix match counts as its
 distance), then by `help` order, without duplicates. An alias and its command count once, by the
-nearer name, and at most 3 are offered. `sudo`, `rm` and `mkdir` find nothing within 2 edits of a
-name and get only `help`.
+nearer name, and at most 3 are offered. `sudo`, `rm` and `mkdir` find nothing within their limit
+of a name and get only `help`; `mv` gets `cv`.
 
 **Alternatives considered**: full Damerau–Levenshtein (the same results on single words this short,
 with more code); a fuzzy-search package (Constitution X, and its scores would not match FR-016's
@@ -389,7 +390,10 @@ gives the details.
   `terminal-cat`, `terminal-clear`, `terminal-long-command`, `terminal-minimized`,
   `terminal-maximized` and `terminal-two-windows`. Mobile: `pocket`, `pocket-landscape`,
   `pocket-keyboard` (the command line tapped, then the page made 300 px shorter at the same
-  width, R15), `pocket-vim`. Each runs in `accessibility`. `fonts` adds `terminal-help` and
+  width, R15), `pocket-vim`, and the shared states again at the phone width, so FR-038's phone
+  width covers every FR-035 state: `pocket-help`, `pocket-unknown`, `pocket-ls`, `pocket-cat`,
+  `pocket-clear`, `pocket-long-command`, `pocket-vim-search` and `pocket-vim-help`. Each runs in
+  `accessibility`. `fonts` adds `terminal-help` and
   `pocket-vim`. `layout` adds zoom and text spacing on `terminal-help` and `pocket`.
 - **`terminal` part** (FR-040, FR-042): in each shell, it runs every CV command by typing it. It
   reads the output group's text, links and `<time datetime>` in order, and compares them with
