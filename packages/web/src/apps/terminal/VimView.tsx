@@ -160,6 +160,7 @@ export function VimView({ state, shell, send }: Props) {
         className="vim-text"
         tabIndex={0}
         role="document"
+        aria-label={fill(words.label, { file })}
         aria-readonly="true"
         aria-roledescription={words.roleDescription}
         aria-describedby={status}

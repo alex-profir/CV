@@ -76,7 +76,7 @@ div.pocket                            data-keyboard while the on-screen keyboard
 
 ```text
 section.vim                           aria-label "{file} (read only)"          FR-058 FR-065
-├── div.vim-text                      tabindex=0, role=document, aria-readonly=true,
+├── div.vim-text                      tabindex=0, role=document, aria-label "{file} (read only)", aria-readonly=true,
 │   │                                 aria-roledescription "vim view", aria-describedby the status line   FR-060 FR-065
 │   └── div.vim-line × lines          grid: span.vim-number (first row only) · span.vim-code   FR-063
 │       └── button.vim-fold           for a closed or open top-level fold: aria-expanded,

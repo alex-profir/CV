@@ -4,6 +4,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume } from '@cv/content';
+import { axNodes } from '../helpers/ax.ts';
 import { box, drag, openShell, settle } from '../helpers/shell.ts';
 import {
   COMMAND_LINE,
@@ -248,5 +249,58 @@ describe('006-terminal-FR-064: :q and the :q chip go back to the output; :help o
     await vimView(page).getByRole('button', { name: ':q', exact: true }).click();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
     expect(await typedLines(page)).toEqual(['cv']);
+  });
+});
+
+describe('006-terminal-FR-065: a screen reader hears the vim view, and focus is never trapped', () => {
+  const STATUS = '.terminal .terminal-status[role="status"]';
+  const spoken = (page: Page) => page.locator(STATUS).evaluate((element) => ({ text: (element.textContent ?? '').trim(), children: element.children.length }));
+
+  test('on opening, focus is on .vim-text, named and read only, and the status region says the file, read only, its lines and :q', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
+    const [text] = await axNodes(page, `${VIM} .vim-text`);
+    expect(text!.name).toBe('cv.json (read only)');
+    expect(await page.locator(`${VIM} .vim-text`).getAttribute('aria-readonly')).toBe('true');
+    expect(await page.locator(`${VIM} .vim-text`).getAttribute('role')).toBe('document');
+    expect(await spoken(page)).toEqual({ text: `cv.json, read only, ${CV_LINES.length} lines. Type :q to leave.`, children: 1 });
+  });
+
+  test('a message change is announced once; fold lines say whether they are open', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await vimEntry(page, '/', 'REST');
+    const shown = (await message(page)).replace(/\s*:help\s*:q$/, '');
+    expect(shown).toContain('match 1 of');
+    await expect.poll(async () => words((await spoken(page)).text)).toBe(shown);
+    const announced = (await page.locator(`${STATUS} > *`).elementHandle())!;
+    // A move that keeps the message says nothing new.
+    await page.locator(`${VIM} .vim-text`).focus();
+    await page.keyboard.press('j');
+    await settle(page);
+    expect(await announced.evaluate((element) => element.isConnected)).toBe(true);
+    expect((await spoken(page)).children).toBe(1);
+    const folds = await page.locator(`${VIM} button.vim-fold`).evaluateAll((list) => list.map((fold) => fold.getAttribute('aria-expanded')));
+    expect(folds.length).toBeGreaterThan(0);
+    for (const value of folds) expect(['true', 'false']).toContain(value);
+  });
+
+  test('Tab moves to the chips, then out of the Terminal, and Shift+Tab comes back', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await page.locator(`${VIM} .vim-text`).focus();
+    const at = (selector: string) => page.evaluate((query) => document.activeElement?.matches(query) ?? false, selector);
+    const stops: string[] = [];
+    for (let step = 0; step < 40; step += 1) {
+      await page.keyboard.press('Tab');
+      if (await page.evaluate(() => document.activeElement?.closest('.terminal') === null)) break;
+      stops.push(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? ''));
+    }
+    // The fold lines come first, then the :help and :q chips, then out.
+    expect(stops.slice(-2)).toEqual([':help', ':q']);
+    expect(await page.evaluate(() => document.activeElement?.closest('.terminal') === null)).toBe(true);
+    await page.keyboard.press('Shift+Tab');
+    expect(await at(`${VIM} button.command-chip[aria-label=":q"]`)).toBe(true);
   });
 });
