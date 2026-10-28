@@ -493,14 +493,16 @@ full content and the site's fonts, and an update never interrupts an open shell.
 
 ### Tests for User Story 6 (REQUIRED) ⚠️
 
-- [ ] T098 [P] [US6] Write `packages/web/test/shell/offline.test.ts`:
+- [X] T098 [P] [US6] Write `packages/web/test/shell/offline.test.ts`:
   - covers 005-os-shell-FR-052: after one visit to `/`, and separately after one visit to `/cv` only, `/` opened offline at 375 × 812 and 1440 × 900 shows the shell complete (icons, wallpaper, styles) and opens the CV app with every field of `expectedFields(resume)`, with text in the site's fonts (`document.fonts`) (US6 scenarios 1, 2);
   - covers 005-os-shell-FR-053: with version A open and version B installed, nothing reloads, the CV window stays open, and a font first used after the update still loads; the next visit shows B (US6 scenario 3); with service workers blocked, the shell works and shows no error.
 
 ### Implementation for User Story 6
 
-- [ ] T099 [US6] Make the root offline-ready, after T098 (research R14, contracts/site.md Service worker): confirm the worker's precache (every built file) holds `index.html` at `/` with status 200 and both `os` assets, and that a failed navigation to `/` answers the stored page, with no change to `packages/web/src/sw/service-worker.ts`. If T098 finds a gap, fix it in `ShellPage.tsx` or `build-site.ts` first (for example a missing font preload), and change the worker only if the gap is there, recording why here.
-- [ ] T100 [US6] Checkpoint, after T098 and T099: T098 and 004's offline tests pass; quickstart scenario 9 gives its expected results. Commit by area.
+- [X] T099 [US6] Make the root offline-ready, after T098 (research R14, contracts/site.md Service worker): confirm the worker's precache (every built file) holds `index.html` at `/` with status 200 and both `os` assets, and that a failed navigation to `/` answers the stored page, with no change to `packages/web/src/sw/service-worker.ts`. If T098 finds a gap, fix it in `ShellPage.tsx` or `build-site.ts` first (for example a missing font preload), and change the worker only if the gap is there, recording why here.
+  - **Result (2026-10-28)**: no gap. T098's tests show the precache holds `/` (after a visit to `/cv` only, `/` opens offline in both shells with the CV app's every field, the wallpaper, the icons and every text in the site's fonts) and that the open shell needs nothing more after an update (every font face loads with the network dropping connections). `packages/web/src/sw/service-worker.ts`, `ShellPage.tsx` and `build-site.ts` are unchanged.
+- [X] T100 [US6] Checkpoint, after T098 and T099: T098 and 004's offline tests pass; quickstart scenario 9 gives its expected results. Commit by area.
+  - **Result (2026-10-28)**: T098 (4 tests) and 004's offline tests pass, with 004's link, server HTML and site check no-script and offline tests, which share the readers changed here. Scenario 9's steps are `shell/offline.test.ts`: the one-visit cases at 375 and 1440 px from `/` and from `/cv`, and the update case with a rebuilt copy. Test-side changes: 004's switchable server and offline steps moved from `test/offline.test.ts` to `test/helpers/offline.ts`, unchanged, for both tests; the site check's `mainSequence` takes an optional root selector (`main` by default), since the shell's CV app isn't the page's first `main` (T110's `cv-app` part reuses it); the update case builds a whole copy of the repository for version B, as 004's `version()` rebuilds only `/cv`.
 
 **Checkpoint**: User Stories 1 to 6 work on their own
 

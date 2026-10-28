@@ -15,13 +15,13 @@ const CLOSE = '\u0002';
 
 const collapse = (value: string) => value.replace(/\s+/g, ' ');
 
-// The text of `<main>` in DOM order, with a marker where each `time[datetime]`
-// and `a[href]` starts, and white space collapsed. Empty when there's no
-// `<main>`.
-export function mainSequence(page: Page): Promise<string> {
+// The text of `<main>`, or of the element `root` names, in DOM order, with a
+// marker where each `time[datetime]` and `a[href]` starts, and white space
+// collapsed. Empty when there's no such element.
+export function mainSequence(page: Page, root = 'main'): Promise<string> {
   return page.evaluate(
-    ({ open, close }) => {
-      const main = document.querySelector('main');
+    ({ open, close, root }) => {
+      const main = document.querySelector(root);
       if (main === null) return '';
       let text = '';
       const walk = (node: Node) => {
@@ -38,7 +38,7 @@ export function mainSequence(page: Page): Promise<string> {
       walk(main);
       return text.replace(/\s+/g, ' ');
     },
-    { open: OPEN, close: CLOSE },
+    { open: OPEN, close: CLOSE, root },
   );
 }
 
