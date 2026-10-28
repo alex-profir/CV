@@ -102,6 +102,24 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   1000 × 668 at x 220, y 104. Changed: [wireframes.md](wireframes.md) (the CV window row). No
   state, mockup, export or token changes. The owner confirms it in the 005 pull request with the
   changes above.
+- **2026-10-28, the Tab order between windows** (T124). The design said Tab visits the open
+  windows front to back, but the windows keep the order they were opened in when one is raised,
+  as T079 found that following the stacking sends Tab back and forth between two windows for ever
+  (FR-030). The owner confirms the shipped order: newest first, and Tab reaching a window behind
+  brings it to the front. Changed: [wireframes.md](wireframes.md) (item 2 of "Tab order on
+  desktop"). No state, mockup, export or token changes.
+- **2026-10-28, the focus indicator in menus and on a window** (T122, the owner's design
+  comparison). In a menu, the focused item's outline, 2 px outside it, covered the menu's edge and
+  the next item, and the item under the pointer was filled as well, so two items showed at once.
+  The pointer now moves focus onto the item it's over, so one item is marked. A menu item's
+  outline sits on its edge, with 2 px between items and the menu's padding from 4 px to 6 px, so
+  it clears the menu's edge and the next item while keeping WCAG 2.4.13's area (an outline inside
+  the item falls short). A window's content that took focus (browsers that let Tab reach a
+  scrolling area) drew its outline under the title bar and over the window's edge; the whole
+  window now shows it, around its title bar and corners. Safari drew the content's scroll bar
+  past the window's rounded bottom corner; it is clipped to the corner now. Changed:
+  [wireframes.md](wireframes.md) (the focus indicator row). The menu's exports keep 4 px and no
+  gap; no state or token changes. At the owner's request.
 
 ## Sign-off
 

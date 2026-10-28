@@ -49,7 +49,7 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Focused window | A lighter title bar with brighter text, light controls that show their glyphs, a brighter edge and a deeper shadow. A window that isn't focused has a darker title bar, slate controls whose glyphs show only under the pointer or keyboard focus, and a lighter shadow. The glyphs make the difference without color, and in forced colors the focused window keeps a thicker border | FR-017 |
 | CV layout inside a window | Two columns (headings on the left) while the window's content is at least 900 px wide, `/cv`'s own wide breakpoint (`breakpoint.wide`). Narrower, it uses `/cv`'s phone layout. The layout follows the window's width, not the screen's | FR-008 |
 | Home screen grid | 64 px icons with names below, as many per row as fit at 76 px or more each: 4 at 375 px, 3 at 320 px, 10 at 812 px in landscape. Filled left to right | FR-031 |
-| Focus indicator | A 2 px outline, 2 px outside the element, in the shell's periwinkle accent: 7.4:1 on the focused title bar, 8.5:1 on a window, 9.7:1 on the wallpaper. Inside the CV, `/cv`'s own indicator applies | FR-024 |
+| Focus indicator | A 2 px outline, 2 px outside the element, in the shell's periwinkle accent: 7.4:1 on the focused title bar, 8.5:1 on a window, 9.7:1 on the wallpaper. A menu item shows it on its edge, with 2 px between items and 6 px inside the menu, so it stays clear of the menu's edge and the next item, and only one item is marked at a time: the pointer moves focus onto the item it's over. When a window's content itself takes focus, as a browser that lets Tab reach a scrolling area does, the whole window shows it, around its title bar and rounded corners (a maximized one, inside its edge). The content's scroll bar stays inside the window's rounded corner. Inside the CV, `/cv`'s own indicator applies | FR-024 |
 | Mobile header | 52 px, kept at the top while the app scrolls. A "Home" button (44 × 44 px) on the left, the app's name centered | FR-032, FR-037 |
 | Wallpaper | One original wallpaper from tokens, proposed: a deep graphite with an indigo glow top left, a teal glow bottom right and a faint dot grid. Set by the mockup | FR-044 |
 | Theme | One theme, Graphite: a dark shell (menu bar, dock, windows, menus, home screen) around the CV app, which keeps `/cv`'s light look. `/cv`'s fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
@@ -833,8 +833,10 @@ document has no name, the heading is the site heading `CV`.
 1. The menu bar: one Tab stop. Left and Right move between menu titles, and Enter, Space or Down
    opens a menu. In a menu, Up and Down move, Enter chooses, and Escape closes it and returns
    focus to its title.
-2. The open windows, front to back. In each: the title bar, then its controls, then its content
-   in reading order. Tab reaching a window behind brings it to the front (FR-030).
+2. The open windows, newest first: the order they were opened in, which raising a window doesn't
+   change. In each: the title bar, then its controls, then its content in reading order. Tab
+   reaching a window behind brings it to the front (FR-030). Following the stacking instead would
+   send Tab back and forth between two windows for ever.
 3. The dock: one Tab stop. Left and Right move between items, and Enter or Space activates one.
 
 From first load, Tab 1 reaches the menu bar and Tab 2 the CV window (SC-002: at most 3). Focus
