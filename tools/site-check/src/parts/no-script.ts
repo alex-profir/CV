@@ -56,8 +56,8 @@ export type FieldProblem = { type: 'missing-field' | 'out-of-order'; subject: st
 // only earlier is out of order, named against the field it appears before;
 // of a run of such fields, only the first is named. A field that doesn't
 // occur at all is missing. `when` ends the detail: the condition the page
-// was loaded in.
-export function fieldProblems(sequence: string, fields: readonly ExpectedField[], when = 'with scripting off'): FieldProblem[] {
+// was loaded in; `place` is where the field was looked for.
+export function fieldProblems(sequence: string, fields: readonly ExpectedField[], when = 'with scripting off', place = 'the page'): FieldProblem[] {
   const problems: FieldProblem[] = [];
   let from = 0;
   let previous: string | null = null;
@@ -77,7 +77,7 @@ export function fieldProblems(sequence: string, fields: readonly ExpectedField[]
       continue;
     }
     inRun = false;
-    problems.push({ type: 'missing-field', subject: field.path, detail: `"${shown(field)}" is not in the page ${when}` });
+    problems.push({ type: 'missing-field', subject: field.path, detail: `"${shown(field)}" is not in ${place}${when === '' ? '' : ` ${when}`}` });
   }
   return problems;
 }
@@ -91,13 +91,14 @@ const rgb = (hex: string) => {
 
 const firstFamily = (list: string) => (list.split(',')[0] ?? '').trim().replace(/^["']|["']$/g, '');
 
-// Whether the style sheet applied: the body's background and font family are
-// the tokens' values. Null when it did.
-export async function unstyledDetail(page: Page): Promise<string | null> {
-  const body = await page.evaluate(() => {
-    const style = getComputedStyle(document.body);
-    return { background: style.backgroundColor, family: style.fontFamily };
-  });
+// Whether the style sheet applied: the body's background, and the font
+// family of the element `textIn` names (the body by default), are the
+// tokens' values. Null when it did.
+export async function unstyledDetail(page: Page, textIn = 'body'): Promise<string | null> {
+  const body = await page.evaluate((selector) => {
+    const text = document.querySelector(selector) ?? document.body;
+    return { background: getComputedStyle(document.body).backgroundColor, family: getComputedStyle(text).fontFamily };
+  }, textIn);
   const background = rgb(tokenValue('color.surface'));
   if (body.background !== background) return `the style sheet did not apply (background is ${body.background}, expected the background token)`;
   const family = firstFamily(tokenValue('font.family.body'));
@@ -121,5 +122,41 @@ export async function noScriptProblems(page: Page, fields: readonly ExpectedFiel
     return [...document.querySelectorAll(selector)].map(describe);
   }, SCRIPT_ONLY);
   for (const subject of new Set(controls)) problems.push(problem('script-only-control', subject, 'a control or element that needs a script, which the page must not hold'));
+  return problems;
+}
+
+// What a visitor could take for a control: 004's list, and the roles of the
+// shell's menus and buttons.
+const CONTROLS = `${SCRIPT_ONLY}, [role="button"], [role="menubar"], [role="menu"], [role^="menuitem"]`;
+
+// The site root with scripting off (005 FR-049, contracts/cli.md Parts): the
+// site's name as its heading, a link to /cv, the style sheet applied, and no
+// control shown. The shell's markup is in the page for the script to
+// hydrate, so only what's rendered counts.
+export async function rootNoScriptProblems(page: Page, name: string, cvPath: string, pageLabel: string, variant: string): Promise<Problem[]> {
+  const problem = (type: string, subject: string, detail: string): Problem => ({ part: 'no-script', page: pageLabel, variant, type, subject, detail });
+  const problems: Problem[] = [];
+  const shown = await page.evaluate(
+    ({ selector, href }) => {
+      const rendered = (element: Element) => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden';
+      const describe = (element: Element) => {
+        const classes = typeof element.className === 'string' && element.className.trim() !== '' ? `.${element.className.trim().split(/\s+/).join('.')}` : '';
+        return `${element.tagName.toLowerCase()}${classes}`;
+      };
+      return {
+        headings: [...document.querySelectorAll('h1')].filter(rendered).map((heading) => (heading.textContent ?? '').replace(/\s+/g, ' ').trim()),
+        link: [...document.querySelectorAll(`a[href="${href}"]`)].some(rendered),
+        controls: [...document.querySelectorAll(selector)].filter(rendered).map(describe),
+      };
+    },
+    { selector: CONTROLS, href: cvPath },
+  );
+  if (!shown.headings.includes(collapse(name).trim())) problems.push(problem('missing-heading', 'h1', `the site's name, ${JSON.stringify(name)}, is not shown as the heading with scripting off`));
+  if (!shown.link) problems.push(problem('missing-link', `a[href="${cvPath}"]`, 'no link to the CV is shown with scripting off'));
+  // The page's text is in `main`, which the style sheet gives /cv's body
+  // font; the body keeps the background.
+  const unstyled = await unstyledDetail(page, 'main');
+  if (unstyled !== null) problems.push(problem('unstyled', 'body', unstyled));
+  for (const subject of new Set(shown.controls)) problems.push(problem('visible-control', subject, 'a control is shown with scripting off'));
   return problems;
 }

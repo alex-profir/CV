@@ -2,7 +2,7 @@
 // and its service worker make, recorded through the context, must go to the
 // local server. Any other address is reported in full, and the request is
 // stopped before it leaves the browser. `data:` addresses are the page's own.
-import type { BrowserContext, Request } from 'playwright';
+import type { BrowserContext, Page, Request } from 'playwright';
 import type { Problem } from '../report.ts';
 import { waitForWorker } from './offline.ts';
 
@@ -31,14 +31,27 @@ export async function recordRequests(context: BrowserContext, origin: string): P
 }
 
 // Opens `url` in a context recorded by `recordRequests`, waits for the page
-// and any service worker it registers to settle, and reports what went to
+// and any service worker it registers to settle, runs `then` (on the site
+// root, opening the CV app: 005 FR-054, FR-056), and reports what went to
 // another site.
-export async function otherSiteProblems(context: BrowserContext, foreign: Map<string, string>, url: string, pageLabel: string, variant: string): Promise<Problem[]> {
+export async function otherSiteProblems(
+  context: BrowserContext,
+  foreign: Map<string, string>,
+  url: string,
+  pageLabel: string,
+  variant: string,
+  then?: (page: Page) => Promise<void>,
+): Promise<Problem[]> {
   const page = await context.newPage();
   await page.goto(url, { waitUntil: 'load' });
   // Pages register their worker after `load`. Once it controls the page,
   // it has installed, so its requests are recorded too.
   await waitForWorker(page);
+  if (then !== undefined) {
+    await then(page);
+    // What the step asked for, such as a font first used now.
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  }
   await page.waitForLoadState('networkidle');
   return [...foreign].map(([address, from]) => ({ part: 'other-sites' as const, page: pageLabel, variant, type: 'other-site-request', subject: address, detail: `requested by ${from}` }));
 }

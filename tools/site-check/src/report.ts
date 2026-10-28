@@ -3,9 +3,11 @@
 // order, and nothing here depends on the locale.
 import { compare } from '../../traceability/src/report.ts';
 
-// The check's parts, in the summary's order (research R11).
+// The check's parts, in the summary's order (research R11; 005
+// contracts/cli.md Parts). `cv-app` runs only when the site root is a page.
 export const PARTS = [
   'content',
+  'cv-app',
   'accessibility',
   'lighthouse',
   'no-script',
@@ -22,7 +24,12 @@ export type Part = (typeof PARTS)[number];
 
 // One thing that failed. `page` is a URL path, or `-` for the `content`
 // part. `variant` is `375px`, `mobile`, `400%-zoom`, `text-spacing`, `A4`,
-// `Letter`, `forced-colors`, `reduced-motion` or `-`.
+// `Letter`, `forced-colors`, `reduced-motion` or `-`; on the site root it is
+// `<shell>/<state>/<width>px`, such as `desktop/two-windows/1440px`, except
+// for Lighthouse's profiles and the no-script part's plain widths (005
+// contracts/cli.md Variants on the root). `type` is a part's own, such as
+// `missing-field`, `axe:<rule>`, or, on the root, `focus-target`,
+// `shortcut`, `trapped` and `moved`, each rendered like any other.
 export type Problem = {
   part: Part;
   page: string;
