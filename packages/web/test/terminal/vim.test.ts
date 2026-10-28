@@ -262,7 +262,6 @@ describe('006-terminal-FR-065: a screen reader hears the vim view, and focus is 
     await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
     const [text] = await axNodes(page, `${VIM} .vim-text`);
     expect(text!.name).toBe('cv.json (read only)');
-    expect(await page.locator(`${VIM} .vim-text`).getAttribute('aria-readonly')).toBe('true');
     expect(await page.locator(`${VIM} .vim-text`).getAttribute('role')).toBe('document');
     expect(await spoken(page)).toEqual({ text: `cv.json, read only, ${CV_LINES.length} lines. Type :q to leave.`, children: 1 });
   });

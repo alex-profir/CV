@@ -130,3 +130,120 @@ export async function quitVim(page: Page): Promise<void> {
   await vimEntry(page, ':', 'q');
   await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
 }
+
+// FR-035's states, each reached from a just-opened Terminal by real input.
+// `desktop` and `mobile` list the states of each shell (contracts/cli.md
+// States); a state's `size` is the page it needs, when not the shell's.
+export type TerminalState = { name: string; size?: { width: number; height: number }; reach: (page: Page) => Promise<void> };
+
+const ok = async () => {};
+
+async function openFold(page: Page): Promise<void> {
+  await openVimView(page);
+  await page.locator('.terminal section.vim .vim-text').focus();
+  await page.keyboard.press('z');
+  await page.keyboard.press('a');
+}
+
+async function catInFolder(page: Page): Promise<void> {
+  await runGroup(page, 'cd work');
+  const listing = await runGroup(page, 'ls');
+  const before = await runCount(page);
+  await listing.locator('.run-output button[aria-label^="cat "]').first().click();
+  await page.waitForFunction((count) => document.querySelectorAll('.terminal section.run').length > count, before);
+}
+
+const SHARED_STATES: TerminalState[] = [
+  { name: 'just opened', reach: ok },
+  { name: 'after help', reach: async (page) => void (await runGroup(page, 'help')) },
+  { name: 'vim folded', reach: openVimView },
+  {
+    name: 'vim fold open and search',
+    reach: async (page) => {
+      await openFold(page);
+      await vimEntry(page, '/', 'e');
+    },
+  },
+  {
+    name: 'vim key help',
+    reach: async (page) => {
+      await openVimView(page);
+      await vimEntry(page, ':', 'help');
+    },
+  },
+  { name: 'unknown command', reach: async (page) => void (await runGroup(page, 'wrok')) },
+  { name: 'after ls', reach: async (page) => void (await runGroup(page, 'ls')) },
+  { name: 'cat inside a folder', reach: catInFolder },
+  {
+    name: 'after clear',
+    reach: async (page) => {
+      await runGroup(page, 'help');
+      await typeLine(page, 'clear');
+      await page.waitForFunction(() => document.querySelectorAll('.terminal section.run').length === 0);
+    },
+  },
+  {
+    name: 'long command typed',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.insertText('help '.repeat(100));
+    },
+  },
+];
+
+export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
+  desktop: [
+    ...SHARED_STATES,
+    { name: 'after specs', reach: async (page) => void (await runGroup(page, 'specs')) },
+    {
+      name: 'Terminal menu open',
+      reach: async (page) => {
+        await page.click('#menu-title-app');
+        await page.locator('#menu-app').waitFor();
+      },
+    },
+    {
+      name: 'minimized',
+      reach: async (page) => {
+        await page.getByRole('button', { name: 'Minimize Terminal' }).click();
+        await page.locator('#os .window[data-view="terminal"]').waitFor({ state: 'hidden' });
+      },
+    },
+    { name: 'maximized', reach: async (page) => page.getByRole('button', { name: 'Maximize Terminal' }).click() },
+    {
+      name: 'two windows',
+      reach: async (page) => {
+        await page.locator('#os .dock-item[data-app="cv"]').click();
+        await page.locator('#os .window[data-view="cv"]').waitFor();
+      },
+    },
+  ],
+  mobile: [
+    ...SHARED_STATES,
+    { name: 'pocket landscape', size: { width: 812, height: 375 }, reach: async (page) => void (await runGroup(page, 'help')) },
+    {
+      name: 'keyboard open',
+      reach: async (page) => {
+        await page.locator(COMMAND_LINE).tap();
+        await page.setViewportSize({ width: 375, height: 512 });
+        await page.waitForSelector('#os .pocket[data-keyboard]');
+      },
+    },
+    {
+      name: 'vim keys',
+      reach: async (page) => {
+        await page.locator('#os .pocket-keys button.pocket-key[aria-label="cv"]').tap();
+        await vimView(page).waitFor();
+      },
+    },
+  ],
+};
+
+// A fresh page in a state: the shell at its size, the Terminal open, and
+// the state reached.
+export async function terminalInState(shell: TerminalShell, state: TerminalState, options: Partial<ShellOptions> = {}): Promise<Page> {
+  const page = await openTerminalPage(shell, { ...(state.size ?? {}), ...options });
+  await state.reach(page);
+  await settle(page);
+  return page;
+}

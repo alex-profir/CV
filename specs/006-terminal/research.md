@@ -248,7 +248,7 @@ package (Constitution X; the lexer is about 100 lines, and folds need its line p
   screen. It renders every line. The CV's JSON is under 400 lines, so it needs no virtual
   scrolling, which would also break the screen reader's reading of the whole file (FR-065). The
   text area is one focusable element (`tabindex="0"`), with `role="document"`,
-  `aria-readonly="true"` and `aria-roledescription` from site text. It holds the key handler,
+  an `aria-label` naming it read only (`role=document` allows no `aria-readonly`) and `aria-roledescription` from site text. It holds the key handler,
   so a screen reader reads it in browse mode and passes keys through in focus mode. Fold lines
   are `button`s with `aria-expanded` (FR-061, FR-065). `/` and `:` show a real `<input>` in the
   message line. On a phone that opens the keyboard for the search text (design), and Escape

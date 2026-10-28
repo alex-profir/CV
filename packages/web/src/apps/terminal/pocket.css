@@ -87,6 +87,11 @@
   padding: var(--token-size-terminal-padding-pocket-narrow);
 }
 
+/* On the narrowest phones `ls` shows one name a line (spec edge cases). */
+.pocket .out-columns {
+  flex-direction: column;
+}
+
 .pocket .vim-status,
 .pocket .vim-message,
 .pocket .vim-help {
@@ -142,6 +147,10 @@
     padding: var(--token-size-terminal-padding-pocket);
   }
 
+  .pocket .out-columns {
+    flex-direction: row;
+  }
+
   .pocket .vim-status,
   .pocket .vim-message,
   .pocket .vim-help {
@@ -182,5 +191,36 @@
 
   .pocket-key {
     min-block-size: var(--token-size-home-target);
+  }
+}
+
+/* ---- Modes (FR-033, research R19) ------------------------------------- */
+
+/* Less transparency, and forced colors: the case and its screen are solid,
+   with no sheen; in forced colors, outlined in system colors. */
+@media (prefers-reduced-transparency: reduce) {
+  .pocket,
+  .pocket-screen {
+    background: var(--token-color-shell-surface);
+  }
+}
+
+@media (forced-colors: active) {
+  .pocket,
+  .pocket-screen {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+  }
+
+  .pocket-key {
+    border: var(--token-border-thin) solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .pocket-light,
+  .pocket-grille {
+    border: var(--token-border-thin) solid CanvasText;
+    background: none;
   }
 }

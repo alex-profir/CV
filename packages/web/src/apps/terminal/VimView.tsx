@@ -89,7 +89,8 @@ function position(state: VimState): string {
 
 function Help({ file }: { file: string }) {
   return (
-    <div className="vim-help" data-req="006-terminal-FR-064">
+    // It scrolls on its own, so it takes focus, to be scrolled by keys.
+    <div className="vim-help" role="region" tabIndex={0} aria-label={fill(words.helpHeading, { file })} data-req="006-terminal-FR-064">
       <p className="vim-help-heading">{fill(words.helpHeading, { file })}</p>
       <dl className="vim-help-rows">
         {words.helpRows.map((row) => (
@@ -161,7 +162,6 @@ export function VimView({ state, shell, send }: Props) {
         tabIndex={0}
         role="document"
         aria-label={fill(words.label, { file })}
-        aria-readonly="true"
         aria-roledescription={words.roleDescription}
         aria-describedby={status}
         data-focus-home=""

@@ -59,7 +59,7 @@ div.pocket                            data-keyboard while the on-screen keyboard
 │   └── button.pocket-key × 8         help, about, work, projects, skills, cv, ls, clear
 │                                     — or, with the vim view open —
 │                                     j, k, za, /, n, gg, G, :q, named Down, Up, Open or close fold,
-│                                     Search, Next match, Top, Bottom, Quit
+│                                     Search, Next match, Top, Bottom, Quit, each after its key: "gg, Top" (WCAG 2.5.3)
 └── div.pocket-foot[aria-hidden=true] the drawn case's foot: grille, {basics.name} (left out when the CV has no name); in the page after the keys, as it is seen (004 FR-027)   FR-054
 ```
 
@@ -76,12 +76,12 @@ div.pocket                            data-keyboard while the on-screen keyboard
 
 ```text
 section.vim                           aria-label "{file} (read only)"          FR-058 FR-065
-├── div.vim-text                      tabindex=0, role=document, aria-label "{file} (read only)", aria-readonly=true,
+├── div.vim-text                      tabindex=0, role=document, aria-label "{file} (read only)" (role=document allows no aria-readonly),
 │   │                                 aria-roledescription "vim view", aria-describedby the status line   FR-060 FR-065
 │   └── div.vim-line × lines          grid: span.vim-number (first row only) · span.vim-code   FR-063
 │       └── button.vim-fold           for a closed or open top-level fold: aria-expanded,
 │                                     "+-- {n} lines: "{key}": [ ···"          FR-061 FR-065
-├── div.vim-help                      only after :help: the keys, as the design's key help   FR-064
+├── div.vim-help                      only after :help: the keys, as the design's key help; role=region, tabindex=0, named by its heading, as it scrolls   FR-064
 ├── div.vim-status                    [NORMAL|HELP] · {file} · [RO] · {pipe} · {type} · {line},{column} · {Top|Bot|All|n%}   FR-058 FR-059
 └── div.vim-message                   the message, or input.vim-entry while / or : is typed;
                                       button.command-chip ":help", button.command-chip ":q"   FR-060 FR-062 FR-064

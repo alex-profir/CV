@@ -98,7 +98,12 @@
   color: var(--token-color-selection-text);
 }
 
+/* A link is a target of a control row's height, and still wraps inside
+   its line (FR-034, FR-023). */
 .terminal a {
+  display: inline-block;
+  max-inline-size: 100%;
+  min-block-size: var(--token-size-terminal-control-row);
   color: var(--token-color-terminal-control);
   text-decoration-color: var(--token-color-link-underline);
   text-underline-offset: var(--token-border-thick);
@@ -336,6 +341,7 @@
   position: relative;
   flex: 1;
   min-inline-size: 0;
+  min-block-size: var(--token-size-terminal-control-row);
 }
 
 .command-line,
@@ -556,9 +562,7 @@
 /* Less transparency, and forced colors: the glass is solid, with no blur,
    sheen or rim light. */
 @media (prefers-reduced-transparency: reduce) {
-  .window[data-view="terminal"],
-  .pocket,
-  .pocket-screen {
+  .window[data-view="terminal"] {
     background: var(--token-color-shell-surface);
     box-shadow: var(--token-shadow-window);
     backdrop-filter: none;
@@ -566,13 +570,15 @@
 }
 
 @media (forced-colors: active) {
-  .window[data-view="terminal"],
-  .pocket,
-  .pocket-screen {
+  .window[data-view="terminal"] {
     border: var(--token-border-thin) solid CanvasText;
     background: Canvas;
     box-shadow: none;
     backdrop-filter: none;
+  }
+
+  .command-field {
+    border: var(--token-border-thin) solid CanvasText;
   }
 
   .terminal,
@@ -598,8 +604,11 @@
     color: LinkText;
   }
 
+  /* The block's own edge, so it shows by more than its fill; on an inline
+     box a block-end border moves no text. */
   .cursor-block,
   .vim-cursor {
+    border-block-end: var(--token-border-thin) solid Highlight;
     background: Highlight;
     color: HighlightText;
   }

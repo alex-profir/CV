@@ -33,7 +33,8 @@ const CONTROLS = 'button.command-chip, button.command-inline';
 
 const COMMAND_KEYS = ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'];
 const VIM_KEYS = ['j', 'k', 'za', '/', 'n', 'gg', 'G', ':q'];
-const VIM_NAMES = ['Down', 'Up', 'Open or close fold', 'Search', 'Next match', 'Top', 'Bottom', 'Quit'];
+// Each named by its key, then what it does (WCAG 2.5.3).
+const VIM_NAMES = ['j, Down', 'k, Up', 'za, Open or close fold', '/, Search', 'n, Next match', 'gg, Top', 'G, Bottom', ':q, Quit'];
 
 const phone = (width = 375, height = 812, url?: string) => openShell({ ...SHELL_PAGE.mobile, width, height, ...(url === undefined ? {} : { url }) });
 
@@ -151,7 +152,7 @@ describe('006-terminal-FR-025: the pocket terminal is usable by taps alone (SC-0
     for (const line of ['help', 'about', 'work', 'projects']) await tapRun(page, key(page, line), line);
     await key(page, 'cv').tap();
     await vimView(page).waitFor();
-    await page.locator(`${KEY}[aria-label="Quit"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Quit"]`).tap();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
     for (const section of ['education', 'skills', 'languages', 'interests', 'contact']) {
       if (COMMAND_KEYS.includes(section)) {
@@ -381,23 +382,23 @@ describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', ()
     const cursor = async () => ((await page.locator('.terminal .vim-status .vim-position').textContent()) ?? '').split(',')[0]?.trim();
     // The view opens on its first fold line.
     const start = Number(await cursor());
-    await page.locator(`${KEY}[aria-label="Down"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Down"]`).tap();
     // Past the closed fold, to the next line shown.
     await expect.poll(async () => Number(await cursor())).toBeGreaterThan(start);
-    await page.locator(`${KEY}[aria-label="Up"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Up"]`).tap();
     await expect.poll(cursor).toBe(String(start));
     const folded = () => page.locator('.terminal button.vim-fold[aria-expanded="true"]').count();
     const open = await folded();
-    await page.locator(`${KEY}[aria-label="Open or close fold"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Open or close fold"]`).tap();
     await expect.poll(folded).toBe(open + 1);
-    await page.locator(`${KEY}[aria-label="Bottom"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Bottom"]`).tap();
     await expect.poll(cursor).not.toBe(String(start));
-    await page.locator(`${KEY}[aria-label="Top"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Top"]`).tap();
     await expect.poll(cursor).toBe('1');
-    await page.locator(`${KEY}[aria-label="Search"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Search"]`).tap();
     await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal input.vim-entry') ?? false)).toBe(true);
     await page.keyboard.press('Escape');
-    await page.locator(`${KEY}[aria-label="Quit"]`).tap();
+    await page.locator(`${KEY}[aria-label$=", Quit"]`).tap();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
     expect((await keys(page)).map((each) => each.text)).toEqual(COMMAND_KEYS);
   });

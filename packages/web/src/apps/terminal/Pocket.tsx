@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { AppProps } from '../index.ts';
-import { siteText } from '../../site-text.ts';
+import { fill, siteText } from '../../site-text.ts';
 import { focusCommandLine } from './CommandLine.tsx';
 import { session } from './session.ts';
 import { runInShell, Terminal } from './Terminal.tsx';
@@ -41,7 +41,7 @@ export function Pocket(props: AppProps) {
   const vim = useSyncExternalStore(session.subscribe, () => session.get().vim !== null, () => session.get().vim !== null);
   const [active, setActive] = useState(0);
   const name = props.resume.basics?.name;
-  const keys = vim ? words.vim.map((each) => ({ line: each.key, label: each.name })) : words.commands.map((line) => ({ line, label: line }));
+  const keys = vim ? words.vim.map((each) => ({ line: each.key, label: fill(words.vimKeyName, { name: each.name, key: each.key }) })) : words.commands.map((line) => ({ line, label: line }));
 
   const press = (line: string) => (event: MouseEvent) => {
     const touch = (event.nativeEvent as PointerEvent).pointerType === 'touch';

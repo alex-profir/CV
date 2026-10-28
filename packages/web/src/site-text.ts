@@ -200,6 +200,9 @@ export const siteText = deepFreeze({
       vimBrand: 'cv-os pocket · vim keys',
       commandKeys: 'Command keys',
       vimKeys: 'Vim keys',
+      // A vim key's name: the key it shows, then what it does, so the
+      // name starts with the key's own text (WCAG 2.5.3).
+      vimKeyName: '{key}, {name}',
       commands: ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'],
       vim: [
         { key: 'j', name: 'Down' },
