@@ -127,6 +127,21 @@ describe('005-os-shell-FR-024: every desktop action works by keys alone, with a 
       await expectIndicator(page, `${keys} after a click`);
     }
   });
+
+  // Where glyph advances are whole pixels, as on Linux, a title can be an
+  // odd whole width, so centering it by half its width put it half a pixel
+  // off the grid and drew its outline too faint (found by CI). Odd and even
+  // widths are forced here, so any platform shows it.
+  test("a window title's indicator is visible whatever its width", async () => {
+    const page = await desktop();
+    await openAboutByKeys(page);
+    for (const width of [95, 96]) {
+      await page.addStyleTag({ content: `#os .window-title { inline-size: ${width}px !important; }` });
+      await press(page, 'Alt+Shift+N');
+      await expectFocus(page, '#os .window .window-title');
+      await expectIndicator(page, `a ${width} px title`);
+    }
+  });
 });
 
 describe('005-os-shell-FR-025: shortcuts and the Window menu reach the menu bar, the dock and the next window', () => {

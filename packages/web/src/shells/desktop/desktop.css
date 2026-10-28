@@ -239,12 +239,15 @@ span.menu-title {
   color: var(--token-color-title-bar-focused-text);
 }
 
-/* The window's name, centered over the whole title bar. */
+/* The window's name, centered over the whole title bar, clear of the
+   controls on both sides. Centered by its margins, not a transform: a
+   transform by half a pixel draws the focus outline between pixels, too
+   faint to see (FR-024). */
 .window-title {
   position: absolute;
-  inset-inline-start: 50%;
-  translate: -50% 0;
-  max-inline-size: calc(100% - 2 * (3 * var(--token-size-control) + var(--token-space-2)));
+  inset-inline: calc(3 * var(--token-size-control) + var(--token-space-2));
+  inline-size: fit-content;
+  margin-inline: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
