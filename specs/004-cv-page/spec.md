@@ -470,7 +470,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   change what the page shows. Until the publishing feature adds the domain, the page MUST NOT
   declare an address of its own, for search engines or for link previews. That feature adds the
   full address of `/cv`.
-- ~~**FR-018**~~: Removed [DATE: the day the owner approves] – replaced by 005-os-shell-FR-001: the
+- ~~**FR-018**~~: Removed 2026-10-28 – replaced by 005-os-shell-FR-001: the
   site root shows the OS shell.
 - **FR-019**: An unknown path MUST answer with a not-found status and a not-found page that says
   the page doesn't exist and links to `/cv`. The not-found page MUST meet the same requirements
@@ -537,7 +537,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 
 **Offline**
 
-- ~~**FR-038**~~: Removed [DATE: the day the owner approves] – replaced by 004-cv-page-FR-059.
+- ~~**FR-038**~~: Removed 2026-10-28 – replaced by 004-cv-page-FR-059.
 - **FR-039**: An online visit after a new version is published MUST show the new version on
   that visit, and MUST replace the stored copy with it. A stored copy MUST always be one complete
   version, never a mix of parts from two versions.
