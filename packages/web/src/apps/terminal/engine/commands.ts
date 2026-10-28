@@ -269,7 +269,8 @@ export const COMMANDS: readonly Command[] = [
   { name: 'languages', aliases: [], args: 'none', readsInput: false, run: LIST('languages') },
   { name: 'interests', aliases: [], args: 'none', readsInput: false, run: LIST('interests') },
   { name: 'contact', aliases: [], args: 'none', readsInput: false, run: plain('contact', (context) => output(contactBlock(cvInput(context)))) },
-  { name: 'cv', aliases: [], args: 'none', readsInput: false, run: plain('cv', (context) => runLine(CV_PIPE, context)) },
+  // From any folder: `cv.json` is in the home folder.
+  { name: 'cv', aliases: [], args: 'none', readsInput: false, run: plain('cv', (context) => runLine(CV_PIPE, { ...context, folder: [] })) },
   { name: 'site', aliases: [], args: 'none', readsInput: false, run: plain('site', (context) => output(siteBlock(context))) },
   { name: 'specs', aliases: [], args: 'none', readsInput: false, run: plain('specs', (context) => output(specsBlock(context))) },
   { name: 'ls', aliases: [], args: 'optional-path', readsInput: false, run: ls },

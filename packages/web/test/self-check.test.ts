@@ -82,3 +82,40 @@ describe('004-cv-page-FR-047: the requirement traceability check passes', () => 
     expect(result.status).toBe(0);
   });
 });
+
+// Comments and markers that ask a check, or a linter, to skip something.
+const TERMINAL_SKIP_MARKERS = [
+  /\b(?:token|content)[-_ ]?check\b[^\n]*\b(?:ignore|disable|enable|skip|off|allow|exempt)/i,
+  /\b(?:ignore|disable|skip)[-_ ]?(?:token|content)[-_ ]?check\b/i,
+  /\b(?:stylelint|eslint|prettier)-(?:disable|ignore)/i,
+  /\btraceability\b[^\n]*\b(?:ignore|skip|exempt)/i,
+];
+
+describe('006-terminal-FR-010, 006-terminal-FR-031 and 006-terminal-FR-037: the checks pass over the Terminal with no exception for it', () => {
+  test('content-check, token-check and traceability exit 0 on the repository', () => {
+    const content = runContentCheck(REPO_ROOT);
+    expect(content.stderr).toBe('');
+    expect(content.status).toBe(0);
+    const tokens = runTokenCheck(REPO_ROOT);
+    expect(tokens.stdout).toContain('PASS: both token sources are valid and no literal design values were found.');
+    expect(tokens.status).toBe(0);
+    const traceability = runTraceability(REPO_ROOT);
+    expect(traceability.stdout.trim().split('\n').at(-1)).toMatch(/^PASS: /);
+    expect(traceability.status).toBe(0);
+  });
+
+  test("the checks read every file of the Terminal, no check's source names it, and no file of it holds a skip marker", () => {
+    const terminal = siteSource('packages/web/src/apps/terminal');
+    expect(terminal.length).toBeGreaterThan(15);
+    const searched = new Set(searchFiles(REPO_ROOT, [RESUME_FILE]).files.map((file) => file.file));
+    expect(terminal.filter((file) => !searched.has(file))).toEqual([]);
+    const read = new Set(siteFiles(REPO_ROOT).files.map((file) => file.file));
+    expect(terminal.filter((file) => /\.(?:css|tsx?)$/.test(file) && !read.has(file))).toEqual([]);
+    const traceabilitySources = fs.readdirSync(path.join(REPO_ROOT, 'tools/traceability/src')).map((name) => fs.readFileSync(path.join(REPO_ROOT, 'tools/traceability/src', name), 'utf8'));
+    for (const text of [...CHECK_SOURCES, ...traceabilitySources]) expect(text).not.toMatch(/apps\/terminal|006-terminal/);
+    for (const file of [...terminal, 'packages/web/src/site-text.ts', 'packages/web/src/os/metrics.ts']) {
+      const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      for (const marker of TERMINAL_SKIP_MARKERS) expect(text, file).not.toMatch(marker);
+    }
+  });
+});

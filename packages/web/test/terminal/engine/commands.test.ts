@@ -38,6 +38,11 @@ describe('006-terminal-FR-059: cv runs cat cv.json | jq | vim -', () => {
     expect(textOf('cv now', context)).toBe('cv takes no arguments. Usage: cv');
   });
 
+  test('cv opens the CV document from any folder, as cv.json is in the home folder', () => {
+    const context = contextOf(resume);
+    expect(run('cv', { ...context, folder: ['work'] })).toEqual(run('cv', context));
+  });
+
   test('help describes cv with that pipe', () => {
     expect(siteText.terminal.commands.cv.description).toContain('cat cv.json | jq | vim -');
     expect(textOf('help', contextFor('every-field'))).toContain(siteText.terminal.commands.cv.description);
