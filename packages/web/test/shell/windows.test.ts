@@ -107,6 +107,20 @@ describe('005-os-shell-FR-018: About opens clear of the CV window', () => {
     expect({ x: about.x - cv.x, y: about.y - cv.y, width: about.width, height: about.height }).toEqual({ x: 48, y: 48, width: 560, height: 520 });
     expect(meet(await titleBar(page, ABOUT), await titleBar(page, CV))).toBe(false);
   });
+
+  test("with the CV dragged 176 px down, About opens clear of the CV's whole title bar", async () => {
+    const page = await desktop();
+    await drag(page, await grip(page, CV), await grip(page, CV).then(({ x, y }) => ({ x, y: y + 176 })));
+    const area = (await box(page, '#os .desktop-area'))!;
+    expect((await box(page, CV))!.y - area.y).toBe(200);
+    await openAbout(page);
+    const about = (await box(page, ABOUT))!;
+    expect({ x: about.x - area.x, y: about.y - area.y }).toEqual({ x: 240, y: 240 });
+    // The title bar sits inside the window's 1 px border, so About's border
+    // may rest on its last pixel row, as FR-021's drags allow.
+    const bar = await titleBar(page, CV);
+    expect(meet(about, { ...bar, height: bar.height - 1 })).toBe(false);
+  });
 });
 
 describe('005-os-shell-FR-019: a window moves with any pointer dragging its title bar', () => {

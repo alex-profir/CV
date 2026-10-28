@@ -55,6 +55,30 @@ describe('005-os-shell-FR-018: About opens clear of the window in front', () => 
     expect(titleBarsMeet(nearEdge, window(440, 300).geometry)).toBe(false);
   });
 
+  test("with the CV moved down, About's whole box keeps off the CV's title bar wherever the area leaves room", () => {
+    const cvAt = (y: number): WindowState => ({ view: 'cv', geometry: { x: 220, y, width: 1000, height: 716 }, minimized: false, maximized: null, placement: 'set' });
+    const boxMeetsTitleBar = (box: Geometry, other: Geometry) =>
+      box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + METRICS.titleBar && other.y < box.y + box.height;
+    const inside = (box: Geometry) => box.x >= 0 && box.y >= 0 && box.x + box.width <= AREA.width && box.y + box.height <= AREA.height;
+    // Moved 176 px down, the cascade box no longer fits and wraps to the
+    // top left; it steps on to the first box clear of the CV's title bar.
+    const moved = placeWindow('about', [cvAt(200)], AREA, METRICS);
+    expect(moved).toEqual({ x: 240, y: 240, width: 560, height: 520 });
+    expect(boxMeetsTitleBar(moved, cvAt(200).geometry)).toBe(false);
+    // Lower still, no 560 × 520 box inside the 1440 × 764 area clears a
+    // 1000 px wide title bar at x 220, so no title bar is on another.
+    for (const y of [300, 400]) {
+      const box = placeWindow('about', [cvAt(y)], AREA, METRICS);
+      expect(inside(box), `${y}`).toBe(true);
+      expect(titleBarsMeet(box, cvAt(y).geometry), `${y}`).toBe(false);
+      let clear = false;
+      for (let x = 0; x + box.width <= AREA.width; x += 1) {
+        for (let top = 0; top + box.height <= AREA.height; top += 1) clear ||= !boxMeetsTitleBar({ ...box, x, y: top }, cvAt(y).geometry);
+      }
+      expect(clear, `${y}`).toBe(false);
+    }
+  });
+
   test('after five open and close cycles, no title bar is on another', () => {
     let state = desktop();
     for (let cycle = 0; cycle < 5; cycle += 1) {

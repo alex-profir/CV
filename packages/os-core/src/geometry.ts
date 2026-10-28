@@ -68,13 +68,20 @@ function titleBarsMeet(a: Geometry, b: Geometry, metrics: Metrics): boolean {
   return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + metrics.titleBar && b.y < a.y + metrics.titleBar;
 }
 
+// Whether a whole box shares any pixel with another window's title bar.
+function boxMeetsTitleBar(box: Geometry, other: Geometry, metrics: Metrics): boolean {
+  return box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + metrics.titleBar && other.y < box.y + box.height;
+}
+
 // A new window's box (FR-018). The CV: centered, `firstTop` below the top,
 // at most `cvWidth` wide with `sideMargin` each side, the area's height less
 // `bottomMargin` (the same box the style sheet gives the pre-rendered
 // window, research R3). About this site: `cascade` right of and below the
 // front window, or placed as the CV when none is shown, stepping on by
-// `cascade`, and back to the area's top left, until its title bar is on no
-// other window's.
+// `cascade`, and back to the area's top left, until its whole box is on no
+// other window's title bar, so every title bar stays in view. When no step
+// gives such a box, as when a window moved low leaves no room below its
+// title bar, the first step whose title bar is on no other window's stands.
 export function placeWindow(view: ViewId, windows: readonly WindowState[], area: Area, metrics: Metrics): Geometry {
   const size =
     view === 'cv'
@@ -88,12 +95,14 @@ export function placeWindow(view: ViewId, windows: readonly WindowState[], area:
   const others = shown.map((window) => window.geometry);
   let box = { ...size, x: front.geometry.x + metrics.cascade, y: front.geometry.y + metrics.cascade };
   const fits = (candidate: Geometry) => candidate.x + candidate.width <= area.width && candidate.y + candidate.height <= area.height;
+  let clearTitleBar: Geometry | undefined;
   // Enough steps to cross the area twice; then the best box found stands.
   const tries = 2 * Math.ceil((area.width + area.height) / Math.max(1, metrics.cascade));
   for (let step = 0; step < tries; step += 1) {
     if (!fits(box)) box = { ...box, x: 0, y: 0 };
-    if (!others.some((other) => titleBarsMeet(box, other, metrics))) break;
+    if (!others.some((other) => boxMeetsTitleBar(box, other, metrics))) return clampMove(box, area, metrics);
+    if (clearTitleBar === undefined && !others.some((other) => titleBarsMeet(box, other, metrics))) clearTitleBar = box;
     box = { ...box, x: box.x + metrics.cascade, y: box.y + metrics.cascade };
   }
-  return clampMove(box, area, metrics);
+  return clampMove(clearTitleBar ?? box, area, metrics);
 }
