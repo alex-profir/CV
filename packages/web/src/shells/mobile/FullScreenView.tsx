@@ -36,7 +36,7 @@ export function FullScreenView({ view, state, apps, resume, siteData, mac, viewN
           {viewName(view)}
         </div>
       </header>
-      <div ref={content} className="view-content">
+      <div ref={content} className="view-content" data-req="005-os-shell-FR-034">
         <View view={view} apps={apps} resume={resume} siteData={siteData} shell="mobile" mac={mac} />
       </div>
     </section>

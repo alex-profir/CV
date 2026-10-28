@@ -90,7 +90,7 @@ div.desktop                          data-req FR-005 FR-010 FR-024 FR-025 FR-037
 │       │   ├── button.control       "Minimize {window}"                        FR-063
 │       │   └── button.control       "Maximize {window}" | "Restore {window}"   FR-065
 │       ├── div.window-content       container for the CV's layout; scrolls     FR-022
-│       ├── div.resize-handle × 8    aria-hidden, pointer only                  FR-061
+│       ├── div.resize-handles       aria-hidden, pointer only; div.resize-handle × 8   FR-061
 │       └── div.pad[role=group]      only during a move or resize               FR-020 FR-027 FR-062
 └── div[role=toolbar].dock           aria-label "Dock"; one Tab stop            FR-003 FR-039
     └── button.dock-item × apps      {app name}[, open | , minimized]           FR-011 FR-012 FR-064
