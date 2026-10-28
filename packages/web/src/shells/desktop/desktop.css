@@ -181,11 +181,12 @@ span.menu-title {
   overflow: hidden;
 }
 
+/* Not clipped, so the resize handles can reach past its edge (FR-037):
+   the title bar and the content round their own corners instead. */
 .window {
   position: absolute;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   background: var(--token-color-shell-surface);
   border: var(--token-border-thin) solid var(--token-color-window-border);
   border-radius: var(--token-radius-window);
@@ -218,6 +219,10 @@ span.menu-title {
   box-shadow: none;
 }
 
+.window[data-maximized] :is(.title-bar, .window-content) {
+  border-radius: 0;
+}
+
 .title-bar {
   position: relative;
   display: flex;
@@ -225,6 +230,8 @@ span.menu-title {
   align-items: center;
   min-block-size: var(--token-size-title-bar);
   padding-inline: var(--token-space-2);
+  border-start-start-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  border-start-end-radius: calc(var(--token-radius-window) - var(--token-border-thin));
   background: var(--token-color-title-bar);
   color: var(--token-color-title-bar-text);
   border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
@@ -333,10 +340,15 @@ span.menu-title {
   scroll-padding: calc(var(--token-border-thick) + var(--token-space-0-5));
   overscroll-behavior: contain;
   container-type: inline-size;
+  border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thin));
+  border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thin));
 }
 
 /* ---- Resize handles (FR-061) ----------------------------------------- */
 
+/* Each edge reaches 8 px into the window and each corner 16 × 16 px, as the
+   design draws them, and each reaches on past the window's edge, 16 px for
+   an edge and 8 px for a corner, so the pointer has 24 px (FR-037). */
 .resize-handle {
   position: absolute;
   z-index: 2;
@@ -346,69 +358,70 @@ span.menu-title {
 .resize-n,
 .resize-s {
   inset-inline: var(--token-space-4);
-  block-size: var(--token-space-2);
+  block-size: var(--token-space-6);
   cursor: ns-resize;
 }
 
 .resize-n {
-  inset-block-start: 0;
+  inset-block-start: calc(-1 * var(--token-space-4));
 }
 
 .resize-s {
-  inset-block-end: 0;
+  inset-block-end: calc(-1 * var(--token-space-4));
 }
 
 .resize-e,
 .resize-w {
   inset-block: var(--token-space-4);
-  inline-size: var(--token-space-2);
+  inline-size: var(--token-space-6);
   cursor: ew-resize;
 }
 
 .resize-e {
-  inset-inline-end: 0;
+  inset-inline-end: calc(-1 * var(--token-space-4));
 }
 
 .resize-w {
-  inset-inline-start: 0;
+  inset-inline-start: calc(-1 * var(--token-space-4));
 }
 
 .resize-nw,
 .resize-ne,
 .resize-sw,
 .resize-se {
-  inline-size: var(--token-space-4);
-  block-size: var(--token-space-4);
+  inline-size: var(--token-space-6);
+  block-size: var(--token-space-6);
 }
 
 .resize-nw {
-  inset-block-start: 0;
-  inset-inline-start: 0;
+  inset-block-start: calc(-1 * var(--token-space-2));
+  inset-inline-start: calc(-1 * var(--token-space-2));
   cursor: nwse-resize;
 }
 
 .resize-ne {
-  inset-block-start: 0;
-  inset-inline-end: 0;
+  inset-block-start: calc(-1 * var(--token-space-2));
+  inset-inline-end: calc(-1 * var(--token-space-2));
   cursor: nesw-resize;
 }
 
 .resize-sw {
-  inset-block-end: 0;
-  inset-inline-start: 0;
+  inset-block-end: calc(-1 * var(--token-space-2));
+  inset-inline-start: calc(-1 * var(--token-space-2));
   cursor: nesw-resize;
 }
 
 .resize-se {
-  inset-block-end: 0;
-  inset-inline-end: 0;
+  inset-block-end: calc(-1 * var(--token-space-2));
+  inset-inline-end: calc(-1 * var(--token-space-2));
   cursor: nwse-resize;
 }
 
+/* 4 px inside the window's corner, past the 8 px the handle reaches out. */
 .grip {
   position: absolute;
-  inset-block-end: var(--token-space-1);
-  inset-inline-end: var(--token-space-1);
+  inset-block-end: calc(var(--token-space-2) + var(--token-space-1));
+  inset-inline-end: calc(var(--token-space-2) + var(--token-space-1));
   inline-size: var(--token-space-3);
   block-size: var(--token-space-3);
   fill: none;
@@ -576,6 +589,16 @@ span.menu-title {
   .window[aria-current="true"] {
     border-width: var(--token-border-thick);
     border-color: Highlight;
+  }
+
+  .window[aria-current="true"] .title-bar {
+    border-start-start-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    border-start-end-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+  }
+
+  .window[aria-current="true"] .window-content {
+    border-end-start-radius: calc(var(--token-radius-window) - var(--token-border-thick));
+    border-end-end-radius: calc(var(--token-radius-window) - var(--token-border-thick));
   }
 
   .control::before {
