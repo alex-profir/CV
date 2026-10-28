@@ -9,6 +9,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { SHORTCUTS } from '@cv/os-core';
 import type { Shortcut } from '@cv/os-core';
 import { SiteMark } from '../../os/icons/SiteMark.tsx';
+import { animateIn } from '../../os/motion.ts';
 import type { ShellProps } from '../../os/shell-props.ts';
 import { siteName } from '../../format/meta.ts';
 import { siteText } from '../../site-text.ts';
@@ -39,11 +40,14 @@ export function MenuBar({ state, dispatch, resume, siteData, mac, viewName }: Sh
   const focused = state.focused;
   const focusedWindow = focused === null ? undefined : state.windows.find((window) => window.view === focused);
 
-  // A menu that opens takes focus on its first item; one that closes while
-  // focus was in it gives focus back to its title.
+  // A menu that opens animates in and takes focus on its first item; one
+  // that closes while focus was in it gives focus back to its title.
   const opened = useRef<MenuId | null>(null);
   useEffect(() => {
-    if (open !== null && opened.current !== open) focusFirstItem(menu.current);
+    if (open !== null && opened.current !== open) {
+      animateIn(menu.current);
+      focusFirstItem(menu.current);
+    }
     const was = opened.current;
     const lost = document.activeElement === null || document.activeElement === document.body;
     if (open === null && was !== null && lost) bar.current?.querySelector<HTMLElement>(`[data-title-index="${TITLES.indexOf(was)}"]`)?.focus();

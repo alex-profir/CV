@@ -4,17 +4,32 @@
 // resize. A pointer down or focus reaching it brings it to the front
 // (FR-017, FR-030). A minimized window stays mounted, hidden, so its
 // content and scroll position survive (FR-063).
+import { useEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { WindowState } from '@cv/os-core';
 import type { ShellProps } from '../../os/shell-props.ts';
+import { animateIn } from '../../os/motion.ts';
 import { View } from '../../os/View.tsx';
 import { Pad } from './Pad.tsx';
 import { ResizeHandles } from './ResizeHandles.tsx';
 import { TitleBar, windowTitleId } from './TitleBar.tsx';
 
-export function Window(props: ShellProps & { window: WindowState; depth: number }) {
-  const { window, depth, state, dispatch, apps, resume, siteData, mac } = props;
+export function Window(props: ShellProps & { window: WindowState; depth: number; canAnimate: () => boolean }) {
+  const { window, depth, state, dispatch, apps, resume, siteData, mac, canAnimate } = props;
   const { view, geometry, placement, minimized, maximized } = window;
+  const section = useRef<HTMLElement>(null);
+
+  // Opening, restoring and maximizing or restoring the size animate; a
+  // window mounted with the shell doesn't (research R13).
+  const isMaximized = maximized !== null;
+  const mounted = useRef(false);
+  useEffect(() => {
+    const opening = !mounted.current;
+    mounted.current = true;
+    if (minimized || (opening && !canAnimate())) return;
+    animateIn(section.current);
+  }, [minimized, isMaximized]);
+
   const focused = state.focused === view;
   const session = state.session !== null && state.session.view === view ? state.session : null;
   // Geometry from state is state, not a design value (research R3). Until
@@ -22,6 +37,7 @@ export function Window(props: ShellProps & { window: WindowState; depth: number 
   const style: CSSProperties = placement === 'set' ? { left: geometry.x, top: geometry.y, width: geometry.width, height: geometry.height, zIndex: depth } : { zIndex: depth };
   return (
     <section
+      ref={section}
       className="window"
       aria-roledescription="window"
       aria-labelledby={windowTitleId(view)}

@@ -17,6 +17,7 @@ import { Announcer } from './Announcer.tsx';
 import type { Announcement } from './Announcer.tsx';
 import { focusTarget } from './focus.ts';
 import { METRICS } from './metrics.ts';
+import { animateOut } from './motion.ts';
 import type { ShellProps } from './shell-props.ts';
 
 declare global {
@@ -64,6 +65,8 @@ export function Os({ resume, siteData, apps }: OsProps) {
   // many `popstate` events the shell caused itself (FR-050).
   const pushed = useRef(false);
   const ownPops = useRef(0);
+  // Windows closing or minimizing, until their animation ends (research R13).
+  const leaving = useRef(new Map<ViewId, { stop: () => void; action: OsAction }>());
 
   const viewName = useCallback((view: ViewId) => (view === 'about' ? TEXT.aboutName : (apps.find((app) => app.id === view)?.name ?? view)), [apps]);
 
@@ -92,6 +95,12 @@ export function Os({ resume, siteData, apps }: OsProps) {
     if (!hydrated) return undefined;
     const query = matchMedia(shellQuery(METRICS));
     const onChange = () => {
+      // A window still closing or minimizing does so at once, before the switch.
+      for (const { stop, action } of leaving.current.values()) {
+        stop();
+        dispatch(action);
+      }
+      leaving.current.clear();
       const shell: ShellName = query.matches ? 'desktop' : 'mobile';
       document.documentElement.setAttribute('data-shell', shell);
       dispatch({ type: 'shellChanged', shell, area: shell === 'desktop' ? measureArea() : null });
@@ -150,7 +159,30 @@ export function Os({ resume, siteData, apps }: OsProps) {
     document.title = shellTitle(resume, view === null ? undefined : viewName(view));
   }, [state.shell, state.focused, state.mobile.open, resume, viewName]);
 
-  const shellProps: ShellProps = { state, dispatch, apps, resume, siteData, mac, viewName };
+  // What the shells dispatch: closing and minimizing a window wait for its
+  // closing animation (research R13). A second request meanwhile is
+  // dropped; opening the window again stops the animation and keeps it.
+  const act = useCallback((action: OsAction) => {
+    if (action.type === 'close' || action.type === 'minimize') {
+      const { view } = action;
+      if (leaving.current.has(view)) return;
+      let done = false;
+      const stop = animateOut(document.querySelector(`#os .desktop .window[data-view="${view}"]`), () => {
+        done = true;
+        leaving.current.delete(view);
+        dispatch(action);
+      });
+      if (!done) leaving.current.set(view, { stop, action });
+      return;
+    }
+    if (action.type === 'open') {
+      leaving.current.get(action.view)?.stop();
+      leaving.current.delete(action.view);
+    }
+    dispatch(action);
+  }, []);
+
+  const shellProps: ShellProps = { state, dispatch: act, apps, resume, siteData, mac, viewName };
   return (
     <>
       {state.shell !== 'mobile' && <Desktop {...shellProps} active={state.shell === 'desktop'} />}

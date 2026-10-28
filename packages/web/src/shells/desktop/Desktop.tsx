@@ -27,6 +27,14 @@ export function Desktop(props: ShellProps & { active: boolean }) {
   const { state, dispatch, active, mac } = props;
   const area = useRef<HTMLElement>(null);
   const order = useRef<ViewId[]>([]);
+  // Windows mounted with the shell, at hydration or a shell switch, don't
+  // animate; those opened later do (research R13). Children's effects run
+  // before this one, so they see `false` on the shell's first commit.
+  const settled = useRef(false);
+  useEffect(() => {
+    settled.current = true;
+  }, []);
+  const canAnimate = () => settled.current;
   order.current = domOrder(
     order.current,
     state.windows.map((window) => window.view),
@@ -91,7 +99,7 @@ export function Desktop(props: ShellProps & { active: boolean }) {
       <main ref={area} className="desktop-area" aria-label={siteText.desktop.area}>
         {order.current.map((view) => {
           const index = state.windows.findIndex((window) => window.view === view);
-          return <Window key={view} {...props} window={state.windows[index]!} depth={state.windows.length - index} />;
+          return <Window key={view} {...props} window={state.windows[index]!} depth={state.windows.length - index} canAnimate={canAnimate} />;
         })}
         {state.session !== null && (
           // Where the window was when the keyboard move or resize started.
