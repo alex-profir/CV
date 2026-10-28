@@ -4,14 +4,9 @@
 // controls alone.
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
-import { resume, siteData } from '@cv/content';
-import { engineContext } from '../../src/apps/terminal/engine/commands.ts';
-import type { FsNode } from '../../src/apps/terminal/engine/files.ts';
-import { readSpecList } from '../../scripts/spec-list.ts';
 import { resize, settle } from '../helpers/shell.ts';
 import { COMMAND_LINE, groupText, openTerminal, openTerminalPage, runCount, runGroup, typedLines, typeLine } from '../helpers/terminal.ts';
-import { COLUMNS, FORMAT } from './engine/context.ts';
-import { siteText } from '../../src/site-text.ts';
+import { siteFiles } from './engine/context.ts';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -29,14 +24,6 @@ const promptPath = (page: Page) => page.locator('.terminal form.prompt-line .pro
 const windowTitle = async (page: Page) => (await page.locator(`${WINDOW} .window-title`).textContent())?.trim();
 
 const pwd = async (page: Page) => (await groupText(page, await runGroup(page, 'pwd'))).trim();
-
-// Every file of the real site's tree, as `cat ~/{path}`.
-function siteFiles(): string[] {
-  const { fs } = engineContext({ text: siteText, format: FORMAT, resume, siteData, specs: readSpecList(), cvJson: JSON.stringify(resume, null, 2), columns: COLUMNS });
-  const walk = (node: FsNode, path: string[]): string[] =>
-    node.kind === 'file' ? [`cat ~/${[...path, node.name].join('/')}`] : node.children.flatMap((child) => walk(child, node.name === '~' ? path : [...path, node.name]));
-  return walk(fs, []);
-}
 
 describe('006-terminal-FR-043: folders differ from files without color', () => {
   test('with every color forced to one, folder names end in / and file names don’t', async () => {

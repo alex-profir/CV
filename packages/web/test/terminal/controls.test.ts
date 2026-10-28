@@ -178,3 +178,32 @@ describe('006-terminal-FR-015: every CV section is within 2 clicks of the greeti
     }
   });
 });
+
+describe('006-terminal-FR-015: on a phone, a tapped control leaves the keyboard closed', () => {
+  test('a tapped chip or key leaves the command line focused with inputmode none, and a tap on the command line removes it', async () => {
+    const page = await openTerminalPage('mobile');
+    const inputMode = () => page.locator(COMMAND_LINE).getAttribute('inputmode');
+    for (const control of [
+      page.locator('.terminal .greeting button.command-chip[aria-label="about"]'),
+      page.locator('#os .pocket-keys button.pocket-key[aria-label="work"]'),
+    ]) {
+      const before = await runCount(page);
+      await control.tap();
+      await expect.poll(() => runCount(page)).toBe(before + 1);
+      await expect.poll(() => commandLineFocused(page)).toBe(true);
+      expect(await inputMode()).toBe('none');
+      await page.locator(COMMAND_LINE).tap();
+      await expect.poll(inputMode).toBeNull();
+      expect(await commandLineFocused(page)).toBe(true);
+    }
+  });
+
+  test('exit on a phone shows the home screen with focus on the Terminal’s icon (US4 scenario 6)', async () => {
+    const page = await openTerminalPage('mobile');
+    await runGroup(page, 'about');
+    await page.locator(COMMAND_LINE).fill('exit');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.matches('#os .home .app-icon[data-view="terminal"]') ?? false)).toBe(true);
+  });
+});

@@ -3,7 +3,7 @@
 // below its screen. A command key runs its command as a control does; with
 // the vim view open the keys are vim's, and act on the view (FR-051,
 // FR-066). The case is decoration only (FR-054).
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
@@ -27,6 +27,17 @@ function vimKey(key: string) {
 export function Pocket(props: AppProps) {
   const root = useRef<HTMLDivElement>(null);
   const keyboard = useOnScreenKeyboard(root);
+
+  // The keyboard open: once the keys have made room, the screen shows the
+  // command line at its foot, with the newest output above it (FR-053).
+  useEffect(() => {
+    if (!keyboard) return undefined;
+    const frame = requestAnimationFrame(() => {
+      const screen = root.current?.querySelector<HTMLElement>('.terminal-screen');
+      if (screen) screen.scrollTop = screen.scrollHeight - screen.clientHeight;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [keyboard]);
   const vim = useSyncExternalStore(session.subscribe, () => session.get().vim !== null, () => session.get().vim !== null);
   const [active, setActive] = useState(0);
   const name = props.resume.basics?.name;

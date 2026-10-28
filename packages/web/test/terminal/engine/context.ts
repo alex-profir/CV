@@ -2,7 +2,7 @@
 // spec list, as the Terminal builds its own from the real ones, and ways to
 // read a block. Tests may hold literal values and CV text.
 import type { Resume } from '@cv/content';
-import { siteData } from '@cv/content';
+import { resume as realResume, siteData } from '@cv/content';
 import { dateRange } from '../../../src/format/dates.ts';
 import { locationLine } from '../../../src/format/location.ts';
 import { withoutScheme } from '../../../src/cv/CvLink.tsx';
@@ -11,7 +11,9 @@ import { engineContext, runLine } from '../../../src/apps/terminal/engine/comman
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
 import { plainText } from '../../../src/apps/terminal/engine/block.ts';
 import type { Block, Node, Result } from '../../../src/apps/terminal/engine/block.ts';
+import { readSpecList } from '../../../scripts/spec-list.ts';
 import type { SpecList } from '../../../scripts/spec-list.ts';
+import type { FsNode } from '../../../src/apps/terminal/engine/files.ts';
 import { fixture } from '../../helpers/fixtures.ts';
 import type { FixtureName } from '../../helpers/fixtures.ts';
 
@@ -61,3 +63,12 @@ export function nodes(block: Block): Node[] {
 
 // The command controls of a block, as the lines they run.
 export const controls = (block: Block) => nodes(block).flatMap((node) => (node.kind === 'command' ? [node.line] : []));
+
+// Every file of the real site's tree, as the line its `ls` control runs:
+// `cat ~/{path}`.
+export function siteFiles(): string[] {
+  const { fs } = engineContext({ text: siteText, format: FORMAT, resume: realResume, siteData, specs: readSpecList(), cvJson: JSON.stringify(realResume, null, 2), columns: COLUMNS });
+  const walk = (node: FsNode, path: string[]): string[] =>
+    node.kind === 'file' ? [`cat ~/${[...path, node.name].join('/')}`] : node.children.flatMap((child) => walk(child, node.name === '~' ? path : [...path, node.name]));
+  return walk(fs, []);
+}
