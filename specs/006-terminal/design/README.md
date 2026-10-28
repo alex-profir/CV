@@ -55,68 +55,75 @@ Once the plan is written, these go into `packages/tokens/penpot/tokens.json` in 
 Every color refers to a base color, an existing one where one fits. Translucent colors are
 8-digit hex, `#rrggbbaa`.
 
-| Token | Type | Value |
-|-------|------|-------|
-| `color.base.mint` | color | `#5eead4` |
-| `color.base.rose` | color | `#fda4af` |
-| `color.base.terminal-glass` | color | `#1b1c24e0` |
-| `color.base.sheen` | color | `#ffffff0d` |
-| `color.base.rim-soft` | color | `#ffffff29` |
-| `color.terminal-glass` | color | `{color.base.terminal-glass}` |
-| `color.terminal-sheen` | color | `{color.base.sheen}` |
-| `color.terminal-rim` | color | `{color.base.rim-soft}` |
-| `color.terminal-text` | color | `{color.base.snow}` |
-| `color.terminal-text-secondary` | color | `{color.base.haze}` |
-| `color.terminal-dim` | color | `{color.base.fog}` |
-| `color.terminal-user` | color | `{color.base.lilac}` |
-| `color.terminal-user-text` | color | `{color.base.night}` |
-| `color.terminal-path` | color | `{color.base.periwinkle}` |
-| `color.terminal-caret` | color | `{color.base.mint}` |
-| `color.terminal-error` | color | `{color.base.rose}` |
-| `color.terminal-cursor` | color | `{color.base.haze}` |
-| `color.terminal-control` | color | `{color.base.periwinkle}` |
-| `color.vim-key` | color | `{color.base.periwinkle}` |
-| `color.vim-string` | color | `{color.base.haze}` |
-| `color.vim-number` | color | `{color.base.amber}` |
-| `color.vim-literal` | color | `{color.base.rose}` |
-| `color.vim-punctuation` | color | `{color.base.fog}` |
-| `color.vim-match` | color | `#fcd34d33` |
-| `color.vim-match-current` | color | `#fcd34d6b` |
-| `color.vim-mode` | color | `{color.base.mint}` |
-| `color.vim-mode-help` | color | `{color.base.lilac}` |
-| `color.vim-band` | color | `#ffffff0d` |
-| `color.vim-status` | color | `#ffffff14` |
-| `size.vim-status` | dimension | 24px |
-| `size.vim-message` | dimension | 28px |
-| `size.terminal-blur` | dimension | 32px |
-| `size.terminal-padding` | dimension | 20px |
-| `size.terminal-padding-pocket` | dimension | 14px |
-| `size.terminal-padding-pocket-narrow` | dimension | 12px |
-| `size.terminal-window-margin` | dimension | 40px |
-| `size.terminal-window-offset` | dimension | 120px |
-| `size.terminal-control-row` | dimension | 24px |
-| `size.terminal-chip` | dimension | 26px |
-| `size.pocket-key` | dimension | 52px |
-| `size.pocket-key-narrow` | dimension | 48px |
-| `size.pocket-max-width` | dimension | 560px |
-| `size.pocket-max-width-landscape` | dimension | 900px |
-| `color.base.amber` | color | `#fcd34d` |
-| `color.terminal-heading` | color | `{color.base.lilac}` |
-| `color.terminal-draft` | color | `{color.base.amber}` |
-| `color.terminal-approved` | color | `{color.base.mint}` |
-| `color.pocket-key-accent` | color | `{color.base.indigo}` |
-| `command-line.max-length` | number | 500 |
-| `size.terminal-window-width` | dimension | 760px |
-| `size.terminal-window-height` | dimension | 536px |
-| `font.size.terminal` | fontSizes | 14px |
-| `font.size.terminal-pocket` | fontSizes | 12.5px |
-| `font.size.terminal-pocket-narrow` | fontSizes | 12px |
-| `font.line-height.terminal` | dimension | 21px |
-| `font.line-height.terminal-pocket` | dimension | 19px |
-| `font.line-height.terminal-pocket-narrow` | dimension | 18px |
-| `radius.pocket` | borderRadius | 28px |
-| `radius.pocket-screen` | borderRadius | 16px |
-| `radius.pocket-key` | borderRadius | 12px |
+The names and types below are in the hand-written export's form, as research R22 sets: sizes
+are `sizing` and unitless, line heights live in `typography` tokens, and every semantic color
+refers to a base color. No value changed.
+
+| Token | Type | Set | Value |
+|-------|------|-----|-------|
+| `color.base.mint` | color | base | `#5eead4` |
+| `color.base.rose` | color | base | `#fda4af` |
+| `color.base.amber` | color | base | `#fcd34d` |
+| `color.base.amber-wash` | color | base | `#fcd34d33` |
+| `color.base.amber-wash-strong` | color | base | `#fcd34d6b` |
+| `color.base.wash` | color | base | `#ffffff14` |
+| `color.base.terminal-glass` | color | base | `#1b1c24e0` |
+| `color.base.rim-soft` | color | base | `#ffffff29` |
+| `color.terminal-glass` | color | light | `{color.base.terminal-glass}` |
+| `color.terminal-sheen` | color | light | `{color.base.speck}` |
+| `color.terminal-rim` | color | light | `{color.base.rim-soft}` |
+| `color.terminal-text` | color | light | `{color.base.snow}` |
+| `color.terminal-text-secondary` | color | light | `{color.base.haze}` |
+| `color.terminal-dim` | color | light | `{color.base.fog}` |
+| `color.terminal-user` | color | light | `{color.base.lilac}` |
+| `color.terminal-user-text` | color | light | `{color.base.night}` |
+| `color.terminal-path` | color | light | `{color.base.periwinkle}` |
+| `color.terminal-caret` | color | light | `{color.base.mint}` |
+| `color.terminal-error` | color | light | `{color.base.rose}` |
+| `color.terminal-cursor` | color | light | `{color.base.haze}` |
+| `color.terminal-control` | color | light | `{color.base.periwinkle}` |
+| `color.terminal-heading` | color | light | `{color.base.lilac}` |
+| `color.terminal-draft` | color | light | `{color.base.amber}` |
+| `color.terminal-approved` | color | light | `{color.base.mint}` |
+| `color.pocket-key-accent` | color | light | `{color.base.indigo}` |
+| `color.vim-key` | color | light | `{color.base.periwinkle}` |
+| `color.vim-string` | color | light | `{color.base.haze}` |
+| `color.vim-number` | color | light | `{color.base.amber}` |
+| `color.vim-literal` | color | light | `{color.base.rose}` |
+| `color.vim-punctuation` | color | light | `{color.base.fog}` |
+| `color.vim-match` | color | light | `{color.base.amber-wash}` |
+| `color.vim-match-current` | color | light | `{color.base.amber-wash-strong}` |
+| `color.vim-mode` | color | light | `{color.base.mint}` |
+| `color.vim-mode-help` | color | light | `{color.base.lilac}` |
+| `color.vim-band` | color | light | `{color.base.speck}` |
+| `color.vim-status` | color | light | `{color.base.wash}` |
+| `size.vim-status` | sizing | base | `24` |
+| `size.vim-message` | sizing | base | `28` |
+| `size.terminal-blur` | sizing | base | `32` |
+| `size.terminal-padding` | sizing | base | `20` |
+| `size.terminal-padding-pocket` | sizing | base | `14` |
+| `size.terminal-padding-pocket-narrow` | sizing | base | `12` |
+| `size.terminal-window-width` | sizing | base | `760` |
+| `size.terminal-window-height` | sizing | base | `536` |
+| `size.terminal-window-margin` | sizing | base | `40` |
+| `size.terminal-window-offset` | sizing | base | `120` |
+| `size.terminal-control-row` | sizing | base | `24` |
+| `size.terminal-chip` | sizing | base | `26` |
+| `size.pocket-key` | sizing | base | `52` |
+| `size.pocket-key-narrow` | sizing | base | `48` |
+| `size.pocket-max-width` | sizing | base | `560` |
+| `size.pocket-max-width-landscape` | sizing | base | `900` |
+| `font.size.terminal` | fontSizes | base | `14` |
+| `font.size.terminal-pocket` | fontSizes | base | `12.5` |
+| `font.size.terminal-pocket-narrow` | fontSizes | base | `12` |
+| `typography.terminal` | typography | base | `{font.family.mono}`, `{font.size.terminal}` on `1.5` (21 px) |
+| `typography.terminal-pocket` | typography | base | `{font.family.mono}`, `{font.size.terminal-pocket}` on `1.52` (19 px) |
+| `typography.terminal-pocket-narrow` | typography | base | `{font.family.mono}`, `{font.size.terminal-pocket-narrow}` on `1.5` (18 px) |
+| `radius.pocket` | borderRadius | base | `28` |
+| `radius.pocket-screen` | borderRadius | base | `16` |
+| `radius.pocket-key` | borderRadius | base | `12` |
+| `breakpoint.pocket-narrow` | dimension | base | `375` |
+| `command-line.max-length` | number | base | `500` |
 
 The window's size and position, and every other value the spec leaves to the design, are in
 [wireframes.md](wireframes.md#design-values-the-spec-leaves-to-the-design).
