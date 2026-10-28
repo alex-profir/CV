@@ -1,6 +1,6 @@
 # Design Review: The Requirement Inspector
 
-**Status**: Awaiting the owner's review
+**Status**: Approved
 
 **Design**: the Penpot page **007 Requirement inspector — Graphite** (file id
 `eaccfa4c-8a01-81ad-8008-d441a46da254`). The inspector adds one control to every app and to About
@@ -56,13 +56,15 @@ view, on 005's Graphite desktop and 006's Terminal.
 
 ## Original look (FR-021)
 
-- [ ] The sheet glyph, the question glyph, the offline glyph, the status chips and the spec view's
+- [x] The sheet glyph, the question glyph, the offline glyph, the status chips and the spec view's
   layout are drawn for this site in its own tokens and fonts. Nothing comes from or traces an
   Apple asset or another product's inspector.
 
 ## Sign-off
 
-- Reviewed mockup version: _the Penpot page above, as exported to `exports/` in commit `[hash]`_
-- Date: _[YYYY-MM-DD]_
-- Approved by: _[project owner]_
-- Notes: _[ ]_
+- Reviewed mockup version: the Penpot page **007 Requirement inspector — Graphite**, as exported to
+  `exports/` in commit `3ab4dfc`
+- Date: 2026-10-28
+- Approved by: Alex Profir (project owner)
+- Notes: Approved in review of the Penpot page and its fourteen exports. The owner confirmed the
+  look is original (FR-021).

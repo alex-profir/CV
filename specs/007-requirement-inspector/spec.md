@@ -524,7 +524,7 @@ desktop and one tap away on mobile, and `/cv` remains a plain server-rendered pa
 - [x] PNG exports of the approved Penpot mockup of the inspector in both shells, at a phone width
   and a desktop width (or of the interim local mockup, under the constitution's interim provision)
 - [x] Penpot file link: [007 Requirement inspector — Graphite](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=83c58681-afbf-80ee-8008-dc17f0627e87)
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-021)
 
 ## Success Criteria *(mandatory)*
