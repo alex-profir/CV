@@ -4,7 +4,11 @@
 
 **Created**: 2026-10-27
 
-**Status**: Approved
+**Status**: Draft
+
+**Amended**: 2026-10-29, after the owner's review of the built Terminal: a real bash-like shell
+and a terminal's cursor and focus (see Clarifications, Session 2026-10-29). Approved 2026-10-27;
+back to Draft until the owner approves the amendment.
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -68,6 +72,46 @@
 - Q: What happens to `cv` and the per-section commands? → A: `cv` opens the vim view. `work`,
   `about` and the other section commands keep their short text output (FR-008, FR-009, FR-059).
 
+### Session 2026-10-29 (owner review of the built Terminal)
+
+- Q: The Terminal doesn't feel like a terminal. Whose feel should it have? → A: A real bash-like
+  shell running in the page, as the in-browser bash shells built for agents do: a bash command
+  language, the standard commands a bash user expects, and a file system they work on. The site's
+  own commands (`help`, `about`, `work`, `cv` and the rest) stay, as commands of that shell
+  (FR-067, FR-068). The plan names how it is built and why (Constitution X); this spec says what
+  it does.
+- Q: What does the shell's language cover? → A: Pipes between any commands, `;`, `&&` and `||`,
+  quotes and escapes, variables, globs, redirects and `if`, `for` and `while`, with bash's
+  meaning. Tab completion stays out (FR-026). A command line that runs too long is stopped with a
+  message, and the page never freezes (FR-069).
+- Q: Can visitors change files now? → A: Yes, as in a real shell, except the files and folders
+  built from the CV and the spec list, which are protected: changing, moving or deleting them
+  gets bash's "Permission denied", as for files a user doesn't own. Anywhere else, the home folder
+  and `/tmp` included, `touch`, `mkdir`, `mv`, `cp`, `rm` and redirects work, for as long as the
+  Terminal is open (FR-049, FR-073).
+- Q: Pipes into a command that reads no input, such as `ls | work` or `ls | vim cv.json`? →
+  A: As bash does: the command runs and ignores its input. The "doesn't read piped input" reply
+  goes (FR-057).
+- Q: `jq` only pretty-prints today. → A: `jq` takes jq's filters, so `jq '.work[0].name' cv.json`
+  works. With no filter, or `.`, it pretty-prints as before (FR-056).
+- Q: The command line has a box around it when focused, and clicking the Terminal doesn't focus
+  it. → A: No box. The block cursor is the focus indicator: filled and blinking while the command
+  line has focus, hollow when it doesn't. A click or tap anywhere on the Terminal's screen that
+  isn't on a link or a control, and doesn't select text, puts focus in the command line (FR-071,
+  FR-072, FR-032).
+- Q: The shell is far larger than the rest of the site's code. Does it load with the page? →
+  A: No. It loads when the Terminal first opens and is kept for offline use like the rest of the
+  site, so the site root and `/cv` load as before (FR-070, SC-013).
+- Q: Do a terminal's keys work, such as Cmd+A, or Cmd and Option with the arrows to move along
+  the command line? → A: Yes. The command line takes the visitor's system's own line-editing keys
+  (Cmd+Left/Right or Home/End to the line's ends, Option+Left/Right or Ctrl+Left/Right by word,
+  the matching delete keys), with the block cursor and the selection following them, and on macOS
+  the readline keys a terminal user expects (Ctrl+A, Ctrl+E, Ctrl+K, Ctrl+U, Ctrl+W, Ctrl+L).
+  Cmd+A, or Ctrl+A on other systems, selects all of the Terminal's text and nothing of the rest of
+  the page, as a terminal window does. Ctrl+C with no text selected cancels the line or stops the
+  running command. No key a browser or screen reader reserves is taken over (FR-074, FR-075,
+  FR-026).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)
@@ -129,6 +173,12 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
     a new prompt follows, and focus is in the command line.
 17. **Given** the Terminal is open, **When** the visitor runs `cat cv.json | jq`, **Then** the
     JSON appears in the output, pretty-printed and colored, without the vim view.
+18. **Given** the Terminal is open and focus is elsewhere, **When** the visitor clicks anywhere on
+    its screen that isn't a link or a control, **Then** focus moves to the command line, and the
+    cursor turns from hollow to filled and blinks. No box or outline appears around the command
+    line.
+19. **Given** the Terminal is open, **When** the visitor runs `work | grep -i engineer`, **Then**
+    only the lines of `work`'s output that hold "engineer" appear, as bash would show them.
 
 ---
 
@@ -165,7 +215,9 @@ An engineer who lives in a terminal ignores `help` and types `ls`. They see fold
 projects and education, files for the rest, and a `specs` folder. They `cd work`, `ls`, and
 `cat` one role, and the prompt shows where they are. `cd ..` takes them back, `cat readme` tells
 them about the site, and `cat specs/005-os-shell` shows the shell's spec in one line with a link.
-When they try `rm about`, the Terminal says it doesn't know `rm`.
+They `grep -ri rest ~/work` to find the roles that mention REST, and `ls | wc -l` to count
+files. When they try `rm about`, the Terminal answers as bash does for a file they don't own, but
+`touch notes`, `echo hi > notes` and `mv notes todo` work as they would at home.
 
 **Why this priority**: engineers reviewing the craft will try the commands they know. A file
 system that holds the same CV as the named commands rewards them, but nobody needs it to read the
@@ -194,6 +246,15 @@ Try a path that doesn't exist, `cd` into a file and `cat` a folder.
    path.
 8. **Given** a new work entry in the CV document, **When** the site is built again, **Then** the
    work folder holds a file for it with no edit to the Terminal.
+9. **Given** the home folder, **When** the visitor runs `rm about`, `mv work jobs` or
+   `echo hi > cv.json`, **Then** the reply is bash's "Permission denied" naming the path, and
+   `cat about`, `ls work` and `cat cv.json` show them as before.
+10. **Given** the home folder, **When** the visitor runs `mkdir notes && echo hi > notes/a &&
+    mv notes/a notes/b && cat notes/b`, **Then** `hi` appears, `ls` lists `notes/` after the
+    built files, and `rm -r notes` removes it. After the Terminal is closed and opened again,
+    `notes` is gone.
+11. **Given** the home folder, **When** the visitor runs `grep -ril rest ~/work`, **Then** the
+    paths of the work files that mention REST appear, one per line.
 
 ---
 
@@ -278,12 +339,25 @@ run `help` and `work` and confirm what is announced and that the output can be b
    or Space, **Then** the command runs and focus returns to the command line.
 7. **Given** the Terminal is the only open window, **When** the user runs `exit`, **Then** the
    window closes and focus moves to the Terminal item in the dock (005 FR-023).
+8. **Given** `cat cv.json | jq` typed in the command line on a Mac, **When** the user presses
+   Cmd+Left, then Option+Right twice, then Cmd+Right, **Then** the block cursor moves to the start
+   of the line, then to the end of `cv`, then to the end of `json`, then to the end of the line,
+   as in a terminal. Ctrl+A and Ctrl+E move it to the start and the end, Ctrl+W deletes the word
+   before it and Ctrl+U everything before it.
+9. **Given** the Terminal with output and a command typed, **When** the user presses Cmd+A (Ctrl+A
+   outside macOS) and then Cmd+C, **Then** all of the Terminal's text, the output and the typed
+   command, is selected and copied, and nothing of the dock, the menu bar or other windows.
+   Typing a letter then clears the selection and adds the letter to the command line.
+10. **Given** a command line typed or running, with no text selected, **When** the user presses
+    Ctrl+C, **Then** the line shows `^C`, nothing more runs, and a new empty prompt follows.
 
 ---
 
 ### User Story 6 - Reduced motion, high contrast and larger text (Priority: P6)
 
-A visitor who asked their system for reduced motion sees a cursor that doesn't blink. A visitor in
+Every other visitor sees the command line's block cursor blink while it has focus, as a
+terminal's does, and stop blinking a few seconds after their last key press. A visitor who asked
+their system for reduced motion sees a cursor that doesn't blink. A visitor in
 high-contrast mode sees the prompt, the command line, the cursor and every link. A visitor who
 zooms text to 200% reads output that wraps rather than running off the side.
 
@@ -299,8 +373,9 @@ nothing is cut off and nothing needs horizontal scrolling.
 
 1. **Given** reduced motion, **When** the Terminal is open, **Then** its cursor doesn't blink, and
    output appears at once, with no movement.
-2. **Given** no reduced motion, **When** the Terminal has been open for 5 seconds, **Then** the
-   cursor has stopped blinking (WCAG 2.2 success criterion 2.2.2).
+2. **Given** no reduced motion and focus in the command line, **When** the visitor presses a key,
+   **Then** the cursor blinks, and 5 seconds after the last key press it has stopped blinking and
+   stays filled (WCAG 2.2 success criterion 2.2.2).
 3. **Given** forced colors, **When** the visitor looks at the Terminal with output, **Then** the
    prompt, typed commands, output, links, command controls, the command line, its cursor and focus
    indicators are all visible and distinguishable.
@@ -367,19 +442,27 @@ can't merge.
 - **A misspelt command** close to a known one, such as `wrok`, `hlep` or `proj`: the reply names
   what was typed, offers the closest commands, at most 3, and mentions `help` (FR-016). A word
   nothing like any command, such as `sudo`, gets no suggestion besides `help`.
-- **A command nothing like a known one**, such as `sudo` or `rm -rf /`: the same "not a
-  command" reply, with no joke reply or hidden command, as easter eggs are a non-goal. Commands
-  that would change files, such as `rm`, `mkdir`, `touch` or `mv`, get the same reply, as the file
-  system can't be changed (FR-049).
+- **A command nothing like a known one**, such as `sudo`, `ssh`, `curl` or `python`: the same "not
+  a command" reply, with no joke reply or hidden command, as easter eggs are a non-goal. Nothing
+  the shell offers reaches the network or runs a program (FR-022, FR-068).
+- **A command that would change the protected files**, such as `rm -rf ~`, `mv about x`,
+  `touch work/new` or `echo hi > about`: bash's "Permission denied", once per path, and the
+  protected files and folders don't change (FR-049). Any of the visitor's own files that the
+  command reaches, such as with `rm -rf ~`, are changed or removed as bash would (FR-073).
+- **The visitor's files reach the limit** of FR-073: the write that would pass it gives bash's
+  "No space left on device", and what was written before stays.
+- **A visitor's file named as a built file would be**, such as `touch About` beside `about`: names
+  are matched without regard to capitals (FR-045), so it names the protected `about` and gets
+  "Permission denied".
 - **A known command with an argument it doesn't take**, such as `work 2020`: the reply says the
   command takes no argument and shows how to use it. `help work` shows that command's own help.
 - **A path that doesn't exist**, such as `cat work/nowhere`: the reply names the path as typed
   and says there is no such file or folder. `cd` into a file and `cat` on a folder say what the
   name is and how to read it (FR-048).
-- **`cd ..` in the home folder**, or a path such as `../..` above it: the visitor stays in the
-  home folder, as the home folder is the top of the file system.
-- **`ls` or `cat` with a path from anywhere**, such as `cat ~/work/<file>` from the specs folder,
-  or `/` for the home folder: it works, so a path means the same from every folder (FR-045).
+- **`cd ..` in the home folder**, or `cd /`: the visitor goes up, as in bash. The file system
+  above the home folder holds only what FR-045 sets, and `cd` alone or `cd ~` comes back home.
+- **`ls` or `cat` with a path from anywhere**, such as `cat ~/work/<file>` from the specs folder:
+  it works, so a path means the same from every folder (FR-045).
 - **Two CV entries that would get the same file name**, such as two roles at one company: each
   gets its own name, told apart as FR-044 sets.
 - **A file name with capitals, spaces or characters other than ASCII letters** in the CV, such as
@@ -421,8 +504,14 @@ can't merge.
 - **The CV document has no name**: the greeting falls back to the site heading the design sets,
   as the shell does (005 FR-066), and the pocket terminal's case leaves the name out. The prompt
   holds no name, so it doesn't change.
-- **A shortcut a terminal user expects**, such as Ctrl+C or Ctrl+L: it keeps the browser's
-  meaning. The Terminal takes over no key a browser or screen reader reserves (005 FR-029).
+- **A shortcut a terminal user expects**: the line-editing keys of FR-074 and the keys of FR-075
+  work as in a terminal. A key a browser or screen reader reserves on the visitor's system keeps
+  the browser's meaning, such as Ctrl+W, Ctrl+L or Ctrl+U on Windows and Linux, so those systems
+  get the system's own editing keys instead (005 FR-029, FR-026). Ctrl+C with text selected
+  copies it.
+- **The command line's text selected**, with Shift and the arrows, a double click or Cmd+A: the
+  selection is shown in the command line as on the rest of the screen, and typing or deleting
+  replaces it, as in a text field (FR-074).
 - **Escape in the command line**: does what the shell gives it (005 edge cases), and doesn't clear
   what was typed.
 - **Scripting turned off**: the site root shows the page 005 sets (005 FR-049). The Terminal
@@ -437,6 +526,8 @@ can't merge.
   as the shell picks the look by the space available (005 FR-001), not by the device.
 - **Reduced motion**: the cursor doesn't blink, output never types itself out, and the pocket
   terminal's keys don't move when pressed.
+- **The command line loses focus**, such as when the visitor tabs to the dock: the cursor turns
+  hollow and stops blinking, and comes back filled when focus returns (FR-072).
 - **Forced colors**: every part of the Terminal stays visible and distinguishable (FR-033).
 - **Editing keys in the vim view**, such as `i`, `dd` or `:w`: nothing changes, and the message
   line says the file is read only (FR-060). `:w!` and `:wq` get the same message.
@@ -445,11 +536,22 @@ can't merge.
 - **A search with no match**: the message line says the text wasn't found, and the cursor stays.
 - **`vim` with no input**, such as `vim -` with nothing piped, `vim work` on a folder or `vim nowhere`:
   the usage or path reply, and the view doesn't open (FR-058).
-- **A pipe into a command that reads no input**, such as `ls | work`: the reply names the command
-  and says it doesn't read piped input (FR-057). `jq` on text that isn't JSON, such as
-  `cat about | jq`, says the input isn't JSON.
-- **`jq` with a filter**, such as `jq .work`: the reply says the Terminal's `jq` only pretty-prints,
-  and shows its usage.
+- **A pipe into a command that reads no input**, such as `ls | work` or `ls | vim cv.json`: the
+  command runs and ignores its input, as in bash (FR-057). `jq` on text that isn't JSON, such as
+  `cat about | jq`, gives jq's parse error.
+- **`jq` with a filter**, such as `jq .work cv.json` or `jq '.skills[].name' cv.json`: it applies
+  the filter as jq does. A filter jq can't parse gives jq's error (FR-056).
+- **A command line that never ends or prints without end**, such as `while true; do :; done` or
+  `yes`: the shell stops it within the limit FR-069 sets, says it was stopped, and gives a new
+  prompt. The page, the shell and the other windows keep responding throughout.
+- **A command line with bash syntax the shell can't parse**, such as an unclosed quote: bash's
+  syntax error, naming what it expected, and a new prompt.
+- **The shell not loaded yet** when the Terminal first opens, such as on a slow connection: the
+  greeting, prompt and command line show at once, the visitor can type, and a command run before
+  the shell is ready runs as soon as it is (FR-070).
+- **A click on the Terminal's screen** that isn't on a link or a control: focus goes to the command
+  line, the screen doesn't scroll, and what was typed stays (FR-071). A click that ends a text
+  selection keeps the selection and doesn't move focus.
 - **The Terminal closed, minimized or the shell switched** with the vim view open: closing ends the
   view with the rest of the Terminal (FR-021). Minimizing and switching keep it open, with its
   cursor, folds and search.
@@ -526,9 +628,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `clear` | Clears the output. |
   | `exit` | Closes the Terminal on desktop, or returns to the home screen on mobile. |
 
-  Commands MAY be joined with `|` (FR-057). `whoami` MUST run `about`, `experience` MUST run
-  `work`, and `?` MUST run `help`. Every command
-  and alias MUST be listed by `help`, and there MUST be no command `help` doesn't list.
+  The Terminal MUST also offer the standard commands of FR-068, and every command line follows
+  the shell language of FR-067, pipes (FR-057) included. `whoami` MUST run `about`, `experience`
+  MUST run `work`, and `?` MUST run `help`. `help` MUST list every command above and every alias
+  with its description, then every standard command by name in a group of its own, and there MUST
+  be no command `help` doesn't list. `help <command>` MUST show any command's own help, standard
+  commands included.
 - **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
   (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
   (004 Key Entities), in the CV document's order, and MUST follow 004's rules for them: an absent
@@ -542,9 +647,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   (Constitution IV).
 - **FR-011**: A CV command whose section is empty or absent in the CV document MUST say, in site
   text, that the CV lists nothing for it, and MUST show no empty list or heading.
-- **FR-012**: Besides the named commands, the Terminal MUST offer a pretend file system that
-  holds the CV and the site as folders and files, browsed with `ls`, `cd`, `cat` and `pwd`, as
-  FR-043 to FR-050 set. It holds the same CV as the named commands, and is never needed to read
+- **FR-012**: Besides the named commands, the Terminal MUST offer a file system that holds the CV
+  and the site as folders and files, browsed and searched with the shell's commands (FR-068), as
+  FR-043 to FR-050 and FR-073 set. It holds the same CV as the named commands, and is never needed to read
   it.
 - **FR-013**: `specs` MUST list every feature spec the repository holds when the site is built,
   in numbered order. Each entry MUST show the spec's number, its name, its status and its count of
@@ -555,6 +660,30 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-014**: `open cv` and `open about` MUST open, or bring to the front, the CV app or About this
   site exactly as the dock or the site menu does on desktop (005 FR-012, FR-064) and as the home
   screen does on mobile. `open` with any other name MUST list the names it accepts.
+
+**The shell** (added 2026-10-29)
+
+- **FR-067**: Every command line MUST be run by the Terminal's own bash-like shell, with bash's
+  meaning for at least: pipes (FR-057); `;`, `&&` and `||`; single and double quotes and
+  backslash escapes; variables, `$VAR`, `${VAR}`, `${VAR:-default}`, `export` and `$?`; globs
+  `*`, `?` and `[...]`; redirects `>`, `>>`, `2>`, `2>&1` and `<`; `if`, `for`, `while` and
+  `until`; and functions. Variables and functions last until the Terminal closes (FR-021). The
+  commands of FR-008 MUST behave as commands of that shell: they can be piped, redirected,
+  chained and run in loops.
+- **FR-068**: Besides the commands of FR-008, the shell MUST offer the standard commands a bash
+  user expects, at least `echo`, `printf`, `grep`, `head`, `tail`, `wc`, `sort`, `uniq`, `cut`,
+  `tr`, `sed`, `awk`, `find`, `tree`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `xargs`, `diff`,
+  `seq`, `date`, `env`, `which`, `basename`, `dirname`, `true` and `false`. `ls`, `cd`, `cat`,
+  `pwd` and `history` MUST also take bash's common options for them, such as `ls -la` and
+  `cat -n`, still naming files as FR-044 and FR-050 set. Each standard command MUST behave as its
+  GNU version does for the options its own `--help` lists, and MUST answer `--help`. No command
+  may reach the network, run a real program or run code in another language, so the shell offers
+  no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
+  is also a command of FR-008, such as `whoami`, FR-008's meaning wins.
+- **FR-069**: A command line MUST be stopped, with a message in site text that says it ran too
+  long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 commands
+  or printed 1 MB, whichever comes first. While a command line runs, the Terminal's screen, the
+  shell's windows and the rest of the page MUST keep responding to input.
 
 **The file system**
 
@@ -573,9 +702,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   two entries would get the same name, each MUST get its start year added, and then a number if
   they are still the same. The same CV document MUST always give the same names, and no name may
   be typed by hand.
-- **FR-045**: `ls`, `cd` and `cat` MUST accept a path relative to the working folder, with `.` and
-  `..`, or a path from the home folder starting with `~/` or `/`. Names MUST be matched without
-  regard to capitals. `..` in the home folder MUST stay in the home folder.
+- **FR-045**: Every command MUST accept a path relative to the working folder, with `.` and `..`,
+  a path from the home folder starting with `~/`, or a path from the root starting with `/`, and
+  globs such as `~/work/*` (FR-067). The home folder MUST be `/home/guest`, shown as `~`, and the
+  root MUST hold only `home` and `tmp` and whatever the plan needs for the shell to run. Names of
+  the home folder's files and folders MUST be matched without regard to capitals.
 - **FR-046**: The prompt MUST show the working folder's path, with `~` for the home folder, and
   `pwd` MUST show the same path.
 - **FR-047**: `cat` on a CV entry's file MUST show exactly what the matching named command shows
@@ -587,12 +718,25 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   typed and says there is no such file or folder. `cd` on a file MUST say it is a file and suggest
   `cat`, and `cat` on a folder MUST say it is a folder and suggest `ls`, each as a command control
   (FR-015). `ls` on a file MUST list that file alone.
-- **FR-049**: The file system MUST be read only. No command may create, change, move or delete a
-  file or folder, and commands that would, such as `rm`, `mkdir`, `touch` or `mv`, MUST get the
-  reply for an unknown command (FR-016).
+- **FR-049**: Every file and folder built from the CV document and the spec list (FR-043,
+  FR-055) MUST be protected, and so MUST the root and `/home`. A command that would change, move,
+  rename or delete a protected file or folder, or create something inside a protected folder,
+  such as `rm`, `mv`, `touch`, `mkdir`, `cp` onto it or a redirect into it, MUST leave it as it
+  was and give bash's "Permission denied", naming the path as typed. `ls -l` MUST show protected
+  files and folders as read only and owned by someone other than the visitor. The home folder
+  itself is not protected (FR-073). Amended 2026-10-29: the whole file system was read only, and
+  such commands had the reply for an unknown command.
 - **FR-050**: In the output of `ls`, every folder name MUST be a command control that runs `ls`
   with that folder's path from the home folder, and every file name one that runs `cat` with its
   path from the home folder (FR-015), so the whole file system can be read without typing.
+- **FR-073** (added 2026-10-29): Outside the protected files and folders (FR-049), the visitor
+  MUST be able to create, change, move, copy and delete files and folders as in bash, with any
+  command or redirect, in the home folder, in folders they made and in `/tmp`. `/tmp` and the
+  visitor's files MUST be gone each time the Terminal opens, MUST together hold at most 1 MB, past
+  which a write MUST give bash's "No space left on device" error, and MUST never leave the
+  browser or outlast the Terminal (FR-021, FR-022). `ls` of the home folder MUST list the
+  visitor's files and folders after the built ones, in name order, marked as FR-043 marks folders,
+  and they MUST be command controls as FR-050 sets.
 
 **Help for visitors who don't know terminals**
 
@@ -608,13 +752,17 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   from the typed word, or at most 1 when the typed word has 3 letters or fewer (a letter added,
   removed or changed, or two neighbouring letters swapped), and every command whose name begins with the typed word when it is at least 2 letters long,
   closest first and at most 3. Capitals don't count as edits. When none qualifies, the reply
-  offers only `help`.
-- **FR-017**: A command with an argument it doesn't take, or missing one it needs, MUST get a reply
-  that says so and shows how to use the command. The command line MUST accept at least 200
+  offers only `help`. The reply MUST start as bash's does, with the word typed and "command not
+  found".
+- **FR-017**: A command of FR-008 with an argument it doesn't take, or missing one it needs, MUST
+  get a reply that says so and shows how to use the command. A standard command (FR-068) with a
+  wrong option or argument MUST give the error bash's version of it gives. The command line MUST accept at least 200
   characters and MAY stop accepting more after a limit the design sets.
-- **FR-018**: Typed and pasted text MUST be shown exactly as typed, and MUST never be run as code,
-  rendered as markup or turned into a link. Line breaks in pasted text MUST become spaces, and
-  nothing MUST run until Enter is pressed.
+- **FR-018**: Typed and pasted text MUST be shown exactly as typed, and MUST never be rendered as
+  markup, turned into a link, or run as anything but a command line of the Terminal's own shell
+  (FR-067), which runs no code of the page, the browser or any real program. Output MUST be shown
+  as text, so a file or command that prints markup shows the markup. Line breaks in pasted text
+  MUST become spaces, and nothing MUST run until Enter is pressed.
 
 **Output, history and scrolling**
 
@@ -626,10 +774,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-020**: In the command line, the Up and Down arrows MUST step through the commands run since
   the Terminal opened, newest first, without running them. Down past the newest MUST give back
   what the visitor had typed before stepping. `history` MUST list the same commands.
-- **FR-021**: Closing the Terminal MUST clear its output and its command history, and return its
-  working folder to the home folder. Minimizing it, going home on mobile and the shell switching
-  between desktop and mobile MUST keep all three, along with what was typed and the scroll
-  position (005 FR-002, FR-034).
+- **FR-021**: Closing the Terminal MUST clear its output, its command history, its variables and
+  every file and folder the visitor made (FR-073), and return its working folder to the home
+  folder.
+  Minimizing it, going home on mobile and the shell switching between desktop and mobile MUST
+  keep all of them, along with what was typed and the scroll position (005 FR-002, FR-034).
 - **FR-022**: Nothing typed in the Terminal MUST leave the visitor's browser or be kept after the
   visit ends. The Terminal MUST make no request to any other site (005 FR-054).
 - **FR-023**: Output MUST wrap within the Terminal's width at every window and screen size the
@@ -669,16 +818,17 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-055**: The home folder MUST hold a file `cv.json` whose text is the CV document's JSON
   exactly as the content source (002) holds it, every key and value in its order, read when the
   site is built. No part of it may be typed by hand, and `cat cv.json` MUST show it as it is.
-- **FR-056**: `jq` with a path, or with piped input, MUST pretty-print JSON: indented by 2
-  spaces, keys in their order, with syntax colors for keys, strings, numbers, booleans and null
-  that carry no meaning on their own. `jq` accepts no filter but `.`; any other filter MUST get a
-  reply, in site text, that says the Terminal's `jq` only pretty-prints and shows its usage. Input
-  that isn't JSON MUST get a reply that says so and names the path or `|`.
-- **FR-057**: A command line MAY join commands with `|`. Each command's output MUST become the next
-  command's input. Only `jq` and `vim -` read input. Piping into any other command MUST get a
-  reply, in site text, that names the command and says it doesn't read piped input, and a `|`
-  with nothing on one side MUST get the usage reply (FR-017). The Terminal parses the pipe itself
-  and runs no code (FR-018).
+- **FR-056**: `jq` MUST take a filter, with jq's filter language, and a path or piped input, and
+  MUST print what jq prints for them. With no filter, or `.`, it MUST pretty-print the JSON:
+  indented by 2 spaces, keys in their order, with syntax colors for keys, strings, numbers,
+  booleans and null that carry no meaning on their own. Input that isn't JSON, or a filter jq
+  can't parse, MUST give jq's error. Amended 2026-10-29: `jq` took no filter but `.`.
+- **FR-057**: A command line MAY join any commands with `|`, with bash's meaning: each command's
+  output becomes the next command's input. The output of the commands of FR-008 MUST be piped as
+  the text they show, so `work | grep -i rest` works. A command that reads no input MUST run and
+  ignore it, as in bash, and a `|` with nothing on one side MUST give bash's syntax error.
+  Amended 2026-10-29: only `jq` and `vim -` read input, and piping into another command got a
+  reply that it doesn't read piped input.
 - **FR-058**: `vim <path>` and `vim -` with piped input MUST open the vim view: the text shown in
   place of the Terminal's output, filling the Terminal window, or the pocket terminal's screen,
   with line numbers, a status line and a message line. The status line MUST show the mode, the
@@ -745,6 +895,36 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   shows a single section, such as `work`. No level may be skipped. Lists MUST be lists, links
   MUST be links, and command controls (FR-015) MUST be buttons named by the command they run. The
   reading order MUST follow the visual order.
+- **FR-071** (added 2026-10-29): A click or tap anywhere on the Terminal's screen, its output
+  included, that isn't on a link or a control MUST move focus to the command line, without
+  scrolling the output or changing what was typed. A click that ends a text selection MUST keep
+  the selection and MUST NOT move focus (FR-023). On mobile, such a tap MAY open the on-screen
+  keyboard, as tapping the command line does (FR-053).
+- **FR-072** (added 2026-10-29): The command line MUST look like a terminal's: no box, border,
+  outline or background around it, focused or not. Its block cursor MUST be its focus indicator:
+  filled while the command line has focus, hollow when it doesn't, each with a contrast of at
+  least 3:1 against the screen behind it (WCAG 2.2 success criteria 1.4.11 and 2.4.7). Every other
+  control in the Terminal keeps the site's focus indicator.
+- **FR-074** (added 2026-10-29): The command line MUST take the visitor's system's own
+  line-editing keys, with the block cursor and any selection shown where they are after each key:
+  Left and Right by character; Cmd+Left and Cmd+Right on macOS, and Home and End everywhere, to
+  the line's start and end; Option+Left and Option+Right on macOS, and Ctrl+Left and Ctrl+Right
+  elsewhere, by word; Shift with any of these to select; Backspace and Delete; Option+Backspace on
+  macOS, and Ctrl+Backspace elsewhere, to delete a word; Cmd+Backspace on macOS to delete to the
+  line's start; and the system's undo and redo. On macOS it MUST also take the readline keys a
+  terminal user expects: Ctrl+A and Ctrl+E to the line's start and end, Ctrl+B and Ctrl+F by
+  character, Ctrl+K to delete to the end, Ctrl+U to delete to the start, Ctrl+W to delete the word
+  before the cursor, and Ctrl+L to clear the screen as `clear` does, keeping the line. Selected
+  text in the command line MUST be shown as selected, never hidden.
+- **FR-075** (added 2026-10-29): Cmd+A on macOS, and Ctrl+A elsewhere, with focus in the command
+  line or the output, MUST select all of the Terminal's text, the output and the command line,
+  and nothing outside the Terminal, as a terminal window does. The system's copy then MUST copy
+  that text as shown, without the cursor or any control's name added. Ctrl+C with no text
+  selected MUST cancel what was typed, showing it with `^C` after it and giving a new prompt, or,
+  while a command line runs, stop it as FR-069 stops one, saying it was stopped. Up and Down keep
+  stepping through the history (FR-020). No key of this requirement or FR-074 may take over one a
+  current main browser or screen reader reserves on the visitor's system (FR-026, 005 FR-029); in
+  the vim view, its own keys apply (FR-060).
 
 **Look, motion and accessibility**
 
@@ -757,9 +937,10 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   Text MUST use the site's fonts (004 FR-045). The Terminal MUST match the approved mockup for each
   shell (Constitution II), every design value MUST come from tokens and motion values from the
   motion token source, and the token check (003) MUST pass over it with no exception added.
-- **FR-032**: Output MUST appear at once, never typed out letter by letter. The cursor MAY blink,
-  but MUST stop blinking within 5 seconds of the last key press (WCAG 2.2 success criterion
-  2.2.2). When the visitor asks for reduced motion, the cursor MUST NOT blink and no part of the
+- **FR-032**: Output MUST appear at once, never typed out letter by letter. While the command
+  line has focus its cursor MUST blink, as a terminal's does, and MUST stop blinking, staying
+  filled, within 5 seconds of the last key press (WCAG 2.2 success criterion 2.2.2). A key press
+  MUST start it blinking again. When the visitor asks for reduced motion, the cursor MUST NOT blink and no part of the
   Terminal may move or scale, except scrolling (Constitution VIII).
 - **FR-033**: With forced colors active, the prompt, typed commands, output, links, command
   controls, the command line, its cursor, focus indicators and, on mobile, the pocket terminal's
@@ -784,6 +965,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   every command MUST give the same output with no network as online, in the site's fonts
   (Constitution VI, 005 FR-052). No command MUST need the network, so the Terminal MUST show no
   offline message.
+- **FR-070** (added 2026-10-29): The shell's code (FR-067, FR-068) MUST NOT be part of what the
+  site root or `/cv` load. It MUST load when the Terminal first opens in a visit, and the site's
+  offline copy MUST hold it after one complete online visit (FR-036). Until it is ready, the
+  greeting, the prompt and the command line MUST show and take typing, and command lines run
+  before then MUST run in order once it is. If it can't load, the Terminal MUST say so in site
+  text, with a control that tries again.
 
 **Traceability and checks**
 
@@ -798,14 +985,23 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   command with the Up arrow, run `cv`, move with `j`, open a fold with `za` and leave the vim view
   with `:q`, leave the command line with Tab and come back with Shift+Tab, reach
   the dock with the shell's shortcut, and close the Terminal with `exit`, confirming a visible
-  focus indicator and where focus lands at each step.
+  focus indicator and where focus lands at each step. In the command line, the visible focus
+  indicator is its filled cursor (FR-072), and the check MUST confirm that the cursor is filled
+  there and hollow once focus leaves. It MUST also, in the command line, move to the line's start
+  and end and by word with the keys FR-074 sets for the check's system, delete a word, select all
+  with the key FR-075 sets and confirm the selection holds the Terminal's text and nothing else,
+  and cancel a typed line with Ctrl+C.
 - **FR-040**: A Terminal content check MUST run every CV command in each shell and confirm that its
   output holds every shown field the CV document holds for that section, in the CV document's
   order, and that `cat cv.json`, `cat cv.json | jq` and the vim view opened by `cv` hold the CV
   document's JSON exactly, every key and value in its order. It MUST also list every folder of the
   file system and `cat` every file, confirming there is one file per CV entry and that each shows
   what the matching named command shows for that entry. It MUST read the expected fields and
-  entries from the CV document, not from a hand-written list.
+  entries from the CV document, not from a hand-written list. It MUST also run, in each shell, a
+  pipe from a command of FR-008 into `grep`, a `grep` over the work folder, a `jq` filter on
+  `cv.json`, a file made, moved and removed in the home folder, a write to a protected file, and a
+  command line that never ends, confirming each gives what FR-049, FR-056, FR-057, FR-069 and
+  FR-073 set.
 - **FR-041**: The offline check (005 FR-059) MUST also open the Terminal with no network at a phone
   width and a desktop width and run every command `help` lists, confirming each output matches the
   online one.
@@ -818,6 +1014,13 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **Terminal**: the app this feature adds. It declares both shells and doesn't need the network.
 - **Command**: a word the Terminal runs, with an optional argument, a one-line description and its
   own help. Every command is listed by `help`.
+- **Shell**: the Terminal's own bash-like interpreter, which runs every command line with bash's
+  meaning (FR-067). It runs nothing outside the Terminal and loads when the Terminal first opens
+  (FR-070).
+- **Standard command**: a command of the shell that a bash user expects, such as `grep` or `wc`,
+  behaving as its GNU version does (FR-068).
+- **Command line (as run)**: what the visitor typed, in the shell's language: one or more commands
+  joined by pipes, `;`, `&&` or `||`.
 - **Alias**: another word for a command, such as `whoami` for `about`, also listed by `help`.
 - **CV command**: a command that shows one or more sections of the CV document, the same fields
   `/cv` shows (004 Key Entities).
@@ -830,8 +1033,16 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **Command control**: a command name in the output that runs that command when activated.
 - **Spec list**: the site's feature specs, each with its number, name, status and count of active
   requirements, read from the repository when the site is built (FR-013).
-- **File system**: the read-only pretend folders and files of the CV and the site, starting at the
-  home folder (FR-043). Built from the CV document and the spec list, never typed by hand.
+- **File system**: the folders and files of the CV and the site, protected, and the visitor's own,
+  with the home folder
+  at `/home/guest` (FR-043, FR-045). Built from the CV document and the spec list, never typed by
+  hand.
+- **Protected file**: a file or folder built from the CV document or the spec list, which no
+  command can change, move or delete (FR-049).
+- **Visitor's file**: a file or folder the visitor made in the Terminal, gone when it closes
+  (FR-073).
+- **Cursor**: the command line's block cursor, filled and blinking with focus, hollow without; the
+  command line's focus indicator (FR-072). It follows every line-editing key (FR-074).
 - **Folder**: a named group of files, such as `work`, with one file per entry.
 - **File**: a named piece of the CV or the site that `cat` shows, such as one work entry. Its name
   comes from the entry's identifying field (FR-044).
@@ -846,7 +1057,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **Site text**: text in the Terminal that isn't CV content, set by the design, in English.
 - **`cv.json`**: the CV document's JSON as the content source holds it, a file in the home folder
   (FR-055).
-- **Pipe**: commands joined with `|`, each one's output the next one's input (FR-057).
+- **Pipe**: commands joined with `|`, each one's output the next one's input, with bash's meaning
+  (FR-057).
 - **Vim view**: the read-only, vim-like view of a file or piped text, with line numbers, folds,
   search, a status line and a message line (FR-058 to FR-066).
 
@@ -865,8 +1077,8 @@ plain server-rendered page.
 ## Offline Behavior *(mandatory)*
 
 - **Works offline**: Fully, after one online visit.
-- **Available offline**: the Terminal and every command, with the same output as online, after one
-  visit to the site root or `/cv` (FR-036).
+- **Available offline**: the Terminal, its shell and every command, with the same output as online,
+  after one visit to the site root or `/cv` (FR-036, FR-070).
 - **Needs the network**: nothing the Terminal does. Following the repository link, a spec link or a
   profile or project link leads to another site, as any link does.
 - **Offline state shown**: the Terminal itself, complete. It shows no offline message, as nothing
@@ -888,6 +1100,11 @@ plain server-rendered page.
 - [x] Penpot file link: [006 Terminal — Glass](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f)
 - [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-031, FR-054)
+- [ ] For the 2026-10-29 amendment: the mockup and wireframes updated for the command line with
+  no box and its cursor filled and hollow (FR-072), `help` with its group of standard commands
+  (FR-008), the shell loading and failing to load (FR-070), a command line stopped by its limit
+  (FR-069), and the command line's selection and the Terminal's text selected all (FR-074,
+  FR-075), with the owner's sign-off added to `review.md`
 
 ## Success Criteria *(mandatory)*
 
@@ -924,6 +1141,17 @@ plain server-rendered page.
   on it shows what the matching named command shows, every time the content check runs.
 - **SC-012**: At 320 px wide and in landscape at 568 by 320 px, the pocket terminal shows its
   screen and every command key with 0 px of horizontal scrolling.
+- **SC-013**: With the shell added, the site root and `/cv` load 0 bytes of the shell's code, and
+  their gzipped script stays within 5% of its size before the amendment. After the Terminal is
+  opened, the shell is ready within 1 s on a desktop connection and within 3 s with the network
+  and CPU slowed as Lighthouse's mobile profile slows them.
+- **SC-014**: For a fixed list of at least 30 command lines over the CV's files, covering every
+  feature of FR-067 and every command of FR-068, the Terminal's output is the same as bash's with
+  GNU tools on the same files, every time the content check runs, except where FR-044, FR-045 or
+  FR-049 sets otherwise.
+- **SC-015**: In 100% of the keyboard check's steps with focus in the command line, its cursor is
+  filled, and there is no outline or border around the command line; in 100% of the steps with
+  focus elsewhere, the cursor is hollow.
 
 ## Assumptions
 
@@ -935,7 +1163,22 @@ plain server-rendered page.
   `history`, `whoami`), so engineers can guess them, and `help` lists every one for visitors who
   can't. Their exact wording and descriptions are site text set by the design.
 - **No hidden commands**: every command is listed by `help`. Joke replies to commands such as
-  `sudo` or `rm` would be easter eggs, a non-goal in the vision.
+  `sudo` would be easter eggs, a non-goal in the vision. `rm` is a real command of the shell: it
+  removes the visitor's own files and gives bash's "Permission denied" on protected ones (FR-049).
+- **A real shell** (2026-10-29): engineers who open a terminal try the commands and syntax they
+  know, and a short list of pretend commands broke that feel. The Terminal now runs a bash-like
+  shell in the page, with the site's commands as commands of that shell. It runs entirely in the
+  visitor's browser, reaches no network and runs no real program, so it can't harm the visitor,
+  the site or anyone else (FR-022, FR-068). It is large next to the rest of the site, so it loads
+  only when the Terminal opens (FR-070). Which shell is used, and why it is worth its size, is the
+  plan's to say (Constitution X).
+- **A terminal's cursor** (2026-10-29): a terminal shows focus with its cursor, not a box. The
+  filled, blinking cursor is a clear focus indicator, the hollow one shows where focus isn't, and
+  clicking anywhere on the screen puts focus back, as in a terminal (FR-071, FR-072).
+- **A terminal's keys** (2026-10-29): engineers' hands go to the keys their terminal takes. The
+  command line takes the system's own editing keys everywhere, and on macOS, where browsers leave
+  Ctrl free, the readline keys too. On Windows and Linux the browser reserves most readline keys
+  (Ctrl+W closes the tab), so there the system's editing keys do the same work (FR-074, FR-026).
 - **No completion with Tab**: in a page, Tab moves focus, and taking it over would trap keyboard
   users (FR-026). Visitors who don't know a command use the command controls (FR-015) and the
   suggestions for near misses (FR-016) instead.
@@ -944,8 +1187,8 @@ plain server-rendered page.
 - **Output appears at once**: typing output out letter by letter would slow every reader and be
   noise for a screen reader, so the Terminal never does it, with or without reduced motion
   (FR-032).
-- **Nothing is remembered between visits**: as in 005. The output and command history last only
-  while the Terminal is open in the visit (FR-021).
+- **Nothing is remembered between visits**: as in 005. The output, the command history, variables
+  and the visitor's files last only while the Terminal is open in the visit (FR-021).
 - **Contact**: `contact` shows the CV's own contact fields, as `/cv` does. How visitors reach the
   owner beyond that belongs to the Contact feature, which may change what `contact` does.
 - **Fonts**: the Terminal uses a fixed-width font from the site's fonts, chosen in the approved
@@ -965,8 +1208,8 @@ plain server-rendered page.
   is original by construction, and its keys are the way in for visitors who don't want to type
   on a phone. The design sets which device it evokes, as long as it copies none.
 - **Vim view**: engineers know vim, and the CV document is JSON, so the whole CV is shown as that
-  JSON in a vim-like view rather than as a long page of text. It is a viewer: the file system is
-  read only, so nothing in it can change. It copies vim's keys and layout conventions, not any
+  JSON in a vim-like view rather than as a long page of text. It is a viewer: it changes no file,
+  the visitor's own included, and files are changed with the shell's commands. It copies vim's keys and layout conventions, not any
   vim color scheme, so the look stays the site's own (FR-031). The section commands keep their
   readable text for visitors who don't read JSON, and `/cv` stays the plain CV.
 - **Command keys are big**: they are the phone's main way in, so FR-051 sets 44 by 44 CSS px, the
@@ -975,12 +1218,13 @@ plain server-rendered page.
   final testing phase under the constitution's interim provision on deferred manual checks.
 - **Out of scope**:
   - Settings, Contact and the requirement inspector, each a separate feature.
-  - Running real programs, reaching the network, or any command that changes the site.
+  - Running real programs, reaching the network, or any command that changes the site or the
+    files built from the CV and the spec list.
   - A file system shared with other apps, or a Files app. A later feature may add them.
-  - Tab completion, quotes, scripts, variables, and a command language beyond FR-008 and the `|`
-    of FR-057.
-  - Changing the file system, hidden files, file permissions, and any file not built from the CV
-    document or the spec list.
+  - Tab completion (FR-026), job control, background jobs, interactive programs other than the
+    vim view, and running a script file with `bash` or `sh`.
+  - Changing the protected files, keeping the visitor's files after the Terminal closes, hidden
+    files in the home folder, `chmod`, `chown` and users other than the visitor.
   - Commands for apps that don't exist yet. `open` gains names as later features add apps.
   - Terminal themes, font sizes and preferences, which belong to Settings.
   - Games, easter eggs and translations, non-goals in the vision.
