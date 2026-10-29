@@ -44,7 +44,7 @@
   grid-template-columns: minmax(0, 1fr) var(--token-size-playground-side);
 }
 
-/* Below size.playground-stack wide, the panes go under the editor (FR-072). */
+/* Below breakpoint.playground-stack wide, the panes go under the editor (FR-072). */
 .playground.is-narrow .pg-main {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) var(--token-size-playground-stacked-side);
@@ -197,8 +197,8 @@
   padding-block: var(--token-space-2);
   background: var(--token-color-code-surface);
   color: var(--token-color-code-text);
-  font-family: var(--token-typography-code-font-family);
-  font-size: var(--token-typography-code-font-size);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
   line-height: var(--token-size-code-line);
 }
 .pg-editor.is-focused { outline: var(--token-border-thick) solid var(--token-color-focus-shell); outline-offset: calc(var(--token-border-thick) * -1); }
@@ -294,7 +294,7 @@
 }
 .pg-card { max-inline-size: var(--token-size-playground-popover); margin-block-end: var(--token-space-1); padding: var(--token-space-2) var(--token-space-3); }
 .pg-card p { margin: var(--token-space-1-5) 0 0; padding-block-start: var(--token-space-1-5); border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule); color: var(--token-color-shell-text-soft); }
-.pg-sig { margin: 0; font-family: var(--token-typography-code-font-family); font-size: var(--token-typography-code-font-size); white-space: pre-wrap; }
+.pg-sig { margin: 0; font-family: var(--token-typography-small-font-family); font-size: var(--token-typography-small-font-size); white-space: pre-wrap; }
 
 .pg-suggest { inline-size: calc(var(--token-size-playground-popover) - var(--token-space-16)); margin-block-start: var(--token-space-1); padding-block: var(--token-space-1); }
 .pg-suggestion {
@@ -307,7 +307,7 @@
   padding-inline: var(--token-space-1-5);
   border: var(--token-border-thin) solid transparent;
   border-radius: var(--token-radius-small);
-  font-family: var(--token-typography-code-font-family);
+  font-family: var(--token-typography-small-font-family);
 }
 .pg-suggestion.is-selected { background: var(--token-color-code-selection); border-color: var(--token-color-playground-primary); }
 .pg-kind { display: grid; place-items: center; block-size: var(--token-space-4); border-radius: var(--token-space-1); background: var(--token-color-base-wash); color: var(--token-color-code-property); font-size: var(--token-font-size-label); }
@@ -323,7 +323,7 @@
   white-space: normal;
 }
 .pg-peek-head { display: flex; align-items: center; gap: var(--token-space-3); padding: var(--token-space-1) var(--token-space-2) var(--token-space-1) var(--token-space-3); border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule); font-family: var(--token-font-family-body); font-size: var(--token-font-size-small); }
-.pg-peek-head code { font-family: var(--token-typography-code-font-family); color: var(--token-color-code-type); }
+.pg-peek-head code { font-family: var(--token-typography-small-font-family); color: var(--token-color-code-type); }
 .pg-peek-where { color: var(--token-color-shell-text-secondary); }
 .pg-peek-keys { margin-inline-start: auto; color: var(--token-color-shell-text-secondary); font-size: var(--token-font-size-label); }
 .pg-peek-body { padding-block: var(--token-space-1); }
@@ -341,7 +341,7 @@
   background: var(--token-color-code-surface);
   color: var(--token-color-code-text);
   font: inherit;
-  font-family: var(--token-typography-code-font-family);
+  font-family: var(--token-typography-small-font-family);
 }
 .pg-rename p { margin: var(--token-space-1) var(--token-space-1) 0; color: var(--token-color-shell-text-secondary); font-size: var(--token-font-size-label); }
 
@@ -362,7 +362,7 @@
   padding: var(--token-space-1-5);
 }
 .pg-palette-field { display: flex; align-items: center; gap: var(--token-space-1-5); padding: var(--token-space-1) var(--token-space-2); border: var(--token-border-thin) solid var(--token-color-playground-primary); border-radius: var(--token-radius-small); outline: var(--token-border-thick) solid var(--token-color-focus-shell); outline-offset: var(--token-border-thin); background: var(--token-color-code-surface); }
-.pg-palette-prompt { color: var(--token-color-shell-text-secondary); font-family: var(--token-typography-code-font-family); }
+.pg-palette-prompt { color: var(--token-color-shell-text-secondary); font-family: var(--token-typography-small-font-family); }
 .pg-palette-input { flex: 1; min-inline-size: 0; padding: 0; border: 0; outline: 0; background: none; color: var(--token-color-shell-text); font: inherit; }
 .pg-palette-list { margin-block-start: var(--token-space-1); }
 .pg-palette-item { display: flex; align-items: center; justify-content: space-between; min-block-size: var(--token-space-7); padding-inline: var(--token-space-2); border: var(--token-border-thin) solid transparent; border-radius: var(--token-radius-small); }
@@ -418,7 +418,7 @@ kbd {
 
 .pg-pane { flex: 1; min-block-size: 0; overflow: auto; padding: var(--token-space-3) var(--token-space-4); }
 .pg-pane-caption { margin: 0 0 var(--token-space-2); color: var(--token-color-shell-text-secondary); font-size: var(--token-font-size-label); }
-.pg-readonly { margin: 0; color: var(--token-color-code-text); font-family: var(--token-typography-code-font-family); font-size: var(--token-typography-code-font-size); line-height: var(--token-size-code-line); white-space: pre; }
+.pg-readonly { margin: 0; color: var(--token-color-code-text); font-family: var(--token-typography-small-font-family); font-size: var(--token-typography-small-font-size); line-height: var(--token-size-code-line); white-space: pre; }
 .pg-empty { display: flex; align-items: center; gap: var(--token-space-2); margin: 0; color: var(--token-color-shell-text-soft); }
 
 .pg-diagnostics { margin: 0; padding: 0; list-style: none; }
@@ -440,7 +440,7 @@ kbd {
 .pg-where,
 .pg-code-number { font-family: var(--token-font-family-mono); font-size: var(--token-font-size-label); color: var(--token-color-shell-text-secondary); }
 
-.pg-log-list { margin: 0; padding: 0; list-style: none; font-family: var(--token-typography-code-font-family); font-size: var(--token-typography-code-font-size); }
+.pg-log-list { margin: 0; padding: 0; list-style: none; font-family: var(--token-typography-small-font-family); font-size: var(--token-typography-small-font-size); }
 .pg-log {
   display: grid;
   grid-template-columns: var(--token-space-16) minmax(0, 1fr) auto;
