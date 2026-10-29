@@ -52,13 +52,10 @@
   --token-size-playground-dialog: 440px;
   --token-size-playground-progress: 6px;
   --token-size-playground-loading: 420px;
-  --token-size-playground-stack: 720px;
   --token-size-playground-stacked-side: 240px;
   --token-size-code-line: 20px;
+  --token-breakpoint-playground-stack: 720px;
 
-  --token-font-size-code: 13px;
-  --token-typography-code-font-family: "JetBrains Mono", monospace;
-  --token-typography-code-font-size: 13px;
-  --token-typography-code-font-weight: 400;
-  --token-typography-code-letter-spacing: 0px;
+  /* The code's font is typography.small, and the window's right margin
+     size.terminal-window-margin, which the export already holds. */
 }
