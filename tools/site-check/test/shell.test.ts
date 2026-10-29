@@ -24,7 +24,7 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
   test('on the real build the keyboard part passes both flows on the root', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
-    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass', 'desktop/terminal-keyboard/1440px pass']);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass', 'desktop/terminal-keyboard/1440px pass', 'desktop/inspector-keyboard/1440px pass']);
   });
 
   test('a copy whose menu items show nothing when focused fails keyboard with no-focus-indicator at the site menu step', async () => {
