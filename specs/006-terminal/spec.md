@@ -111,6 +111,10 @@ and a terminal's cursor, focus and keys (see Clarifications, Session 2026-10-29)
   the page, as a terminal window does. Ctrl+C with no text selected cancels the line or stops the
   running command. No key a browser or screen reader reserves is taken over (FR-074, FR-075,
   FR-026).
+- Q (from `/speckit-analyze`): SC-014 compares output with bash's, but the site's own commands,
+  the replies of FR-016 and FR-048 and command controls differ from bash by design. What does it
+  compare? → A: Only command lines that use the standard commands of FR-068; the site's commands,
+  those replies and controls are not compared (SC-014). Approved by the owner 2026-10-29.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -1145,10 +1149,12 @@ plain server-rendered page.
   their gzipped script stays within 5% of its size before the amendment. After the Terminal is
   opened, the shell is ready within 1 s on a desktop connection and within 3 s with the network
   and CPU slowed as Lighthouse's mobile profile slows them.
-- **SC-014**: For a fixed list of at least 30 command lines over the CV's files, covering every
-  feature of FR-067 and every command of FR-068, the Terminal's output is the same as bash's with
-  GNU tools on the same files, every time the content check runs, except where FR-044, FR-045 or
-  FR-049 sets otherwise.
+- **SC-014**: For a fixed list of at least 30 command lines that use only the standard commands
+  of FR-068 over the CV's files, covering every feature of FR-067 and every command of FR-068, the
+  Terminal's output is the same as bash's with GNU tools on the same files, every time the content
+  check runs, except where FR-044, FR-045 or FR-049 sets otherwise. The commands of FR-008, the
+  replies of FR-016 and FR-048, and command controls (FR-015) are this site's and are not
+  compared.
 - **SC-015**: In 100% of the keyboard check's steps with focus in the command line, its cursor is
   filled, and there is no outline or border around the command line; in 100% of the steps with
   focus elsewhere, the cursor is hollow.
