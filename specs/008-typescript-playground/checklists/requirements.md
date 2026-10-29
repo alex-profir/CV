@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,16 +31,15 @@
 
 ## Notes
 
-- Three [NEEDS CLARIFICATION] markers remain, put to the owner:
-  - FR-019: how long the Playground keeps the visitor's code and options.
-  - FR-041: whether running code can reach the network.
-  - FR-060: whether a shared link opened on a phone shows its code, read-only.
+- The three [NEEDS CLARIFICATION] markers were resolved by the owner in the 2026-10-29
+  clarification session: code and options kept between visits with a Reset (FR-019, FR-080),
+  running code may reach other sites (FR-041), and a shared link on a phone doesn't show its code
+  (FR-060).
 - Implementation details: the spec names TypeScript, JavaScript, `console`, `alert`, `prompt`,
   `confirm`, `import` and `require`. These are the subject of the feature, what the visitor writes
   and reads, not choices of how to build it, so they stay. No editor, compiler host, sandbox
   technique, storage mechanism or link encoding is named.
 - Numbers chosen as defaults and recorded in Assumptions: the 5-second popup period, 1,000 log
   entries, 10,000 characters per entry, 8,000-character links.
-- Feature number: 008, because 007-requirement-inspector exists on its own branch and isn't merged
-  yet.
+- Feature number: 008, after 007-requirement-inspector.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
