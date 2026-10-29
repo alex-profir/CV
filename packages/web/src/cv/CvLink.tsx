@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 // An address as a link's text: without its scheme, as the website, the
 // profiles and an entry's lone address show it.
-export const withoutScheme = (url: string) => url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+export { withoutScheme } from '../format/url.ts';
 
 export function CvLink({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
   return (

@@ -5,7 +5,7 @@ import type { Resume } from '@cv/content';
 import { resume as realResume, siteData } from '@cv/content';
 import { dateRange } from '../../../src/format/dates.ts';
 import { locationLine } from '../../../src/format/location.ts';
-import { withoutScheme } from '../../../src/cv/CvLink.tsx';
+import { withoutScheme } from '../../../src/format/url.ts';
 import { siteText } from '../../../src/site-text.ts';
 import { engineContext, runLine } from '../../../src/apps/terminal/engine/commands.ts';
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
@@ -72,3 +72,6 @@ export function siteFiles(): string[] {
     node.kind === 'file' ? [`cat ~/${[...path, node.name].join('/')}`] : node.children.flatMap((child) => walk(child, node.name === '~' ? path : [...path, node.name]));
   return walk(fs, []);
 }
+
+// The block a printing command's run gives, with no arguments.
+export const blockOf = (name: string, context: RunContext): Block => output(runLine(name, context));

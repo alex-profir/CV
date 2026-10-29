@@ -116,7 +116,7 @@ export const siteText = deepFreeze({
       'optional-path-or-input': 'at most one path, or piped input',
     },
     replies: {
-      unknown: '{typed} is not a command.',
+      unknown: '{typed}: command not found.',
       unknownRun: 'Run {help} to see them all, or try:',
       unknownRunAlone: 'Run {help} to see them all.',
       usage: '{command} takes {what}. Usage: {usage}',
@@ -130,7 +130,24 @@ export const siteText = deepFreeze({
       pipeUsage: 'Usage: {command} | jq, or {command} | vim -',
       pipeExample: 'cat cv.json',
       emptySection: 'The CV lists no {section}.',
+      // A line the shell stopped (FR-069, FR-075).
+      stopped: {
+        time: 'stopped: it ran for 5 seconds, the longest a command line runs here.',
+        commands: 'stopped: it ran 10,000 commands, the most a command line runs here.',
+        output: 'stopped: it printed 1 MB, the most a command line prints here.',
+        cancelled: 'stopped: you pressed Ctrl+C.',
+      },
+      // After a line cancelled with Ctrl+C.
+      cancelMark: '^C',
     },
+    // `help`'s group of the shell's own commands (FR-008, FR-068).
+    standard: { heading: 'Standard commands', note: 'as in bash. help <command> shows its options.' },
+    // The shell, loaded when the Terminal first opens (FR-070).
+    shellLoading: 'loading the shell · type away, commands run once it is ready',
+    shellFailed: "The shell couldn't load. Check the connection, then try again.",
+    tryAgain: 'try again',
+    // Who `ls -l` says owns an entry (FR-049).
+    owners: { protected: 'root', visitor: 'guest' },
     // The section names in the empty-section reply where 004's section
     // headings don't name them.
     emptyNames: { about: 'basics', contact: 'contact details' },
@@ -163,6 +180,8 @@ export const siteText = deepFreeze({
       },
       cd: 'Now in {path}',
       cleared: 'Cleared',
+      cancelled: 'Cancelled',
+      loading: 'Loading the shell',
       vim: '{file}, read only, {n} lines. Type :q to leave.',
     },
     vim: {

@@ -6,7 +6,7 @@
 import { counted, siteText, fill } from '../../site-text.ts';
 import { dateRange } from '../../format/dates.ts';
 import { locationLine } from '../../format/location.ts';
-import { withoutScheme } from '../../cv/CvLink.tsx';
+import { withoutScheme } from '../../format/url.ts';
 import { TERMINAL } from '../../os/metrics.ts';
 import { cvJson, resume, siteData, specList } from './data.ts';
 import { engineContext, runLine } from './engine/commands.ts';
