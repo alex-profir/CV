@@ -1,8 +1,10 @@
-// The Terminal offline (FR-036, SC-006): after one visit to `/`, or to
-// `/cv` only, `/` offline opens the Terminal in both shells, in the site's
-// fonts, and every command `help` lists gives what it gave online.
+// The Terminal offline (FR-036, FR-070, SC-006): after one visit to `/`, or
+// to `/cv` only, `/` offline opens the Terminal in both shells, in the
+// site's fonts, its shell starts from the stored copy, and every command
+// `help` lists, and a pipe, gives what it gave online.
 import { describe, expect, test, vi } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
+import { resume } from '@cv/content';
 import fonts from '../../src/fonts/fonts.json' with { type: 'json' };
 import { terminalApp } from '../../src/apps/terminal/app.tsx';
 import { unservedFonts } from '../../../../tools/site-check/src/parts/fonts.ts';
@@ -41,16 +43,24 @@ async function openTerminalIn(context: BrowserContext, url: string, size: { shel
   return page;
 }
 
-// Each command's output text, in order.
+// A word of the first role's summary, read from the CV.
+const WORD = (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+
+// Each command's output text, in order, and a pipe and filter's; the shell
+// started, not failed (FR-070).
 async function outputs(page: Page): Promise<Map<string, string>> {
   const shown = new Map<string, string>();
-  for (const line of await helpCommands(page)) shown.set(line, await groupText(page, await runGroup(page, line)));
+  for (const line of [...(await helpCommands(page)), `work | grep -i ${WORD}`]) shown.set(line, await groupText(page, await runGroup(page, line)));
+  expect(await page.locator('.terminal p.shell-failed').count()).toBe(0);
   return shown;
 }
 
 describe('006-terminal-FR-036: the Terminal works offline after one visit', () => {
-  test('the Terminal declares it needs nothing from the network', () => {
+  test('the Terminal declares it needs nothing from the network, and the stored copy holds the shell and its licenses', () => {
     expect(terminalApp.needsNetwork).toBe(false);
+    const files = builtSite().manifest.files.map((file) => file.path);
+    expect(files.filter((file) => /^\/assets\/shell-[\w-]+\.js$/.test(file))).toHaveLength(1);
+    expect(files.filter((file) => /^\/assets\/shell-licenses-[\w-]+\.txt$/.test(file))).toHaveLength(1);
   });
 
   for (const first of ['/', '/cv']) {

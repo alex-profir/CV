@@ -1,7 +1,9 @@
 // The service worker (004 research R4, contracts/site.md Service worker). It
 // keeps one complete version of the site in the cache `cv-<version>` and
-// answers from it when the network fails or is too slow. It shows, asks and
-// logs nothing (FR-041).
+// answers from it when the network fails or is too slow. A page still open
+// from an older version keeps that version's cache until it closes, so it
+// can still load what it asks for later, such as the Terminal's shell (006
+// research R35). It shows, asks and logs nothing (FR-041).
 //
 // The build (scripts/build-site.ts) strips the types of this file and
 // prepends the three constants declared below, so the served `/sw.js` is a
@@ -70,15 +72,67 @@ async function install(): Promise<void> {
   await self.skipWaiting();
 }
 
+// The older caches kept for open pages, each with the ids of the windows
+// open when it was kept, stored in this version's cache (006 research R35).
+const KEPT = '/__cv/kept';
+
+type Kept = Record<string, string[]>;
+
+async function readKept(): Promise<Kept> {
+  const stored = await (await caches.open(CACHE_NAME)).match(KEPT);
+  return stored === undefined ? {} : ((await stored.json()) as Kept);
+}
+
+async function writeKept(kept: Kept): Promise<void> {
+  const cache = await caches.open(CACHE_NAME);
+  if (Object.keys(kept).length === 0) await cache.delete(KEPT);
+  else await cache.put(KEPT, new Response(JSON.stringify(kept), { headers: { 'content-type': 'application/json' } }));
+}
+
+// Deletes each kept cache whose windows have all closed, with its record.
+async function dropClosed(): Promise<void> {
+  const kept = await readKept();
+  const names = Object.keys(kept);
+  if (names.length === 0) return;
+  const open = new Set((await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).map((client) => client.id));
+  for (const name of names) {
+    if (kept[name]!.some((id) => open.has(id))) continue;
+    await caches.delete(name);
+    delete kept[name];
+  }
+  await writeKept(kept);
+}
+
+// With no window open, older caches go at once, as before; else they are
+// kept, each for the windows open now, and go once those close.
 async function activate(): Promise<void> {
-  const names = await caches.keys();
-  await Promise.all(names.filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME).map((name) => caches.delete(name)));
+  const older = (await caches.keys()).filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE_NAME);
+  const windows = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).map((client) => client.id);
+  if (windows.length === 0) await Promise.all(older.map((name) => caches.delete(name)));
+  else {
+    const kept = await readKept();
+    for (const name of older) kept[name] = [...new Set([...(kept[name] ?? []), ...windows])];
+    await writeKept(kept);
+    await dropClosed();
+  }
   await self.clients.claim();
 }
 
 async function fromCache(key: string | Request): Promise<Response | undefined> {
   const cache = await caches.open(CACHE_NAME);
   return cache.match(key, { ignoreVary: true });
+}
+
+// A file under `/assets/` from this version's cache, then a kept one: an
+// older page asks for its own version's files.
+async function fromAnyCache(request: Request): Promise<Response | undefined> {
+  const current = await fromCache(request);
+  if (current !== undefined) return current;
+  for (const name of Object.keys(await readKept())) {
+    const stored = await (await caches.open(name)).match(request, { ignoreVary: true });
+    if (stored !== undefined) return stored;
+  }
+  return undefined;
 }
 
 // The network's answer, whatever its status, if it comes within the limit.
@@ -108,19 +162,22 @@ async function storedAnswer(url: URL): Promise<Response> {
   return stored ?? Response.error();
 }
 
-async function cacheFirst(request: Request): Promise<Response> {
-  return (await fromCache(request)) ?? fetch(request);
+async function cacheFirst(request: Request, url: URL): Promise<Response> {
+  return (await (url.pathname.startsWith('/assets/') ? fromAnyCache(request) : fromCache(request))) ?? fetch(request);
 }
 
 self.addEventListener('install', (event) => event.waitUntil(install()));
 
 self.addEventListener('activate', (event) => event.waitUntil(activate()));
 
+self.addEventListener('message', (event) => event.waitUntil(dropClosed()));
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  event.waitUntil(dropClosed());
   if (request.mode === 'navigate') event.respondWith(withinLimit(request).catch(() => storedAnswer(url)));
-  else event.respondWith(cacheFirst(request));
+  else event.respondWith(cacheFirst(request, url));
 });
