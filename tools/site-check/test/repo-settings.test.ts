@@ -60,12 +60,10 @@ describe('004-cv-page-FR-048: every pull request checks the built site, and merg
     expect(site.steps.at(-1)).toMatch(CHECK_STEP);
   });
 
-  test("the browser cache is keyed by the Playwright version in package-lock.json", () => {
-    for (const id of ['site', 'test']) {
-      const values = withValues(job(id).lines, /uses: actions\/cache@/);
-      expect(values.path, id).toBe('~/.cache/ms-playwright');
-      expect(values.key, id).toBe(`playwright-\${{ runner.os }}-${PLAYWRIGHT_VERSION}`);
-    }
+  test("the site job's browser cache is keyed by the Playwright version in package-lock.json", () => {
+    const values = withValues(job('site').lines, /uses: actions\/cache@/);
+    expect(values.path).toBe('~/.cache/ms-playwright');
+    expect(values.key).toBe(`playwright-\${{ runner.os }}-${PLAYWRIGHT_VERSION}`);
   });
 
   test('the check step sets pipefail, pipes the report through tee and writes it to the job summary in a fenced block', () => {
@@ -81,8 +79,9 @@ describe('004-cv-page-FR-048: every pull request checks the built site, and merg
     expect(job('site').lines.filter((line) => /^\s*(?:-\s+)?(if|strategy|matrix|continue-on-error):/.test(line))).toEqual([]);
   });
 
-  test('the test job caches and installs the browser before running the tests', () => {
-    expect(job('test').steps).toEqual(['actions/checkout', 'actions/setup-node', 'npm ci', 'actions/cache', 'npx playwright install --with-deps chromium', 'npm run typecheck', 'npm test']);
+  test('the test job installs no browser and runs the typecheck and the fast set', () => {
+    expect(job('test').steps).toEqual(['actions/checkout', 'actions/setup-node', 'npm ci', 'npm run typecheck', 'npm run test:fast']);
+    expect(job('test').lines.filter((line) => /actions\/cache|playwright install/.test(line))).toEqual([]);
   });
 
   test('every action is pinned to a full commit SHA with its version in a comment', () => {
@@ -91,14 +90,15 @@ describe('004-cv-page-FR-048: every pull request checks the built site, and merg
     for (const line of uses) expect(line).toMatch(/uses: [\w-]+\/[\w-]+@[0-9a-f]{40} # v\d+(\.\d+)*$/);
   });
 
-  test('the ruleset requires traceability, test, content, tokens and site', () => {
+  test('the ruleset requires traceability, test, content, tokens, site and local-verify', () => {
     expect(REQUIRED).toEqual([
       { context: 'traceability', integration_id: 15368 },
       { context: 'test', integration_id: 15368 },
       { context: 'content', integration_id: 15368 },
       { context: 'tokens', integration_id: 15368 },
       { context: 'site', integration_id: 15368 },
+      { context: 'local-verify' },
     ]);
-    for (const check of REQUIRED) expect(JOB_IDS).toContain(check.context);
+    for (const check of REQUIRED.filter((entry: { integration_id?: number }) => entry.integration_id === 15368)) expect(JOB_IDS).toContain(check.context);
   });
 });
