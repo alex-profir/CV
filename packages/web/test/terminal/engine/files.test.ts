@@ -90,7 +90,7 @@ describe('006-terminal-FR-012: the file system holds the whole CV, and the named
         const moved = await run(`cd ${path[0]}`, context);
         expect(moved).toMatchObject({ kind: 'cd', folder: [path[0]] });
         const inside = { ...context, cwd: `/home/guest/${path[0]}` };
-        expect(await textOf('pwd', inside)).toBe(`~/${path[0]}`);
+        expect(await textOf('pwd', inside)).toBe(`/home/guest/${path[0]}`);
         expect(await textOf(`cat ${path[1]}`, inside)).toBe(await textOf(`cat ${typed}`, context));
         expect((await textOf('ls', inside)).split('  ')).toContain(path[1]);
       }
@@ -169,7 +169,7 @@ describe("006-terminal-FR-044: file names are made from the CV's own names", () 
     expect(shown).toContain('Łódź Tech');
     for (const typed of ['łódź-tech', 'ŁÓDŹ-TECH', 'Łodz-Tech']) expect(await textOf(`cat ~/work/${typed}`, context), typed).toBe(shown);
     expect(await textOf('cat ~/work/ЯНДЕКС', context)).toContain('Яндекс');
-    expect(await textOf('cat ~/work/lodz-tech', context)).toBe('~/work/lodz-tech: no such file or folder.');
+    expect(await textOf('cat ~/work/lodz-tech', context)).toBe('cat: /home/guest/work/lodz-tech: No such file or directory');
   });
 
   test('non-ascii: every name is plain lower-case letters, digits and hyphens', () => {
@@ -208,18 +208,13 @@ describe('006-terminal-FR-047: a file shows what its named command shows', () =>
   });
 });
 
-describe('006-terminal-FR-049: nothing changes the file system', () => {
-  test('rm, mkdir, touch, mv and sudo are unknown commands', async () => {
-    const context = contextFor('every-field');
-    for (const line of ['rm cv.json', 'mkdir x', 'touch y', 'mv about a', 'sudo rm -rf /']) expect(await textOf(line, context), line).toMatch(/^\S+ is not a command\./);
-  });
-
+describe('006-terminal-FR-049: the protected tree stays as it was built', () => {
   test('the tree is the same before and after running every command', async () => {
     const context = contextFor('every-field');
     const before = structuredClone(filePaths(context.fs));
     const texts = () => Promise.all(filePaths(context.fs).map((path) => textOf(`cat ~/${path.join('/')}`, context)));
     const shown = await texts();
-    for (const line of ['help', 'about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact', 'cv', 'site', 'specs', 'ls', 'cd work', 'cat cv.json', 'cat cv.json | jq', 'vim cv.json', 'pwd', 'open cv', 'history', 'clear', 'exit', 'rm cv.json']) await run(line, context);
+    for (const line of ['help', 'about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact', 'cv', 'site', 'specs', 'ls', 'cd work', 'cat cv.json', 'cat cv.json | jq', 'vim cv.json', 'pwd', 'open cv', 'history', 'clear', 'exit', 'rm cv.json', 'rm -rf ~', 'mv work jobs', 'echo hi > about']) await run(line, context);
     expect(filePaths(context.fs)).toEqual(before);
     expect(await texts()).toEqual(shown);
   });

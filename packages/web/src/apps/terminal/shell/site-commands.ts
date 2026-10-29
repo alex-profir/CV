@@ -8,7 +8,7 @@
 // or piped text (FR-018).
 import { defineCommand } from 'just-bash/browser';
 import { command } from '../engine/block.ts';
-import type { Block, Effect, Node } from '../engine/block.ts';
+import type { Block, Effect, Node, Tone } from '../engine/block.ts';
 import { COMMANDS, CV_PIPE, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
@@ -26,6 +26,9 @@ type Output = Awaited<ReturnType<ShellCommand['execute']>>;
 // The names the site's commands run under in the shell where a builtin of
 // the same name would win: the adapter renames the typed word (research R29).
 export const RENAMED: Readonly<Record<string, string>> = { help: '__cv_help' };
+
+// The command the redirect guard runs (research G1).
+export const DENIED = '__cv_denied';
 
 // What one line's run collects, and what it was sent with.
 export type RunRecord = {
@@ -183,6 +186,24 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return { ...result, stderr: lines.join('\n') };
   };
 
+  // just-bash's `sed -i` and `tee` say "No such file or directory" for any
+  // write the file system refuses; bash's say "Permission denied" (research
+  // G5, G19).
+  const deniedMessage = (name: 'sed' | 'tee') =>
+    defineCommand(name, async (args, ctx) => {
+      const result = await ctx.origCommand!(args);
+      if (result.exitCode === 0 || result.stderr === '') return result;
+      const lines = await Promise.all(
+        result.stderr.split('\n').map(async (entry) => {
+          const typed = new RegExp(`^${name}: (.+): No such file or directory$`).exec(entry)?.[1];
+          if (typed === undefined) return entry;
+          const path = ctx.fs.resolvePath(ctx.cwd, typed);
+          return shell.fs.refusesWrite(path) && (await shell.fs.exists(shell.fs.canonical(path))) ? `${name}: ${typed}: Permission denied` : entry;
+        }),
+      );
+      return { ...result, stderr: lines.join('\n') };
+    });
+
   // `cat`: each protected file it prints whole is recorded as its block
   // (FR-047).
   const cat = defineCommand('cat', async (args, ctx) => {
@@ -203,8 +224,59 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   // `ls`: a listing whose names are controls, a folder running `ls` on it
   // and a file `cat`, in the design's order for the home folder (FR-043,
   // FR-050).
+  // `ls -l`: just-bash gives every entry `user user` and its own modes
+  // (research G7); the owner is `root` for a protected entry, which is read
+  // only, and `guest` for the visitor's (FR-049, research R28). Shown
+  // unchanged, it is drawn with its names as controls, as `ls` is.
+  // Mode, links, owner, group, then the size and date with the padding
+  // before them, then the name.
+  const LONG_LINE = /^([-dl])([-rwx]{9}) +(\d+) (\S+) +(\S+)( +\d+ \S+ +\d+ +(?:\d\d:\d\d|\d{4})) (.+)$/;
+  const longListing = async (args: readonly string[], ctx: Context, result: Output): Promise<Output> => {
+    const flags = args.filter((arg) => arg.startsWith('-')).join('');
+    const paths = args.filter((arg) => !arg.startsWith('-'));
+    if (paths.length > 1 || result.exitCode !== 0) return result;
+    const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
+    const stat = await shell.fs.stat(target).catch(() => null);
+    if (stat === null) return result;
+    const inside = stat.isDirectory && !flags.includes('d');
+    const pathOf = (name: string) => (!inside ? target : name === '.' ? target : name === '..' ? parentOf(target) : `${target === '/' ? '' : target}/${name}`);
+    const lines = stdoutText(result).split('\n');
+    const entries = await Promise.all(
+      lines.map(async (entry) => {
+        const match = LONG_LINE.exec(entry);
+        if (match === null) return null;
+        const [, kind, mode, links, , , rest, name] = match;
+        const path = pathOf(name!);
+        const folder = kind === 'd';
+        const info = shell.fs.info(path, folder ? 'folder' : 'file');
+        return { kind: kind!, mode: info.protected ? (folder ? 'r-xr-xr-x' : 'r--r--r--') : mode!, links: links!, owner: info.owner as string, rest: rest!, name: name!, path, folder };
+      }),
+    );
+    const width = Math.max(0, ...entries.map((entry) => entry?.owner.length ?? 0));
+    const text = lines.map((entry, index) => {
+      const found = entries[index];
+      return found === null || found === undefined ? entry : `${found.kind}${found.mode} ${found.links} ${found.owner.padEnd(width)} ${found.owner.padEnd(width)}${found.rest} ${found.name}`;
+    });
+    const stdout = text.join('\n');
+    if (!piped(ctx)) {
+      const out = (value: string, tone?: Tone): Node => ({ kind: 'text', text: value, stream: 'stdout', ...(tone === undefined ? {} : { tone }) });
+      const block: Block = text
+        .filter((entry) => entry !== '')
+        .map((entry, index) => {
+          const found = entries.filter((_, at) => lines[at] !== '')[index];
+          if (found === null || found === undefined || found.name === '.' || found.name === '..') return { kind: 'line', children: [out(entry, 'dim')] } as Node;
+          const owners = `${found.owner.padEnd(width)} ${found.owner.padEnd(width)}`;
+          const name = found.folder ? command(`ls ${shownPath(found.path)}`, 'inline', { label: `${found.name}/`, req: 'ls', tone: 'folder' }) : command(`cat ${shownPath(found.path)}`, 'inline', { label: found.name, req: 'ls' });
+          return { kind: 'line', children: [out(`${found.kind}${found.mode} ${found.links} `, 'dim'), out(owners, found.owner === 'guest' ? 'secondary' : 'dim'), out(`${found.rest} `, 'dim'), name] } as Node;
+        });
+      shell.run().recorded.push({ text: stdout, block });
+    }
+    return { ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output;
+  };
+
   const ls = defineCommand('ls', async (args, ctx) => {
     const result = await ctx.origCommand!(args);
+    if (args.some((arg) => /^-[a-zA-Z]*l[a-zA-Z]*$/.test(arg))) return longListing(args, ctx, result);
     const paths = args.filter((arg) => !arg.startsWith('-'));
     if (result.exitCode !== 0 || result.stdout === '' || piped(ctx) || paths.length < args.length || paths.length > 1) return result;
     const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
@@ -235,10 +307,62 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return result;
   });
 
+
+  // `rm -r` walks its targets itself, deepest first: the visitor's entries
+  // go, and each protected file left says why, once. just-bash's refuses
+  // the whole tree, in silence under -f (research R28). Without -r, and for
+  // `--help`, it is just-bash's `rm` (research G18).
+  const rm = defineCommand('rm', async (args, ctx) => {
+    if (args.includes('--help')) return ok(helpText('rm', MISSING_HELP.rm!));
+    const end = args.indexOf('--');
+    const options = (end < 0 ? args : args.slice(0, end)).filter((arg) => arg.startsWith('-') && arg !== '-');
+    const has = (short: string, long: string) => options.some((arg) => arg === long || (!arg.startsWith('--') && arg.includes(short)));
+    if (!has('r', '--recursive') && !has('R', '--recursive')) return ctx.origCommand!(args);
+    const force = has('f', '--force');
+    const targets = end < 0 ? args.filter((arg) => !options.includes(arg)) : [...args.slice(0, end).filter((arg) => !options.includes(arg)), ...args.slice(end + 1)];
+    let stderr = '';
+    let status = 0;
+    // Whether `path` is gone; `shown` is it as typed, for the messages.
+    const remove = async (path: string, shown: string): Promise<boolean> => {
+      const stat = await shell.fs.stat(path).catch(() => null);
+      if (stat === null) return true;
+      if (stat.isDirectory) {
+        let emptied = true;
+        for (const name of await shell.fs.readdir(path)) if (!(await remove(path === '/' ? `/${name}` : `${path}/${name}`, `${shown.replace(/\/+$/, '')}/${name}`))) emptied = false;
+        // A folder that keeps a protected entry stays; that entry said why.
+        if (!emptied) return false;
+      }
+      if (shell.fs.isProtected(path)) {
+        stderr += `rm: cannot remove '${shown}': Permission denied\n`;
+        status = 1;
+        return false;
+      }
+      await shell.fs.rm(path, { recursive: true, force: true });
+      return true;
+    };
+    for (const target of targets) {
+      const path = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, target));
+      if ((await shell.fs.stat(path).catch(() => null)) === null) {
+        if (!force) {
+          stderr += `rm: cannot remove '${target}': No such file or directory\n`;
+          status = 1;
+        }
+        continue;
+      }
+      await remove(path, target);
+    }
+    if (targets.length === 0 && !force) return ok('', 'rm: missing operand\n', 1);
+    return ok('', stderr, status);
+  });
+
+  // What the adapter's redirect guard runs in place of a command whose
+  // output would go to a protected path: bash's message (research R28, G1).
+  const denied = defineCommand(DENIED, async (args) => ok('', `bash: ${args[0] ?? ''}: Permission denied\n`, 1));
+
   // `--help` for the standard commands just-bash gives none (research G18).
-  const helped = Object.entries(MISSING_HELP).map(([name, help]) =>
+  const helped = Object.entries(MISSING_HELP).filter(([name]) => name !== 'rm').map(([name, help]) =>
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, ...helped];
+  return [...rows, vim, cv, cat, ls, jq, rm, denied, deniedMessage('sed'), deniedMessage('tee'), ...helped];
 }

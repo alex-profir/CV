@@ -131,8 +131,15 @@ export class TerminalFs extends InMemoryFs {
   // Refused when the path, or the folder it is in, is protected; writing to
   // /dev/null is allowed.
   private guard(path: string) {
-    if (path === '/dev/null') return;
-    if (this.locked.has(path) || this.locked.has(parentOf(path))) throw denied();
+    if (this.refusesWrite(path)) throw denied();
+  }
+
+  // Whether a write to `path` would be refused, for the adapter's redirect
+  // guard (research R28, G1).
+  refusesWrite(path: string): boolean {
+    const at = this.canonical(path);
+    if (at === '/dev/null') return false;
+    return this.locked.has(at) || this.locked.has(parentOf(at));
   }
 
   private async under(path: string): Promise<string[]> {

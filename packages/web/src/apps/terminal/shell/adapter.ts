@@ -10,7 +10,7 @@ import type { SiteInput } from '../engine/commands.ts';
 import { HOME, TerminalFs } from './fs.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles } from './protocol.ts';
-import { PIPED, RENAMED, siteCommands } from './site-commands.ts';
+import { DENIED, PIPED, RENAMED, siteCommands } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
 import { STANDARD_COMMANDS } from './standard.ts';
 
@@ -80,6 +80,58 @@ const sitePlugin: Plugin = {
   },
 };
 
+// The redirect guard, until just-bash's G1 fix is released (research R28,
+// G1; T129's upstream issue): a write the file system refuses inside a
+// redirect ends the whole line, where bash says why and goes on. So a
+// command whose literal output redirect names a protected path, from the
+// folder the line starts in, runs `__cv_denied` instead, which says it as
+// bash does. Delete this plugin once the fix ships (plan, Dependencies).
+const WRITES = new Set(['>', '>>', '>|', '&>', '&>>']);
+
+// A redirect target written out in full: literal text, quoted or not, with a
+// leading `~`; null when an expansion makes it. The folder is the one the
+// line starts in, so a target after a `cd` in the same line isn't caught.
+function literalTarget(word: unknown): { typed: string; path: string } | null {
+  const parts = (word as { type?: string; parts?: { type: string; value?: string; user?: string | null }[] }).parts;
+  if (parts === undefined || parts.length === 0) return null;
+  let typed = '';
+  let path = '';
+  for (const [index, part] of parts.entries()) {
+    if (part.type === 'TildeExpansion' && index === 0 && part.user === null) {
+      // bash names the target expanded.
+      typed += HOME;
+      path += HOME;
+    } else if (part.type === 'Literal' || part.type === 'SingleQuoted') {
+      typed += part.value!;
+      path += part.value!;
+    } else return null;
+  }
+  return { typed, path };
+}
+
+function guardPlugin(fs: TerminalFs, cwd: string): Plugin {
+  return {
+    name: 'cv-redirect-guard',
+    transform(context) {
+      walk(context.ast, (node) => {
+        if (node.type !== 'SimpleCommand') return;
+        const redirections = (node.redirections ?? []) as { operator: string; target: unknown }[];
+        for (const redirection of redirections) {
+          if (!WRITES.has(redirection.operator)) continue;
+          const target = literalTarget(redirection.target);
+          if (target === null || !fs.refusesWrite(target.path.startsWith('/') ? target.path : `${cwd}/${target.path}`)) continue;
+          node.assignments = [];
+          node.name = literalWord(DENIED);
+          node.args = [literalWord(target.typed)];
+          node.redirections = [];
+          return;
+        }
+      });
+      return { ast: context.ast };
+    },
+  };
+}
+
 // A line's syntax error, worded as just-bash words it (research R27, G2), or
 // null.
 function syntaxError(ast: Script): string | null {
@@ -144,7 +196,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
 
   const commands = siteCommands({ context, fs, run: () => record });
 
-  const bashFor = (prelude: number) => {
+  const bashFor = (prelude: number, cwd: string) => {
     const bash = new Bash({
       fs,
       cwd: HOME,
@@ -154,6 +206,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + prelude, maxOutputSize: limits.pipe, maxLoopIterations: 1_000_000_000 },
     });
     bash.registerTransformPlugin(sitePlugin);
+    bash.registerTransformPlugin(guardPlugin(fs, cwd));
     return bash;
   };
 
@@ -288,7 +341,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     record.typed = lowered.typed;
     let result: { stdout: string; stderr: string; exitCode: number };
     try {
-      result = await bashFor(shift + 3).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true });
+      result = await bashFor(shift + 3, state.cwd).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true });
     } catch (thrown) {
       result = { stdout: '', stderr: `bash: ${(thrown as Error).message}\n`, exitCode: 1 };
     }
