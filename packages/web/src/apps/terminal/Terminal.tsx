@@ -118,7 +118,7 @@ export function Terminal({ resume, os }: AppProps) {
           {state.greeting && (
             <div className="greeting" data-req="006-terminal-FR-005 006-terminal-FR-030">
               <p className="greeting-status">{desktop ? words.greeting.desktop.status : words.greeting.phone.status}</p>
-              <p className="greeting-name">{name !== undefined && name !== '' ? fill(words.greeting.name, { name, label: label ?? '' }).replace(/ — $/, '') : siteText.siteHeading}</p>
+              <p className="greeting-name">{name === undefined || name === '' ? siteText.siteHeading : label === undefined || label === '' ? fill(words.greeting.nameAlone, { name }) : fill(words.greeting.name, { name, label })}</p>
               <Intro pattern={desktop ? words.greeting.desktop.intro : words.greeting.phone.intro} run={runControl} />
               <div className="chips">
                 {words.greeting.commands.map((line) => (

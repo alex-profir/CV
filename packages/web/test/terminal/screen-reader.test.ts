@@ -1,10 +1,14 @@
 // What a screen reader gets from the Terminal (FR-027 to FR-029): a named
 // command line with no prompt read, each output announced once through the
 // status region, and a heading outline of runs and entries.
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume } from '@cv/content';
+import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
 import { axNodes } from '../helpers/ax.ts';
+import { REPO_ROOT } from '../helpers/copy.ts';
 import { COMMAND_LINE, commandLineFocused, openTerminalPage, runGroup, typedLines } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -126,5 +130,21 @@ describe('006-terminal-FR-029: headings, lists, links and controls a screen read
       if (Math.abs(rect.top - before.top) < 1) expect(rect.left, `box ${index}`).toBeGreaterThanOrEqual(before.left);
       else expect(rect.top, `box ${index}`).toBeGreaterThanOrEqual(before.top);
     }
+  });
+
+  test('help’s commands, specs’ specs and history’s lines are list items, one per command, spec or line', async () => {
+    const page = await openTerminalPage('desktop');
+    const items = async (command: string, list: string) => {
+      await runGroup(page, command);
+      const run = '.terminal section.run:last-of-type .run-output';
+      const [own] = await axNodes(page, `${run} ${list}`);
+      const children = await axNodes(page, `${run} ${list} > *`);
+      return { role: own?.role, items: children.filter((node) => !node.ignored && node.role === 'listitem').length, children: children.length };
+    };
+    expect(await items('help', '.out-help')).toEqual({ role: 'list', items: COMMANDS.length, children: COMMANDS.length });
+    const specs = fs.readdirSync(path.join(REPO_ROOT, 'specs')).filter((folder) => /^\d+-/.test(folder) && fs.existsSync(path.join(REPO_ROOT, 'specs', folder, 'spec.md'))).length;
+    expect(await items('specs', '.out-specs')).toEqual({ role: 'list', items: specs, children: specs });
+    // help, specs and history itself.
+    expect(await items('history', 'ul')).toEqual({ role: 'list', items: 3, children: 3 });
   });
 });

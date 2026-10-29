@@ -74,11 +74,33 @@ describe('006-terminal-FR-058: the vim view fills the window, with line numbers,
     expect(numbers.at(-1)).toBe(String(CV_LINES.length));
     const line = await status(page);
     for (const part of ['NORMAL', 'cv.json', '[RO]', 'json', '3,1']) expect(line, part).toContain(part);
-    expect(line).toMatch(/\b(?:Top|Bot|All|\d+%)$/);
+    expect(await page.locator(`${VIM} .vim-scroll`).textContent()).toMatch(/^(?:Top|Bot|All|\d+%)$/);
     expect(await message(page)).toContain(`"cv.json" [readonly] ${CV_LINES.length} lines`);
     expect(await page.locator(`${VIM} .vim-message button.command-chip`).evaluateAll((list) => list.map((chip) => chip.textContent?.trim()))).toEqual([':help', ':q']);
     expect((await page.locator(`${WINDOW} .window-title`).textContent())?.trim()).toBe('Terminal — vim');
     await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
+  });
+
+  test('the position is how far through the file the view is: All or Top on opening, Bot after zR and G, a share between', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    const text = page.locator(`${VIM} .vim-text`);
+    const scroll = () => page.locator(`${VIM} .vim-scroll`).textContent();
+    const fits = await text.evaluate((view) => view.scrollHeight <= view.clientHeight);
+    expect(await scroll()).toBe(fits ? 'All' : 'Top');
+    await text.focus();
+    await page.keyboard.type('zR');
+    await expect.poll(scroll).toBe('Top');
+    await page.keyboard.press('G');
+    await expect.poll(scroll).toBe('Bot');
+    // Scrolled halfway by the view's own scroll, the cursor left where it is.
+    await text.evaluate((view) => (view.scrollTop = (view.scrollHeight - view.clientHeight) / 2));
+    await expect.poll(scroll).toMatch(/^\d+%$/);
+    const share = Number((await scroll())!.slice(0, -1));
+    expect(share).toBeGreaterThan(30);
+    expect(share).toBeLessThan(70);
+    await page.keyboard.type('gg');
+    await expect.poll(scroll).toBe('Top');
   });
 });
 
@@ -278,6 +300,31 @@ describe('006-terminal-FR-064: :q and the :q chip go back to the output; :help o
     await vimView(page).getByRole('button', { name: ':q', exact: true }).click();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
     expect(await typedLines(page)).toEqual(['cv']);
+  });
+
+  test('with a / search being typed, the :q chip still closes the view, focus in the command line', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await page.locator(`${VIM} .vim-text`).focus();
+    await page.keyboard.press('/');
+    await page.locator(`${VIM} input.vim-entry`).waitFor();
+    await vimView(page).getByRole('button', { name: ':q', exact: true }).click();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    expect(await vimView(page).count()).toBe(0);
+    expect(await typedLines(page)).toEqual(['cv']);
+    await expect.poll(() => commandLineFocused(page)).toBe(true);
+  });
+
+  test('with a / search being typed, the :help chip still opens the key help', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await page.locator(`${VIM} .vim-text`).focus();
+    await page.keyboard.press('/');
+    await page.locator(`${VIM} input.vim-entry`).waitFor();
+    await vimView(page).getByRole('button', { name: ':help', exact: true }).click();
+    await page.locator(`${VIM} .vim-help`).waitFor();
+    expect(await page.locator(`${VIM} input.vim-entry`).count()).toBe(0);
+    expect(await message(page)).not.toContain('match');
   });
 });
 

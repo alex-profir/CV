@@ -86,6 +86,8 @@ export const siteText = deepFreeze({
         intro: 'My CV as a terminal. Tap a key below, or type a command. New? Try {help}.',
       },
       name: '{name} — {label}',
+      // A CV with a name and no label.
+      nameAlone: '{name}',
       commands: ['help', 'about', 'work', 'projects', 'cv'],
     },
     // By command name, in `help`'s order: the arguments `help` shows after

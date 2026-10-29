@@ -66,7 +66,7 @@ const vimState = (page: Page) =>
     const view = document.querySelector('.terminal section.vim')!;
     const words = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
     return {
-      cursor: /(\d+),(\d+)/.exec(words(view.querySelector('.vim-status')))?.[0] ?? null,
+      cursor: /^(\d+),(\d+)$/.exec(words(view.querySelector('.vim-position')))?.[0] ?? null,
       folds: [...view.querySelectorAll('button.vim-fold')].map((fold) => `${words(fold)} ${fold.getAttribute('aria-expanded')}`),
       marks: view.querySelectorAll('mark').length,
       current: words(view.querySelector('mark[aria-current="true"]')),

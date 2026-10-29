@@ -71,28 +71,29 @@ export function JsonRows({ rows }: { rows: readonly JsonRow[] }) {
 }
 
 function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run: RunControl; level: number }) {
+  // A list of rows, so a screen reader hears how many there are (FR-029).
   const rows = node.rows.map((row, index) => (
-    <div key={index} className="out-row">
+    <li key={index} className="out-row">
       {row.map((cell, at) => (
         <span key={at} className="out-cell">
           <Nodes block={cell} run={run} level={level} />
         </span>
       ))}
-    </div>
+    </li>
   ));
   if (node.req === 'help')
     return (
-      <div className="out-rows out-help" data-req="006-terminal-FR-008">
+      <ul className="out-rows out-help" data-req="006-terminal-FR-008">
         {rows}
-      </div>
+      </ul>
     );
   if (node.req === 'specs')
     return (
-      <div className="out-rows out-specs" data-req="006-terminal-FR-013">
+      <ul className="out-rows out-specs" data-req="006-terminal-FR-013">
         {rows}
-      </div>
+      </ul>
     );
-  return <div className="out-rows">{rows}</div>;
+  return <ul className="out-rows">{rows}</ul>;
 }
 
 function One({ node, run, level }: { node: Node; run: RunControl; level: number }): ReactNode {
@@ -135,7 +136,7 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
     }
     case 'list':
       return (
-        <ul className="out-list">
+        <ul className={node.req === 'history' ? 'out-history' : 'out-list'}>
           {node.items.map((item, index) => (
             <li key={index}>
               <Nodes block={item} run={run} level={level} />

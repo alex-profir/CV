@@ -34,7 +34,7 @@ export type Node =
   // Depth 1 is a section, 2 an entry, relative to the command's heading
   // (FR-029); a command showing one section uses 1 for its entries.
   | { kind: 'heading'; depth: 1 | 2; children: Block }
-  | { kind: 'list'; items: readonly Block[] }
+  | { kind: 'list'; items: readonly Block[]; req?: 'history' }
   | { kind: 'link'; href: string; children: Block; external: boolean }
   | { kind: 'time'; datetime: string; text: string; spoken?: string }
   // A command control (FR-015): `line` is the exact command line it runs,

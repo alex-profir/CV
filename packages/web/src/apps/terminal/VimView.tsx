@@ -2,7 +2,7 @@
 // view): the model in engine/vim.ts, drawn. The text takes only unmodified
 // printable keys, Enter, Escape, Page Up and Down, Home, End and the arrows; Tab and
 // every Ctrl, Alt or Meta key stay the browser's (FR-060, FR-065).
-import { useEffect, useId, useLayoutEffect, useRef } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent, KeyboardEvent, ReactNode } from 'react';
 import { fill, siteText } from '../../site-text.ts';
 import { rowIndent } from './engine/block.ts';
@@ -79,12 +79,23 @@ function Code({ row, matches, current, cursor }: { row: JsonRow; matches: readon
   return <>{parts}</>;
 }
 
-function position(state: VimState): string {
-  const last = state.source.rows.length - 1;
-  if (last <= 0) return words.positions.all;
-  if (state.cursor.line === 0) return words.positions.top;
-  if (state.cursor.line === last) return words.positions.bottom;
-  return `${Math.round((100 * state.cursor.line) / last)}%`;
+// How far through the file the view is, as vim's ruler says it: All when
+// every shown line is in view, Top when the first is, Bot when the last is,
+// else the lines above the view as a share of those out of it (FR-058).
+function position(view: HTMLElement): string {
+  const box = view.getBoundingClientRect();
+  const top = box.top + view.clientTop;
+  const bottom = top + view.clientHeight;
+  let above = 0;
+  let below = 0;
+  for (const line of view.querySelectorAll<HTMLElement>('.vim-line')) {
+    const rect = line.getBoundingClientRect();
+    if (rect.top < top - 1) above += 1;
+    else if (rect.bottom > bottom + 1) below += 1;
+  }
+  if (above === 0) return below === 0 ? words.positions.all : words.positions.top;
+  if (below === 0) return words.positions.bottom;
+  return `${Math.floor((100 * above) / (above + below))}%`;
 }
 
 function Help({ file }: { file: string }) {
@@ -133,6 +144,21 @@ export function VimView({ state, shell, send }: Props) {
     else if (top + line.offsetHeight > view.scrollTop + view.clientHeight) view.scrollTop = top + line.offsetHeight - view.clientHeight;
   }, [cursor.line]);
 
+  // The status line's position, read from the laid-out view after each
+  // render, scroll and resize.
+  const [scroll, setScroll] = useState<string>(words.positions.all);
+  const measure = () => {
+    if (text.current !== null) setScroll(position(text.current));
+  };
+  useLayoutEffect(measure);
+  useEffect(() => {
+    const view = text.current;
+    if (view === null) return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(view);
+    return () => observer.disconnect();
+  }, []);
+
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget) return;
     if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -148,7 +174,9 @@ export function VimView({ state, shell, send }: Props) {
     send({ submit: entry.current?.value ?? '' });
   };
 
+  // A `/` or `:` being typed is dropped first, or the command would go to it.
   const chip = (command: string) => () => {
+    send({ cancel: true });
     send({ key: ':' });
     send({ submit: command });
     text.current?.focus();
@@ -167,6 +195,7 @@ export function VimView({ state, shell, send }: Props) {
         data-focus-home=""
         data-numbers={state.numbers ? '' : undefined}
         onKeyDown={keyDown}
+        onScroll={measure}
         data-req="006-terminal-FR-060 006-terminal-FR-063"
       >
         {lines.map((line) => {
@@ -213,7 +242,7 @@ export function VimView({ state, shell, send }: Props) {
         <span className="vim-position">
           {cursor.line + 1},{cursor.column + 1}
         </span>
-        <span className="vim-scroll">{position(state)}</span>
+        <span className="vim-scroll">{scroll}</span>
       </div>
       <div className="vim-message">
         {state.entry === null ? (

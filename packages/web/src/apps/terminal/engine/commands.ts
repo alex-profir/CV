@@ -251,8 +251,9 @@ function open(call: Call, context: RunContext): Result {
   return reply(context.text.terminal.replies.open, {}, { cv: command('open cv', 'inline', { label: 'cv' }), about: command('open about', 'inline', { label: 'about' }) });
 }
 
+// `history`: a numbered line per command run, as a list (FR-020, FR-029).
 function history(context: RunContext): Result {
-  return output(context.history.map((entry, index) => line(text(`${index + 1}`, 'dim'), text(`  ${entry}`))));
+  return output([{ kind: 'list', items: context.history.map((entry, index) => [text(`${index + 1}`, 'dim'), text(`  ${entry}`)]), req: 'history' }]);
 }
 
 const SECTION = (name: 'work' | 'projects' | 'education') => plain(name, (context) => output(entriesBlock(cvInput(context), name)));

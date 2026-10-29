@@ -17,6 +17,8 @@ const words = siteText.terminal.pocket;
 // What a vim key sends to the view.
 function vimKey(key: string) {
   if (key === ':q') {
+    // A `/` or `:` being typed would take the `q`: drop it first (FR-066).
+    session.vim({ cancel: true });
     session.vim({ key: ':' });
     session.vim({ submit: 'q' });
     return;
