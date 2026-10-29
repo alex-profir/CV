@@ -77,8 +77,11 @@
   feature can amend an older spec it needs changed, in its own pull request.
 - Q: Constitution XI ships an amendment in pull requests of its own, so how does the Terminal get
   `open playground`? → A: Through an amendment of 006 in its own pull request, after this feature
-  ships, as it can only be tested once the Playground exists. FR-006 moves there. (Constitution
-  1.5.0, which came after this answer, would also let it ride in this feature's pull request.)
+  ships, as it can only be tested once the Playground exists. FR-006 moves there. (Superseded by
+  the next answer.)
+- Q: Constitution 1.5.0 lets a new feature amend an older spec in its own pull request. Should the
+  Terminal's `open playground` come with this feature? → A: Yes. 006 is amended in this feature's
+  pull request (FR-087), and FR-006, removed, is replaced by it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -548,8 +551,8 @@ fails with a clear message and that the pull request can't merge.
 
 **Elsewhere in the site**
 
-- **`open playground` in the Terminal**: until 006 is amended after this feature (Assumptions),
-  `open` lists the names it accepts, as for any unknown name (006 FR-014).
+- **`open playground` in the Terminal**: opens the Playground, or brings it to the front, as the dock
+  does; on mobile it opens the "best on desktop" screen (FR-087).
 - **Scripting turned off**: the site root shows 005's page with a link to `/cv` (005 FR-049). The
   Playground isn't there.
 - **Printing the Playground**: not designed, as for the rest of the shell (005).
@@ -590,10 +593,9 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   FR-004), on desktop and on its mobile screen. Going back MUST show the Playground as it was: the
   same code, cursor, selection, scroll position, open pane, settings and logs. A run MUST go on
   while the spec view shows.
-- ~~**FR-006**~~: Removed 2026-10-29 – moved to an amendment of 006 in its own pull request, after
-  this feature ships (Constitution XI). It said: the Terminal's `open` (006 FR-014) MUST accept
-  `playground`, opening the Playground or bringing it to the front as its dock item or home-screen
-  icon does.
+- ~~**FR-006**~~: Removed 2026-10-29 – replaced by FR-087, which amends 006 in this feature's pull
+  request. It said: the Terminal's `open` (006 FR-014) MUST accept `playground`, opening the
+  Playground or bringing it to the front as its dock item or home-screen icon does.
 
 **Loading TypeScript**
 
@@ -687,6 +689,11 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   The amendment MUST carry 005's updated wireframes and review sign-off, the shell's list of
   shortcuts in About this site, its tasks and its tests, and the shell MUST then answer neither
   shortcut.
+- **FR-087**: 006's spec MUST be amended in this feature's pull request, as Constitution XI records
+  an amendment: `open` accepts `playground` (006 FR-008 and FR-014), opening the Playground or
+  bringing it to the front as its dock item does on desktop, and its "best on desktop" screen as
+  its home-screen icon does on mobile. `help` lists it. The amendment MUST carry its tasks and the
+  Terminal's tests. Running code from the Terminal is not part of it.
 
 **Panes**
 
@@ -1094,10 +1101,9 @@ server-rendered page, unchanged by this feature.
 - **Phones**: "phones" means the mobile shell, which 005 chooses by space alone, so tablets and
   narrow desktop windows get the "best on desktop" screen too. The Playground declares the mobile
   shell so its icon shows on the home screen, leading to that screen.
-- **The Terminal**: gets `open playground` through an amendment of 006 in its own pull request,
-  after this feature ships, as 006 expects `open` to gain names as apps are added and it can only
-  be tested once the Playground exists (FR-006, removed). Running code from the Terminal is out of
-  scope.
+- **The Terminal**: gets `open playground` through an amendment of 006 in this feature's pull
+  request (FR-087), as 006 expects `open` to gain names as apps are added. Running code from the
+  Terminal is out of scope.
 - **Show specs**: the Playground follows 007's per-app pattern, now merged.
 - **What the Playground remembers**: the visitor's code and compiler options, in their browser, on
   their device, until they reset them or clear the site's data, as the vision allows for what the
@@ -1126,5 +1132,5 @@ server-rendered page, unchanged by this feature.
   (002); the design tokens source and token check (003); `/cv`, its offline rules and its checks
   (004); the OS shell, its windows, menus, full-screen apps and checks (005), amended by this
   feature to drop its Minimize and Maximize shortcuts (FR-086); the requirement inspector's "Show
-  specs" (007); and an approved mockup of the Playground in both shells with its review sign-off.
-  The amendment of the Terminal (006) for `open playground` follows this feature.
+  specs" (007); the Terminal (006), amended by this feature for `open playground` (FR-087); and an
+  approved mockup of the Playground in both shells with its review sign-off.
