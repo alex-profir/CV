@@ -18,6 +18,9 @@ exports in `design/exports/`, the
 and the signed [review.md](./design/review.md) (**006 Terminal — Glass**, commit `c34fd51`,
 2026-10-27).
 
+**Amended 2026-10-29**: Phase 15 implements the removal of the greeting (spec FR-005 as amended,
+design approved 2026-10-29). The rest of the spec's 2026-10-29 amendment has no tasks yet.
+
 **Tests**: REQUIRED. The constitution (Principle III) maps every requirement to at least one
 automated test. Each test task names the `006-terminal-FR-###` IDs it covers, and every FR in
 spec.md (FR-001 to FR-066, all active) is covered by at least one test task (see Requirement
@@ -675,7 +678,7 @@ Every FR in spec.md and the test task that covers it:
 | 006-terminal-FR-002 | T030 |
 | 006-terminal-FR-003 | T007, T030, T031 |
 | 006-terminal-FR-004 | T012, T030 |
-| 006-terminal-FR-005 | T033 |
+| 006-terminal-FR-005 | T033, T121 |
 | 006-terminal-FR-006 | T032 |
 | 006-terminal-FR-007 | T019, T032 |
 | 006-terminal-FR-008 | T020 |
@@ -802,3 +805,31 @@ SC-010 T003, T108; SC-012 T066.
   - `cv.ts` splits `aboutLines` and `contactLines` out of `aboutBlock` and `contactBlock`; `buildFileSystem` lists each file only when its lines aren't empty, and `has()` is gone. New test in `files.test.ts` with `basics: { location: {}, profiles: [{}] }` and with a city alone.
 - [X] T120 Give piping into `vim <path>` the "doesn't read piped input" reply, in `packages/web/src/apps/terminal/engine/commands.ts` (`vim`): only `vim -` reads input (FR-057). Today `ls | vim cv.json` opens `cv.json`, drops what `ls` printed, and shows `ls | vim cv.json` as the pipe in the status line. When `call.input` isn't null and the argument isn't `-`, reply with `replies.noInput` naming `vim` as typed, without opening the view. Extend `packages/web/test/terminal/engine/parse.test.ts` or `engine/commands.test.ts` (covers 006-terminal-FR-057): `ls | vim cv.json` gets the reply naming `vim` and returns no `open-vim`; `cat cv.json | vim -` and `cv` still open the view with their pipe. per FR-057 (partial)
   - `vim <path>` with piped input gives `replies.noInput` naming `vim` as typed (shared `noInput` with `runLine`), and the view no longer shows a pipe for a path. New test in `parse.test.ts`. Then `typecheck`, `content-check`, `token-check`, `traceability` and `npm test` (1430 tests) pass; `shell/history.test.ts`'s phone double-click-on-Home test timed out once under the full run and passed three times alone. `npm run site-check` passes 13 of 13 parts, Lighthouse 98 to 100.
+
+---
+
+## Phase 15: Amendment of 2026-10-29: no greeting
+
+**Goal**: The Terminal opens on its starter command controls and a prompt, with no greeting text,
+in both shells (spec FR-005 as amended 2026-10-29; design/review.md, "2026-10-29 amendment",
+decision 2; exports `desktop-1-just-opened-1440.png`, `phone-1-just-opened-375.png`,
+`phone-5-just-opened-320.png`, `phone-6-landscape-568.png`). The chips keep every CV section
+within 2 clicks or taps without typing (SC-001). The rest of the 2026-10-29 amendment (FR-067 to
+FR-075 and the changed FR-008, FR-015, FR-032, FR-049, FR-056, FR-057) waits for its plan and
+tasks.
+
+**Independent Test**: open the Terminal at 1440 × 900, 375 × 812, 320 × 568 and 568 × 320; the
+screen shows the 5 starter chips, then the prompt, and no other text; each chip runs its command;
+`clear` removes the chips with the runs.
+
+### Tests (REQUIRED) ⚠️
+
+- [ ] T121 [P] Rewrite the FR-005 tests in `packages/web/test/terminal/output.test.ts`, covers 006-terminal-FR-005 and 006-terminal-FR-030: before the first prompt `.terminal .starter` holds only the 5 chips, `help`, `about`, `work`, `projects`, `cv`, in that order, each running its line; no text node in the Terminal before the prompt besides the chips' names; the same with the `three-projects` (no label) and `no-name` fixtures, which replace the name-line tests T117 added; `clear` and the menu's `Clear output` remove `.starter`. Write them to fail against today's build.
+- [ ] T122 [P] Update the selectors and titles that name the greeting, from `.greeting` to `.starter`, in `packages/web/test/terminal/controls.test.ts` (FR-015 and SC-001: the starter chips are the 5 controls before the prompt; the inline `help` in the intro is gone, so the expected list is `help`, `about`, `work`, `projects`, `cv`), `menu.test.ts` (FR-003, FR-019), `state.test.ts` (FR-021: reopened, it shows the starter chips), `modes.test.ts`, `design.test.ts`, `pocket.test.ts` (FR-025, FR-051: the 5 chips; the tap search starts from the chips and the keys) and `data-req.test.tsx` (`.terminal .starter` carries 006-terminal-FR-005 and 006-terminal-FR-030, its buttons FR-015 and FR-034).
+
+### Implementation
+
+- [ ] T123 Remove the greeting's text from `packages/web/src/apps/terminal/Terminal.tsx` after T121 and T122: `div.greeting` becomes `div.starter` (`data-req="006-terminal-FR-005 006-terminal-FR-030"`) holding only the chips from `siteText.terminal.starter`; drop the status line, the name line and `Intro`, and with them the use of `basics.name` and `basics.label` there (the pocket case's engraving keeps the name, FR-054). In `session.ts` rename `greeting` to `starter` (shown until the output is first cleared, as now).
+- [ ] T124 [P] In `packages/web/src/site-text.ts`, replace `terminal.greeting` (`desktop`, `phone`, `statusNarrow`, `name`, `nameAlone`, `commands`) with `terminal.starter: ['help', 'about', 'work', 'projects', 'cv']`; delete the strings nothing uses any more, and keep `content-check` passing.
+- [ ] T125 [P] In `packages/web/src/apps/terminal/terminal.css` and `pocket.css`, replace the `.greeting`, `.greeting-status`, `.greeting-name` and `.greeting-intro` rules with one `.starter` rule: the chip row, wrapping, with the gap to the first prompt the exports show; drop the phone rule that hid the status line in landscape. Every value stays a token (`token-check`).
+- [ ] T126 After T123 to T125, run `typecheck`, `content-check`, `token-check`, `traceability`, `npm test` and `npm run site-check`, and compare the four just-opened states with their exports. `tools/site-check/` reads no greeting (checked 2026-10-29), so the site check needs no change.
