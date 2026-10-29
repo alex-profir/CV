@@ -15,6 +15,12 @@ import type { FakeOptions, Repo } from './helpers/repo.ts';
 
 const MAIN = path.join(REPO_ROOT, 'tools/local-verify/src/main.js');
 
+// Each group gets `{ timeout: 30_000 }`: its tests start real git and several
+// fake commands, a few hundred milliseconds each and more when the machine is
+// busy (the full set runs browsers beside them), so the 5 s default is too
+// tight. The options are written inline, because the traceability check
+// reads only an object literal there (FR-012).
+
 const LOCK = {
   name: 'sample',
   lockfileVersion: 3,
@@ -63,7 +69,7 @@ const readResult = (repo: Repo, sha = repo.sha): LocalRunResult => JSON.parse(fs
 const porcelain = (repo: Repo) => repo.git(['status', '--porcelain=v1', '--untracked-files=all']);
 const npmScripts = (fake: ReturnType<typeof fakeBin>) => fake.log().filter((entry) => entry.command === 'npm').map((entry) => (entry.args[0] === 'test' ? 'test' : entry.args.at(-1)));
 
-describe('001-requirement-traceability-FR-032: the local full run starts only on a clean commit with its prerequisites', () => {
+describe('001-requirement-traceability-FR-032: the local full run starts only on a clean commit with its prerequisites', { timeout: 30_000 }, () => {
   const dirty: [string, (repo: Repo) => void, string][] = [
     ['a modified file', (repo) => fs.writeFileSync(path.join(repo.root, 'src/a.test.ts'), '// changed\n'), ' M src/a.test.ts'],
     ['a staged file', (repo) => (fs.writeFileSync(path.join(repo.root, 'staged.txt'), 'x\n'), repo.git(['add', 'staged.txt'])), 'A  staged.txt'],
@@ -189,7 +195,7 @@ describe('001-requirement-traceability-FR-032: the local full run starts only on
   });
 });
 
-describe('001-requirement-traceability-FR-033: every check runs and the run ends naming each failure', () => {
+describe('001-requirement-traceability-FR-033: every check runs and the run ends naming each failure', { timeout: 30_000 }, () => {
   test('with every check passing it exits 0 and records a passing result', async () => {
     const repo = sample();
     const fake = fakes(repo);
@@ -256,7 +262,7 @@ describe('001-requirement-traceability-FR-033: every check runs and the run ends
   });
 });
 
-describe('001-requirement-traceability-FR-037: the result stays outside the working copy', () => {
+describe('001-requirement-traceability-FR-037: the result stays outside the working copy', { timeout: 30_000 }, () => {
   test('the result, the log and the report are under the git common directory, and nothing is tracked or left', async () => {
     const repo = sample();
     const tracked = repo.git(['ls-files']);
@@ -298,7 +304,7 @@ describe('001-requirement-traceability-FR-037: the result stays outside the work
   });
 });
 
-describe('001-requirement-traceability-FR-032: npm run verify through its entry point', () => {
+describe('001-requirement-traceability-FR-032: npm run verify through its entry point', { timeout: 30_000 }, () => {
   const main = (repo: Repo, args: string[]) => spawnSync(process.execPath, [MAIN, ...args], { cwd: repo.root, env: fakes(repo).env, encoding: 'utf8' });
 
   test('an argument after the subcommand is a usage error', () => {

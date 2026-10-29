@@ -17,6 +17,12 @@ import { fakeBin, makeRepo, withOrigin } from './helpers/repo.ts';
 import type { FakeOptions, Repo } from './helpers/repo.ts';
 
 const MAIN = path.join(REPO_ROOT, 'tools/local-verify/src/main.js');
+
+// Each group gets `{ timeout: 30_000 }`: its tests start real git and several
+// fake commands, a few hundred milliseconds each and more when the machine is
+// busy (the full set runs browsers beside them), so the 5 s default is too
+// tight. The options are written inline, because the traceability check
+// reads only an object literal there (FR-012).
 const OS = `${os.type()} ${os.release()} ${process.arch}`;
 const BRANCH = '001-local-verify';
 
@@ -68,7 +74,7 @@ async function run(repo: Repo, env: NodeJS.ProcessEnv, exec?: Exec) {
 
 const ghCalls = (fake: ReturnType<typeof fakeBin>) => fake.log().filter((entry) => entry.command === 'gh');
 
-describe('001-requirement-traceability-FR-033: a sign-off is the passing local-verify status of the commit that passed', () => {
+describe('001-requirement-traceability-FR-033: a sign-off is the passing local-verify status of the commit that passed', { timeout: 30_000 }, () => {
   test('after a passing run it posts exactly one success status, describing what ran', async () => {
     const repo = makeRepo(SAMPLE);
     withOrigin(repo);
@@ -106,7 +112,7 @@ describe('001-requirement-traceability-FR-033: a sign-off is the passing local-v
   });
 });
 
-describe('001-requirement-traceability-FR-034: only the owner signs off, and only the exact commit that passed', () => {
+describe('001-requirement-traceability-FR-034: only the owner signs off, and only the exact commit that passed', { timeout: 30_000 }, () => {
   test.each(['CI', 'GITHUB_ACTIONS'])('with %s set it refuses before reading git or the result', async (variable) => {
     const repo = makeRepo(SAMPLE);
     withOrigin(repo);
@@ -202,7 +208,7 @@ describe('001-requirement-traceability-FR-034: only the owner signs off, and onl
   });
 });
 
-describe('001-requirement-traceability-FR-036: signing off runs no test, and records nothing unless the commit is on the host', () => {
+describe('001-requirement-traceability-FR-036: signing off runs no test, and records nothing unless the commit is on the host', { timeout: 30_000 }, () => {
   test('signing off a passing run starts no check', async () => {
     const repo = makeRepo(SAMPLE);
     withOrigin(repo);
