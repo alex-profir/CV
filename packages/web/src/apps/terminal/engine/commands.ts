@@ -234,12 +234,14 @@ function vimSource(textValue: string, name: string, pipe: string | null): VimSou
   return { name, pipe, rows, folds: [], type: 'text' };
 }
 
+// `vim <path>` or `vim -`; only `vim -` reads what is piped in (FR-057).
 function vim(call: Call, context: RunContext): Result {
   if (call.args.length !== 1 || (call.args[0] === '-' && call.input === null)) return usage(call, context, 'vim');
   if (call.args[0] === '-') return { kind: 'open-vim', file: vimSource(call.input!.text, call.input!.name ?? '-', call.line) };
+  if (call.input !== null) return noInput(call.word, context);
   const found = fileAt(call.args[0]!, context);
   if ('reply' in found) return found.reply;
-  return { kind: 'open-vim', file: vimSource(fileText(found.file), found.file.name, call.input === null ? null : call.line) };
+  return { kind: 'open-vim', file: vimSource(fileText(found.file), found.file.name, null) };
 }
 
 const CV_PIPE = 'cat cv.json | jq | vim -';
@@ -286,6 +288,9 @@ export const COMMANDS: readonly Command[] = [
   { name: 'exit', aliases: [], args: 'none', readsInput: false, run: plain('exit', () => ({ kind: 'os', action: { exit: true }, block: [] })) },
 ];
 
+// `{command} doesn't read piped input.`, naming the command as typed.
+const noInput = (word: string, context: RunContext): Result => output([text(fill(context.text.terminal.replies.noInput, { command: word }))]);
+
 // What a stage passes on to the next one.
 function piped(result: Result): Piped {
   if (result.kind === 'output') return { text: result.text ?? plainText(result.block), name: result.name ?? null };
@@ -306,7 +311,7 @@ export function runLine(typed: string, context: RunContext): Result {
   let result: Result = output([]);
   for (const [index, stage] of parsed.stages.entries()) {
     if (stage.command === null) return unknown(stage.word, context);
-    if (index > 0 && !stage.command.readsInput) return output([text(fill(context.text.terminal.replies.noInput, { command: stage.word }))]);
+    if (index > 0 && !stage.command.readsInput) return noInput(stage.word, context);
     result = stage.command.run({ word: stage.word, args: stage.args, input, line: typed }, context);
     input = piped(result);
     // Announced as FR-028 sets, by the command's own name.
