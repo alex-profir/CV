@@ -140,16 +140,31 @@ portfolio, so it has to be the author's own work.
 **Rationale**: a small, explainable stack is easier to maintain and easier for a reviewer
 to trust.
 
-### XI. One Feature, One PR
+### XI. Features and Amendments in Their Own PRs
 
-- Each feature ships in exactly one pull request. Its description links the feature's
-  `spec.md` and `tasks.md`.
+- A new feature ships in one pull request. Its description links the feature's `spec.md` and
+  `tasks.md`.
+- A shipped feature can be amended. The amendment starts in its spec (Principle I) and is
+  recorded there: a dated clarification session that says what changes and why, the owner's
+  approval of the amendment beside the spec's `Status`, each changed requirement marked
+  `Amended <date>` with what it said before, and each new requirement added under a new ID
+  marked `(added <date>)`. IDs are never reused or renumbered (Principle III).
+- An amendment ships in one or more pull requests of its own. Each one links the amended
+  `spec.md` and `tasks.md` and names the amendment it builds by its date.
+- When an amendment ships in several pull requests, each one carries the part of the spec
+  amendment it builds, with that part's tests, design and tasks. So the default branch never
+  holds an approved requirement without its test (Principle III), or a UI change without its
+  approved design (Principle II).
+- An amendment's tasks are a new phase in the feature's `tasks.md`. Earlier tasks keep their
+  record: a task the amendment overturns is marked as superseded, never deleted or unticked.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
   `chore:` and so on).
 - Unrelated changes go in their own PR.
 
-**Rationale**: one PR per feature keeps history readable. Spec, tasks and code can be
-reviewed together.
+**Rationale**: one PR per feature keeps history readable, with spec, tasks and code reviewed
+together. A shipped feature still changes as the owner learns from it. Recording each amendment
+in its spec, and building it in PRs that each keep the default branch true to its specs, lets
+a reader follow what changed, when and why, without one PR growing too large to review.
 
 ## Product Scope & Architecture
 
@@ -172,7 +187,8 @@ reviewed together.
 ## Development Workflow & Quality Gates
 
 Every feature moves through these gates in order. A gate that has not passed blocks the
-next one.
+next one. An amendment of a shipped feature moves through the same gates, from Specify, for the
+part it changes (Principle XI).
 
 1. **Specify**: `/speckit-specify` produces `spec.md`, with `FR-###` IDs, per-shell scope and
    offline behavior. Open questions are resolved with `/speckit-clarify`. The owner then sets
@@ -186,7 +202,8 @@ next one.
    prerequisite.
 5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
    `data-req` attributes (Principle III).
-6. **Pull request**: one PR per feature, linking its spec and tasks (Principle XI).
+6. **Pull request**: one PR per new feature, and one or more per amendment, each linking its
+   spec and tasks (Principle XI).
 
 Merge requirements:
 
@@ -283,4 +300,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.3.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-27
+**Version**: 1.4.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-29
