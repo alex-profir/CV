@@ -657,8 +657,10 @@ with the same Node-version gate as the other tools, then loads the TypeScript.
    check that changed a tracked file, or left an untracked one, fails the run, naming the files,
    because the result would no longer describe the commit.
 7. **The result** is written (R17) and a summary printed: each check `pass` or `fail` with its
-   duration, then `PASS: local full run on <sha>: <n> tests in <f> files passed, site check
-   passed. Sign off with: npm run signoff`, or `FAIL: <k> checks failed: <names>`. Exit 0 or 1.
+   duration (and for `test`, `<n> tests in <f> files passed`), then
+   `PASS: every check passed on <sha>. Sign off with: npm run signoff`, or
+   `FAIL: <k> checks failed on <sha>: <names>. Nothing can be signed off for this commit.`, as
+   contracts/local-verify.md words them. Exit 0 or 1.
 
 `npm run verify` makes no network request of its own, and the checks it runs need none
 (FR-027, spec Offline Behavior). It runs anywhere, cloud sessions included, because it records

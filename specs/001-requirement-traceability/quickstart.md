@@ -154,8 +154,8 @@ jq -r '.[].projectName' /tmp/sets.json | sort | uniq -c
 npm run test:fast
 ```
 
-**Expected**: two counts, `fast` and `slow`, adding up to every test file (150 before the
-amendment, plus its new ones). `npm run test:fast` passes without Chromium installed and
+**Expected**: two counts, `fast` and `slow`, adding up to every test file: 152 before the
+amendment, 155 with its three new ones (`fast` 67, `slow` 88, on 2026-10-29). `npm run test:fast` passes without Chromium installed and
 without building the site: its log shows no `site build` and finishes in well under a minute.
 The automated test `tools/traceability/test/test-sets.test.ts` checks the same partition against
 the traceability check's own file list, and that no fast file needs a browser or the build.
@@ -169,13 +169,16 @@ rm probe.txt
 ```
 
 **Expected**: before anything runs, `local full run refused: the working copy differs from commit
-<sha>:` and a line `  ?? probe.txt`, then `exit 2`. Repeat with a changed tracked file instead:
-it is named with ` M`.
+<sha>:`, a line `  ?? probe.txt` and `Commit or remove these, then run it again.`, then
+`exit 2`. Repeat with a changed tracked file instead: it is named with ` M`.
 
 Prerequisites: on a machine without Playwright's Chromium (or after
 `npx playwright uninstall`), `npm run verify` prints
 `site check needs Chromium: run npx playwright install chromium`, runs nothing and exits 2.
-With `nvm use 24`, it names the Node version `.nvmrc` asks for.
+With `nvm use 24`, the entry point stops first:
+`local full run needs Node 26 or later (see .nvmrc), but this is Node 24.<x>.<y>`, exit 2. A newer
+major than `.nvmrc`'s (say Node 27) gets
+`local full run needs Node 26 (see .nvmrc), but this is Node 27.<x>.<y>: run nvm use`.
 
 ## 10. A passing run, and a failing one (US4 scenarios 1 and 3, FR-033, FR-037, SC-010)
 
@@ -187,15 +190,19 @@ ls "$(git rev-parse --git-common-dir)/local-verify/"
 git status --porcelain
 ```
 
-**Expected**: every check's output, then the summary with six `pass` lines, the test count and
-`PASS: every check passed on <sha>`, `exit 0`. The result directory holds `<sha>.json`,
+**Expected**: every check's output, each after a `== <name>: <command>` line, then the summary:
+`Local full run on <sha> (<branch>)`, six `pass` lines (the `test` line ends
+`<n> tests in <f> files passed`) and
+`PASS: every check passed on <sha>. Sign off with: npm run signoff`, then `exit 0`. The result directory holds `<sha>.json`,
 `<sha>.log` and `<sha>.vitest.json`. `git status --porcelain` prints nothing (FR-037).
 
 Then break one browser test on a scratch branch (for example, change an expected text in
 `packages/web/test/terminal/output.test.ts`), commit, and run `npm run verify` again.
-**Expected**: the `test` check fails and is named in `FAIL: 1 check failed on <sha>: test`,
-`exit 1`, and `npm run signoff` then refuses with
-`the last local full run on <sha> failed (test)`. Drop the scratch commit.
+**Expected**: the `test` check fails and is named in
+`FAIL: 1 check failed on <sha>: test. Nothing can be signed off for this commit.`, `exit 1`, and
+`npm run signoff` then refuses with
+`sign-off refused: the last local full run on <sha> failed (test)`, exit 1. Drop the scratch
+commit.
 
 ## 11. Signing off (US4 scenarios 1, 4 and 6, FR-033 to FR-036, SC-009)
 
@@ -212,7 +219,9 @@ gh api repos/alex-profir/CV/commits/$(git rev-parse HEAD)/statuses \
 
 **Expected**:
 
-- The first `signoff` refuses, naming the new commit (FR-034).
+- The first `signoff` refuses with
+  `sign-off refused: no local full run on <sha>: run npm run verify`, naming the new commit
+  (FR-034).
 - The second prints `pushing <branch> to origin first`, then
   `signed off <sha> on alex-profir/CV: local-verify success: <n> tests in <f> files passed; site
   check passed; Node 26.<x>.<y>; <os>`, `exit 0`, and runs no test after `verify` ended (FR-036).
@@ -226,7 +235,8 @@ gh api repos/alex-profir/CV/commits/$(git rev-parse HEAD)/statuses \
 Turn the network off and run `npm run signoff` on a commit with a passing run.
 **Expected**: `can't reach origin, nothing was recorded: …`, `exit 1`, and no status appears on
 the commit once the network is back. `CI=true npm run signoff` refuses with
-`it runs only on the owner's machine, never in CI` and records nothing.
+`sign-off refused: it runs only on the owner's machine, never in CI`, exit 1, and records
+nothing.
 
 The pull request's own checks never record a sign-off: in any pull request's checks list,
 `local-verify` is created by the owner's account, never by `github-actions`.
@@ -243,7 +253,8 @@ On the amendment's own pull request, from `001-local-verify`:
    ```
 
 2. Check out its head commit clean and run `npm ci`, `npx playwright install chromium` and
-   `npm run verify`. **Expected**: `PASS`.
+   `npm run verify`. **Expected**: six `pass` lines and
+   `PASS: every check passed on <sha>. Sign off with: npm run signoff`.
 3. Apply the new ruleset:
 
    ```sh
@@ -252,6 +263,7 @@ On the amendment's own pull request, from `001-local-verify`:
    ```
 
    **Expected**: the pull request now lists `local-verify` as expected, and merging is blocked.
-4. `npm run signoff`. **Expected**: `local-verify` passes and the pull request can merge. Merge it
+4. `npm run signoff`. **Expected**:
+   `signed off <sha> on alex-profir/CV: local-verify success: <description>`, then `local-verify` passes and the pull request can merge. Merge it
    (squash). It is the first pull request merged with a sign-off.
 5. On `main`, run scenario 7's drift check. **Expected**: `never`, then `no drift`.
