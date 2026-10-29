@@ -152,6 +152,27 @@ describe('start and resume', { timeout: 30_000 }, () => {
     expect(loopLog()).toContain('port=5999\n');
   });
 
+  test('builds the spec folder with an amendment branch’s number, unless that is ambiguous', () => {
+    const shipped = (dir: string) => {
+      fs.mkdirSync(path.join(repo, 'specs', dir), { recursive: true });
+      fs.writeFileSync(path.join(repo, 'specs', dir, 'spec.md'), dir);
+      git('add', '.');
+      git('commit', '-q', '-m', dir);
+    };
+    shipped('001-alpha');
+    shipped('002-beta');
+    git('push', '-q', 'origin', 'main');
+    branch('001-alpha-amended');
+
+    expect(run('start', '001-alpha-amended').status).toBe(0);
+    expect(loopLog()).toContain('args=build specs/001-alpha\n');
+
+    shipped('002-gamma');
+    branch('002-beta-amended', false);
+    expect(run('start', '002-beta-amended').status).toBe(0);
+    expect(loopLog()).toContain('args=build specs/002-beta-amended\n');
+  });
+
   test('refuses a branch that is checked out in another checkout', () => {
     branch('008-alpha');
     git('switch', '-q', '008-alpha');

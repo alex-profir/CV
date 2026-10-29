@@ -11,6 +11,7 @@
 #         in <repo>-worktrees/<feature> next to the main checkout, installs
 #         packages and runs `run.sh build specs/<feature>` there. The worktree is
 #         locked while the loop runs and the output is kept in .logs/<feature>.log.
+#         An amendment's branch builds the spec folder with its number instead.
 # resume  runs `run.sh resume <run_id>` in the feature's worktree.
 # list    shows each worktree, whether its loop is running and its pull request.
 # clean   removes the worktrees whose pull request is merged, and deletes local
@@ -147,6 +148,22 @@ free_port() {
   echo "$port"
 }
 
+# The spec folder a branch builds: specs/<branch>, or for an amendment of a
+# shipped feature, the one folder with the branch's number (001-local-verify
+# builds specs/001-requirement-traceability). Otherwise specs/<branch>, which
+# the loop then refuses.
+spec_dir() {
+  local branch=$1 ref dirs
+  ref=$(git rev-parse -q --verify "refs/heads/$branch" || git rev-parse -q --verify "refs/remotes/origin/$branch") \
+    && [[ $branch =~ ^[0-9]+- ]] \
+    && dirs=$(git ls-tree -d --name-only "$ref:specs" 2>/dev/null) \
+    && ! grep -qxF -- "$branch" <<<"$dirs" \
+    && dirs=$(grep -- "^${branch%%-*}-" <<<"$dirs") \
+    && [ "$(wc -l <<<"$dirs")" -eq 1 ] \
+    && { echo "specs/$dirs"; return; }
+  echo "specs/$branch"
+}
+
 # Checks out the feature's branch in its worktree and runs the loop there.
 launch() {
   local feature=$1 path lock pid status=0 elsewhere
@@ -194,7 +211,7 @@ case "$cmd" in
   start)
     [ -n "${1:-}" ] || usage
     feature=$1; shift
-    launch "$feature" build "specs/$feature" "$@"
+    launch "$feature" build "$(spec_dir "$feature")" "$@"
     ;;
   resume)
     [ -n "${1:-}" ] && [ -n "${2:-}" ] || usage

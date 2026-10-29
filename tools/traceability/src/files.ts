@@ -17,6 +17,21 @@ export const TEST_INCLUDE_GLOBS = ['**/*.{test,spec}.?(c|m)[jt]s?(x)'];
 
 export const TEST_EXCLUDE_GLOBS = [...EXCLUDED_DIR_NAMES.map((name) => `**/${name}/**`), '**/.*/**'];
 
+// The fast set: the test files of these directories, which pull requests run
+// (FR-030, research R14). A directory joins only when none of its tests needs
+// a browser or the site build, and test-sets.test.ts checks that choice. The
+// check itself never reads this list: it reads every test, in either set.
+export const FAST_TEST_GLOBS = [
+  'tools/traceability/test',
+  'tools/content-check/test',
+  'tools/token-check/test',
+  'tools/local-verify/test',
+  'packages/content/test',
+  'packages/os-core/test',
+  'packages/tokens/test',
+  'packages/web/test/terminal/engine',
+].map((dir) => `${dir}/**/*.{test,spec}.?(c|m)[jt]s?(x)`);
+
 // Whether a file, given by its path relative to the root, is a test file.
 export function isTestFile(file: string): boolean {
   return TEST_INCLUDE_GLOBS.some((glob) => path.posix.matchesGlob(file, glob));

@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import { TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS } from './tools/traceability/src/files.ts';
+import { FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS } from './tools/traceability/src/files.ts';
 import { specListPlugin } from './packages/web/scripts/spec-list.ts';
 
 // No `tags` are declared: a tag carrying `skip` or `todo` would skip tests in
@@ -12,11 +12,32 @@ export default defineConfig({
   oxc: {
     jsx: { runtime: 'automatic', importSource: 'react' },
   },
+  // Two projects, and every test file is in exactly one (research R14). The
+  // full set, `npm test`, is both; the fast set, `npm run test:fast`, is
+  // `fast`, which pull requests run (FR-030). Each project writes out its own
+  // include and exclude, so nothing inherited can widen `fast`. Both inherit
+  // the plugins and `oxc` options above.
   test: {
-    include: TEST_INCLUDE_GLOBS,
-    exclude: TEST_EXCLUDE_GLOBS,
-    // Builds the site once per run into a temporary directory, for the page
-    // tests (004 research R21).
-    globalSetup: ['packages/web/test/helpers/site.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'fast',
+          include: FAST_TEST_GLOBS,
+          exclude: TEST_EXCLUDE_GLOBS,
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'slow',
+          include: TEST_INCLUDE_GLOBS,
+          exclude: [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS],
+          // Builds the site once per run into a temporary directory, for the
+          // page tests (004 research R21). A run of `fast` alone never starts it.
+          globalSetup: ['packages/web/test/helpers/site.ts'],
+        },
+      },
+    ],
   },
 });

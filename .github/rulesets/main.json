@@ -54,6 +54,9 @@
           {
             "context": "site",
             "integration_id": 15368
+          },
+          {
+            "context": "local-verify"
           }
         ]
       }
