@@ -107,3 +107,38 @@ On a phone it is a pocket terminal in the same glass.
 - Notes: The look was approved first, on review of the first four exports. The full set of states,
   with the whole CV as JSON in the vim view, was approved on review of every export in
   `exports/`, and the owner confirms the look is original as recorded above.
+
+## Pending: the 2026-10-29 amendment
+
+**Status**: Awaiting the owner's review. Until it is signed below, the sign-off above stands and
+no code for these states starts (Constitution II).
+
+The spec's 2026-10-29 amendment changes the design. The changes are drawn in
+[wireframes.md](wireframes.md#the-2026-10-29-amendment-pending-the-owners-review) and still need
+the Penpot mockup and exports:
+
+- **Cursor** (replaces the decision above once signed): a block in haze at 90%. Filled and
+  blinking while the command line has focus, it stops blinking, still filled, 5 s after the last
+  key press, and is hollow (a 1 px outline in the same color) without focus. It is the command
+  line's only focus indicator: no box, border or outline around the line (FR-032, FR-072). Under
+  reduced motion it never blinks. Both states keep at least 3:1 against the glass in the worst
+  case above.
+- **`help`** gains a group of standard commands (FR-008).
+- **The shell** loading, and failing to load with a `Try again` control (FR-070).
+- **A command line stopped** by its limit, and Ctrl+C (FR-069, FR-075).
+- **Selection**: a selection in the command line, and all of the Terminal's text selected
+  (FR-074, FR-075).
+- **Site text**: the greeting drops `read only`, and the replies change as the wireframes'
+  Site text changes table lists.
+
+Exports to add to `exports/`: `desktop-10-cursor-focus-1440.png`, `desktop-11-help-standard-1440.png`,
+`desktop-12-shell-loading-1440.png`, `desktop-13-shell-failed-1440.png`,
+`desktop-14-stopped-1440.png`, `desktop-15-selection-1440.png`, `phone-8-cursor-375.png`,
+`phone-9-shell-failed-375.png`.
+
+### Sign-off (amendment)
+
+- Reviewed mockup version:
+- Date:
+- Approved by:
+- Notes:
