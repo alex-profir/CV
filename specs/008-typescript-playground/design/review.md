@@ -1,6 +1,6 @@
 # Design Review: The TypeScript Playground
 
-**Status**: Draft
+**Status**: Approved
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -71,14 +71,16 @@ colors, with the site's three fonts.
 
 ## Original look (FR-068)
 
-- [ ] The Playground's look is the site's own. Its colors, toolbar, panes, messages, popups, icon
+- [x] The Playground's look is the site's own. Its colors, toolbar, panes, messages, popups, icon
   and phone screen are drawn for this site in its tokens. It doesn't copy the official TypeScript
   Playground's look: not its header, its blue, its layout of tabs and sidebar, its logo or its
   editor theme. The editor works like VS Code, as the spec asks, but uses the site's own colors.
 
 ## Sign-off
 
-- Reviewed mockup version: interim local mockup, `mockup/` at commit `[commit]`
-- Date: `[date]`
-- Approved by: `[owner]`
-- Notes:
+- Reviewed mockup version: interim local mockup, `mockup/` at commit `1188830`
+- Date: 2026-10-29
+- Approved by: Alex Profir (project owner)
+- Notes: Approved on review of the exports, with every recommended design value as drawn,
+  and the owner confirms the look is original as recorded above. Changes found later are made as
+  amendments.
