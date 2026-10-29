@@ -73,12 +73,12 @@
 - Q: VS Code's Format Document key, `Shift+Alt+F`, is the shell's Maximize shortcut (005 FR-065).
   Which keeps it? → A: Format Document. The shell drops its Maximize and Minimize shortcuts, which
   aren't needed: the window controls and the window's menu commands stay. This is an amendment of
-  005, made in this feature's pull request (FR-086). Constitution XI ships an amendment in pull
-  requests of its own, so the plan records this as a justified exception in its Complexity
-  Tracking table.
+  005, made in this feature's pull request (FR-086), as Constitution XI allows from 1.5.0: a new
+  feature can amend an older spec it needs changed, in its own pull request.
 - Q: Constitution XI ships an amendment in pull requests of its own, so how does the Terminal get
   `open playground`? → A: Through an amendment of 006 in its own pull request, after this feature
-  ships, as it can only be tested once the Playground exists. FR-006 moves there.
+  ships, as it can only be tested once the Playground exists. FR-006 moves there. (Constitution
+  1.5.0, which came after this answer, would also let it ride in this feature's pull request.)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -1067,9 +1067,9 @@ server-rendered page, unchanged by this feature.
   keeps `Shift+Alt+F`, freed by the amendment of 005 below.
 - **The amendment of 005**: the shell drops its Minimize and Maximize shortcuts (005 FR-063 and
   FR-065), so `Shift+Alt+F` (`Shift+Option+F` on a Mac) is free for Format Document. The minimize
-  and maximize controls and the window's menu commands stay. The owner chose to make it in this
-  feature's pull request (FR-086), not in one of its own as Constitution XI sets, so the plan
-  records the exception in its Complexity Tracking table.
+  and maximize controls and the window's menu commands stay. It is made in this feature's pull
+  request (FR-086), as Constitution XI allows a new feature to amend an older spec it needs
+  changed (1.5.0, pull request #31, which merges before this feature).
   Editor settings, keymaps, themes chosen by the visitor and extensions are not part of it.
 - **When TypeScript is downloaded**: on the Playground's first open, as the description says, not on
   the site's first visit, so recruiters on phones never pay for it. Constitution VI is met by keeping

@@ -43,5 +43,5 @@
   entries, 10,000 characters per entry, 8,000-character links.
 - Feature number: 008, after 007-requirement-inspector.
 - Approved by the owner 2026-10-29, with the amendment of 005 made in this feature's pull request
-  (FR-086). 005's spec records the amendment; the plan records the exception to Constitution XI.
+  (FR-086). 005's spec records the amendment, as Constitution XI allows from 1.5.0 (#31).
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`
