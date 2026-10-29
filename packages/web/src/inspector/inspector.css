@@ -1,0 +1,509 @@
+/* The requirement inspector (007 design/wireframes.md Design values,
+   contracts/inspector.md Layout): "Show specs" in a window's title bar and
+   a full-screen view's header, and the spec view in place of the app's
+   content. Every value is a token. */
+
+/* ---- "Show specs" ---------------------------------------------------- */
+
+.show-specs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  border: 0;
+  background: none;
+  font-family: var(--token-font-family-body);
+  font-weight: var(--token-font-weight-medium);
+  white-space: nowrap;
+}
+
+.show-specs svg {
+  inline-size: var(--token-size-control-dot);
+  block-size: var(--token-size-control-dot);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thin);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Desktop: a 24 px pill at the title bar's right end, 10 px from the
+   window's edge, above the centered title. */
+.title-bar .show-specs {
+  position: relative;
+  z-index: 1;
+  min-block-size: var(--token-size-control);
+  margin-inline: auto var(--token-space-0-5);
+  padding-inline: var(--token-space-2);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-shell-rule);
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
+.window[aria-current="true"] .title-bar .show-specs {
+  color: var(--token-color-shell-text-soft);
+}
+
+/* Mobile: the header's full height and at least 44 px wide as a target,
+   drawn as a 33 px pill. */
+.app-header .show-specs {
+  position: relative;
+  justify-self: end;
+  align-self: stretch;
+  justify-content: center;
+  min-inline-size: var(--token-space-11);
+  padding-inline: var(--token-space-3);
+  color: var(--token-color-shell-text-soft);
+  font-size: var(--token-font-size-mono);
+}
+
+.app-header .show-specs::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  block-size: calc(var(--token-space-8) + var(--token-border-thin));
+  margin-block: auto;
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-shell-rule);
+}
+
+.app-header .show-specs > * {
+  position: relative;
+}
+
+/* The header's second line while the view shows its specs. */
+.title-suffix {
+  display: block;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  font-weight: var(--token-font-weight-medium);
+  letter-spacing: var(--token-font-letter-spacing-label);
+  text-transform: var(--token-font-case-label);
+}
+
+/* ---- The spec view ---------------------------------------------------- */
+
+.spec-view {
+  min-block-size: 100%;
+  background: var(--token-color-shell-surface);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-mono);
+  line-height: var(--token-typography-body-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* The Terminal's glass shows through, as its own screen does. */
+.window[data-view="terminal"] .spec-view {
+  background: none;
+}
+
+.spec-view a {
+  color: var(--token-color-shell-accent);
+  text-decoration-line: underline;
+}
+
+/* Every link is a 24 px target or more (FR-019): a link in running text,
+   which may break over lines, by its padding, which moves no line; a link
+   on its own line by its height. */
+.spec-view a:is(.build-commit, .test-name),
+.requirement-text a {
+  padding-block: var(--token-space-1);
+}
+
+.whats-this-panel a,
+.open-spec,
+.spec-line {
+  min-block-size: var(--token-size-target);
+}
+
+.spec-view svg {
+  inline-size: var(--token-size-control-dot);
+  block-size: var(--token-size-control-dot);
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thin);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The bar stays at the top of the scroller. */
+.spec-bar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--token-space-2);
+  min-block-size: var(--token-size-title-bar);
+  padding-inline: var(--token-space-2);
+  background: var(--token-color-chrome-solid);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.full-screen .spec-bar {
+  min-block-size: var(--token-size-spec-bar-touch);
+}
+
+.spec-back,
+.whats-this {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  min-block-size: var(--token-size-target);
+  padding-inline: var(--token-space-2);
+  border: 0;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-accent);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+  font-weight: var(--token-font-weight-medium);
+}
+
+.full-screen :is(.spec-back, .whats-this) {
+  min-block-size: var(--token-space-11);
+  font-size: var(--token-font-size-mono);
+}
+
+/* The view's content: at most the reading width, from the left padding. */
+.spec-page {
+  padding: var(--token-space-6);
+}
+
+.spec-page > * {
+  max-inline-size: var(--token-size-spec-measure);
+}
+
+@container (--token-breakpoint-spec-wide) {
+  .spec-page {
+    padding: var(--token-space-10);
+  }
+}
+
+.full-screen .spec-page {
+  padding: var(--token-space-5);
+}
+
+.spec-heading {
+  margin: 0;
+  font-family: var(--token-typography-h3-narrow-font-family);
+  font-size: var(--token-typography-h3-narrow-font-size);
+  font-weight: var(--token-typography-h3-narrow-font-weight);
+  letter-spacing: var(--token-typography-h3-narrow-letter-spacing);
+  line-height: var(--token-typography-h3-narrow-line-height);
+}
+
+.spec-lede {
+  margin-block: var(--token-space-2) 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+.spec-build {
+  margin-block: var(--token-space-3) 0;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* The short commit and its arrow stay on one line. */
+.build-commit {
+  white-space: nowrap;
+}
+
+/* ---- "What's this?" --------------------------------------------------- */
+
+.whats-this-panel {
+  margin-block-end: var(--token-space-6);
+  padding: var(--token-space-4) var(--token-space-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-menu);
+  background: var(--token-color-shell-raised);
+}
+
+.whats-this-panel h2 {
+  margin: 0;
+  font-size: var(--token-font-size-mono);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.whats-this-panel p {
+  margin-block: var(--token-space-2) 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+.whats-this-panel .chain {
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.chain-arrow {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.whats-this-panel a {
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: var(--token-space-2);
+}
+
+/* ---- A spec's group --------------------------------------------------- */
+
+.spec-group {
+  margin-block-start: var(--token-space-8);
+}
+
+.spec-group h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--token-space-2);
+  margin: 0;
+  font-size: var(--token-font-size-h4);
+  font-weight: var(--token-font-weight-semibold);
+  line-height: var(--token-typography-h4-line-height);
+}
+
+.spec-number {
+  color: var(--token-color-shell-accent);
+  font-family: var(--token-font-family-mono);
+}
+
+/* A status's shape carries it, not its color (FR-023): a filled dot and a
+   solid outline, or a hollow dot and a dashed outline. */
+.status {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  padding-inline: var(--token-space-2);
+  border: var(--token-border-thin) solid currentColor;
+  border-radius: var(--token-radius-pill);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  font-weight: var(--token-font-weight-medium);
+  letter-spacing: var(--token-font-letter-spacing-label);
+  text-transform: var(--token-font-case-label);
+}
+
+.status::before {
+  content: "";
+  inline-size: var(--token-space-1-5);
+  block-size: var(--token-space-1-5);
+  border: var(--token-border-thin) solid currentColor;
+  border-radius: var(--token-radius-pill);
+  background: currentColor;
+}
+
+.status[data-status="approved"] {
+  color: var(--token-color-status-approved);
+}
+
+.status[data-status="draft"] {
+  color: var(--token-color-status-draft);
+  border-style: dashed;
+}
+
+.status[data-status="draft"]::before {
+  background: none;
+}
+
+.not-shown {
+  margin-block: var(--token-space-2) 0;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.open-spec {
+  display: inline-flex;
+  align-items: center;
+  margin-block-start: var(--token-space-2);
+  font-size: var(--token-font-size-small);
+}
+
+/* ---- Requirements ------------------------------------------------------ */
+
+.requirements {
+  margin: var(--token-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The ID above the text, then beside it in its own column once there is
+   room. */
+.requirement {
+  display: grid;
+  gap: var(--token-space-1);
+  padding-block: var(--token-space-4);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+@container (--token-breakpoint-spec-two-column) {
+  .requirement {
+    grid-template-columns: var(--token-size-spec-id-column) minmax(0, 1fr);
+    gap: 0;
+  }
+}
+
+.short-id {
+  color: var(--token-color-shell-accent);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-small);
+  font-weight: var(--token-font-weight-medium);
+}
+
+.requirement-text {
+  margin: 0;
+}
+
+.requirement-text code {
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+}
+
+.requirement-body > * + * {
+  margin-block-start: var(--token-space-2);
+}
+
+/* ↗ after a link into the repository, at the size of 004's arrows. */
+.spec-view .arrow {
+  inline-size: var(--token-space-2-5);
+  block-size: var(--token-space-2-5);
+  margin-inline-start: var(--token-space-1);
+}
+
+.spec-line {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--token-font-size-small);
+}
+
+.tests-label {
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  letter-spacing: var(--token-font-letter-spacing-label);
+  text-transform: var(--token-font-case-label);
+}
+
+.requirement-body p {
+  margin-block-end: 0;
+}
+
+.tests {
+  margin: var(--token-space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tests li + li {
+  margin-block-start: var(--token-space-2);
+}
+
+.test-place {
+  display: block;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.no-tests {
+  display: flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  color: var(--token-color-shell-text-secondary);
+}
+
+/* A note: a dashed hairline box with its glyph and one sentence. */
+.spec-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--token-space-2);
+  margin-block: var(--token-space-4) 0;
+  padding: var(--token-space-3);
+  border: var(--token-border-thin) dashed var(--token-color-chrome-border);
+  border-radius: var(--token-radius-menu);
+  color: var(--token-color-shell-text-soft);
+}
+
+.spec-note svg {
+  margin-block-start: var(--token-space-1);
+}
+
+/* ---- Showing and leaving (FR-022) -------------------------------------- */
+
+/* The scroller's old and new content cross-fade; nothing moves or scales. */
+:is(.window-content, .view-content)[data-spec-swap] {
+  view-transition-name: spec-swap;
+}
+
+::view-transition-group(spec-swap) {
+  animation: none;
+}
+
+::view-transition-old(spec-swap),
+::view-transition-new(spec-swap) {
+  animation-duration: var(--token-motion-duration-fast);
+  animation-timing-function: var(--token-motion-easing-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(spec-swap),
+  ::view-transition-new(spec-swap) {
+    animation: none;
+  }
+}
+
+/* ---- Forced colors (FR-023) -------------------------------------------- */
+
+/* Every control, chip and note keeps its border, solid or dashed; dots stay
+   filled or hollow; links stay underlined; nothing relies on a fill. */
+@media (forced-colors: active) {
+  .show-specs,
+  .spec-back,
+  .whats-this {
+    border: var(--token-border-thin) solid ButtonText;
+    color: ButtonText;
+  }
+
+  .app-header .show-specs {
+    border: 0;
+  }
+
+  .app-header .show-specs::before {
+    border-color: ButtonText;
+  }
+
+  .status,
+  .spec-note {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .status::before {
+    border-color: CanvasText;
+    background: CanvasText;
+  }
+
+  .status[data-status="draft"]::before {
+    background: none;
+  }
+
+  .spec-view a {
+    color: LinkText;
+    text-decoration-line: underline;
+  }
+
+  .whats-this-panel {
+    border-color: CanvasText;
+  }
+}

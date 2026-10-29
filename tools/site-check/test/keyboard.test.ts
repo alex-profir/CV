@@ -68,3 +68,23 @@ describe("006-terminal-FR-039: the Terminal's keyboard flow runs at 1440 × 900,
     expect(report.problems.filter((problem) => problem.variant === TERMINAL_VARIANT).map(renderProblem)).toEqual([expect.stringMatching(new RegExp(`^keyboard / ${TERMINAL_VARIANT} focus-target step \\d+ "exit": focus went to body, expected the Terminal dock item$`))]);
   });
 });
+
+const FOCUS_FILE = 'packages/web/src/os/focus.ts';
+
+const INSPECTOR_VARIANT = 'desktop/inspector-keyboard/1440px';
+
+describe("007-requirement-inspector-FR-032: the inspector's keyboard flow runs at 1440 × 900, checking focus and its indicator at each step", () => {
+  test('on the real build the flow passes', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toContain(`${INSPECTOR_VARIANT} pass`);
+  });
+
+  test('a copy whose Back leaves focus on body fails with focus-target, naming each step', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, FOCUS_FILE, ": '.show-specs';", ": '.no-such-control';"));
+    const report = await runCheck(root, { parts: ['keyboard'] });
+    // Every Back is broken, so the flow names each one and goes on.
+    const line = (step: number, view: string) => `keyboard / ${INSPECTOR_VARIANT} focus-target step ${step} "Back to ${view}": focus went to body, expected the ${view} window's Show specs`;
+    expect(report.problems.filter((problem) => problem.variant === INSPECTOR_VARIANT).map(renderProblem)).toEqual([line(3, 'CV'), line(7, 'CV'), line(11, 'Terminal'), line(14, 'About this site')]);
+  });
+});

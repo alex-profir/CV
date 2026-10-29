@@ -4,9 +4,9 @@ import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, onTestFinished, test, vi } from 'vitest';
 import { launchChromium } from '../src/browser.ts';
 import { SITE_DIR, readManifest, runCheck } from '../src/check.ts';
-import { SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
+import { INSPECTOR, INSPECTOR_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
 import type { ShellState } from '../src/shell-states.ts';
-import { renderReport } from '../src/report.ts';
+import { renderProblem, renderReport } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
 import { realSiteProject } from './helpers/root.ts';
 
@@ -98,6 +98,44 @@ const TERMINAL_EXPECTED: Record<string, unknown> = {
   'mobile/pocket-vim-help': { vim: true, help: true },
 };
 
+// The inspector's states (007 contracts/cli.md States): which spec view
+// shows, with its groups, and what else the state sets.
+const specs = async (page: Page, view: 'cv' | 'terminal' | 'about') => ({ view: await shown(page, INSPECTOR.specView(view)), groups: (await count(page, INSPECTOR.groups(view))) > 0 });
+
+const cvWidth = (page: Page) => page.evaluate((selector) => document.querySelector(selector)?.getBoundingClientRect().width ?? 0, SHELL.cvWindow);
+
+const INSPECTOR_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
+  'desktop/cv-specs': (page) => specs(page, 'cv'),
+  'desktop/cv-specs-whats-this': async (page) => ({ ...(await specs(page, 'cv')), expanded: await page.getAttribute(INSPECTOR.whatsThis('cv'), 'aria-expanded') }),
+  'desktop/terminal-app-specs': async (page) => ({ ...(await specs(page, 'terminal')), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view') }),
+  'desktop/terminal-app-specs-beside-cv': async (page) => ({ ...(await specs(page, 'terminal')), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view'), cv: await shown(page, `${SHELL.cvWindow} .cv`) }),
+  'desktop/about-specs': (page) => specs(page, 'about'),
+  'desktop/cv-specs-narrow': async (page) => ({ ...(await specs(page, 'cv')), narrow: (await cvWidth(page)) <= 400 }),
+  'mobile/cv-specs': (page) => specs(page, 'cv'),
+  'mobile/cv-specs-whats-this': async (page) => ({ ...(await specs(page, 'cv')), expanded: await page.getAttribute(INSPECTOR.whatsThis('cv'), 'aria-expanded') }),
+  'mobile/terminal-app-specs': (page) => specs(page, 'terminal'),
+  'mobile/about-specs': (page) => specs(page, 'about'),
+  'mobile/cv-specs-320': async (page) => ({ ...(await specs(page, 'cv')), size: page.viewportSize() }),
+  'mobile/cv-specs-landscape': async (page) => ({ ...(await specs(page, 'cv')), size: page.viewportSize() }),
+};
+
+const SPECS = { view: true, groups: true };
+
+const INSPECTOR_EXPECTED: Record<string, unknown> = {
+  'desktop/cv-specs': SPECS,
+  'desktop/cv-specs-whats-this': { ...SPECS, expanded: 'true' },
+  'desktop/terminal-app-specs': { ...SPECS, focused: 'terminal' },
+  'desktop/terminal-app-specs-beside-cv': { ...SPECS, focused: 'cv', cv: true },
+  'desktop/about-specs': SPECS,
+  'desktop/cv-specs-narrow': { ...SPECS, narrow: true },
+  'mobile/cv-specs': SPECS,
+  'mobile/cv-specs-whats-this': { ...SPECS, expanded: 'true' },
+  'mobile/terminal-app-specs': SPECS,
+  'mobile/about-specs': SPECS,
+  'mobile/cv-specs-320': { ...SPECS, size: { width: 320, height: 568 } },
+  'mobile/cv-specs-landscape': { ...SPECS, size: { width: 812, height: 375 } },
+};
+
 // What each state's page shows, as a visitor would see it.
 const SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'desktop/first-load': async (page) => ({ cv: await shown(page, SHELL.cvWindow), windows: await count(page, '#os .window'), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view') }),
@@ -115,6 +153,7 @@ const SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'mobile/cv-app': async (page) => ({ app: await shown(page, SHELL.cvFullScreen), cv: await shown(page, `${SHELL.cvFullScreen} .cv`) }),
   'mobile/about': async (page) => ({ app: await shown(page, SHELL.aboutFullScreen) }),
   ...TERMINAL_SHOWS,
+  ...INSPECTOR_SHOWS,
 };
 
 const EXPECTED: Record<string, unknown> = {
@@ -133,11 +172,12 @@ const EXPECTED: Record<string, unknown> = {
   'mobile/cv-app': { app: true, cv: true },
   'mobile/about': { app: true },
   ...TERMINAL_EXPECTED,
+  ...INSPECTOR_EXPECTED,
 };
 
 describe('005-os-shell-FR-048: the checks measure the root in every shell state', () => {
   test("the driver lists data-model.md's states at their sizes, and names each variant", () => {
-    expect(SHELL_STATES.filter((state) => !TERMINAL_STATES.includes(state)).map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
+    expect(SHELL_STATES.filter((state) => !TERMINAL_STATES.includes(state) && !INSPECTOR_SHELL_STATES.includes(state)).map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
       'desktop/first-load/1440px 900',
       'desktop/no-window/1440px 900',
       'desktop/about/1440px 900',
@@ -222,7 +262,13 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
     const report = await runCheck(realSiteProject(), { parts: ['accessibility', 'other-sites'] });
     const variants = (part: string) => report.results.filter((result) => result.part === part && result.page === '/').map((result) => result.variant);
     expect(variants('accessibility')).toEqual(SHELL_STATES.map(({ shell, state, width }) => stateVariant(shell, state, width)));
-    expect(variants('other-sites')).toEqual(['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px']);
+    expect(variants('other-sites')).toEqual([
+      'desktop/cv-app/1440px',
+      'mobile/cv-app/375px',
+      'desktop/terminal-open/1440px',
+      'mobile/pocket/375px',
+      ...['desktop/%s-specs/1440px', 'mobile/%s-specs/375px'].flatMap((form) => ['cv', 'terminal', 'about'].map((view) => form.replace('%s', view))),
+    ]);
     expect(report.problems).toEqual([]);
     expect(report.pages.find((page) => page.path === '/')).toEqual({ path: '/', status: 200, notFound: false });
   });
@@ -230,5 +276,36 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
   test.skipIf(process.env.CI)('the report lists / under lighthouse on both profiles', { timeout: 600_000 }, async () => {
     const report = await runCheck(realSiteProject(), { parts: ['lighthouse'] });
     expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['mobile', 'desktop']);
+  });
+});
+
+describe("007-requirement-inspector-FR-031: the checks measure the inspector in every state of contracts/cli.md", () => {
+  test('the driver lists six desktop states at 1440 × 900 and six mobile states, at 320 × 568 and 812 × 375 where named', () => {
+    expect(INSPECTOR_SHELL_STATES.map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
+      ...['cv-specs', 'cv-specs-whats-this', 'terminal-app-specs', 'terminal-app-specs-beside-cv', 'about-specs', 'cv-specs-narrow'].map((state) => `desktop/${state}/1440px 900`),
+      ...['cv-specs', 'cv-specs-whats-this', 'terminal-app-specs', 'about-specs'].map((state) => `mobile/${state}/375px 812`),
+      'mobile/cv-specs-320/320px 568',
+      'mobile/cv-specs-landscape/812px 375',
+    ]);
+  });
+
+  test('the summary lists / under accessibility and modes in every inspector state, and under fonts and layout at both widths, with no problem', { timeout: 900_000 }, async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['accessibility', 'fonts', 'layout', 'modes'] });
+    const variants = (part: string) => report.results.filter((result) => result.part === part && result.page === '/').map((result) => result.variant);
+    const states = INSPECTOR_SHELL_STATES.map(({ shell, state, width }) => stateVariant(shell, state, width));
+    expect(variants('accessibility')).toEqual(expect.arrayContaining(states));
+    expect(variants('modes')).toEqual(expect.arrayContaining(states));
+    expect(variants('fonts')).toEqual(expect.arrayContaining(['desktop/cv-specs/1440px', 'mobile/about-specs/375px']));
+    expect(variants('layout')).toEqual(
+      expect.arrayContaining([
+        'desktop/cv-specs-narrow/1440px',
+        'mobile/cv-specs-320/320px',
+        'mobile/cv-specs-landscape/812px',
+        ...['cv-specs', 'terminal-app-specs', 'about-specs'].flatMap((state) => [`mobile/${state}-200%-zoom/640px`, `mobile/${state}-400%-zoom/320px`, `desktop/${state}-text-spacing/1440px`, `mobile/${state}-text-spacing/375px`]),
+      ]),
+    );
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    const summary = renderReport(report);
+    for (const variant of states) expect(summary).toContain(variant);
   });
 });

@@ -301,6 +301,58 @@ export const siteText = deepFreeze({
     },
     notes: ['On a Mac, use Option+Shift in place of Alt+Shift.', 'In menus and the dock, use the arrow keys, Enter and Escape.'],
   },
+  // The requirement inspector (007 design/wireframes.md Site text and Screen
+  // readers). `{view}` is a view's name; the page title follows 005's
+  // `os.titleSeparator` rule.
+  inspector: {
+    show: 'Show specs',
+    showShort: 'Specs',
+    showName: 'Show specs for {view}',
+    back: 'Back to {view}',
+    windowTitle: '{view} · Specs',
+    headerSuffix: 'Specs',
+    region: '{view} specs',
+    heading: 'Specs for {view}',
+    // About this site's view lists the shell's own requirements.
+    shellName: 'the shell',
+    ledeApp: 'Every requirement the {view} app implements, grouped by spec. Each one links to its line in the spec and to the tests that check it.',
+    ledeShell:
+      "Every requirement the shell itself implements: the menu bar, the dock, the windows' frames and controls, the home screen, and these spec controls. Each one links to its line in the spec and to the tests that check it.",
+    requirements: { one: '1 requirement', other: '{n} requirements' },
+    specs: { one: '1 spec', other: '{n} specs' },
+    builtFrom: 'built from',
+    // Between the build line's parts.
+    separator: ' · ',
+    notShown: { one: "1 more requirement in this spec isn't shown here", other: "{n} more requirements in this spec aren't shown here" },
+    openSpec: 'Open the spec',
+    approved: 'Approved',
+    draft: 'Draft',
+    // A spec's heading as it is read: the status as written, after a comma.
+    groupName: '{number} {title}, {status}',
+    inTheSpec: 'In the spec, line {line}',
+    // A reference's name: its text as written, then the full ID.
+    refName: '{text}, {id}',
+    tests: 'Tests',
+    testsCount: 'Tests, {n}',
+    noTests: 'No test covers this yet.',
+    // A test whose title is built when it runs, so the data has no name.
+    unnamedTest: 'A test named when it runs',
+    whatsThis: {
+      button: "What's this?",
+      heading: "What's this?",
+      paragraphs: [
+        'This site is built spec first. Every feature starts as a spec in the site\'s repository: a list of numbered requirements, each one thing the site must do. Every part of the interface that meets a requirement carries its ID, and every test that checks it names the ID too. A check on every pull request makes sure nothing ships without both.',
+        "This view lists the requirements this app's interface carries, read from the repository when the site was built, with a link to each one in its spec and to the tests that check it.",
+      ],
+      chain: ['Feature', 'Spec', 'Requirement FR-###', 'Interface', 'Tests'],
+      // Between the chain's labels, shown only.
+      chainArrow: ' › ',
+      chainSpoken: 'Feature, then Spec, then Requirement, then Interface, then Tests',
+      repository: "The site's repository on GitHub",
+    },
+    offline: "You're offline. Everything here is saved on this device, but the links to GitHub need a connection.",
+    uncommitted: 'This build includes uncommitted changes. Its links lead to the last commit, {commit}, so they may not match what you see here.',
+  },
   // The root without scripts (FR-049).
   noScript: {
     sentence: 'This site is a small operating system that runs in your browser, and it needs JavaScript. The CV reads in full without it.',

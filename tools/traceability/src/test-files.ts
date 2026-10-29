@@ -1,7 +1,7 @@
 import type { Argument, CallExpression, Directive, Expression, Node, ObjectExpression, Statement } from 'oxc-parser';
 import { findTokens } from './ids.ts';
 import type { Token } from './ids.ts';
-import type { Problem } from './report.ts';
+import type { Location, Problem } from './report.ts';
 import { createLocator, literalParts, parseSource } from './source.ts';
 
 // A test or group declared in a test file (data-model.md, TestNode).
@@ -11,6 +11,12 @@ export type TestNode = {
   markedInactive: boolean;
   unrecognized: boolean;
   parent: TestNode | null;
+  // The title as written: a string's value, or a template literal's text with
+  // each substitution as its source, such as `${shell}`. Empty when the title
+  // isn't a literal.
+  title: string;
+  // Where the call starts.
+  location: Location;
 };
 
 const ROOTS = new Set(['test', 'it', 'describe', 'suite']);
@@ -184,6 +190,18 @@ export function readTestFile(file: string, text: string): { nodes: TestNode[]; p
     return tags?.type === 'ArrayExpression' ? tags.elements.flatMap(literalOnly) : literalOnly(tags);
   };
 
+  const titleOf = (title: Argument | undefined): string => {
+    if (title?.type === 'Literal' && typeof title.value === 'string') return title.value;
+    if (title?.type !== 'TemplateLiteral') return '';
+    return title.quasis
+      .map((quasi, index) => {
+        const expression = title.expressions[index];
+        const substitution = expression === undefined ? '' : `\${${text.slice(expression.start, expression.end)}}`;
+        return (quasi.value.cooked ?? quasi.value.raw) + substitution;
+      })
+      .join('');
+  };
+
   const readCall = (call: CallExpression, parent: TestNode | null) => {
     const chain = chainOf(call.callee);
     if (chain === null || !ROOTS.has(chain.root)) return;
@@ -191,9 +209,10 @@ export function readTestFile(file: string, text: string): { nodes: TestNode[]; p
     const [title, ...rest] = call.arguments;
     const options = rest.find((arg): arg is ObjectExpression => arg.type === 'ObjectExpression');
     const tokens = tokensOf([...literalParts(title, text), ...tagParts(options)]);
+    const described = { title: titleOf(title), location: locate(call.start) };
 
     if (shape === null) {
-      const node: TestNode = { kind: 'group', tokens, markedInactive: false, unrecognized: true, parent };
+      const node: TestNode = { kind: 'group', tokens, markedInactive: false, unrecognized: true, parent, ...described };
       nodes.push(node);
       const callback = call.arguments.find(isFunction);
       if (callback !== undefined) visitStatements(statementsOf(callback), node);
@@ -207,7 +226,7 @@ export function readTestFile(file: string, text: string): { nodes: TestNode[]; p
       literalTruthiness(propertyValue(options, 'todo')) === true ||
       body === undefined ||
       (shape.kind === 'test' && skipsUnconditionally(body, shape.contextParam));
-    const node: TestNode = { kind: shape.kind, tokens, markedInactive, unrecognized: false, parent };
+    const node: TestNode = { kind: shape.kind, tokens, markedInactive, unrecognized: false, parent, ...described };
     nodes.push(node);
     // Test bodies are never searched for tests (fail closed).
     if (shape.kind === 'group' && body !== undefined) visitStatements(statementsOf(body), node);
@@ -260,6 +279,17 @@ export function readTestFile(file: string, text: string): { nodes: TestNode[]; p
 // `unrecognized`, and an inactive one in `skipped`.
 export function coverageOf(nodes: TestNode[]): { counting: Token[]; skipped: Token[]; unrecognized: Token[] } {
   const coverage = { counting: [] as Token[], skipped: [] as Token[], unrecognized: [] as Token[] };
+  for (const test of effectiveTests(nodes)) {
+    const bucket = test.unrecognized ? coverage.unrecognized : test.inactive ? coverage.skipped : coverage.counting;
+    bucket.push(...test.tokens);
+  }
+  return coverage;
+}
+
+// Every test with its effective tokens, and whether an ancestor or the test
+// itself is inactive or unrecognized.
+function effectiveTests(nodes: TestNode[]): { node: TestNode; tokens: Token[]; inactive: boolean; unrecognized: boolean }[] {
+  const tests = [];
   for (const node of nodes) {
     if (node.kind !== 'test') continue;
     const tokens: Token[] = [];
@@ -270,8 +300,15 @@ export function coverageOf(nodes: TestNode[]): { counting: Token[]; skipped: Tok
       inactive ||= current.markedInactive;
       unrecognized ||= current.unrecognized;
     }
-    const bucket = unrecognized ? coverage.unrecognized : inactive ? coverage.skipped : coverage.counting;
-    bucket.push(...tokens);
+    tests.push({ node, tokens, inactive, unrecognized });
   }
-  return coverage;
+  return tests;
+}
+
+// Each test that counts, by coverageOf's rule, with its effective tokens (007
+// research R6), in file order.
+export function coveringTests(nodes: TestNode[]): { node: TestNode; tokens: Token[] }[] {
+  return effectiveTests(nodes)
+    .filter((test) => !test.inactive && !test.unrecognized)
+    .map(({ node, tokens }) => ({ node, tokens }));
 }

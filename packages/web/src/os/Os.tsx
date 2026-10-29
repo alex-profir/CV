@@ -10,7 +10,9 @@ import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
 import type { App } from '../apps/index.ts';
 import { shellTitle } from '../format/meta.ts';
-import { siteText } from '../site-text.ts';
+import { startLoading } from '../inspector/data.ts';
+import { crossFade, viewScroller } from '../inspector/transition.ts';
+import { fill, siteText } from '../site-text.ts';
 import { Desktop } from '../shells/desktop/Desktop.tsx';
 import { Mobile } from '../shells/mobile/Mobile.tsx';
 import { Announcer } from './Announcer.tsx';
@@ -73,6 +75,12 @@ export function Os({ resume, siteData, apps }: OsProps) {
   const leaving = useRef(new Map<ViewId, { stop: () => void; action: OsAction }>());
 
   const viewName = useCallback((view: ViewId) => nameOf(view, context), [context]);
+  // The view's title: its name, or `[view] · Specs` while it shows its specs
+  // (007 research R4).
+  const viewTitle = useCallback(
+    (view: ViewId) => (state.specs[view] === undefined ? viewName(view) : fill(siteText.inspector.windowTitle, { view: viewName(view) })),
+    [state.specs, viewName],
+  );
 
   // The state as last rendered, for `finish`.
   const current = useRef(state);
@@ -103,6 +111,8 @@ export function Os({ resume, siteData, apps }: OsProps) {
     if (state.shell === 'both' || ready.current) return;
     ready.current = true;
     document.getElementById('os')?.setAttribute('data-ready', '');
+    // The requirement data, once the shell is ready (007 research R9).
+    startLoading();
     const early = window.osEarlyView;
     delete window.osEarlyView;
     if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
@@ -186,15 +196,15 @@ export function Os({ resume, siteData, apps }: OsProps) {
     dispatch({ type: 'effectsDone', count: state.effects.length });
   }, [state.effects]);
 
-  // The title: the focused window's or open app's name, then the site name.
+  // The title: the focused window's or open app's title, then the site name.
   useEffect(() => {
     if (state.shell === 'both') return;
     const view = state.shell === 'desktop' ? state.focused : state.mobile.open;
-    document.title = shellTitle(resume, view === null ? undefined : viewName(view));
-  }, [state.shell, state.focused, state.mobile.open, resume, viewName]);
+    document.title = shellTitle(resume, view === null ? undefined : viewTitle(view));
+  }, [state.shell, state.focused, state.mobile.open, resume, viewTitle]);
 
   // What the shells dispatch: closing a window waits for its closing
-  // animation (research R13). A second request meanwhile is dropped;
+  // animation (research R13), and a spec view's swap cross-fades. A second request meanwhile is dropped;
   // opening the window again stops the animation and keeps it.
   const act = useCallback((action: OsAction) => {
     if (action.type === 'close') {
@@ -213,10 +223,15 @@ export function Os({ resume, siteData, apps }: OsProps) {
       leaving.current.get(action.view)?.stop();
       leaving.current.delete(action.view);
     }
+    // Showing and leaving a spec view cross-fade the view's content (007 research R11).
+    if (action.type === 'showSpecs' || action.type === 'showApp') {
+      crossFade(viewScroller(action.view), () => dispatch(action));
+      return;
+    }
     dispatch(action);
   }, [finish]);
 
-  const shellProps: ShellProps = { state, dispatch: act, apps, resume, siteData, mac, viewName };
+  const shellProps: ShellProps = { state, dispatch: act, apps, resume, siteData, mac, viewName, viewTitle };
   return (
     <>
       {state.shell !== 'mobile' && <Desktop {...shellProps} active={state.shell === 'desktop'} />}

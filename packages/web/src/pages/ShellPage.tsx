@@ -67,7 +67,12 @@ export function ShellPage({
       </head>
       <body>
         {noScript}
-        <div id="os" data-req="005-os-shell-FR-001 005-os-shell-FR-002 005-os-shell-FR-004" dangerouslySetInnerHTML={{ __html: osHtml }} />
+        <div
+          id="os"
+          data-req="005-os-shell-FR-001 005-os-shell-FR-002 005-os-shell-FR-004"
+          data-requirements={assets.requirements}
+          dangerouslySetInnerHTML={{ __html: osHtml }}
+        />
       </body>
     </html>
   );

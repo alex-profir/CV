@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { listFiles } from '../src/files.ts';
-import { parseSpec, requirementsOf, specProblems } from '../src/specs.ts';
+import { parseSpec, requirementsOf, requirementText, specProblems, specTitle } from '../src/specs.ts';
 import { makeProject } from './helpers/project.ts';
 
 const FILE = 'specs/002-example/spec.md';
@@ -364,5 +366,52 @@ describe('001-requirement-traceability-FR-008: an approved spec with no requirem
       },
       noRequirements,
     ]);
+  });
+});
+
+describe('007-requirement-inspector-FR-013: a spec title and each requirement text, read as the check reads them', () => {
+  const fixture = fs.readFileSync(path.join(import.meta.dirname, '__fixtures__/requirement-text/spec.md'), 'utf8');
+  const parsed = parseSpec('002-example', FILE, fixture);
+  const textOf = (id: string) => requirementText(fixture, parsed.entries.find((entry) => entry.rawId === id)!);
+
+  test('specTitle gives the first heading after Feature Specification:, and null without one', () => {
+    expect(specTitle(fixture)).toBe('Example Title');
+    expect(specTitle('# Feature Specification: The /cv Page\n\nText.\n')).toBe('The /cv Page');
+    expect(specTitle('No heading here.\n')).toBeNull();
+    expect(specTitle('# Notes\n\n# Feature Specification: Later\n')).toBeNull();
+    expect(specTitle('```\n# Feature Specification: In a fence\n```\n')).toBeNull();
+  });
+
+  test('a one-line requirement', () => {
+    expect(textOf('FR-001')).toBe('One line.');
+  });
+
+  test('a requirement continued on indented lines is joined with single spaces', () => {
+    expect(textOf('FR-002')).toBe('Continued on indented lines, and a tab.');
+  });
+
+  test('a nested list item, a heading and a blank line each end it', () => {
+    expect(textOf('FR-003')).toBe('Followed by a nested item.');
+    expect(textOf('FR-004')).toBe('Followed by a heading.');
+    expect(textOf('FR-005')).toBe('Followed by a blank line.');
+  });
+
+  test('comments are blanked as parseSpec blanks them, and a fence ends it', () => {
+    expect(textOf('FR-006')).toBe('Has a comment and goes on.');
+    expect(textOf('FR-008')).toBe('Before a fence.');
+    expect(parsed.entries.map((entry) => entry.rawId)).toEqual(['FR-001', 'FR-002', 'FR-003', 'FR-004', 'FR-005', 'FR-006', 'FR-007', 'FR-008', 'FR-009']);
+  });
+
+  test('the bold ID with a colon, with a space before the colon, and a removed one', () => {
+    expect(textOf('FR-007')).toBe('Spaced colon.');
+    expect(textOf('FR-009')).toBe('Removed 2026-10-29.');
+  });
+
+  test('parseSpec still reads the entries as before', () => {
+    expect(parsed.entries.slice(0, 2)).toEqual([
+      { rawId: 'FR-001', wellFormed: true, removed: false, location: { file: FILE, line: 9, column: 5 } },
+      { rawId: 'FR-002', wellFormed: true, removed: false, location: { file: FILE, line: 10, column: 5 } },
+    ]);
+    expect(parsed.status).toBe('Approved');
   });
 });

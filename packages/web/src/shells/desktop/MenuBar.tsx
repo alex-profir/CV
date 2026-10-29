@@ -7,13 +7,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { SHORTCUTS } from '@cv/os-core';
-import type { Shortcut } from '@cv/os-core';
+import type { Shortcut, ViewId } from '@cv/os-core';
+import { showSpecs } from '../../inspector/ShowSpecs.tsx';
 import { moveFocus } from '../../os/focus.ts';
 import { SiteMark } from '../../os/icons/SiteMark.tsx';
 import { animateIn } from '../../os/motion.ts';
 import type { ShellProps } from '../../os/shell-props.ts';
 import { siteName } from '../../format/meta.ts';
-import { siteText } from '../../site-text.ts';
+import { fill, siteText } from '../../site-text.ts';
 import { focusFirstItem, menuKeyDown, MenuItems } from './Menu.tsx';
 import type { MenuEntry } from './Menu.tsx';
 
@@ -137,16 +138,33 @@ export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName
   const maximized = focusedWindow?.maximized != null;
   // The focused app's own items come first, then a separator (006 contracts/shell.md).
   const appItems = focused === null ? [] : (apps.find((app) => app.id === focused)?.menuItems ?? []);
-  const itemEntries: MenuEntry[] =
-    appItems.length === 0
-      ? []
-      : [...appItems.map((item): MenuEntry => ({ kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, 'data-req': item['data-req'] })), { kind: 'separator', key: 'after-app' }];
+  const itemEntries: MenuEntry[] = appItems.map((item): MenuEntry => ({ kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, 'data-req': item['data-req'] }));
+  // "Show specs", or "Back to [view]" while it shows them, after the app's
+  // own commands and in their group (007 research R4).
+  const specsEntry = (view: ViewId): MenuEntry =>
+    state.specs[view] === undefined
+      ? {
+          kind: 'action',
+          key: 'specs',
+          label: siteText.inspector.show,
+          onChoose: () => showSpecs(dispatch, view, document.querySelector(`#os .desktop .window[data-view="${view}"] .window-content`)),
+          'data-req': '007-requirement-inspector-FR-001 007-requirement-inspector-FR-003',
+        }
+      : {
+          kind: 'action',
+          key: 'specs',
+          label: fill(siteText.inspector.back, { view: viewName(view) }),
+          onChoose: () => dispatch({ type: 'showApp', view }),
+          'data-req': '007-requirement-inspector-FR-001 007-requirement-inspector-FR-003',
+        };
   const appEntries: MenuEntry[] =
     focused === null
       ? []
       : [
           ...itemEntries,
-          ...(focused === 'cv' ? [{ kind: 'link' as const, key: 'cv', label: own.cvPage, href: '/cv' }, { kind: 'separator' as const, key: 'after-cv' }] : []),
+          ...(focused === 'cv' ? [{ kind: 'link' as const, key: 'cv', label: own.cvPage, href: '/cv' }] : []),
+          specsEntry(focused),
+          { kind: 'separator', key: 'after-app' },
           { kind: 'action', key: 'move', label: own.move, shortcut: shortcut('move'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'move' }) },
           { kind: 'action', key: 'resize', label: own.resize, shortcut: shortcut('resize'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'resize' }) },
           { kind: 'separator', key: 'after-resize' },

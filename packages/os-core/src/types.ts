@@ -45,6 +45,10 @@ export type OsState = {
     // A same-URL history entry is pushed (FR-050).
     historyEntry: boolean;
   };
+  // The views showing their specs, with the app's scroll position to restore
+  // (007 research R2). Kept through minimize, mobile Home and shell changes;
+  // removed on close.
+  specs: Partial<Record<ViewId, { appScroll: number }>>;
   // Focus moves and announcements for the Os root to run.
   effects: Effect[];
 };
@@ -58,7 +62,10 @@ export type FocusTarget =
   | { kind: 'menu-title'; menu: string }
   | { kind: 'pad'; view: ViewId }
   | { kind: 'mobile-title'; view: ViewId }
-  | { kind: 'home-icon'; view: ViewId };
+  | { kind: 'home-icon'; view: ViewId }
+  // 007: the spec view's heading, and the view's "Show specs".
+  | { kind: 'spec-heading'; view: ViewId }
+  | { kind: 'show-specs'; view: ViewId };
 
 // A component, without naming React: the site passes React components.
 export type ComponentType<P = Record<string, never>> = (props: P) => unknown;
@@ -144,5 +151,8 @@ export type OsAction =
   | { type: 'sessionEnd'; confirm: boolean }
   | { type: 'mobileOpen'; view: ViewId }
   | { type: 'mobileHome'; scrollTop: number }
+  // 007: show a view's specs, keeping the app's scroll position, or its app.
+  | { type: 'showSpecs'; view: ViewId; appScroll: number }
+  | { type: 'showApp'; view: ViewId }
   // `count`: how many effects from the front were run; all when absent.
   | { type: 'effectsDone'; count?: number };

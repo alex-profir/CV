@@ -8,6 +8,12 @@ import { fixture, siteProject } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
+// The root's runs (005 FR-054, 006 FR-038, 007 FR-028): the CV app open,
+// the Terminal open, then each spec view shown, in each shell.
+const SPEC_VARIANTS = ['desktop', 'mobile'].flatMap((shell) => ['cv', 'terminal', 'about'].map((view) => `${shell}/${view}-specs/${shell === 'desktop' ? 1440 : 375}px`));
+
+const ROOT_VARIANTS = ['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px', ...SPEC_VARIANTS];
+
 describe('004-cv-page-FR-055: no request from /cv or the not-found page goes to another site, and any is named', () => {
   test('other-sites/ fails naming both full addresses on both pages, and the service worker request', async () => {
     const report = await runCheck(fixture('other-sites'), { parts: ['other-sites'] });
@@ -42,7 +48,7 @@ describe('005-os-shell-FR-054: the shell loads everything it uses from the site 
   test('on the real build nothing from / goes to another site, while loading or opening the CV app, in either shell', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
     expect(report.problems).toEqual([]);
-    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px']);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(ROOT_VARIANTS);
   });
 
   test("a copy whose root loads a script from another site fails with the root's variants", async () => {
@@ -51,16 +57,14 @@ describe('005-os-shell-FR-054: the shell loads everything it uses from the site 
       replaceIn(copy, 'packages/web/src/pages/ShellPage.tsx', '          <script key={src} type="module" src={src} />\n        ))}\n', `          <script key={src} type="module" src={src} />\n        ))}\n        <script src="${script}" />\n`),
     );
     const report = await runCheck(root, { parts: ['other-sites'] });
-    expect(report.problems.map(renderProblem)).toEqual(
-      ['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px'].map((variant) => `other-sites / ${variant} other-site-request ${script}: requested by the page`),
-    );
+    expect(report.problems.map(renderProblem)).toEqual(ROOT_VARIANTS.map((variant) => `other-sites / ${variant} other-site-request ${script}: requested by the page`));
   });
 });
 
 describe('006-terminal-FR-038: the Terminal loads nothing from another site while it opens and every command runs', () => {
   test('on the real build the Terminal passes in both shells', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
-    expect(report.results.filter((result) => result.variant.includes('terminal') || result.variant.includes('pocket')).map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/terminal-open/1440px pass', 'mobile/pocket/375px pass']);
+    expect(report.results.filter((result) => !result.variant.includes('-specs/') && (result.variant.includes('terminal') || result.variant.includes('pocket'))).map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/terminal-open/1440px pass', 'mobile/pocket/375px pass']);
   });
 
   test('a copy whose Terminal fetches an outside address on help fails, naming the shell', async () => {
@@ -73,5 +77,19 @@ describe('006-terminal-FR-038: the Terminal loads nothing from another site whil
       `other-sites / desktop/terminal-open/1440px other-site-request ${address}: requested by the page`,
       `other-sites / mobile/pocket/375px other-site-request ${address}: requested by the page`,
     ]);
+  });
+});
+
+describe('007-requirement-inspector-FR-028: nothing goes to another site while any spec view shows, in either shell', () => {
+  test('on the real build every spec view is recorded, with What\'s this? open, and passes', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
+    expect(report.results.filter((result) => result.variant.includes('-specs/')).map(({ variant, status }) => `${variant} ${status}`)).toEqual(SPEC_VARIANTS.map((variant) => `${variant} pass`));
+  });
+
+  test('a copy whose spec view fetches an outside address fails, naming the view, the shell and the width', async () => {
+    const address = 'https://example.com/specs';
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/inspector/data.ts', 'export function retry(): void {\n', `export function retry(): void {\n  void fetch('${address}').catch(() => undefined);\n`));
+    const report = await runCheck(root, { parts: ['other-sites'] });
+    expect(report.problems.map(renderProblem)).toEqual(SPEC_VARIANTS.map((variant) => `other-sites / ${variant} other-site-request ${address}: requested by the page`));
   });
 });
