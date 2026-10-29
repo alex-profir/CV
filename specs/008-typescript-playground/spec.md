@@ -52,6 +52,19 @@
 > (Spotlight), running code from the Terminal, importing packages, and choosing between TypeScript
 > versions. These are separate features or later work.
 
+## Clarifications
+
+### Session 2026-10-29
+
+- Q: How long should the Playground keep the visitor's code and compiler options? → A: Between
+  visits, in this browser, with a way to reset them (FR-019, FR-080). Saving the whole state of the
+  OS, such as open windows and their positions, may come in later work and is out of scope here.
+- Q: Should running code be able to reach the network? → A: Yes, any site the code names, as in
+  the official Playground (FR-041). The vision's "Nothing is sent anywhere" is removed, as it isn't
+  needed. The Playground itself still loads everything from the site (FR-010).
+- Q: Should a shared link opened on a phone show its code, read-only? → A: No. The "best on
+  desktop" screen only says that the link holds code to open on a desktop (FR-060).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Write TypeScript and see its types (Priority: P1)
@@ -99,6 +112,11 @@ panes match what TypeScript produces for that code.
 9. **Given** the Playground was opened once before, online, **When** the visitor opens it again,
    in the same visit or a later one, online or offline, **Then** the editor is usable without any
    download.
+10. **Given** the visitor wrote code and changed an option, **When** they close the window, reload
+    the page or come back another day in the same browser, and open the Playground, **Then** it
+    holds their code and options as they left them.
+11. **Given** the visitor's kept code, **When** they choose Reset and confirm, **Then** the editor
+    holds the starting example with the default options, and their code is no longer kept.
 
 ---
 
@@ -155,6 +173,10 @@ that tries to read the site's storage and confirm it can't.
 13. **Given** code that tries to read the site's stored data, its page, another app or the visitor's
     files, **When** it runs, **Then** it gets nothing of the site, and nothing outside the logs
     changes.
+14. **Given** code that requests data from another site, **When** it runs online, **Then** the
+    request is made as the code asks, carrying nothing of the site, and the logs show what the code
+    logs; **When** it runs offline, **Then** the request fails as it would in any JavaScript, and
+    the logs show the error.
 
 ---
 
@@ -401,7 +423,8 @@ fails with a clear message and that the pull request can't merge.
   the download or starts it again (FR-007).
 - **The browser can't keep TypeScript**, such as in a private window, with storage turned off or
   full: the Playground works online, downloads again on each visit, and says in site text that it
-  couldn't keep TypeScript for offline use (FR-014).
+  couldn't keep TypeScript for offline use (FR-014). The visitor's code is then kept only while the
+  page stays open, and the Playground says so (FR-019).
 - **A new version of the site with a newer TypeScript is published**: an open Playground isn't
   interrupted. The stored copy keeps working, offline too, until a complete new one is stored on a
   later online visit, and the version shown is always the one running (FR-013).
@@ -474,15 +497,25 @@ fails with a clear message and that the pull request can't merge.
   left out, and the Playground says so (FR-056).
 - **Code too long for a link**: Share offers to copy the code itself instead, and never makes a link
   that would be cut (FR-055).
-- **A shared link opened while the Playground already holds edited code** in the same visit: the
-  shared code replaces it, the Playground says so, and undo brings the visitor's code back (FR-057).
+- **A shared link opened while the Playground holds the visitor's code**, from this visit or an
+  earlier one: the shared code replaces it, the Playground says so, and undo brings the visitor's
+  code back (FR-057).
 - **A shared link opened offline**: the site opens from its stored copy. If TypeScript is stored,
   the Playground opens with the code as online; if not, it shows the offline state of FR-011 and
   keeps the shared code for when the download finishes.
 - **The clipboard can't be written**, such as when the browser refuses: the link shows in a field,
   selected, to copy by hand (FR-052).
-- **Reloading a shared link**: opens the shared code again, as it was shared, not the visitor's
-  edits, unless how long the Playground keeps code (FR-019) says otherwise.
+- **Reloading after opening a shared link**: once opened, the shared code is kept as any code is,
+  and the address no longer carries it, so a reload shows the code with the visitor's edits
+  (FR-053).
+- **Reset while a run is going**: the run ends first, as for Run (FR-080).
+- **The visitor clears the site's stored data**: their kept code and options are gone, and the next
+  open shows the starting example.
+- **Kept code from an older version of the site**: it opens as it was. An option the Playground no
+  longer offers is left out, and the Playground says so (FR-019).
+- **Code that makes many requests, or a request that never answers**: a pending request is work
+  left to do, so the run shows as still going until it answers or the visitor stops it; it never
+  counts as blocking for the popup (FR-041).
 
 **Phones and shells**
 
@@ -528,8 +561,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   is a shared link (FR-053), which the visitor followed to reach the Playground.
 - **FR-003**: On desktop the Playground MUST open in a window that behaves as every app's window
   does (005 FR-012, FR-016 to FR-030 and FR-061 to FR-065), with its own menu in the menu bar
-  holding Run, Stop, Share, Examples and the settings. On mobile it MUST open full screen as every
-  app does (005 FR-032 to FR-035).
+  holding Run, Stop, Share, Examples, the settings and Reset (FR-080). On mobile it MUST open full
+  screen as every app does (005 FR-032 to FR-035).
 - **FR-004**: Opening the Playground while TypeScript is downloading MUST move focus to the window's
   title, so a screen reader announces it (005 FR-040). Once the editor is usable, focus MUST move
   to the editor if it is still in the Playground's window, and a screen reader MUST announce the
@@ -557,7 +590,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   in the mobile shell, and never for the CV. The site root's first load MUST show the shell and the
   CV as soon as it does without this feature.
 - **FR-010**: The Playground MUST load everything it uses from the site itself, including TypeScript
-  and its type definitions, and MUST make no request to any other site (005 FR-054).
+  and its type definitions, and MUST make no request to any other site (005 FR-054). The only
+  requests to other sites are those the visitor's own code makes when it runs (FR-041).
 - **FR-011**: When the download can't start or stops part way, such as with no network, the
   Playground MUST say in site text that TypeScript has to be downloaded once with a connection, how
   large the download is, and offer Retry. It MUST start the download again by itself when the
@@ -588,12 +622,17 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-018**: While the visitor types, and when they ask with the keyboard, the editor MUST suggest
   completions, each with its name and type, chosen with the keyboard or a pointer. Inside a call it
   MUST show the function's parameters and which one the cursor is on.
-- **FR-019**: The first time the Playground opens in a visit, the editor MUST hold the starting
-  example (FR-028). The visitor's code and compiler options MUST be kept [NEEDS CLARIFICATION: for
-  how long should the Playground keep the visitor's code and options: only while its window stays
-  open, for the rest of the visit (closing and reopening the window keeps them, a reload doesn't),
-  or between visits in this browser, with a way to reset (as the vision's "What the site remembers"
-  allows for the visitor's files and settings)?].
+- **FR-019**: The first time the Playground opens in a browser, the editor MUST hold the starting
+  example (FR-028) with the default options. After that, the visitor's code and compiler options
+  MUST be kept in the browser, on their device, as they change, so closing the window, reloading the
+  page or a later visit opens them as they were left. They MUST be kept only in this browser and
+  sent nowhere. When the browser can't keep them, such as in a private window or with storage turned
+  off or full, they MUST be kept while the page stays open, and the Playground MUST say so in site
+  text. An option kept from an older version of the site that the Playground no longer offers MUST
+  be left out, and the Playground MUST say so.
+- **FR-080**: The Playground's menu MUST hold Reset. After the visitor confirms, it MUST end any run,
+  put the starting example and the default options back, and stop keeping the visitor's code and
+  options. Until the visitor edits again, undo MUST bring their code back.
 
 **Panes**
 
@@ -677,10 +716,11 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   the logs, and nothing it stores MUST outlast its run.
 - **FR-040**: Whatever the code does, such as blocking, looping, using memory or printing, the shell,
   every other window, and the Playground's editor and Stop control MUST keep responding.
-- **FR-041**: The code [NEEDS CLARIFICATION: should running code be able to reach the network at all:
-  no network access (a request fails with a note in the logs, keeping "nothing is sent anywhere" and
-  005 FR-054 true for the Playground), any other site the code names, or only the site's own
-  files?].
+- **FR-041**: Running code MUST be able to make requests to any site it names, as code in a browser
+  can, and nothing more of the site: its requests MUST carry none of the site's stored data or
+  cookies. A pending request MUST count as work left to do (FR-036) and never as blocking (FR-048).
+  With no network, or when the other site refuses, a request MUST fail as it would in any
+  JavaScript, and the code can log the error.
 - **FR-042**: Code MUST NOT be able to import packages. An `import` of a package or a `require` MUST
   be marked as an error saying packages can't be imported here, and running it MUST log the same and
   fetch nothing.
@@ -723,7 +763,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-053**: Opening a shared link at a desktop width MUST open the desktop shell with the CV window
   as on first load (005 FR-005) and the Playground in front of it, focused, holding the shared code
   and options, with a note in site text that the code came from a link. It MUST NOT run the code:
-  only the visitor's Run does.
+  only the visitor's Run does. Once opened, the shared code MUST be kept as any code is (FR-019), and
+  the page's address MUST no longer carry it, so a reload shows the code with the visitor's edits.
 - **FR-054**: Everything a shared link opens MUST be in the link itself: sharing MUST send nothing to
   any server, and a shared link MUST open offline as FR-011 and FR-008 allow.
 - **FR-055**: A shared link MUST NOT be longer than 8,000 characters. When the code and options don't
@@ -733,9 +774,9 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   garbled, the Playground MUST open with the starting example and say in site text that the shared
   code couldn't be read. It MUST run nothing, and MUST never show part of the code as if it were
   complete. An option the Playground doesn't know MUST be left out, and the Playground MUST say so.
-- **FR-057**: When a shared link opens while the Playground already holds edited code in the same
-  visit, the shared code MUST replace it, the Playground MUST say so, and undo MUST bring the
-  visitor's code back.
+- **FR-057**: When a shared link opens while the Playground holds the visitor's code, from this
+  visit or an earlier one, the shared code MUST replace it, the Playground MUST say so, and undo MUST
+  bring the visitor's code back.
 
 **Phones**
 
@@ -751,9 +792,7 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   example.
 - **FR-060**: Opening a shared link at a phone width MUST open the mobile shell with the Playground's
   "best on desktop" screen full screen, saying in site text that the link holds code to open on a
-  desktop. It MUST NOT run anything or download TypeScript. [NEEDS CLARIFICATION: should this screen
-  also show the shared code, read-only, so a phone visitor can read it, or only say that the link
-  holds code?]
+  desktop. It MUST NOT show the shared code, run anything or download TypeScript.
 - **FR-061**: When the shell switches (005 FR-002) while the Playground is open, nothing MUST be lost:
   the code, the options, the open pane and the logs MUST be kept, a run MUST go on, and switching
   back MUST show the Playground as it was.
@@ -819,12 +858,15 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   document; a run with logs, a timer count and its end; an interval running until Stop; Stop ending a
   blocking loop; the popup after 5 seconds of blocking and asking again after Keep waiting, inside
   the window only; no popup for a 60-second timer; `alert`, `prompt` and `confirm`; the sandbox of
-  FR-039; the output limits of FR-044; a shared link opening without running; broken and too-long
-  links; and Show specs keeping the Playground's state. At a phone width, it MUST confirm the "best
+  FR-039; a request from the code to another site carrying nothing of the site; the output limits of
+  FR-044; the code and options kept across a reload, and Reset; a shared link opening without
+  running; broken and too-long links; and Show specs keeping the Playground's state. At a phone width, it MUST confirm the "best
   on desktop" screen, from its icon and from a shared link. It MUST read what it expects from the
   built site, the CV document and TypeScript, not from a hand-written copy.
 - **FR-076**: The accessibility check (004, 005 FR-056) MUST cover every state FR-071 lists. The
-  other-site check MUST cover the download, a run, sharing and the "best on desktop" screen.
+  other-site check MUST cover the download, a run of code that makes no request, sharing and the
+  "best on desktop" screen, and MUST confirm the Playground makes no request to another site of its
+  own (FR-010).
 - **FR-077**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
   open the Playground from the dock, type, move to an error and read it, read a type, choose a
   suggestion, leave the editor, switch panes, change an option, choose an example, run, handle the
@@ -839,7 +881,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 
 ### Key Entities
 
-- **Code**: the one piece of TypeScript the editor holds.
+- **Code**: the one piece of TypeScript the editor holds, kept in the browser with the compiler
+  options between visits until the visitor resets it.
 - **Compiler options**: the settings that decide how TypeScript checks the code and what it produces,
   each with a default.
 - **Diagnostic**: an error or warning TypeScript reports: its line, column, message, number and
@@ -888,7 +931,9 @@ server-rendered page, unchanged by this feature.
   browser, and again after the visitor clears the site's stored data or when the browser can't keep
   it. It is several megabytes, more than the rest of the site, and most visitors never open the
   Playground, so it isn't part of the copy every visit stores (FR-009). A shared link's recipient
-  needs the network to open the site the first time, as for any first visit (005).
+  needs the network to open the site the first time, as for any first visit (005). Requests the
+  visitor's own code makes to other sites need it too; offline they fail as in any JavaScript, and
+  the code can log the error (FR-041).
 - **Offline state shown**: on a first open with no network, the Playground's window says that
   TypeScript has to be downloaded once with a connection, how large it is, and offers Retry; the
   download starts by itself when the network returns (FR-011). Never a blank or broken view.
@@ -936,7 +981,8 @@ server-rendered page, unchanged by this feature.
   story 6 can be done and is announced.
 - **SC-011**: After one open online, 100% of the Playground's actions of FR-073 work with no
   network, every time the offline check runs.
-- **SC-012**: The Playground makes 0 requests to any other site.
+- **SC-012**: The Playground makes 0 requests to any other site of its own; the only ones are those
+  the visitor's code makes when it runs.
 - **SC-013**: With reduced motion set, the Playground moves, spins or scales 0 elements.
 - **SC-014**: A first-time visitor who doesn't write TypeScript can run an example within 3 actions
   of opening the Playground: Examples, an example, Run.
@@ -977,14 +1023,23 @@ server-rendered page, unchanged by this feature.
 - **The Terminal**: gets `open playground` through an amendment of 006 in this feature's pull request
   (FR-006), as 006 expects `open` to gain names as apps are added. Running code from the Terminal is
   out of scope.
-- **Show specs**: the Playground follows 007's per-app pattern. 007 must be merged before this
-  feature's code.
+- **Show specs**: the Playground follows 007's per-app pattern, now merged.
+- **What the Playground remembers**: the visitor's code and compiler options, in their browser, on
+  their device, until they reset them or clear the site's data, as the vision allows for what the
+  visitor makes. The run, the logs and the open pane aren't kept between visits. 005 and 006 still
+  remember nothing; saving the whole state of the OS, such as open windows and their positions, may
+  come in later work.
+- **Network from code**: code can reach other sites as in the official Playground, so examples and
+  visitors can call public services. It runs apart from the site, so its requests carry nothing of
+  the site (FR-039, FR-041). The Playground itself still loads only from the site.
 - **Manual checks**: the screen-reader pass of SC-010 is done by hand, and may be deferred to the
   final testing phase under the constitution's interim provision on deferred manual checks.
 - **Out of scope**:
   - A shared file system and saving code as files (Files), and more than one file of code.
   - Searching the Playground (Spotlight).
   - Running code from the Terminal.
+  - Saving the rest of the OS's state between visits, such as open windows and their positions.
+  - Showing a shared link's code on a phone.
   - Importing packages, and type definitions for packages.
   - Choosing between TypeScript versions.
   - JSX, plugins, code formatting, and exporting code to other sites.
