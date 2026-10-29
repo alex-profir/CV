@@ -16,9 +16,10 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-const SHELL_TEXT = strings([siteText.os, siteText.desktop, siteText.mobile, siteText.about, siteText.noScript]);
+// The inspector's words too (007 FR-009, FR-021), with the chain's ›.
+const SHELL_TEXT = strings([siteText.os, siteText.desktop, siteText.mobile, siteText.about, siteText.noScript, siteText.inspector]);
 
-const ENGLISH = /^[\x20-\x7E–—·’↗…]*$/u;
+const ENGLISH = /^[\x20-\x7E–—·’↗…›]*$/u;
 
 // A site text pattern as a regular expression: each `{key}` stands for any
 // text.

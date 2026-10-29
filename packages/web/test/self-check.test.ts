@@ -10,6 +10,7 @@ import { runCheck as runTokenCheckReport } from '../../../tools/token-check/src/
 import { EXPORT_FILE, MOTION_FILE } from '../../../tools/token-check/src/paths.ts';
 import { siteFiles } from '../../../tools/token-check/src/site-files.ts';
 import { runCli as runTokenCheck } from '../../../tools/token-check/test/helpers/tokens.ts';
+import { parseSpec, requirementsOf } from '../../../tools/traceability/src/specs.ts';
 import { runCli as runTraceability } from '../../../tools/traceability/test/helpers/project.ts';
 import { REPO_ROOT } from './helpers/copy.ts';
 
@@ -114,6 +115,42 @@ describe('006-terminal-FR-010, 006-terminal-FR-031 and 006-terminal-FR-037: the 
     const traceabilitySources = fs.readdirSync(path.join(REPO_ROOT, 'tools/traceability/src')).map((name) => fs.readFileSync(path.join(REPO_ROOT, 'tools/traceability/src', name), 'utf8'));
     for (const text of [...CHECK_SOURCES, ...traceabilitySources]) expect(text).not.toMatch(/apps\/terminal|006-terminal/);
     for (const file of [...terminal, 'packages/web/src/site-text.ts', 'packages/web/src/os/metrics.ts']) {
+      const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      for (const marker of TERMINAL_SKIP_MARKERS) expect(text, file).not.toMatch(marker);
+    }
+  });
+});
+
+describe('007-requirement-inspector-FR-009, 007-requirement-inspector-FR-021 and 007-requirement-inspector-FR-029: the checks pass over the inspector with no exception for it', () => {
+  test('content-check, token-check and traceability exit 0 on the repository, traceability counting 007 among the approved specs', () => {
+    const content = runContentCheck(REPO_ROOT);
+    expect(content.stderr).toBe('');
+    expect(content.status).toBe(0);
+    const tokens = runTokenCheck(REPO_ROOT);
+    expect(tokens.stdout).toContain('PASS: both token sources are valid and no literal design values were found.');
+    expect(tokens.status).toBe(0);
+    // 007's spec is approved with its 34 active requirements, so the PASS
+    // line counts them.
+    const file = 'specs/007-requirement-inspector/spec.md';
+    const spec = parseSpec('007-requirement-inspector', file, fs.readFileSync(path.join(REPO_ROOT, file), 'utf8'));
+    expect(spec.status).toBe('Approved');
+    expect(requirementsOf(spec).filter((requirement) => requirement.state === 'active')).toHaveLength(34);
+    const traceability = runTraceability(REPO_ROOT);
+    const pass = traceability.stdout.trim().split('\n').at(-1)!.match(/^PASS: all (\d+) active requirements in \d+ approved specs are covered\.$/);
+    expect(Number(pass?.[1])).toBeGreaterThanOrEqual(34);
+    expect(traceability.status).toBe(0);
+  });
+
+  test("the checks read every file of the inspector and its data, no check's source names them, and none holds a skip marker", () => {
+    const inspector = [...siteSource('packages/web/src/inspector'), ...siteSource('packages/web/scripts/requirements')];
+    expect(inspector.length).toBeGreaterThan(15);
+    const searched = new Set(searchFiles(REPO_ROOT, [RESUME_FILE]).files.map((file) => file.file));
+    expect(inspector.filter((file) => !searched.has(file))).toEqual([]);
+    const read = new Set(siteFiles(REPO_ROOT).files.map((file) => file.file));
+    expect(inspector.filter((file) => file.startsWith('packages/web/src/') && /\.(?:css|tsx?)$/.test(file) && !read.has(file))).toEqual([]);
+    const traceabilitySources = fs.readdirSync(path.join(REPO_ROOT, 'tools/traceability/src')).map((name) => fs.readFileSync(path.join(REPO_ROOT, 'tools/traceability/src', name), 'utf8'));
+    for (const text of [...CHECK_SOURCES, ...traceabilitySources]) expect(text).not.toMatch(/src\/inspector|007-requirement-inspector/);
+    for (const file of [...inspector, 'packages/web/src/site-text.ts']) {
       const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
       for (const marker of TERMINAL_SKIP_MARKERS) expect(text, file).not.toMatch(marker);
     }

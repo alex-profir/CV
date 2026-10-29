@@ -426,18 +426,41 @@ data file not precached): the matching part fails with the contract's line.
 **Purpose**: Traceability, speed, the audits, the full verification, the owner's manual checks and
 the single PR
 
-- [ ] T080 [P] Write `packages/web/test/inspector/data-req.test.tsx`, covers 007-requirement-inspector-FR-029: every target in contracts/inspector.md's `data-req` table carries exactly its IDs in the rendered page (desktop: the CV window's control and its menu item, the CV, Terminal and About views with "What's this?" open, the title span; mobile: the header's control and title suffix; the uncommitted note in a dirty `copyBuild`; the offline note offline).
-- [ ] T081 [P] Extend `packages/web/test/self-check.test.ts`, covers 007-requirement-inspector-FR-009, 007-requirement-inspector-FR-021 and 007-requirement-inspector-FR-029: `npm run content-check`, `npm run token-check` and `npm run traceability` pass on the repository with no exception or skip marker added for the inspector; and confirm 005's `packages/web/test/shell/site-text.test.ts` covers the `inspector` group (English, no key CV fact), extending its list if it reads groups by name.
-- [ ] T082 [P] Write `packages/web/test/inspector/performance.test.ts` (SC-005, research R10 **Verify**): with 4× CPU throttling over CDP, the click on About this site's `Show specs` to the last group's paint is under 300 ms, and Back to the app's paint under 100 ms; the same for the CV. If the shell's view misses, apply R10's fallback (first two groups in the click's commit, the rest in `startTransition`) in `SpecView.tsx` and measure again. Record both here.
-- [ ] T083 Run `npm run traceability` after T080 (Constitution III, SC-012): it exits 0, its PASS line counts `007-requirement-inspector`'s 34 active requirements among the approved specs, and every row of Requirement Coverage below has a passing test. Record the PASS line here.
+- [X] T080 [P] Write `packages/web/test/inspector/data-req.test.tsx`, covers 007-requirement-inspector-FR-029: every target in contracts/inspector.md's `data-req` table carries exactly its IDs in the rendered page (desktop: the CV window's control and its menu item, the CV, Terminal and About views with "What's this?" open, the title span; mobile: the header's control and title suffix; the uncommitted note in a dirty `copyBuild`; the offline note offline).
+  - Done (2026-10-29): passes on the real build in both shells, with the dirty `copyBuild` and offline.
+- [X] T081 [P] Extend `packages/web/test/self-check.test.ts`, covers 007-requirement-inspector-FR-009, 007-requirement-inspector-FR-021 and 007-requirement-inspector-FR-029: `npm run content-check`, `npm run token-check` and `npm run traceability` pass on the repository with no exception or skip marker added for the inspector; and confirm 005's `packages/web/test/shell/site-text.test.ts` covers the `inspector` group (English, no key CV fact), extending its list if it reads groups by name.
+  - Done (2026-10-29): the self-check's new `describe` passes. 005's `site-text.test.ts` reads groups by name, so its list now has `inspector`, and its English pattern allows the chain's `›`.
+- [X] T082 [P] Write `packages/web/test/inspector/performance.test.ts` (SC-005, research R10 **Verify**): with 4× CPU throttling over CDP, the click on About this site's `Show specs` to the last group's paint is under 300 ms, and Back to the app's paint under 100 ms; the same for the CV. If the shell's view misses, apply R10's fallback (first two groups in the click's commit, the rest in `startTransition`) in `SpecView.tsx` and measure again. Record both here.
+  - Done (2026-10-29), 4× CPU throttling, on the real build, with other test runs going at the same time: mobile About show 105 ms, back 63 ms; mobile CV 63 / 48 ms; desktop About 118 / 62 ms; desktop CV 94 / 42 ms. All are under 300 ms and 100 ms, so R10's fallback isn't needed and `SpecView.tsx` is unchanged.
+- [X] T083 Run `npm run traceability` after T080 (Constitution III, SC-012): it exits 0, its PASS line counts `007-requirement-inspector`'s 34 active requirements among the approved specs, and every row of Requirement Coverage below has a passing test. Record the PASS line here.
+  - Done (2026-10-29): `npm run traceability` exits 0 with `PASS: all 351 active requirements in 7 approved specs are covered.` The self-check confirms 007 is Approved with 34 active requirements, all counted.
 - [ ] T084 [P] Verify research R16 (**Verify**): on the real build, the root's compressed script, style sheet and HTML are near 108 KB, 14 KB and 16 KB, the data file near 20 KB, and Lighthouse's mobile and desktop scores on `/` and `/cv` are 90 or more in every category (SC-006). Record the figures here.
-- [ ] T085 [P] Audit Constitution X, IV, V, VII and IX in `package.json`, `packages/os-core/`, `packages/web/`, `tools/traceability/` and `tools/site-check/`:
+- [X] T085 [P] Audit Constitution X, IV, V, VII and IX in `package.json`, `packages/os-core/`, `packages/web/`, `tools/traceability/` and `tools/site-check/`:
   - **X**: no package added; the abstractions added are exactly plan.md's Dependencies table (add any helper this list created, with its reason); no agent skill added;
   - **IV**: `site-text.ts` holds no CV fact and no design value; the inspector reads no token in script; the data is never typed by hand; `siteData.repository` is the only CV value read;
   - **V**: `os-core` gained only `specs`, the two actions and the two focus targets; no app declaration changed; the shell has no app-specific case for the inspector beyond About's name and lede;
   - **VII**: first load shows only the control added; `/cv` is untouched;
   - **IX**: the glyphs, chips and layout are the design's own, with no Apple asset or system font.
   Record the result here.
+  - Result (2026-10-29, against `origin/main` 89f2650): all pass.
+    - **X**: no `package.json` or lockfile change, and no skill under `.claude/`. The source files added
+      are the Dependencies table's, plus one helper: `src/inspector/scroll.ts` (`useSpecScroll`), part of
+      the spec view components. It puts the scroller at the top for the specs and back where the app
+      was before the browser paints (FR-003, R3). Keeping this in each shell would mean two copies.
+      001's changes are additive (`specTitle`, `requirementText`, `coveringTests`, and
+      `TestNode.title`/`location`).
+    - **IV**: `site-text.ts`'s `inspector` group has no CV fact (005's `site-text.test.ts` now reads it).
+      No inspector script reads a token or calls `getComputedStyle`: the cross-fade takes its timing
+      from the style sheet. No requirement data file is committed; the build writes it. `siteData.repository`
+      is the only `siteData` read, in `WhatsThis.tsx`, `SpecGroup.tsx` and `Notes.tsx`. No
+      `dangerouslySetInnerHTML`, `innerHTML` or `eval`.
+    - **V**: `os-core` gained `OsState.specs`, `showSpecs`/`showApp` and the `spec-heading`/`show-specs`
+      focus targets, and nothing else. `apps/` is unchanged. The only `view === 'about'` cases are About's
+      title, its lede and its own `data-req` (FR-011, FR-012) in `SpecView.tsx`.
+    - **VII**: the root's first load adds only `Show specs` (US1's FR-005 tests). `CvPage` and `src/cv/`
+      are unchanged from `main`.
+    - **IX**: the glyphs are the design's SVG components under `src/inspector/glyphs/`. Fonts come only
+      from `var(--token-font-family-…)`. There is no image, Apple asset or system font.
 - [ ] T086 Run the full verification after T083 to T085: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0, the last with the `inspector` part in both shells. Run them again with an untracked file in the working copy: the same result (FR-034). Record the counts here.
 - [ ] T087 Run quickstart.md scenarios 1 to 5, 8 and 9, and the automated parts of 7, and record any deviation here. Scenario 3.4 and 3.5 edit files: do them in a `repoCopy` or revert each change with `git checkout`. Write scratch output to the scratchpad. Scenarios 6 and the hand parts of 7 are T088.
 - [ ] T088 Owner action, by hand (quickstart 6 and 7, research R17): screen readers on a desktop (VoiceOver on macOS and NVDA on Windows) and on a phone (VoiceOver on iPhone and TalkBack on Android) through stories 1 to 4 (SC-007); forced colors in Edge with Windows' contrast themes (FR-023); text-only zoom at 200% in Firefox (FR-024); and comparing the built views with `design/exports/` (FR-021). Record each result here and in the PR. Under the interim provision on deferred manual checks they may wait for the final testing phase: record that here, list them in the PR and leave this task open.
