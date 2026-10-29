@@ -36,7 +36,12 @@ export type Part = (typeof PARTS)[number];
 // `<shell>/terminal/<command>/<width>px`, `<shell>/terminal/files/<width>px`,
 // `<shell>/terminal/json/<width>px` and `desktop/terminal-keyboard/1440px`,
 // and types `missing-field`, `out-of-order`, `json-mismatch`,
-// `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`.
+// `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`. The
+// amendment (2026-10-29) adds the variants `<shell>/terminal/shell/<width>px`
+// for the shell's lines and `<shell>/cursor-blink/<width>px` for `modes`,
+// and types `line-mismatch`, `not-stopped` and `unresponsive` (`terminal`,
+// naming the line), `cursor`, `outline`, `line-key`, `select-all` and
+// `cancel` (`keyboard`, naming the step), and `no-blink` (`modes`).
 export type Problem = {
   part: Part;
   page: string;

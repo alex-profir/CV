@@ -11,7 +11,7 @@
 // redirects, as in 004's fixture sites, the check runs as 004's.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Browser, BrowserContextOptions, Page } from 'playwright';
+import type { Browser, BrowserContext, BrowserContextOptions, Page } from 'playwright';
 import type { Resume } from '@cv/content';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
 import { launchChromium } from './browser.ts';
@@ -20,12 +20,12 @@ import { expectedFields } from './expected.ts';
 import { axeProblems } from './parts/accessibility.ts';
 import { contentProblems } from './parts/content.ts';
 import { cvAppProblems } from './parts/cv-app.ts';
-import { terminalProblems, terminalVariants } from './parts/terminal.ts';
+import { shellLineProblems, terminalProblems, terminalVariants } from './parts/terminal.ts';
 import { fontProblems } from './parts/fonts.ts';
-import { desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
+import { asLinux, desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
 import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
-import { forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
+import { cursorBlinkProblems, forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
 import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
@@ -33,7 +33,7 @@ import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
 import type { CheckResult, Part, Problem, Report } from './report.ts';
 import { startServer } from './server.ts';
-import { CV_APP_ROOT, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, reachState, shellContext, stateVariant, waitForShell } from './shell-states.ts';
+import { CV_APP_ROOT, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, openTerminal, reachState, runCommand, shellContext, stateVariant, waitForShell } from './shell-states.ts';
 import type { Shell, ShellState } from './shell-states.ts';
 
 // Where the built site and the CV document are, from the repository root.
@@ -124,10 +124,11 @@ async function run(part: Part, page: string, variant: string, body: () => Promis
 
 // A page in a fresh context, closed after `body`. Service workers are
 // blocked unless asked for, so they don't add requests to a part that
-// doesn't measure them.
-async function withPage<T>(browser: Browser, url: string, options: BrowserContextOptions, body: (page: Page) => Promise<T>): Promise<T> {
+// doesn't measure them. `setup` prepares the context before the page opens.
+async function withPage<T>(browser: Browser, url: string, options: BrowserContextOptions, body: (page: Page) => Promise<T>, setup?: (context: BrowserContext) => Promise<void>): Promise<T> {
   const context = await browser.newContext({ serviceWorkers: 'block', ...options });
   try {
+    await setup?.(context);
     const page = await context.newPage();
     await page.goto(url, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -139,11 +140,17 @@ async function withPage<T>(browser: Browser, url: string, options: BrowserContex
 
 // The root in a fresh context for `shell` at a size, once the shell has
 // hydrated.
-function withShell<T>(browser: Browser, url: string, target: { shell: Shell; width: number; height: number }, options: BrowserContextOptions, body: (page: Page) => Promise<T>): Promise<T> {
-  return withPage(browser, url, { ...shellContext(target), ...options }, async (page) => {
-    await waitForShell(page);
-    return body(page);
-  });
+function withShell<T>(browser: Browser, url: string, target: { shell: Shell; width: number; height: number }, options: BrowserContextOptions, body: (page: Page) => Promise<T>, setup?: (context: BrowserContext) => Promise<void>): Promise<T> {
+  return withPage(
+    browser,
+    url,
+    { ...shellContext(target), ...options },
+    async (page) => {
+      await waitForShell(page);
+      return body(page);
+    },
+    setup,
+  );
 }
 
 const shellAt = (shell: Shell) => ({ shell, ...SHELL_SIZES[shell] });
@@ -298,10 +305,11 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           const flow = shell === 'desktop' ? desktopKeyboardProblems : mobileKeyboardProblems;
           results.push(await run('keyboard', ROOT, variant, () => withShell(chromium, rootUrl, target, {}, (page) => flow(page, ROOT, variant))));
         }
-        // The Terminal's flow (006 FR-039), on the desktop.
+        // The Terminal's flow (006 FR-039), on the desktop, with the page
+        // reporting Linux for the command line's keys.
         const desktop = shellAt('desktop');
         const terminalVariant = stateVariant('desktop', 'terminal-keyboard', desktop.width);
-        results.push(await run('keyboard', ROOT, terminalVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => terminalKeyboardProblems(page, ROOT, terminalVariant))));
+        results.push(await run('keyboard', ROOT, terminalVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => terminalKeyboardProblems(page, ROOT, terminalVariant), asLinux)));
       },
       'other-sites': async () => {
         for (const pagePath of allPaths) {
@@ -339,8 +347,9 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             }),
           );
         }
-        // The Terminal opened, and every command `help` lists run (006
-        // FR-038), under the state it opens in.
+        // The Terminal opened, every command `help` lists run, and, with it
+        // opened again after `exit`, the `terminal` part's added lines (006
+        // FR-038), under the state it opens in. Only the requests count here.
         for (const shell of SHELLS) {
           const target = shellAt(shell);
           const variant = stateVariant(shell, shell === 'desktop' ? 'terminal-open' : 'pocket', target.width);
@@ -352,6 +361,9 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
                 return await otherSiteProblems(context, foreign, rootUrl, ROOT, variant, async (page) => {
                   await waitForShell(page);
                   await terminalRows(page, shell);
+                  await openTerminal(page, shell);
+                  await runCommand(page, 'cd');
+                  await shellLineProblems(page, shell, readResume());
                 });
               } finally {
                 await context.close();
@@ -482,6 +494,10 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           results.push(await run('modes', ROOT, forced, () => withShell(chromium, rootUrl, target, { forcedColors: 'active' }, (page) => shellForcedColorsProblems(page, shell, ROOT, forced))));
           const reduced = stateVariant(shell, 'reduced-motion', target.width);
           results.push(await run('modes', ROOT, reduced, () => withShell(chromium, rootUrl, target, { reducedMotion: 'reduce' }, (page) => shellMotionProblems(page, shell, ROOT, reduced))));
+          // Without reduced motion, the Terminal's cursor blinks after a key
+          // press and stops (006 FR-032).
+          const blink = stateVariant(shell, 'cursor-blink', target.width);
+          results.push(await run('modes', ROOT, blink, () => withShell(chromium, rootUrl, target, { reducedMotion: 'no-preference' }, (page) => cursorBlinkProblems(page, shell, ROOT, blink))));
         }
       },
     };

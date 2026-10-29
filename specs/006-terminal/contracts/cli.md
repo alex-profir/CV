@@ -88,6 +88,8 @@ page by real input: clicks, taps and typed keys.
 | `<shell>/terminal/json/<width>px` | `terminal`: `cv.json`, `jq` and the vim view |
 | `<shell>/<terminal state>/<width>px` | `accessibility`, `fonts`, `layout` |
 | `desktop/terminal-keyboard/1440px` | `keyboard` |
+| `<shell>/terminal/shell/<width>px` | `terminal`: the shell's lines (added 2026-10-29) |
+| `<shell>/cursor-blink/<width>px` | `modes`: the cursor's blink and its stop (added 2026-10-29) |
 
 ## Problem lines (examples)
 
@@ -100,6 +102,10 @@ keyboard / desktop/terminal-keyboard/1440px trapped input.command-line: Tab didn
 keyboard / desktop/terminal-keyboard/1440px focus-target step 9 "exit": focus went to body, expected the Terminal dock item
 offline / mobile/terminal/specs/375px offline-mismatch specs: output differs from the online run at row 3
 accessibility / mobile/pocket-keyboard/375px axe:target-size button.pocket-key: Target size is too small
+terminal / desktop/terminal/shell/1440px line-mismatch rm about: prints nothing where it should print "Permission denied"
+terminal / mobile/terminal/shell/375px not-stopped while true; do :; done: still running 10 s after Enter
+keyboard / desktop/terminal-keyboard/1440px cursor step 18 "leave the command line with Tab": the cursor stays filled after Tab left the command line
+modes / desktop/cursor-blink/1440px blinking span.cursor-block: still blinks 5.5 s after the last key press
 ```
 
 ## Tests

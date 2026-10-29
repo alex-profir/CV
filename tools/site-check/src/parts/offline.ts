@@ -15,8 +15,9 @@
 // CV page.
 //
 // The Terminal (006 FR-041) is opened in the same offline pages, after both
-// visits, in both shells: every command `help` lists is run, and each
-// output's rows compared with the same run online. Its variants are
+// visits, in both shells: its shell's worker must load from the stored
+// copy, then every command `help` lists is run, and each output's rows
+// compared with the same run online. Its variants are
 // `<shell>/terminal/<command>/<width>px` after the visit to the root and
 // `<shell>/terminal-after-cv/<command>/<width>px` after the visit to the CV
 // page.
@@ -228,16 +229,23 @@ async function terminalOffline(context: BrowserContext, url: string, shell: Shel
   try {
     await tab.setViewportSize(SHELL_SIZES[shell]);
     let opened = true;
+    let loaded = true;
     try {
       await tab.goto(`${url}/`, { waitUntil: 'load' });
       await waitForShell(tab, SHELL_START_MS);
       await openTerminal(tab, shell);
+      // The shell's worker loads from the stored copy too (006 FR-041).
+      loaded = (await tab.getAttribute('#os .terminal', 'data-shell-state')) !== 'failed';
     } catch {
       opened = false;
     }
     for (const [index, name] of TERMINAL_COMMANDS.entries()) {
       if (!opened) {
         add(index, 'not-available', `the Terminal did not open ${WHEN}`);
+        continue;
+      }
+      if (!loaded) {
+        add(index, 'not-available', `the shell did not load ${WHEN}, so ${name} could not run`);
         continue;
       }
       let rows: string[];

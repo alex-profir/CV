@@ -308,9 +308,13 @@ type AppOs = { shell: ShellName; open: (view: 'cv' | 'about') => void; exit: () 
 | `json-mismatch` | `terminal` | `cat cv.json`, `jq` or the vim view differs from the CV document's JSON, at a line |
 | `missing-file`, `extra-file`, `file-mismatch` | `terminal` | The file system lacks a file for an entry, has one for none, or `cat` differs from the named command |
 | `offline-mismatch` | `offline` | A command's output offline differs from online |
+| `line-mismatch`, `not-stopped`, `unresponsive` | `terminal` | (2026-10-29) One of the shell's lines prints other than expected, a line that never ends isn't stopped, or the window doesn't answer a click while it runs, naming the line |
+| `cursor`, `outline`, `line-key`, `select-all`, `cancel` | `keyboard` | (2026-10-29) The cursor isn't filled with focus or hollow without, the line has a box, a Linux key moves or deletes wrongly, select all takes text outside the Terminal, or Ctrl+C on a typed line doesn't end it, naming the step |
+| `no-blink` | `modes` | (2026-10-29) The focused cursor doesn't blink after a key press; one still blinking after the idle time is `blinking` |
 
 Variants are 005's `<shell>/<state>/<width>px`, with the Terminal's states and a command where one
-applies: `desktop/terminal/work/1440px` ([contracts/cli.md](./contracts/cli.md)).
+applies: `desktop/terminal/work/1440px` ([contracts/cli.md](./contracts/cli.md)). The shell's lines
+are `<shell>/terminal/shell/<width>px`, and the blink's stop is `<shell>/cursor-blink/<width>px`.
 
 ## Shell state (FR-067)
 

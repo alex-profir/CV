@@ -13,7 +13,7 @@ import { SHOWN_FIELDS } from '../../../../packages/web/src/supported.ts';
 import { CV_COMMANDS, terminalFields } from '../expected.ts';
 import type { CvCommand, ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
-import { TERMINAL, openTerminal, runCommand, settle, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
+import { ENDLESS_LINE, TERMINAL, openTerminal, runCommand, settle, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
 import type { Shell } from '../shell-states.ts';
 import { elementSequence, fieldProblems } from './no-script.ts';
 
@@ -199,10 +199,125 @@ async function fileProblems(page: Page, resume: Resume): Promise<Found[]> {
   return found;
 }
 
+// ---- The shell's lines (contracts/cli.md, added 2026-10-29) -----------------
+//
+// Typed as a visitor types them, each compared with what the CV document,
+// the built tree or FR-069 says it shows. A problem names the line and what
+// differed; the variant names the shell and width.
+
+// The rows a run's output shows, as text, without empty ones.
+async function outputRows(run: Locator): Promise<string[]> {
+  const found = output(run);
+  if ((await found.count()) === 0) return [];
+  return (await found.first().innerText()).split('\n').map((row) => row.trim()).filter((row) => row !== '');
+}
+
+const rowsOf = async (page: Page, line: string) => outputRows(await runCommand(page, line));
+
+const printed = (rows: readonly string[]) => (rows.length === 0 ? 'nothing' : JSON.stringify(rows.join('\n')));
+
+const lineProblem = (line: string, detail: string): Found => ({ type: 'line-mismatch', subject: line, detail });
+
+const sameRows = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((row, index) => row === b[index]);
+
+// The first word of four letters or more in the CV's first work summary,
+// as the state driver's search uses (contracts/cli.md States).
+export function summaryWord(resume: Resume): string | null {
+  const summary = resume.work?.[0]?.summary;
+  return typeof summary === 'string' ? (/\p{L}{4,}/u.exec(summary)?.[0] ?? null) : null;
+}
+
+// How long a line that never ends may run before FR-069 stops it: its 5 s
+// limit and the page's 6 s watchdog, with room to spare.
+const STOP_MS = 10_000;
+
+// FR-069's texts for a line the shell stops by itself.
+const STOPPED_TEXTS = [siteText.terminal.replies.stopped.time, siteText.terminal.replies.stopped.commands, siteText.terminal.replies.stopped.output];
+
+// The endless line, typed: the page answers a click and a key while it runs
+// (the shell is in a worker), and the shell stops it with FR-069's text.
+async function endlessProblems(page: Page, shell: Shell): Promise<Found[]> {
+  const found: Found[] = [];
+  const input = page.locator(TERMINAL.commandLine);
+  const before = await page.locator(TERMINAL.run).count();
+  await input.focus();
+  await input.fill('');
+  await page.keyboard.type(ENDLESS_LINE);
+  await page.keyboard.press('Enter');
+  try {
+    if (shell === 'desktop') await input.click({ timeout: WAIT_MS });
+    else await input.tap({ timeout: WAIT_MS });
+    await page.keyboard.type('x');
+    await page.waitForFunction((selector) => (document.querySelector(selector) as HTMLInputElement | null)?.value === 'x', TERMINAL.commandLine, { timeout: WAIT_MS });
+  } catch {
+    found.push({ type: 'unresponsive', subject: ENDLESS_LINE, detail: 'the window did not answer a click and a key while the line ran' });
+  }
+  try {
+    await page.waitForFunction(([busy, runs, count]) => document.querySelector(busy as string) === null && document.querySelectorAll(runs as string).length > (count as number), [TERMINAL.busyRun, TERMINAL.run, before] as const, { timeout: STOP_MS });
+  } catch {
+    found.push({ type: 'not-stopped', subject: ENDLESS_LINE, detail: `still running ${STOP_MS / 1000} s after Enter` });
+    return found;
+  }
+  const run = page.locator(TERMINAL.run).nth(before);
+  const stopped = (await run.locator(TERMINAL.stopped).count()) === 0 ? null : ((await run.locator(TERMINAL.stopped).first().textContent()) ?? '');
+  if (stopped === null || !STOPPED_TEXTS.includes(stopped)) found.push(lineProblem(ENDLESS_LINE, `ends with ${printed(await outputRows(run))} where FR-069's stopped line is expected`));
+  await input.fill('');
+  return found;
+}
+
+// The added lines, in the home folder, in the order contracts/cli.md gives.
+export async function shellLineProblems(page: Page, shell: Shell, resume: Resume): Promise<Found[]> {
+  const found: Found[] = [];
+  const word = summaryWord(resume);
+  if (word !== null) {
+    const filter = `work | grep -i ${word}`;
+    const text = await rowsOf(page, 'work | cat');
+    const wanted = text.filter((row) => row.toLowerCase().includes(word.toLowerCase()));
+    const rows = await rowsOf(page, filter);
+    if (!sameRows(rows, wanted)) found.push(lineProblem(filter, `prints ${printed(rows)} where work's matching lines are ${printed(wanted)}`));
+    const search = `grep -ril ${word} ~/work`;
+    const holding: string[] = [];
+    for (const name of await (await runCommand(page, 'ls ~/work')).locator('ul.out-columns > li').allTextContents()) {
+      if ((await rowsOf(page, `cat ~/work/${name}`)).some((row) => row.toLowerCase().includes(word.toLowerCase()))) holding.push(name);
+    }
+    const listedFiles = (await rowsOf(page, search)).map((row) => row.slice(row.lastIndexOf('/') + 1));
+    const missed = holding.filter((name) => !listedFiles.includes(name));
+    const extra = listedFiles.filter((name) => !holding.includes(name));
+    if (missed.length > 0) found.push(lineProblem(search, `misses ~/work/${missed[0]}, which holds "${word}"`));
+    else if (extra.length > 0) found.push(lineProblem(search, `lists ~/work/${extra[0]}, which doesn't hold "${word}"`));
+  }
+  if (resume.work?.[0]?.name !== undefined) {
+    const jq = "jq '.work[0].name' cv.json";
+    const wanted = [JSON.stringify(resume.work[0].name)];
+    const rows = await rowsOf(page, jq);
+    // Both are JSON already: shown as they are.
+    if (!sameRows(rows, wanted)) found.push(lineProblem(jq, `prints ${rows.length === 0 ? 'nothing' : rows.join(' ')} where the CV document has ${wanted[0]}`));
+  }
+  const names = async () => (await runCommand(page, 'ls')).locator('ul.out-columns > li').allTextContents();
+  const built = await names();
+  const notes = 'mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b';
+  const noted = await rowsOf(page, notes);
+  if (!sameRows(noted, ['hi'])) found.push(lineProblem(notes, `prints ${printed(noted)} where it should print "hi"`));
+  const withNotes = await names();
+  if (!sameRows(withNotes, [...built, 'notes/'])) found.push(lineProblem('ls', `lists ${JSON.stringify(withNotes.join(' '))} where notes/ should follow the built names`));
+  await runCommand(page, 'rm -r notes');
+  if ((await names()).includes('notes/')) found.push(lineProblem('rm -r notes', 'left notes/ in the home folder'));
+  const about = await rowsOf(page, 'cat about');
+  for (const line of ['echo hi > about', 'rm about']) {
+    const rows = await rowsOf(page, line);
+    if (!rows.some((row) => row.includes('Permission denied'))) found.push(lineProblem(line, `prints ${printed(rows)} where it should print "Permission denied"`));
+  }
+  const after = await rowsOf(page, 'cat about');
+  if (!sameRows(after, about)) found.push(lineProblem('cat about', `prints ${printed(after)} after echo and rm, where it printed ${printed(about)} before`));
+  found.push(...(await endlessProblems(page, shell)));
+  return found;
+}
+
 // ---- The part ---------------------------------------------------------------
 
-// The part's variants in a shell, in the order it runs them.
-export const terminalVariants = (shell: Shell, width: number) => [...CV_COMMANDS, 'json', 'files'].map((name) => terminalVariant(shell, name, width));
+// The part's variants in a shell, in the order it runs them: each CV
+// command, the JSON, the file system, and the shell's lines.
+export const terminalVariants = (shell: Shell, width: number) => [...CV_COMMANDS, 'json', 'files', 'shell'].map((name) => terminalVariant(shell, name, width));
 
 // On a fresh, hydrated page of the root in `shell`: opens the Terminal and
 // runs every check, each under its own variant.
@@ -216,5 +331,6 @@ export async function terminalProblems(page: Page, shell: Shell, resume: Resume,
   for (const command of CV_COMMANDS) add(command, await commandProblems(page, resume, command));
   add('json', await jsonProblems(page, resume));
   add('files', await fileProblems(page, resume));
+  add('shell', await shellLineProblems(page, shell, resume));
   return runs;
 }

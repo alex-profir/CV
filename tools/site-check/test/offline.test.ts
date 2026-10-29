@@ -14,6 +14,10 @@ vi.setConfig({ testTimeout: 300_000 });
 const OS_NOT_STORED = (copy: string) =>
   replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'const entries = PRECACHE.map(precacheEntry);', "const entries = PRECACHE.filter((path) => !/^\\/assets\\/os-[^/]*\\.js$/.test(path)).map(precacheEntry);");
 
+// The shell's worker left out of the precache list (006 FR-041).
+const SHELL_NOT_STORED = (copy: string) =>
+  replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'const entries = PRECACHE.map(precacheEntry);', "const entries = PRECACHE.filter((path) => !/^\\/assets\\/shell-[^/]*\\.js$/.test(path)).map(precacheEntry);");
+
 const TERMINAL_VARIANTS = [...terminalOfflineVariants('terminal'), ...terminalOfflineVariants('terminal-after-cv')];
 
 describe('004-cv-page-FR-053: offline, /cv, the root and an unknown path show their full content, styled, in the site fonts', () => {
@@ -94,5 +98,16 @@ describe("006-terminal-FR-041: offline, the Terminal runs every command help lis
       const name = variant.split('/')[2]!;
       expect(lines).toContain(`offline / ${variant} not-available ${name}: the Terminal did not open with the network off`);
     }
+  });
+
+  test("a copy whose shell worker isn't precached fails the Terminal's offline run at both widths, naming the shell, the width and the command", async () => {
+    const report = await runCheck(seededCopy(SHELL_NOT_STORED), { parts: ['offline'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of TERMINAL_VARIANTS) {
+      const name = variant.split('/')[2]!;
+      expect(lines).toContain(`offline / ${variant} not-available ${name}: the shell did not load with the network off, so ${name} could not run`);
+    }
+    // The CV app needs no shell, and still opens.
+    expect(report.problems.filter((problem) => problem.variant.includes('/cv-app'))).toEqual([]);
   });
 });

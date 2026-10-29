@@ -58,7 +58,7 @@ describe('005-os-shell-FR-054: the shell loads everything it uses from the site 
 });
 
 describe('006-terminal-FR-038: the Terminal loads nothing from another site while it opens and every command runs', () => {
-  test('on the real build the Terminal passes in both shells', async () => {
+  test("on the real build the Terminal passes in both shells, with every command help lists and the terminal part's added lines", async () => {
     const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
     expect(report.results.filter((result) => result.variant.includes('terminal') || result.variant.includes('pocket')).map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/terminal-open/1440px pass', 'mobile/pocket/375px pass']);
   });
@@ -66,9 +66,24 @@ describe('006-terminal-FR-038: the Terminal loads nothing from another site whil
   test('a copy whose Terminal fetches an outside address on help fails, naming the shell', async () => {
     const address = 'https://example.com/help';
     const root = seededCopy((copy) =>
-      replaceIn(copy, 'packages/web/src/apps/terminal/Terminal.tsx', '  const result = session.run(line, os.shell);', `  if (line === 'help') void fetch('${address}').catch(() => undefined);\n  const result = session.run(line, os.shell);`),
+      replaceIn(copy, 'packages/web/src/apps/terminal/Terminal.tsx', '  session.run(line, os.shell, { open:', `  if (line === 'help') void fetch('${address}').catch(() => undefined);\n  session.run(line, os.shell, { open:`),
     );
     const report = await runCheck(root, { parts: ['other-sites'] });
+    expect(report.problems.map(renderProblem)).toEqual([
+      `other-sites / desktop/terminal-open/1440px other-site-request ${address}: requested by the page`,
+      `other-sites / mobile/pocket/375px other-site-request ${address}: requested by the page`,
+    ]);
+  });
+
+  test('a copy whose shell worker fetches an outside address fails, naming the shell', async () => {
+    const address = 'https://example.com/shell';
+    const worker = 'packages/web/src/apps/terminal/shell/worker.ts';
+    const root = seededCopy((copy) => {
+      replaceIn(copy, worker, "import './no-network.ts';\n", '');
+      replaceIn(copy, worker, '    await shell.warm();\n', `    await shell.warm();\n    void fetch('${address}').catch(() => undefined);\n`);
+    });
+    const report = await runCheck(root, { parts: ['other-sites'] });
+    // A dedicated worker's request is the page's to Playwright.
     expect(report.problems.map(renderProblem)).toEqual([
       `other-sites / desktop/terminal-open/1440px other-site-request ${address}: requested by the page`,
       `other-sites / mobile/pocket/375px other-site-request ${address}: requested by the page`,

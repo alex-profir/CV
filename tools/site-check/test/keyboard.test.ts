@@ -50,7 +50,7 @@ describe('004-cv-page-FR-054: every link is reached by keyboard, in reading orde
 });
 
 describe("006-terminal-FR-039: the Terminal's keyboard flow runs at 1440 × 900, checking focus and its indicator at each step", () => {
-  test('on the real build the flow passes', async () => {
+  test('on the real build the flow passes, with the cursor, the Linux keys, select all and Ctrl+C after exit', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
     expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toContain('desktop/terminal-keyboard/1440px pass');
@@ -63,8 +63,54 @@ describe("006-terminal-FR-039: the Terminal's keyboard flow runs at 1440 × 900,
   });
 
   test('a copy whose exit sends focus to body fails with focus-target, naming the step', async () => {
-    const root = seededCopy((copy) => replaceIn(copy, TERMINAL_FILE, '  else os.exit();', '  else {\n    os.exit();\n    setInterval(() => (document.activeElement as HTMLElement | null)?.blur(), 20);\n  }'));
+    const root = seededCopy((copy) => replaceIn(copy, TERMINAL_FILE, 'exit: () => os.exit() });', 'exit: () => {\n      os.exit();\n      setInterval(() => (document.activeElement as HTMLElement | null)?.blur(), 20);\n    } });'));
     const report = await runCheck(root, { parts: ['keyboard'] });
     expect(report.problems.filter((problem) => problem.variant === TERMINAL_VARIANT).map(renderProblem)).toEqual([expect.stringMatching(new RegExp(`^keyboard / ${TERMINAL_VARIANT} focus-target step \\d+ "exit": focus went to body, expected the Terminal dock item$`))]);
+  });
+});
+
+// FR-039's added steps (2026-10-29): a copy with one fault fails at the step
+// that shows it.
+const TERMINAL_STYLES = 'packages/web/src/apps/terminal/terminal.css';
+
+const terminalLines = async (edit: (copy: string) => void) => {
+  const report = await runCheck(seededCopy(edit), { parts: ['keyboard'] });
+  return report.problems.filter((problem) => problem.variant === TERMINAL_VARIANT).map(renderProblem);
+};
+
+const stepLine = (type: string, label: string, detail: string) => new RegExp(`^keyboard / ${TERMINAL_VARIANT} ${type} step \\d+ "${label}": ${detail}$`);
+
+describe("006-terminal-FR-039 and SC-015: the flow's new steps check the cursor, the line's keys, select all and Ctrl+C", () => {
+  test('a copy whose focused command line has an outline fails with outline, naming the step', async () => {
+    const lines = await terminalLines((copy) => replaceIn(copy, TERMINAL_STYLES, '#os .command-line:focus-visible {\n  outline: none;\n}', '#os .command-line:focus-visible {\n  outline: 2px solid red;\n}'));
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines).toContainEqual(expect.stringMatching(stepLine('outline', 'open the Terminal again', 'the focused command line has an outline \\(solid 2px\\)')));
+    expect(lines.every((line) => / outline step \d+ "[^"]+": the focused command line has an outline /.test(line))).toBe(true);
+  });
+
+  test('a copy whose cursor stays filled after Tab fails with cursor, naming the step', async () => {
+    const lines = await terminalLines((copy) =>
+      replaceIn(copy, TERMINAL_STYLES, '/* Without focus: hollow, an outline inside the block, steady. */\n.cursor-mirror:not([data-focused]) .cursor-block {', '/* Without focus: hollow, an outline inside the block, steady. */\n.cursor-mirror:not([data-focused]) .cursor-none {'),
+    );
+    expect(lines).toEqual([expect.stringMatching(stepLine('cursor', 'leave the command line with Tab', 'the cursor stays filled after Tab left the command line'))]);
+  });
+
+  test('a copy whose Ctrl+A selects the dock too fails with select-all, naming the step', async () => {
+    const lines = await terminalLines((copy) =>
+      replaceIn(copy, TERMINAL_FILE, 'if (screen.current !== null) document.getSelection()?.selectAllChildren(screen.current);', "if (screen.current !== null) document.getSelection()?.selectAllChildren(document.getElementById('os') ?? screen.current);"),
+    );
+    expect(lines).toEqual([expect.stringMatching(stepLine('select-all', 'select all with Ctrl\\+A', 'Ctrl\\+A selected text outside the Terminal, in \\S+'))]);
+  });
+
+  test('a copy whose Ctrl+C clears nothing fails with cancel, naming the step', async () => {
+    const lines = await terminalLines((copy) =>
+      replaceIn(
+        copy,
+        'packages/web/src/apps/terminal/session.ts',
+        "    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement: say(siteText.terminal.announce.cancelled) });",
+        '    void typed;\n    set({ ...state, announcement: say(siteText.terminal.announce.cancelled) });',
+      ),
+    );
+    expect(lines).toEqual([expect.stringMatching(stepLine('cancel', 'Ctrl\\+C on a typed line', 'Ctrl\\+C added no run of "cat cv\\.json \\| x" ending in \\^C'))]);
   });
 });
