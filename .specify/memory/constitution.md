@@ -140,7 +140,7 @@ portfolio, so it has to be the author's own work.
 **Rationale**: a small, explainable stack is easier to maintain and easier for a reviewer
 to trust.
 
-### XI. Features and Amendments in Their Own PRs
+### XI. Features and Amendments in Pull Requests
 
 - A new feature ships in one pull request. Its description links the feature's `spec.md` and
   `tasks.md`.
@@ -149,22 +149,34 @@ to trust.
   approval of the amendment beside the spec's `Status`, each changed requirement marked
   `Amended <date>` with what it said before, and each new requirement added under a new ID
   marked `(added <date>)`. IDs are never reused or renumbered (Principle III).
-- An amendment ships in one or more pull requests of its own. Each one links the amended
+- A new feature can amend an older feature's spec when it needs the change. The new spec says so
+  in a requirement that names the older spec and what changes, and the owner's approval of the
+  new spec approves the amendment. The older spec records the amendment as above, naming the
+  feature it comes from in the clarification session and in each `Amended` or `added` mark.
+- Such an amendment ships in the new feature's pull request, with its tests and design, and the
+  description also links the amended `spec.md`. Its tasks are part of the new feature's
+  `tasks.md`. A task in the older feature's `tasks.md` that it overturns is marked as superseded
+  there, naming the new feature.
+- Any other amendment ships in one or more pull requests of its own. Each one links the amended
   `spec.md` and `tasks.md` and names the amendment it builds by its date.
 - When an amendment ships in several pull requests, each one carries the part of the spec
   amendment it builds, with that part's tests, design and tasks. So the default branch never
   holds an approved requirement without its test (Principle III), or a UI change without its
   approved design (Principle II).
-- An amendment's tasks are a new phase in the feature's `tasks.md`. Earlier tasks keep their
-  record: a task the amendment overturns is marked as superseded, never deleted or unticked.
+- The tasks of an amendment in pull requests of its own are a new phase in the amended
+  feature's `tasks.md`. Earlier tasks keep their record: a task an amendment overturns is marked
+  as superseded, never deleted or unticked.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
   `chore:` and so on).
-- Unrelated changes go in their own PR.
+- Unrelated changes go in their own PR. An amendment a new feature needs is related to it.
 
 **Rationale**: one PR per feature keeps history readable, with spec, tasks and code reviewed
 together. A shipped feature still changes as the owner learns from it. Recording each amendment
 in its spec, and building it in PRs that each keep the default branch true to its specs, lets
-a reader follow what changed, when and why, without one PR growing too large to review.
+a reader follow what changed, when and why, without one PR growing too large to review. A new
+feature sometimes needs an older one to change, such as a shortcut its own keys need. Amending
+the older spec in the new feature's PR keeps the cause and the change reviewed together, while
+the older spec still records what changed, when, why and for which feature.
 
 ## Product Scope & Architecture
 
@@ -202,8 +214,8 @@ part it changes (Principle XI).
    prerequisite.
 5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
    `data-req` attributes (Principle III).
-6. **Pull request**: one PR per new feature, and one or more per amendment, each linking its
-   spec and tasks (Principle XI). It merges once CI passes and the owner's local run has signed
+6. **Pull request**: one PR per new feature, carrying any amendment of an older spec it makes,
+   and one or more per amendment of its own, each linking its spec and tasks (Principle XI). It merges once CI passes and the owner's local run has signed
    off its head commit (Merge requirements).
 
 Merge requirements:
@@ -310,4 +322,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-29
+**Version**: 1.5.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-29
