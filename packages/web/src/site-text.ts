@@ -321,6 +321,8 @@ export const siteText = deepFreeze({
     requirements: { one: '1 requirement', other: '{n} requirements' },
     specs: { one: '1 spec', other: '{n} specs' },
     builtFrom: 'built from',
+    // Between the build line's parts.
+    separator: ' · ',
     notShown: { one: "1 more requirement in this spec isn't shown here", other: "{n} more requirements in this spec aren't shown here" },
     openSpec: 'Open the spec',
     approved: 'Approved',
@@ -328,6 +330,8 @@ export const siteText = deepFreeze({
     // Read between a spec's title and its status.
     statusSeparator: ', ',
     inTheSpec: 'In the spec, line {line}',
+    // A reference's name: its text as written, then the full ID.
+    refName: '{text}, {id}',
     tests: 'Tests',
     testsCount: 'Tests, {n}',
     noTests: 'No test covers this yet.',
@@ -339,6 +343,8 @@ export const siteText = deepFreeze({
         "This view lists the requirements this app's interface carries, read from the repository when the site was built, with a link to each one in its spec and to the tests that check it.",
       ],
       chain: ['Feature', 'Spec', 'Requirement FR-###', 'Interface', 'Tests'],
+      // Between the chain's labels, shown only.
+      chainArrow: ' › ',
       chainSpoken: 'Feature, then Spec, then Requirement, then Interface, then Tests',
       repository: "The site's repository on GitHub",
     },

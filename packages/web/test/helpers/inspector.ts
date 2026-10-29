@@ -21,6 +21,11 @@ export type InspectorView = 'cv' | 'terminal' | 'about';
 export const viewSelector = (view: InspectorView, shell: InspectorShell) =>
   shell === 'desktop' ? `#os .desktop .window[data-view="${view}"]` : `#os .full-screen[data-view="${view}"]`;
 
+// The element that scrolls the view's content, the app or its spec view:
+// `.window-content` in a window, `.view-content` full screen (005 FR-022).
+export const scrollerSelector = (view: InspectorView, shell: InspectorShell) =>
+  `${viewSelector(view, shell)} ${shell === 'desktop' ? '.window-content' : '.view-content'}`;
+
 // The view's spec view, once its groups are in.
 export const specViewSelector = (view: InspectorView) => `#os section.spec-view[data-view="${view}"]`;
 

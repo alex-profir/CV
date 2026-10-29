@@ -12,6 +12,7 @@
 @import "../shells/mobile/mobile.css";
 @import "../apps/terminal/terminal.css";
 @import "../apps/terminal/pocket.css";
+@import "../inspector/inspector.css";
 
 html:not([data-shell]) #os,
 html[data-shell] .no-script {
