@@ -49,6 +49,9 @@ rest of the design uses tokens that exist already: 005's shell colors (`color.sh
 `size.control`), radii (`radius.pill`, `radius.menu`, `radius.small`), the `space.*` scale, the
 type scale and the motion tokens.
 
+The two width tokens are named `breakpoint.*`, not `size.*`, so they can be container conditions,
+with the same values ([research R13](../research.md#r13-tokens)).
+
 | Token | Type | Value |
 |-------|------|-------|
 | `color.shell-text-soft` | color | `{color.base.haze}` |
@@ -57,12 +60,11 @@ type scale and the motion tokens.
 | `size.spec-bar-touch` | sizing | 48 |
 | `size.spec-id-column` | sizing | 64 |
 | `size.spec-measure` | sizing | 760 |
-| `size.spec-two-column` | dimension | 480px |
-| `size.spec-wide` | dimension | 700px |
+| `breakpoint.spec-two-column` | dimension | 480 |
+| `breakpoint.spec-wide` | dimension | 700 |
 
-`color.base.mint` and `color.base.amber` are proposed by 006 (its
-[README](../../006-terminal/design/README.md#proposed-tokens)). If 007's plan comes first, it
-adds them.
+`color.base.mint` and `color.base.amber` were added by 006 (its
+[README](../../006-terminal/design/README.md#proposed-tokens)).
 
 ## Contrast
 
