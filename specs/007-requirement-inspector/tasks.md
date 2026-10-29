@@ -467,7 +467,7 @@ the single PR
       are unchanged from `main`.
     - **IX**: the glyphs are the design's SVG components under `src/inspector/glyphs/`. Fonts come only
       from `var(--token-font-family-…)`. There is no image, Apple asset or system font.
-- [ ] T086 Run the full verification after T083 to T085: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0, the last with the `inspector` part in both shells. Run them again with an untracked file in the working copy: the same result (FR-034). Record the counts here.
+- [X] T086 Run the full verification after T083 to T085: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0, the last with the `inspector` part in both shells. Run them again with an untracked file in the working copy: the same result (FR-034). Record the counts here.
   - Pass 1 (2026-10-29, b12e55d, clean copy): `typecheck`, `content-check`, `token-check` and `traceability` exit 0.
     `npm test`: 1,683 of 1,684 tests passed in 182 files (966 s). The one failure was 005's `shell.test.ts`
     keyboard result list, which didn't yet expect `desktop/inspector-keyboard/1440px`; fixed in 0620c46 (10/10).
@@ -477,7 +477,7 @@ the single PR
     after End, while other browser runs were going. It passes alone (3/3), and now waits for the scroll to settle
     before the next key. `npm run site-check`: `PASSED`, 14 of 14. Its report is the same as pass 1's except the
     version line (the build is dirty, R8) and `/` mobile Lighthouse performance (98, then 97) (FR-034).
-  - Pass 3: `npm test` again on the committed fixes (see below).
+  - Pass 3 (2b17e85, clean): `npm test` passed all 1,684 tests in 182 files (874 s).
 - [X] T087 Run quickstart.md scenarios 1 to 5, 8 and 9, and the automated parts of 7, and record any deviation here. Scenario 3.4 and 3.5 edit files: do them in a `repoCopy` or revert each change with `git checkout`. Write scratch output to the scratchpad. Scenarios 6 and the hand parts of 7 are T088.
   - Done (2026-10-29). Scenario 1 is T086. Scenarios 2, 3.1–3.3, 4, 5, 8 and 9 were run by a Playwright script on
     the built site (scratch, `/tmp/claude-007/scripts/quickstart.ts`), and 3.4 and 3.5 in `copyBuild` repository
