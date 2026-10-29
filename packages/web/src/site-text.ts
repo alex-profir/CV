@@ -327,8 +327,8 @@ export const siteText = deepFreeze({
     openSpec: 'Open the spec',
     approved: 'Approved',
     draft: 'Draft',
-    // Read between a spec's title and its status.
-    statusSeparator: ', ',
+    // A spec's heading as it is read: the status as written, after a comma.
+    groupName: '{number} {title}, {status}',
     inTheSpec: 'In the spec, line {line}',
     // A reference's name: its text as written, then the full ID.
     refName: '{text}, {id}',

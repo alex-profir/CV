@@ -155,7 +155,7 @@ const groupLabels = (page: Page, view: InspectorView) =>
   page.evaluate(
     (selector) =>
       [...document.querySelectorAll(`${selector} section.spec-group`)].map((group) => ({
-        status: (group.querySelector('.status')?.textContent ?? '').replace(/^[\s,]+/, '').trim(),
+        status: (group.querySelector('.status')?.textContent ?? '').trim(),
         openSpec: (group.querySelector('a.open-spec')?.textContent ?? '').trim(),
         heading: group.querySelector('h2')?.contains(group.querySelector('.spec-number')) === true,
       })),

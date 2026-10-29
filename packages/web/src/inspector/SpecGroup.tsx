@@ -14,14 +14,15 @@ export function SpecGroup({ view, group, commit, siteData }: { view: ViewId; gro
   const text = siteText.inspector;
   const headingId = `spec-${view}-${spec.number}`;
   const status = spec.status === 'Approved' ? 'approved' : 'draft';
+  const label = status === 'approved' ? text.approved : text.draft;
   const repository = siteData.repository;
   return (
     <section className="spec-group" aria-labelledby={headingId} data-feature={spec.feature} data-req="007-requirement-inspector-FR-006">
-      <h2 id={headingId}>
+      {/* Named as read: the status shows in capitals, from the style sheet. */}
+      <h2 id={headingId} aria-label={fill(text.groupName, { number: spec.number, title: spec.title, status: label })}>
         <span className="spec-number">{spec.number}</span> <span className="spec-title">{spec.title}</span>{' '}
         <span className="status" data-status={status}>
-          <span className="visually-hidden">{text.statusSeparator}</span>
-          {status === 'approved' ? text.approved : text.draft}
+          {label}
         </span>
       </h2>
       {notShown > 0 && <p className="not-shown">{fill(counted(text.notShown, notShown), { n: notShown })}</p>}
