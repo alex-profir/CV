@@ -89,7 +89,7 @@ describe('001-requirement-traceability-FR-030: the full set is every test, and t
 
   test('the fast directories are written out, one glob per directory, with the test file pattern', () => {
     expect(FAST_TEST_GLOBS).toEqual(
-      ['tools/traceability/test', 'tools/content-check/test', 'tools/token-check/test', 'tools/local-verify/test', 'packages/content/test', 'packages/os-core/test', 'packages/tokens/test', 'packages/web/test/terminal/engine'].map((dir) => `${dir}/**/*.{test,spec}.?(c|m)[jt]s?(x)`),
+      ['tools/traceability/test', 'tools/content-check/test', 'tools/token-check/test', 'tools/local-verify/test', 'packages/content/test', 'packages/os-core/test', 'packages/tokens/test', 'packages/web/test/terminal/engine', 'packages/web/test/playground/unit'].map((dir) => `${dir}/**/*.{test,spec}.?(c|m)[jt]s?(x)`),
     );
   });
 });
