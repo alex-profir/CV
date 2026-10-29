@@ -10,18 +10,27 @@ description: "Task list for the Terminal"
 **Prerequisites**: [plan.md](./plan.md), [spec.md](./spec.md), [research.md](./research.md),
 [data-model.md](./data-model.md), [contracts/terminal.md](./contracts/terminal.md),
 [contracts/commands.md](./contracts/commands.md), [contracts/shell.md](./contracts/shell.md),
+[contracts/shell-worker.md](./contracts/shell-worker.md) (added 2026-10-29),
 [contracts/site.md](./contracts/site.md), [contracts/cli.md](./contracts/cli.md),
 [quickstart.md](./quickstart.md), and the design in [design/](./design/):
-[wireframes.md](./design/wireframes.md), [README.md](./design/README.md), the 19 Penpot PNG
+[wireframes.md](./design/wireframes.md), [README.md](./design/README.md), the Penpot PNG
 exports in `design/exports/`, the
 [Penpot link](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f)
 and the signed [review.md](./design/review.md) (**006 Terminal — Glass**, commit `c34fd51`,
-2026-10-27).
+2026-10-27, and its "2026-10-29 amendment" section, signed 2026-10-29).
+
+**Amended 2026-10-29**: Phase 15 implements the removal of the greeting (spec FR-005 as amended,
+design approved 2026-10-29). Phases 16 to 25 implement the rest of the spec's 2026-10-29
+amendment: the bash-like shell (FR-067 to FR-070, FR-073), the cursor, click to focus and a
+terminal's keys (FR-071, FR-072, FR-074, FR-075), and the requirements they amend (plan.md, rows
+marked *(amended)* and *(new)*). Phases 1 to 14 are the Terminal as merged in `bba9650`; their
+tasks stay as they were done.
 
 **Tests**: REQUIRED. The constitution (Principle III) maps every requirement to at least one
 automated test. Each test task names the `006-terminal-FR-###` IDs it covers, and every FR in
-spec.md (FR-001 to FR-066, all active) is covered by at least one test task (see Requirement
-Coverage at the end).
+spec.md (FR-001 to FR-075, all active) is covered by at least one test task (see Requirement
+Coverage at the end of Phase 11 for FR-001 to FR-066 as first built, and Amendment Requirement
+Coverage at the end of this file for the amendment).
 
 **Organization**: Tasks are grouped by user story.
 
@@ -41,6 +50,12 @@ Merging 005, the design gate, the token rename, the tokens, the site text, the s
 app fields, the spec list's build plumbing, the engine's block types and the Terminal test helper
 come first, in Phase 2, because every story builds on them.
 
+The amendment (Phases 16 to 25) follows the same stories. Its Phase 17 moves the Terminal onto the
+shell, running in a worker, with every behavior the amendment doesn't change kept as it is; each
+story phase after it adds what the amendment changes for that story. US2 (`site`, `specs`) gains
+no task of its own: its commands run through the shell from Phase 17 on, and its tests must still
+pass there.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies on incomplete tasks)
@@ -50,11 +65,15 @@ come first, in Phase 2, because every story builds on them.
 
 ## Not in this feature
 
-As the spec's Assumptions set: Settings, Contact and the requirement inspector; running real
-programs or reaching the network; tab completion, quotes, scripts and variables; a file system
-shared with other apps or a Files app; changing the file system, hidden files and permissions;
-Terminal themes, font sizes and preferences; games, easter eggs and translations. `open` gains
-names only as later features add apps.
+As the spec's Assumptions set (as amended 2026-10-29): Settings, Contact and the requirement
+inspector; running real programs or reaching the network; tab completion, job control, background
+jobs, interactive programs other than the vim view, and running a script file with `bash` or
+`sh`; a file system shared with other apps or a Files app; changing the protected files, keeping
+the visitor's files after the Terminal closes, hidden files in the home folder, `chmod`, `chown`
+and other users; Terminal themes, font sizes and preferences; games, easter eggs and
+translations. `open` gains names only as later features add apps. Phases 1 to 14 were built
+before the amendment, when quotes, variables, scripts and every change to the file system were
+out of scope too.
 
 The Terminal's design is already in Penpot with its link, so 006 owes nothing to the interim
 provision on local mockups beyond writing its tokens into the hand-written export (research R22).
@@ -77,10 +96,16 @@ provision on local mockups beyond writing its tokens into the hand-written expor
     `terminal.css`, `pocket.css`;
   - `engine/` (`commands.ts`, `parse.ts`, `block.ts`, `cv.ts`, `files.ts`, `json.ts`, `vim.ts`,
     `suggest.ts`, `announce.ts`), pure TypeScript with no React, DOM or `@cv/tokens` import.
+    From the amendment: `parse.ts` is removed and `output-map.ts` added.
+  - From the amendment: `shell-client.ts` (in the page) and `shell/` (`worker.ts`, `protocol.ts`,
+    `adapter.ts`, `fs.ts`, `site-commands.ts`, `standard.ts`, `no-zlib.ts`), the code that runs in
+    the shell worker, as contracts/shell-worker.md sets.
 - The spec list: `packages/web/scripts/spec-list.ts`, `packages/web/src/virtual-modules.d.ts`,
   registered in `packages/web/vite.config.ts` and `vitest.config.ts`
 - Tests:
   - engine (Node): `packages/web/test/terminal/engine/*.test.ts`
+  - shell (Node, from the amendment): `packages/web/test/terminal/shell/*.test.ts`, running the
+    same modules the worker runs
   - Terminal in the browser, on the real build: `packages/web/test/terminal/*.test.ts(x)`
   - the Terminal test helper: `packages/web/test/helpers/terminal.ts`
   - core: `packages/os-core/test/`
@@ -130,7 +155,15 @@ provision on local mockups beyond writing its tokens into the hand-written expor
   newline) under the interim provision on local mockups.
 - **Traceability stays red until Phase 11**: 006's spec is Approved, so `npm run traceability` and
   001's self-check test fail on uncovered 006 IDs until every story's tests exist. Any other
-  failure is a real one.
+  failure is a real one. For the amendment, the same holds for FR-067 to FR-075 until their tests
+  exist (Phases 17 to 21).
+- **The shell stays pure too** (contracts/shell-worker.md): nothing in `apps/terminal/shell/`
+  imports React, `react-dom`, a DOM global, `@cv/tokens`, a component or a `.css` file, and
+  nothing in `engine/` imports `just-bash` or `shell/`. The page reaches the shell only through
+  `shell-client.ts` and the worker's messages.
+- **Recordings are the site's own** (research R29, FR-018): a recorded block is made only by a site
+  command or wrapper, from the text it printed. Typed, piped or printed text never becomes a link
+  or a control, whatever it holds.
 - Code uses erasable TypeScript only, with explicit `.ts`/`.tsx` extensions on relative imports.
 - Run everything with Node 26 active (`nvm use`).
 - Commits use Conventional Commits and carry no AI or Claude attribution (CLAUDE.md).
@@ -667,7 +700,8 @@ checkpoints within it.
 
 ## Requirement Coverage
 
-Every FR in spec.md and the test task that covers it:
+Every FR in spec.md as first built and the test task that covers it. The 2026-10-29 amendment's
+coverage is in Amendment Requirement Coverage, at the end of this file.
 
 | Requirement | Test task(s) |
 |-------------|--------------|
@@ -675,7 +709,7 @@ Every FR in spec.md and the test task that covers it:
 | 006-terminal-FR-002 | T030 |
 | 006-terminal-FR-003 | T007, T030, T031 |
 | 006-terminal-FR-004 | T012, T030 |
-| 006-terminal-FR-005 | T033 |
+| 006-terminal-FR-005 | T033, T121 |
 | 006-terminal-FR-006 | T032 |
 | 006-terminal-FR-007 | T019, T032 |
 | 006-terminal-FR-008 | T020 |
@@ -802,3 +836,561 @@ SC-010 T003, T108; SC-012 T066.
   - `cv.ts` splits `aboutLines` and `contactLines` out of `aboutBlock` and `contactBlock`; `buildFileSystem` lists each file only when its lines aren't empty, and `has()` is gone. New test in `files.test.ts` with `basics: { location: {}, profiles: [{}] }` and with a city alone.
 - [X] T120 Give piping into `vim <path>` the "doesn't read piped input" reply, in `packages/web/src/apps/terminal/engine/commands.ts` (`vim`): only `vim -` reads input (FR-057). Today `ls | vim cv.json` opens `cv.json`, drops what `ls` printed, and shows `ls | vim cv.json` as the pipe in the status line. When `call.input` isn't null and the argument isn't `-`, reply with `replies.noInput` naming `vim` as typed, without opening the view. Extend `packages/web/test/terminal/engine/parse.test.ts` or `engine/commands.test.ts` (covers 006-terminal-FR-057): `ls | vim cv.json` gets the reply naming `vim` and returns no `open-vim`; `cat cv.json | vim -` and `cv` still open the view with their pipe. per FR-057 (partial)
   - `vim <path>` with piped input gives `replies.noInput` naming `vim` as typed (shared `noInput` with `runLine`), and the view no longer shows a pipe for a path. New test in `parse.test.ts`. Then `typecheck`, `content-check`, `token-check`, `traceability` and `npm test` (1430 tests) pass; `shell/history.test.ts`'s phone double-click-on-Home test timed out once under the full run and passed three times alone. `npm run site-check` passes 13 of 13 parts, Lighthouse 98 to 100.
+
+---
+
+## Phase 15: Amendment of 2026-10-29: no greeting
+
+**Goal**: The Terminal opens on its starter command controls and a prompt, with no greeting text,
+in both shells (spec FR-005 as amended 2026-10-29; design/review.md, "2026-10-29 amendment",
+decision 2; exports `desktop-1-just-opened-1440.png`, `phone-1-just-opened-375.png`,
+`phone-5-just-opened-320.png`, `phone-6-landscape-568.png`). The chips keep every CV section
+within 2 clicks or taps without typing (SC-001). The rest of the 2026-10-29 amendment (FR-067 to
+FR-075 and the requirements it amends) is Phases 16 to 25.
+
+**Independent Test**: open the Terminal at 1440 × 900, 375 × 812, 320 × 568 and 568 × 320; the
+screen shows the 5 starter chips, then the prompt, and no other text; each chip runs its command;
+`clear` removes the chips with the runs.
+
+### Tests (REQUIRED) ⚠️
+
+- [ ] T121 [P] Rewrite the FR-005 tests in `packages/web/test/terminal/output.test.ts`, covers 006-terminal-FR-005 and 006-terminal-FR-030: before the first prompt `.terminal .starter` holds only the 5 chips, `help`, `about`, `work`, `projects`, `cv`, in that order, each running its line; no text node in the Terminal before the prompt besides the chips' names; the same with the `three-projects` (no label) and `no-name` fixtures, which replace the name-line tests T117 added; `clear` and the menu's `Clear output` remove `.starter`. Write them to fail against today's build.
+- [ ] T122 [P] Update the selectors and titles that name the greeting, from `.greeting` to `.starter`, in `packages/web/test/terminal/controls.test.ts` (FR-015 and SC-001: the starter chips are the 5 controls before the prompt; the inline `help` in the intro is gone, so the expected list is `help`, `about`, `work`, `projects`, `cv`), `menu.test.ts` (FR-003, FR-019), `state.test.ts` (FR-021: reopened, it shows the starter chips), `modes.test.ts`, `design.test.ts`, `pocket.test.ts` (FR-025, FR-051: the 5 chips; the tap search starts from the chips and the keys) and `data-req.test.tsx` (`.terminal .starter` carries 006-terminal-FR-005 and 006-terminal-FR-030, its buttons FR-015 and FR-034).
+
+### Implementation
+
+- [ ] T123 Remove the greeting's text from `packages/web/src/apps/terminal/Terminal.tsx` after T121 and T122: `div.greeting` becomes `div.starter` (`data-req="006-terminal-FR-005 006-terminal-FR-030"`) holding only the chips from `siteText.terminal.starter`; drop the status line, the name line and `Intro`, and with them the use of `basics.name` and `basics.label` there (the pocket case's engraving keeps the name, FR-054). In `session.ts` rename `greeting` to `starter` (shown until the output is first cleared, as now).
+- [ ] T124 [P] In `packages/web/src/site-text.ts`, replace `terminal.greeting` (`desktop`, `phone`, `statusNarrow`, `name`, `nameAlone`, `commands`) with `terminal.starter: ['help', 'about', 'work', 'projects', 'cv']`; delete the strings nothing uses any more, and keep `content-check` passing.
+- [ ] T125 [P] In `packages/web/src/apps/terminal/terminal.css` and `pocket.css`, replace the `.greeting`, `.greeting-status`, `.greeting-name` and `.greeting-intro` rules with one `.starter` rule: the chip row, wrapping, with the gap to the first prompt the exports show; drop the phone rule that hid the status line in landscape. Every value stays a token (`token-check`).
+- [ ] T126 After T123 to T125, run `typecheck`, `content-check`, `token-check`, `traceability`, `npm test` and `npm run site-check`, and compare the four just-opened states with their exports. `tools/site-check/` reads no greeting (checked 2026-10-29), so the site check needs no change.
+
+---
+
+## Phase 16: Amendment of 2026-10-29: setup
+
+**Purpose**: a clean baseline on `006-terminal-shell`, the one new dependency, and the upstream
+reports research R25 asks for before the Terminal relies on just-bash's gaps
+
+- [ ] T127 Bring `006-terminal-shell` up to date and record the baseline, with Node 26 active: `git fetch origin main`; if `main` moved past this branch's base, `git merge origin/main` as a merge commit (no rebase). `npm ci`. Then `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check` and `npm run site-check` exit 0, and `npm run traceability` fails only on the 9 uncovered IDs `006-terminal-FR-067` to `006-terminal-FR-075` (the spec is Approved with 75 active requirements). Run `npm run build` and record the gzipped size (`gzip -9`) of `packages/web/dist/assets/os-*.js` here: it is SC-013's "size before the amendment". T104 measured 107 KB, not research R21's estimate of 102 KB, so the budget T148 writes is this measured size plus 5%, not 102 KB plus 5%. Record which of Phase 15's tasks (T121 to T126) are done: Phase 15 comes before any amendment task that changes UI (Dependencies below).
+- [ ] T128 Add `just-bash` 3.6.0, exact, as a dependency of `@cv/web` (research R25, plan Primary Dependencies): `npm install just-bash@3.6.0 --save-exact --workspace @cv/web`, so `packages/web/package.json` reads `"just-bash": "3.6.0"` and `package-lock.json` pins it. Confirm in `node_modules/just-bash/package.json` that the version is 3.6.0, the license is Apache-2.0 and the `./browser` export exists, and that the browser build's bundled packages are `diff` (BSD-3-Clause), `sprintf-js` (BSD-3-Clause) and `turndown` (MIT) (research R40). Add no other package (Constitution X). Commit it alone as `build(web): add just-bash 3.6.0 for the Terminal's shell (006)`.
+- [ ] T129 [P] Prepare the upstream reports of research R25 after T128: for each of G1, G2, G5, G11, G13 and G14, write a minimal Node script against just-bash 3.6.0 in the scratchpad (not the repository) that fails as the gap's row says, and a draft issue holding the script, what 3.6.0 prints and what bash 5 prints for the same line. Also run one line for each of G3, G4, G6 to G10, G12 and G15 and confirm 3.6.0 still behaves as its row says, since the tasks below rely on it; if one doesn't, stop and update research.md and the task that relies on it first. Owner action: filing the issues on `github.com/vercel-labs/just-bash` is an outside post and is the owner's; record each issue's link here once filed.
+
+---
+
+## Phase 17: Amendment foundational: the Terminal runs on the shell
+
+**Purpose**: the design gate for the amendment, its tokens and site text, and the shell itself,
+running in a worker and loaded on first open, with the site's commands as its commands. At the end
+of this phase every behavior the amendment doesn't change works as before, through the shell.
+
+**⚠️ CRITICAL**: no amendment story task can begin until this phase is complete.
+
+**Design gate (Constitution II)**: T130 comes first. No amendment task that creates or changes UI
+may start until it is done, and Phase 15 is done.
+
+- [ ] T130 Confirm the design gate for the amendment in `specs/006-terminal/design/` (plan Constitution Check II, research R42): `review.md`'s "2026-10-29 amendment" section reads `**Status**: Approved` and is signed by the owner on 2026-10-29; `exports/` holds `desktop-10-cursor-unfocused-1440.png` to `desktop-20-syntax-error-not-found-1440.png`, `phone-8-cursor-unfocused-375.png` to `phone-18-syntax-error-not-found-375.png`, `phone-19-after-help-320.png`, `phone-20-permission-denied-320.png`, `phone-21-pipe-and-filter-320.png` and `cursor-selection-1440.png`, and the re-exports `review.md` lists; `wireframes.md` has "States added by the amendment of 2026-10-29" covering every state of the spec's amended Design checklist item in both shells; the Penpot link is unchanged in `spec.md`, `design/README.md` and `design/review.md`; and the review records that nothing is taken from another terminal's look (SC-010). Write the result here.
+- [ ] T131 Add the amendment's tokens after T130, exactly as `design/README.md`'s "Proposed tokens (2026-10-29)" table lists them (research R36, R42): in `packages/tokens/penpot/tokens.json`, in the `light` set beside the Terminal's other semantic colors, `color.terminal-cursor-text` → `{color.base.night}`, `color.terminal-selection` → `{color.base.lilac}` and `color.terminal-selection-text` → `{color.base.night}`, in the hand-written export's form (`JSON.stringify(value, null, 2)`, no final newline); in `packages/tokens/motion/tokens.json`, under `motion.duration`, `cursor-blink` (`1000ms`, `duration`) and `cursor-idle` (`5000ms`, `duration`), in the form `fast` and `base` use. `color.terminal-cursor` stays as it is, at full strength. Run `npm run token-output`, then `npm run token-check` (exits 0, no exception). `packages/web/test/tokens.test.ts`'s "every token in the export is read" stays red until T171 and T190 read them.
+- [ ] T132 [P] Add the amendment's site text to `packages/web/src/site-text.ts`, in the design's words (design/wireframes.md Site text, contracts/commands.md Replies), with no CV fact and no design value (FR-030): under `terminal`, `help`'s standard group heading `Standard commands` and its note `as in bash. help <command> shows its options.`; the unknown reply as `{typed}: command not found. Run ` … `help` … ` to see them all, or try:` and its form with no suggestion; the `cd`-on-a-file and `cat`-on-a-folder replies that follow bash's line (`{path} is a file. Try ` … `cat {path}` … `.`, `{path} is a folder. Try ` … `ls {path}` … `.`); the three "stopped" lines (`stopped: it ran for 5 seconds, the longest a command line runs here.`, `stopped: it ran 10,000 commands, the most a command line runs here.`, `stopped: it printed 1 MB, the most a command line prints here.`), `stopped: you pressed Ctrl+C.` and the `^C` mark; the loading line `loading the shell · type away, commands run once it is ready`, the failure line `The shell couldn't load. Check the connection, then try again.` and the control's name `try again`; the announcements `Cancelled` and `Loading the shell`, and the unit `lines` as a `{ one, other }` pair (`line`, `lines`) for `counted`; and the owner names `ls -l` shows, `root` and `guest` (the prompt's `guest` may be reused). Keep the strings the old parser's replies use (`pipe-usage`, the "doesn't read piped input" reply, `jq`'s "only pretty-prints" and "is not JSON" replies) until T173 deletes them with their last use; `content-check` passes.
+- [ ] T133 [P] Write the message and state types in `packages/web/src/apps/terminal/shell/protocol.ts`, exactly as data-model.md's "Shell state", "Terminal file system", "Run request and result" and contracts/shell-worker.md's Messages set: `ShellState` (initial value `{ cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0 }`), `ShellOption` (`'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace'`), `Owner`, `FsEntryInfo`, `VisitorFiles` and `QUOTA = 1_048_576`, `RunRequest`, `RunResult` (`end: 'done' | 'exited' | 'limit' | 'syntax'`, `limit?: 'time' | 'commands' | 'output'`, `files?` only when the visitor's files changed), `Recorded`, `Effect` (`clear`, `vim` with `name`, `pipe` and `text`, `open` with `'cv' | 'about'`), `ShellData`, and the page-to-worker (`start`, `run`, `restore`, `reset`) and worker-to-page (`ready`, `failed`, `result`) messages. Types only, imported by both sides; it imports only `engine/block.ts`'s types.
+- [ ] T134 [P] Amend `packages/web/src/apps/terminal/engine/block.ts` (data-model.md "Site command run", research R29): `text` nodes gain `stream?: 'stdout' | 'stderr'`, and a new export `blockText(block)` gives the block's visible text in reading order: one line per `line`, heading and list item, list items prefixed `- `, links by their text (with their address only where `/cv` shows it), `time` nodes by their text, controls by their visible label, `json` rows as their tokens' text. Write `packages/web/test/terminal/engine/block.test.ts` first, covers 006-terminal-FR-047 and 006-terminal-FR-057: on the `every-field` and `empty-sections` fixtures, `blockText` of every CV command's block, `help`'s, `specs`' and `site`'s gives the lines this rule sets, with no markup, and the same text twice for the same block.
+- [ ] T135 [P] Extend `packages/web/test/terminal/engine/boundaries.test.ts` (no requirement ID; contracts/shell-worker.md, research R2): every file under `packages/web/src/apps/terminal/shell/` is scanned as `engine/` is (no `react`, `react-dom`, `@cv/tokens`, `.tsx`, `.css` or `../os/metrics.ts` import, no `document`, `window` or `navigator`); no file under `engine/` imports `just-bash` or `../shell/`; and no file of the Terminal outside `shell/` imports a `shell/` module other than `shell/protocol.ts`'s types, except `shell-client.ts` naming `./shell/worker.ts` inside `new URL(…, import.meta.url)`.
+- [ ] T136 [P] Write `packages/web/src/apps/terminal/shell/standard.ts` (research R32): `STANDARD_COMMANDS`, the names `awk basename cp cut date diff dirname echo env false find grep head mkdir mv printf rm sed seq sort tail tee touch tr tree true uniq wc which xargs yes` and `cat jq ls pwd`, as the `commands` option just-bash takes; `SHELL_BUILTINS`, the builtins of R32 (`cd`, `export`, `unset`, `set`, `read`, `test`, `[`, `type`, `declare`, `local`, `eval`, `source`, `exit`, `return`, `shift`, `break`, `continue`, `true`, `false` and the rest just-bash's `type` calls "a shell builtin"); and `LEFT_OUT`, each name just-bash offers that the Terminal leaves out with its reason from R32 (network, another language, scripts, permissions and links, Node's `zlib`, aliases, the site's own, not yet proved), read by T155's test.
+- [ ] T137 [P] Write the shell test helper `packages/web/test/terminal/shell/context.ts`, as `engine/context.ts` is for the engine: `shellFor(fixture?)` creates the adapter (T143) on the real CV or a `packages/web/test/__fixtures__/*.json` CV with the real spec list, in Node; `runLine(shell, line, state?)` sends one `RunRequest` and returns the `RunResult`; `runLines(shell, lines)` runs them in order, carrying `state` and `history` as the session does, and returns every result. Used by every shell test below.
+- [ ] T138 [P] Write `packages/web/test/terminal/shell/fs.test.ts` before T139, against TerminalFs directly and through `shellFor`:
+  - covers 006-terminal-FR-045: home is `/home/guest`; `ls /` lists `bin dev home tmp usr`; there is no `/proc`; relative paths, `.`, `..`, `~/`, `/`, globs (`~/work/*`, `?`, `[a-c]*`) and capitals in built names resolve as FR-045 sets, from every folder; `cd ..` from home reaches `/home`, and `cd` comes back;
+  - covers 006-terminal-FR-043: `readdir('/home/guest')` gives the built names in the design's order (`cv.json`, `about`, `contact`, `work`, `projects`, `skills`, `education`, `languages`, `interests`, `readme`, `specs`, empty sections left out), then the visitor's in name order;
+  - covers 006-terminal-FR-049: `writeFile`, `appendFile`, `mkdir`, `rm`, `cp` and `mv` onto, out of or into every kind of protected path (a file, a folder, the root, `/home`, `/bin`, `/usr`, `/dev` other than writing to `/dev/null`) reject with `Permission denied` and change nothing; protected files report mode `0444`, folders `0555`, the visitor's `0644` and `0755`; `/home/guest` itself takes writes; a part that doesn't exist as typed matches a protected name without regard to capitals (`ABOUT` reads `about`, `About` written names `about` and is refused), and the visitor's names are case-sensitive;
+  - covers 006-terminal-FR-073: writes work in home, in a visitor's folder and in `/tmp`; a write that takes the visitor's bytes past 1,048,576 rejects with `No space left on device` and leaves the earlier files; a write into a missing folder rejects with `No such file or directory` (research G6); `snapshot()` gives `VisitorFiles` with parents first; `restore(files)` rebuilds them; `reset()` leaves no visitor file and the protected tree equal to a fresh one.
+- [ ] T139 Write TerminalFs in `packages/web/src/apps/terminal/shell/fs.ts` after T134 and T138 (research R28, data-model.md "Terminal file system"): an `IFileSystem` over just-bash's `InMemoryFs`; the root's `bin`, `usr/bin` (a stub per registered command, so `which` and `/bin/ls` work), `dev` (`null`, `stdin`, `stdout`, `stderr`), `home/guest` and `tmp`; the protected tree of `engine/files.ts`'s `buildFileSystem`, written into `/home/guest` with each file's text `blockText` of its block (`cv.json` its JSON text, FR-055); the protected set, checked on the path and its parent by every writing operation (`writeFile`, `appendFile`, `mkdir`, `rm`, `cp`, `mv`, `chmod`, `symlink`, `link`, `utimes`); the modes; case-insensitive lookup of protected names only; the visitor's byte count against `QUOTA`; the missing-parent refusal; `readdir('/home/guest')`'s order; `snapshot()`, `restore(files)` and `reset()`. T138 passes.
+- [ ] T140 [P] Amend the engine's command table in `packages/web/src/apps/terminal/engine/commands.ts` (data-model.md "Command table", amended; contracts/commands.md): each row's `run` now takes the shell's arguments and a context (site text, formatters, `TERMINAL.columns`, the file tree, the working folder as a path string, the history) and returns a `SiteRun` (`{ text, block, stderr?, status, effect? }`, `text = blockText(block)` when a block is given); a wrong argument gives the usage reply as `stderr` with status 2 (FR-017); `readsInput` and `runLine` are gone, and with them the engine's own `jq` and the pipe handling. Delete `engine/parse.ts` and `packages/web/test/terminal/engine/parse.test.ts`, first moving its cases that still hold: FR-007's capitals and spaces to T142's `adapter.test.ts`, FR-018's "typed text stays text" to T145's `output-map.test.ts`, and FR-057's pipe cases to T154 (the "doesn't read piped input" and `pipe-usage` cases are dropped, as FR-057 is amended). Update `engine/commands.test.ts`, `replies.test.ts` and `help.test.ts` to call the new `run` shape; their expectations change only in T159.
+- [ ] T141 [P] Write `packages/web/test/terminal/shell/site-commands.test.ts` before T142:
+  - covers 006-terminal-FR-008 and 006-terminal-FR-047: every command of FR-008 that prints, and every alias, prints exactly `blockText` of its block, ends with a line break, and records `{ text, block }` once; every protected file's text equals `blockText` of its block, and `cat` on it prints that text and records that block; `cat` on two files records two blocks in order; `cat -n about` records nothing;
+  - covers 006-terminal-FR-050: `ls` and `ls ~/work` record a listing whose names are controls (`ls ~/{folder}` for folders, `cat ~/{path}` for files), the home folder in the design's order; `ls | cat` records nothing;
+  - covers 006-terminal-FR-058 and 006-terminal-FR-059: `vim cv.json` and `cat cv.json | vim -` return the `vim` effect with the file's name and text; `vim work`, `vim nowhere`, `vim -` with nothing piped and `vim` alone give their replies on stderr and no effect; `cv` gives the effect `cat cv.json | jq | vim -` gives, with that pipe, from any working folder;
+  - covers 006-terminal-FR-014 and 006-terminal-FR-019: `open cv`, `open about` and `clear` return their effects, in order after the line (`clear; open cv` gives both); `open settings` gives its reply listing `cv` and `about`;
+  - covers 006-terminal-FR-017 and 006-terminal-FR-020: `work 2020` and `open` alone give the usage reply on stderr with status 2; `history` prints the request's history numbered from 1, `history 2` the last two, and `history -c` empties it.
+- [ ] T142 Write the site's commands in `packages/web/src/apps/terminal/shell/site-commands.ts` after T136, T139, T140 and T141 (research R29): one just-bash custom command per row of `COMMANDS` and per alias, printing the row's `SiteRun.text` to stdout and its `stderr`, returning its status, recording `{ text, block }`, and returning its effect; `cv` runs `cat cv.json | jq | vim -` through `ctx.exec` from `/home/guest`; `history` prints the request's history and takes `history N` and `history -c`; wrappers of the built-ins through `ctx.origCommand`: `cat` records the block of each protected file it prints whole, `ls` records a listing with controls for the names it printed (the design's order for the home folder) and `jq` records a `json` block of what it printed, lexed by `engine/json.ts`. The `rm` wrapper and `ls -l`'s owners are US3's (T178, T179).
+- [ ] T143 [P] Write the first cases of `packages/web/test/terminal/shell/adapter.test.ts` before T144:
+  - covers 006-terminal-FR-067: variables (quoted values included), exported variables, a function using `local`, `if` and a pipe, `set -o pipefail`, `$?` and the working folder carry to the next line; `unset -f f` removes `f`; a function defined in a line that failed before reaching it isn't kept; `HOME`, `USER`, `LOGNAME` and `SHELL` are `/home/guest`, `guest`, `guest` and `/bin/bash`; a runtime message naming a line (`bash: line N: …`) names the visitor's line, not the prelude's;
+  - covers 006-terminal-FR-007: ` HELP `, `work\t`, `Work  ` and `help   work` run the site command; `GREP x` is `bash: GREP: command not found`; an empty or blank line runs nothing and returns status 0;
+  - covers 006-terminal-FR-057: ``echo "a`` gives just-bash's ``unexpected EOF while looking for matching `"'`` with `end: 'syntax'`, status 2 and nothing run; `ls |`, `| jq` and `ls |||  x` give `syntax error near unexpected token '|'` and run nothing (research G2);
+  - covers 006-terminal-FR-008: `exit` and `exit 3` give `end: 'exited'`; a line naming `__cv_state` or `__cv_denied` is `command not found`;
+  - covers 006-terminal-FR-021: `reset()` empties the state and the visitor's files; `restore(state, files)` gives back a variable, a function and a file.
+- [ ] T144 Write the shell adapter in `packages/web/src/apps/terminal/shell/adapter.ts` after T142 and T143 (research R27, contracts/shell-worker.md "The shell just-bash is given"): `createShell(data)` makes just-bash with TerminalFs, `cwd: '/home/guest'`, the `env` of the contract, `commands: STANDARD_COMMANDS`, the site's commands, `__cv_state` and `__cv_denied`, and no `network`, `fetch`, `python` or `javascript` option; `run(request)` checks syntax with just-bash's `parse` (and the empty side of a pipe), lower-cases a first word that names a site command or alias in another case, builds the prelude (variables quoted, `export`, functions serialized with `serialize`, `set -o`, `(exit N)`), runs prelude, line and epilogue in one `exec` with the request's `cwd`, reads the new state from `__cv_state`, keeps function bodies taken from the line's parse tree for names `declare -F` lists, shifts line numbers back by the prelude's length, detects `exited`, and returns a `RunResult` with `files` only when they changed; `reset()` and `restore(state, files)`. Limits come in T168. T143 passes.
+- [ ] T145 [P] Write `packages/web/test/terminal/engine/output-map.test.ts` before T146 (research R30, data-model.md "Shown run"):
+  - covers 006-terminal-FR-016: `bash: wrok: command not found` becomes `wrok: command not found. Run ` `help` ` to see them all, or try:` with a `work` chip; `bash: sudo: command not found` offers only `help`; suggestions search FR-008's names and aliases only (`sl` → `ls`, `grpe` → none from the standard commands); the `bash: ` prefix never shows;
+  - covers 006-terminal-FR-018: stdout that equals a site command's text, printed by `echo` with no recording, stays text; `<b>x</b>` and an OSC 8 sequence printed by `printf` stay text nodes;
+  - covers 006-terminal-FR-046: the prompt path is `~` for `/home/guest`, `~/work` below it, `/home` and `/tmp` outside it;
+  - covers 006-terminal-FR-048: `bash: cd: about: Not a directory` is shown, then `about is a file. Try ` and a `cat about` control; `cat: work: Is a directory`, then the `ls work` control; the path as typed;
+  - covers 006-terminal-FR-069: `end: 'limit'` with each `limit` shows its "stopped" line after the stdout printed before it, and not the limit's own message;
+  - covers 006-terminal-FR-057 and 006-terminal-FR-067: a syntax error is shown without `bash: ` and its line number; stdout comes first, then stderr in the error tone (research G3); recorded texts found whole in stdout, in order, become their blocks, and the rest stays text;
+  - covers 006-terminal-FR-028: a result made only of recorded blocks is counted as before (`work: 4 entries`), and text in rows at the desktop column count as `{command}: {n} lines`, `{command}` the line's first word.
+- [ ] T146 Write `packages/web/src/apps/terminal/engine/output-map.ts` after T145: `mapOutput(result, line, context)` returning `{ block, announce }` as data-model.md's "Shown run" table sets, with FR-016's reply and suggestions from `engine/suggest.ts`, FR-048's controls, FR-069's lines from site text, and the prompt's path formatter (`formatPrompt(cwd)`) the session and `WindowTitle` use. T145 passes.
+- [ ] T147 [P] Write `packages/web/test/build.test.ts` before T148, covers 006-terminal-FR-070 and SC-013: on a build in a temporary directory, `assets/` holds one `os-*.js` and one `shell-*.js`, the worker file has no `import` or `importScripts` and starts with a comment naming `shell-licenses-*.txt`, which exists and names `just-bash`, `diff`, `sprintf-js` and `turndown` with their versions and license texts; a copy whose worker imports another file fails with `site build failed: the shell worker is not one file`; a copy whose `os` entry imports `shell/worker.ts` other than through `new Worker` fails with `site build failed: the os script loads the shell`; a copy whose `os` script passes its gzip budget fails naming the budget; `index.html` names no `shell-*` file.
+- [ ] T148 Build the worker after T144 and T147 (research R34, R39, R40, contracts/site.md, contracts/shell-worker.md Build):
+  - `packages/web/src/apps/terminal/shell/worker.ts`: before just-bash's module body runs, replace `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` on the worker's global with functions that throw (ES imports are hoisted, so do it in a first-imported module of `shell/`, and add that file to plan.md's Project Structure); then create the adapter, run `true` once as the warm-up, answer `start` with `ready` or `failed`, and handle `run`, `restore` and `reset` as the contract's Messages set;
+  - `packages/web/src/apps/terminal/shell/no-zlib.ts`: `node:zlib`'s functions, each throwing;
+  - `packages/web/vite.config.ts`: the worker built as one ES module file named `assets/shell-[hash].js`, with the spec list plugin and the fonts plugin the page uses in `worker.plugins` (so `data.ts` resolves `virtual:cv-spec-list` in the worker), and `resolve.alias` of `node:zlib` to `no-zlib.ts` for the worker build only;
+  - `packages/web/scripts/build-site.ts`: the "one script" check becomes "the `os` script and exactly one worker script, each one file", with the two messages T147 names; the `os` script's gzipped size checked against a budget written next to the check, T127's measured size plus 5% (SC-013); `assets/shell-licenses-<hash>.txt` written from each bundled package's `package.json` and `LICENSE`, and named in a comment at the top of the worker file; both files in the service worker's precache list as every built file is.
+  T147 passes. Record the worker's raw, gzip and Brotli sizes here (research R34 measured 1.26 MB, 343 KB, 274 KB).
+- [ ] T149 Write `packages/web/src/apps/terminal/shell-client.ts` after T133 and T148 (research R26, R34, contracts/shell-worker.md Timing): created once per visit, outside React; `start()` on the Terminal's first open makes `new Worker(new URL('./shell/worker.ts', import.meta.url), { type: 'module' })` and sends `start`; status `loading`, `ready` or `failed` (an error, or no `ready` within 10,000 ms), with `retry()`; `run(request)` sends one line at a time and resolves with its `RunResult`; a `run` with no answer within 6,000 ms terminates the worker, starts a new one, sends `restore` with the last result's state and files, and resolves with a stopped result (`end: 'limit'`, `limit: 'time'`, the state as before the line); `cancel()` does the same at once for Ctrl+C (FR-075); `reset()` sends `reset`. Timings are the contract's numbers, set once in this file, not design values.
+- [ ] T150 Amend the session store in `packages/web/src/apps/terminal/session.ts` after T146 and T149 (data-model.md "Session additions"): `shell`, `waiting`, `running`, `state`, `files` and `cwd` (replacing `folder`); a line entered while `loading` is appended to `waiting` and shown with its prompt; on `ready` the waiting lines run in order; each run sends `{ line, state, history }`, maps the result with `mapOutput`, updates `state`, `cwd` and `files`, then applies its effects in order (`clear`, `vim`, `open` through the `os` handle); `end: 'exited'` does what `exit` does; `reset()` also resets the shell client and empties `state` and `files`. Update `packages/web/test/terminal/engine/session.test.ts` (covers 006-terminal-FR-020 and 006-terminal-FR-021) to drive the store with a fake client: lines entered while loading wait and run in order, `reset()` empties output, history, draft, the shell state and the visitor's files, and Up and Down behave as before.
+- [ ] T151 Wire the interface to the shell after T150 (contracts/terminal.md Structure): `Output.tsx` renders `text` nodes by `stream`, stderr in the error tone, still as React text children; `Terminal.tsx` shows waiting lines after their prompts, `p.shell-loading` under the starter chips while `shell` is `loading` (`data-req="006-terminal-FR-070"`), and in its place after a failure `p.shell-failed` with a `try again` chip that calls `retry()` (both `data-req="006-terminal-FR-070"`); `app.tsx`'s `onClose` resets the session and the shell, and `WindowTitle` reads `formatPrompt(cwd)`. Run `npm run build`: the `os` script is one file with no import, and the worker file is the only other script.
+- [ ] T152 Update the Terminal test helper `packages/web/test/helpers/terminal.ts` after T151: `openTerminal` waits until `.terminal p.shell-loading` is gone, so every browser test starts with the shell ready; `typeLine` and `runGroup` wait for the line's run to finish (its `section.run` has its output and the next prompt is empty); add `openTerminalLoading(page, shell)` that holds back `**/assets/shell-*.js` with Playwright's `page.route` and returns a function that releases it, for T161.
+- [ ] T153 Checkpoint after T151 and T152: run `npm run typecheck` and `npm test`. Every engine, browser and core test whose expectation the amendment doesn't change passes on the shell, unchanged. Record here, by file and case, the tests that fail because the amendment changed what they expect (such as `rm about`'s reply in `engine/files.test.ts`, `jq .work`'s reply, `help`'s count, the hollow cursor in `motion.test.ts`): each is rewritten in the story phase named in Amendment Requirement Coverage, not changed here. Any other failure is fixed here.
+
+**Checkpoint**: the Terminal runs every command through the shell in a worker, loaded on first open,
+with today's behavior wherever the amendment doesn't change it.
+
+---
+
+## Phase 18: User Story 1 - the shell's language, its commands and the cursor (Priority: P1) 🎯 MVP of the amendment
+
+**Goal**: on desktop, every command line is bash's: pipes into any command, `;`, `&&`, `||`,
+quotes, variables, globs, redirects, loops and functions, with the standard commands and their
+`--help`, `jq` filters, `help`'s standard group, "command not found" as bash starts it, the
+limits that stop a runaway line while the page keeps answering, the shell loading on first open,
+the command line with no box and its cursor as its focus indicator, and a click that puts focus
+back (US1 scenarios 18 and 19).
+
+**Independent Test**: build, open `/` at 1440 × 900 with DevTools' Network panel; no `shell-*.js`
+is requested until the Terminal opens. Run `work | grep -i engineer`, `X=1; f() { echo $((X+1)); }`
+then `f`, `jq '.work[0].name' cv.json`, `help` and a name in its standard group, `wrok`, and
+`while true; do :; done` while dragging the CV window. Tab to the dock and click the output.
+
+### Tests for User Story 1 (REQUIRED) ⚠️
+
+- [ ] T154 [P] [US1] Extend `packages/web/test/terminal/shell/adapter.test.ts`:
+  - covers 006-terminal-FR-067: one case per feature FR-067 names, each run in the shell: `;`, `&&`, `||`, single and double quotes, backslash escapes, `$VAR`, `${VAR}`, `${VAR:-d}`, `export`, `$?`, the globs `*`, `?` and `[...]`, the redirects `>`, `>>`, `2>`, `2>&1` and `<`, `if`, `for`, `while`, `until` and functions; a site command in a pipe (`work | head -2`), a redirect (`skills > /tmp/s; cat /tmp/s`), a chain (`false || about`) and a loop (`for c in about skills; do $c | wc -l; done`);
+  - covers 006-terminal-FR-057: `cat cv.json | jq`, `work | grep -i rest`, `ls | wc -l` and `help | head -3` pipe as bash does; `ls | work` runs `work` and ignores its input; `ls | vim cv.json` opens `cv.json`;
+  - covers 006-terminal-FR-022: `curl x`, `wget x`, `python`, `node` and `ssh h` are `command not found`.
+- [ ] T155 [P] [US1] Write `packages/web/test/terminal/shell/standard.test.ts`:
+  - covers 006-terminal-FR-068: every name of FR-068 and `yes` is registered and answers `--help` with status 0, and no other standard command is (the registered set, read by running `type` on every name just-bash offers, equals `STANDARD_COMMANDS` plus the site's); `ls -la`, `cat -n about`, `pwd -P` and `history 3` take their options; every name in `LEFT_OUT` is `command not found` (each with its reason in the test title); `whoami` runs `about`, not the standard command;
+  - covers 006-terminal-FR-008: the names `help`'s standard group lists equal `STANDARD_COMMANDS` and `SHELL_BUILTINS` less the names `COMMANDS` already lists, in name order; every builtin in `SHELL_BUILTINS` is "a shell builtin" to `type`; `help grep` prints `grep --help`'s text, `help export` the shell's own help for `export`, `help work` `work`'s own help, and `help nosuch` the usage reply with status 2; no name runs that `help` doesn't list;
+  - covers 006-terminal-FR-017: `ls --badopt`, `grep` alone and `head -n x about` give GNU's messages and statuses, as just-bash gives them.
+- [ ] T156 [P] [US1] Write `packages/web/test/terminal/shell/limits.test.ts`, covers 006-terminal-FR-069: `while true; do :; done` ends with `end: 'limit'`, `limit: 'commands'`; `i=0; while :; do i=$((i+1)); done` with a raised command count and a fake clock ends with `limit: 'time'` at 5,000 ms; `seq 1000000` ends with `limit: 'output'`; `yes` ends with `limit: 'output'`, not status 0 (research G13); `seq 200000 | tail -1` prints `200000` (G15: no iteration limit); after each, the state is as before the line; the prelude and epilogue leave a line at least 9,990 of its 10,000 commands.
+- [ ] T157 [P] [US1] Write `packages/web/test/terminal/shell/jq.test.ts`:
+  - covers 006-terminal-FR-055: `cat cv.json` prints `cv.json`'s text, and `cat cv.json | jq` prints it too, the final line break removed;
+  - covers 006-terminal-FR-056: `jq '.work[0].name' cv.json`, `jq '.skills[].name' cv.json`, `jq 'keys' cv.json` and `cat cv.json | jq .basics` print what jq 1.7 prints for them on the real CV (written in the test as the expected JSON, built from `resume`, never typed as CV text); `jq` and `jq .` pretty-print with 2-space indents and keys in order; `cat about | jq` and `jq '.[' cv.json` give a `jq: parse error` with a non-zero status, as just-bash words it (research G12); `jq . cv.json` records a `json` block and `jq . cv.json | head` records nothing.
+- [ ] T158 [P] [US1] Write `packages/web/test/terminal/shell/bash-parity.test.ts` (SC-014, covers 006-terminal-FR-067 and 006-terminal-FR-068, research R38): first check that `bash --version` and `grep --version` name GNU, and fail with the message naming what to install (`brew install bash coreutils grep gnu-sed gawk findutils diffutils`, `gnubin` first on `PATH`) when they don't; write the real CV's file system to a temporary folder (protected files read-only); run at least 30 lines, covering every feature of FR-067 and every command of FR-068, in the adapter and in `bash` with that folder as `HOME` and working folder, and compare stdout, stderr and status, with bash's `bash: line N: ` prefix removed; the lines include `grep -ril rest ~/work`, `ls | wc -l`, `cat about | tr a-z A-Z | head -3`, `for f in ~/work/*; do wc -l < "$f"; done`, `sed -n 2p skills`, `awk '{print $1}' languages`, `find ~ -name '*.json'`, `X=1; f() { echo $((X+1)); }; f` and `diff about contact`; the differences FR-044, FR-045 and FR-049 set are written beside their lines; no line depends on stdout and stderr interleaving (G3), and none on `jq`'s errors (G12).
+- [ ] T159 [P] [US1] Rewrite the engine tests whose expectations the amendment changes, in `packages/web/test/terminal/engine/`:
+  - `help.test.ts`, covers 006-terminal-FR-008: `COMMANDS` names FR-008's commands with `whoami`, `experience` and `?` as aliases; `help`'s block lists them, then the standard group's heading, note and names as controls running `help <name>`;
+  - `replies.test.ts`, covers 006-terminal-FR-017: `work 2020`, `open` alone, `vim` alone and `help nosuch` give the usage reply as `stderr` with status 2; `help work` shows `work`'s own help;
+  - `suggest.test.ts`, covers 006-terminal-FR-016: the cases over FR-008's names stay; `rm` and `mv` cases go (they are standard commands now and run); `sl` → `ls`;
+  - `commands.test.ts` and `json.test.ts`, covers 006-terminal-FR-056: the lexer's cases stay; the "only pretty-prints" and "is not JSON" reply cases go (T157 covers `jq` now), and so do T112's `jq ./cv.json` cases, as `jq` now takes its first argument as the filter, as jq does.
+- [ ] T160 [P] [US1] Write `packages/web/test/terminal/shell.test.ts` on the real build, at 1440 × 900:
+  - covers 006-terminal-FR-067: the lines of T154's first case, typed, show the same text as in Node; a variable and a function set in one line are used in the next;
+  - covers 006-terminal-FR-057: `work | grep -i {a word of the first role's summary, read from resume}` shows only the matching lines, as text with no heading or control (US1 scenario 19); for every command `help` lists that prints, the run's `.run-output` text, line by line, equals what `{command} | cat` shows (data-model.md, `blockText`).
+- [ ] T161 [P] [US1] Write `packages/web/test/terminal/loading.test.ts` with T152's `openTerminalLoading`, covers 006-terminal-FR-070 and SC-013: `/` and `/cv` request no `shell-*.js`; opening the Terminal requests it once, and closing and reopening requests nothing more; with its response held, the starter chips, the prompt and the command line show at once with `p.shell-loading` under the chips, two lines typed wait after their prompts and run in order once it is released, and the loading line goes; with it answered 503, `p.shell-failed` and `try again` show, and `try again` after the route answers again runs the waiting lines; the `os` script's gzipped size is within T127's budget; the shell is ready within 1 s, and within 3 s with 4× CPU throttling and Lighthouse's mobile network (1.6 Mb/s, 150 ms) over CDP.
+- [ ] T162 [P] [US1] Write `packages/web/test/terminal/stop.test.ts`, covers 006-terminal-FR-069: during `i=0; while :; do i=$((i+1)); done` (raised command count through a variable the line sets, so it runs to the 5 s limit), a click on the CV window brings it to the front and a key types in another app; within 6 s the run shows `p.run-stopped` with the time line and a new prompt; a worker made to hang (a fixture build whose worker never answers `run`) is terminated after 6 s and restarted from the snapshot, so a variable and a visitor's file made before survive.
+- [ ] T163 [P] [US1] Write `packages/web/test/terminal/cursor.test.ts`, covers 006-terminal-FR-072 (US1 scenario 18): the command line's computed `outline-style`, `border-*-width`, `box-shadow` and `background-color` are none, 0 or transparent, focused and not; `span.cursor-mirror`'s cursor has `data-focused` and the filled style with focus, and the hollow style (a 2 px outline, no fill) without; both colors are at least 3:1 against the screen's computed background (004's contrast helper); every other control's focus outline still shows.
+- [ ] T164 [P] [US1] Write `packages/web/test/terminal/focus-click.test.ts`, covers 006-terminal-FR-071: with focus on the dock, a click on the output's empty space, on a line of text and beside the starter chips focuses the command line, keeps `.terminal-screen`'s `scrollTop` and the typed text; a click on a link, a chip and a fold line, and inside the vim view, doesn't; a drag that selects output text keeps the selection and doesn't move focus.
+- [ ] T165 [P] [US1] Update `packages/web/test/terminal/command-line.test.ts` and `controls.test.ts`:
+  - covers 006-terminal-FR-018: `echo '<b>x</b>'` and `printf '\e]8;;https://x\e\\x'` print text, with no `b` or `a` element made; the old cases stay;
+  - covers 006-terminal-FR-015: a name in `help`'s standard group runs `help <name>` on click, Enter and Space, as typed in the output and `history`; the site's commands in `help` still run themselves.
+- [ ] T166 [P] [US1] Update `packages/web/test/terminal/output.test.ts`, `open-command.test.ts`, `history.test.ts` and `vim.test.ts`:
+  - covers 006-terminal-FR-005: while the shell loads, its loading line sits under the starter chips;
+  - covers 006-terminal-FR-014: `true && open cv` opens the CV, after the line's output;
+  - covers 006-terminal-FR-020: `history 2` lists the last two, `history -c` empties it;
+  - covers 006-terminal-FR-056: `cat cv.json | jq`'s colored rows' text equals the plain printed text, and `jq . cv.json | head` is plain text.
+- [ ] T167 [P] [US1] Update `packages/web/test/terminal/state.test.ts`, `requests.test.ts`, `site-text.test.ts` and `performance.test.ts`:
+  - covers 006-terminal-FR-021: minimize and restore, mobile Home and reopen, and a 1440 → 375 → 1440 resize also keep a variable, a function, a visitor's file and the working folder; closing and reopening shows nothing of them (`echo $X`, `f`, `ls notes`);
+  - covers 006-terminal-FR-022: running every command `help` lists and T160's lines requests only `127.0.0.1`, and storage stays empty;
+  - covers 006-terminal-FR-030: every value T132 added is English and holds no key fact of the real CV;
+  - SC-002: Enter to output stays under 100 ms at 1440 px and 300 ms with 4× CPU throttling, through the worker, for every command `help` lists.
+
+### Implementation for User Story 1
+
+- [ ] T168 [US1] Add the limits to `packages/web/src/apps/terminal/shell/adapter.ts` after T156 (research R33, G13, G15): `executionLimits` `{ maxExecutionTimeMs: 5000, maxCommandCount: 10000, maxOutputSize: 1048576, maxLoopIterations: 1_000_000_000 }`, set once in the adapter (the spec's numbers, not design values); recognize each limit's message and status (124 for the deadline, 126 for the others) and output that reached exactly 1,048,576 bytes, and return `end: 'limit'` with its kind, the stdout printed before it, and the state as before the line. T156 passes.
+- [ ] T169 [US1] Implement `help`'s standard group and `help <name>` in `packages/web/src/apps/terminal/engine/commands.ts` and `shell/site-commands.ts` after T155 and T159 (research R32): `help`'s block lists the site's commands and aliases, then the group's heading and note and every name of `STANDARD_COMMANDS` and `SHELL_BUILTINS` the table doesn't list, in name order, each a control running `help <name>`; `help <name>` gives a site command's own help, runs `<name> --help` for a standard command, and for a builtin the shell's own `help <name>` through `ctx.origCommand`. The adapter registers only `STANDARD_COMMANDS` and the site's commands. T154, T155 and T159 pass.
+- [ ] T170 [US1] Render the standard group in `packages/web/src/apps/terminal/Output.tsx` after T169 (design/wireframes.md, `help` states): the heading and note in their design colors, the names as inline controls in rows of `size.terminal-control-row`, spaced as the design sets for WCAG 2.5.8's spacing exception, the group carrying `data-req="006-terminal-FR-008 006-terminal-FR-068"`; and `p.run-stopped` for a stopped run, `data-req="006-terminal-FR-069 006-terminal-FR-075"`. T157, T160 and T165 pass.
+- [ ] T171 [US1] Give the command line a terminal's cursor in `packages/web/src/apps/terminal/CommandLine.tsx` and `terminal.css` after T131 and T163 (research R36, design/README.md "The cursor and the selection"): no border, outline, background or shadow on `input.command-line`, focused or not, with 005's focus outline turned off for it only; `span.cursor-mirror` sets `data-focused` from the input's focus and draws the cursor filled in `--token-color-terminal-cursor` with the letter under it in `--token-color-terminal-cursor-text`, or hollow as a `border.thick` outline inside its box; `data-blinking` set on focus and on each key press, and removed by a timer of `motion.duration.cursor-idle` read through `src/os/metrics.ts` (add `cursorIdle` to `TERMINAL`), the blink a `steps(1)` animation over `--token-motion-duration-cursor-blink` (on half, off half showing no cursor); no animation at all under `prefers-reduced-motion: reduce`. `input.command-line` lists `006-terminal-FR-072` beside its IDs, and `span.cursor-mirror` `006-terminal-FR-032 006-terminal-FR-072`. T163 passes.
+- [ ] T172 [US1] Add click to focus in `packages/web/src/apps/terminal/Terminal.tsx` after T164 (research R36): on `div.terminal-screen` (`data-req="006-terminal-FR-071 006-terminal-FR-075"`), a `pointerdown` records the page's selection, and a `pointerup` that isn't on or inside an `a`, a `button`, an `input` or `section.vim`, and after which the selection is collapsed or unchanged, focuses the command line with `preventScroll` and no change to its text; on touch, it focuses without `inputmode="none"`, so the keyboard opens. T164 passes.
+- [ ] T173 [US1] Finish US1 after T168 to T172: delete the site text no code uses any more (`pipe-usage`, the "doesn't read piped input" reply, `jq`'s "only pretty-prints" and "is not JSON" replies, the old unknown reply's wording) from `packages/web/src/site-text.ts`; run `npm run typecheck`, `npm run content-check`, `npm run token-check` and `npm test`; T154 to T167 pass, and T158 passes with GNU tools on `PATH`. Record any line T158 had to leave out, and why, here and in research R38.
+
+**Checkpoint**: the Terminal is a bash-like shell on desktop, its cursor is its focus indicator,
+and a runaway line never freezes the page. This is the amendment's MVP.
+
+---
+
+## Phase 19: User Story 3 - files the visitor can make, beside protected ones (Priority: P3)
+
+**Goal**: the CV and spec files are protected with bash's "Permission denied", the visitor makes,
+moves and removes files anywhere else up to 1 MB, `ls -l` shows who owns what, and the standard
+commands search the CV's files (US3 scenarios 9 to 11).
+
+**Independent Test**: at 1440 × 900, run `rm about`, `mv work jobs`, `echo hi > cv.json` and
+`rm -rf ~`, then `cat about`, `ls work` and `cat cv.json`; run
+`mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b`, `ls`, `ls -l`,
+`grep -ril rest ~/work`; close the Terminal, open it, and `ls` has no `notes`.
+
+### Tests for User Story 3 (REQUIRED) ⚠️
+
+- [ ] T174 [P] [US3] Extend `packages/web/test/terminal/shell/fs.test.ts` with whole command lines through `shellFor`, covers 006-terminal-FR-049: `rm about`, `rm -rf ~`, `mv work jobs`, `cp skills about`, `touch work/new`, `mkdir specs/x`, `echo hi > about`, `echo hi >> about`, `echo hi | tee about` and `sed -i s/a/b/ about` on every kind of protected path give a message ending `Permission denied` that names the path as typed, once per path (`tee`'s reason may be wrong until research G5's fix, and the test says so); `rm -rf ~` removes the visitor's files and leaves every protected file; the protected tree is equal before and after a scripted run of every command of FR-068 on it; `ls -l` shows protected entries `-r--r--r--` or `dr-xr-xr-x` with `root root`, and the visitor's with `guest guest`; `echo hi > about` keeps the output of `echo a; echo hi > about; echo b` (`a`, then the error, then `b`, research G1).
+- [ ] T175 [P] [US3] Rewrite `packages/web/test/terminal/engine/files.test.ts`'s FR-049 case, covers 006-terminal-FR-049 and 006-terminal-FR-012: the case that `rm`, `mkdir`, `touch`, `mv` and `sudo` get the unknown reply goes (T174 covers FR-049 now); the protected tree's builder still holds every section of every fixture CV, in order, and every entry's file; `sudo` stays in `suggest.test.ts`.
+- [ ] T176 [P] [US3] Rewrite `packages/web/test/terminal/files.test.ts` on the real build:
+  - covers 006-terminal-FR-043 and 006-terminal-FR-073: `touch zz aa` then `ls` lists `aa` and `zz` after `specs/`, as controls; `mkdir notes` lists `notes/`, a folder by its slash;
+  - covers 006-terminal-FR-046: after `cd /tmp` the prompt and the window title read `/tmp`; `pwd` in `~/work` prints `/home/guest/work`, and the prompt reads `~/work`;
+  - covers 006-terminal-FR-049: `ls -l` is drawn with `root root` and `guest guest`, the folder names ending in `/` and still controls; piped (`ls -l | cat`) it is GNU's text;
+  - covers 006-terminal-FR-050: `ls | cat` shows plain names with no control; the old cases stay.
+- [ ] T177 [P] [US3] Extend `packages/web/test/terminal/shell.test.ts` in both shells (`describe.each` over 1440 × 900 and 375 × 812 with touch):
+  - covers 006-terminal-FR-049: US3 scenario 9 as written, with `cat about`, `ls work` and `cat cv.json` unchanged after;
+  - covers 006-terminal-FR-073 and 006-terminal-FR-021: US3 scenario 10 as written; after closing and opening the Terminal, `ls` has no `notes`, and `ls /tmp` is empty;
+  - covers 006-terminal-FR-012 and 006-terminal-FR-068: US3 scenario 11, `grep -ril {a word of the first role's summary, read from resume} ~/work` lists exactly the work files whose text holds it; `find ~ -name '*.json'` lists `/home/guest/cv.json`; `tree ~/work` lists every work file.
+
+### Implementation for User Story 3
+
+- [ ] T178 [US3] Give `ls` its owners in `packages/web/src/apps/terminal/shell/site-commands.ts` (`ls` wrapper) and `Output.tsx` after T174 and T176 (research R28, G7): replace the owner and group columns of `ls -l`'s lines with `root root` for protected entries and `guest guest` for the visitor's, from TerminalFs's `FsEntryInfo`; when `ls -l`'s output reaches the screen unchanged, record it so folder names keep their trailing slash and are controls, as in `ls`, with the owners in the design's colors (`guest` in haze, the details in fog); keep `ls`'s home order for the visitor's names after the built ones.
+- [ ] T179 [US3] Protect the tree from whole commands in `packages/web/src/apps/terminal/shell/site-commands.ts` and `adapter.ts` after T174 (research R28): an `rm` wrapper that walks a recursive target itself, deepest first, removing the visitor's entries and printing `rm: cannot remove '{path}': Permission denied` once per protected path; and, until just-bash's G1 fix is released, the redirect guard: a transform plugin registered with `registerTransformPlugin` that replaces a command whose literal output redirect target resolves to a protected path with `__cv_denied '{target}'`, which prints `bash: {target}: Permission denied` and returns 1. Mark the plugin with a comment naming G1 and T129's issue, to be deleted once the fix ships (plan's Dependencies table). T174, T175, T176 and T177 pass.
+
+**Checkpoint**: the file system is a real one beside the protected CV.
+
+---
+
+## Phase 20: User Story 4 - the pocket terminal with the shell (Priority: P4)
+
+**Goal**: the amendment's states fit the pocket terminal at 320 px and in landscape, and a tap on
+its screen puts focus in the command line and opens the keyboard.
+
+**Independent Test**: at 375 × 812 and 320 × 568 with touch, run `help` and scroll to its standard
+commands, `ls -l` and `work | grep -i {word}`; nothing scrolls sideways. Tap an empty part of the
+screen: the command line takes focus and the keyboard opens.
+
+### Tests for User Story 4 (REQUIRED) ⚠️
+
+- [ ] T180 [P] [US4] Extend `packages/web/test/terminal/pocket.test.ts`:
+  - covers 006-terminal-FR-052 and 006-terminal-FR-023: at 320 × 568, 375 × 812 and 568 × 320, after `help` (scrolled to the standard group), `ls -l` and `work | grep -i {word}`, the screen has no horizontal scroll and every standard name wraps inside it (exports `phone-19-after-help-320.png` to `phone-21-pipe-and-filter-320.png`);
+  - covers 006-terminal-FR-071 and 006-terminal-FR-053: a tap on the screen's empty space focuses the command line without `inputmode="none"`, and with the page made 300 px shorter `data-keyboard` is set; a tap on a chip or key still leaves `inputmode="none"`;
+  - covers 006-terminal-FR-025: the tap search from the starter chips and the keys still reaches every CV section, `site`, `specs` and every file, and a standard group name reached that way runs `help <name>`.
+
+### Implementation for User Story 4
+
+- [ ] T181 [US4] Fix what T180 finds in `packages/web/src/apps/terminal/Pocket.tsx`, `pocket.css` and `terminal.css`, with tokens only: the standard group and `ls -l` rows at `typography.terminal-pocket` and `-pocket-narrow`, the hollow and filled cursor in the pocket's type size, and the screen's tap path through T172's handler without `inputmode="none"`. Record each fix here. T180 passes.
+
+**Checkpoint**: the amendment works on phones.
+
+---
+
+## Phase 21: User Story 5 - a terminal's keys, select all and Ctrl+C (Priority: P5)
+
+**Goal**: the command line takes the system's editing keys with the cursor and selection following
+them, and on macOS the readline keys; Cmd+A or Ctrl+A selects the Terminal's text and nothing
+else; Ctrl+C cancels a line or stops a run; screen readers hear the new events once (US5
+scenarios 8 to 10).
+
+**Independent Test**: at 1440 × 900, type `cat cv.json | jq`; with the platform set to macOS,
+Cmd+Left, Option+Right twice and Cmd+Right move the cursor as US5 scenario 8 sets; Ctrl+W then
+Cmd+Z; Cmd+A then copy; Ctrl+C on a typed line and on `while true; do :; done`.
+
+### Tests for User Story 5 (REQUIRED) ⚠️
+
+- [ ] T182 [P] [US5] Write `packages/web/test/terminal/line-keys.test.ts`, with the platform set per case through `navigator.userAgentData` and `navigator.platform` overrides in an init script:
+  - covers 006-terminal-FR-074: on macOS, in `cat cv.json | jq`, Cmd+Left puts the caret at 0, each Option+Right at the next word end the field gives, and Cmd+Right at 16, and the mirror's cursor is at the field's caret after each (US5 scenario 8); Ctrl+A, Ctrl+E, Ctrl+B, Ctrl+F, Ctrl+K, Ctrl+U and Ctrl+W do readline's, and Cmd+Z after Ctrl+W restores the word; Ctrl+L clears the output and keeps the line; Shift+Option+Left selects a word and the mirror shows it selected in the selection colors; on Linux and Windows, Home, End, Ctrl+Left, Ctrl+Right, Ctrl+Backspace and Shift+Home do the same through the field;
+  - covers 006-terminal-FR-026: on each platform, every key the plan's FR-026 table and research R37 reserve (Ctrl+W, Ctrl+L, Ctrl+U, Ctrl+K and Ctrl+E on Linux and Windows; Cmd+L, Cmd+W, Cmd+T; every `Alt+Shift` shortcut; Tab) is not `defaultPrevented`.
+- [ ] T183 [P] [US5] Write `packages/web/test/terminal/select-all.test.ts`, covers 006-terminal-FR-075: after `help` and `work` with `abc` typed, Cmd+A (macOS) and Ctrl+A (others), from the command line and from the output, select a range inside `.terminal-screen` only, whose text holds the outputs and `abc`, and nothing of the dock, the menu bar or the CV window; the copied text (read through the clipboard permission) has no cursor character and no control's `aria-label`; a letter typed then clears the selection and is added to the command line.
+- [ ] T184 [P] [US5] Extend `packages/web/test/terminal/stop.test.ts`, covers 006-terminal-FR-075: Ctrl+C with `abc` typed and nothing selected shows `abc` with `^C` and an empty prompt, and `abc` isn't in `history`; during `while true; do :; done` it stops the line at once with `stopped: you pressed Ctrl+C.`, and a variable set before survives; with output text selected, Ctrl+C isn't `defaultPrevented`.
+- [ ] T185 [P] [US5] Update `packages/web/test/terminal/engine/announce.test.ts`, covers 006-terminal-FR-028: `help` → `help: {n} commands`, counting the standard group too (design); `grep -r a ~` printing 12 lines → `grep: 12 lines`; one line of text → `grep: 1 line`; Ctrl+C → `Cancelled`; a stopped line → its "stopped" text; the shell loading → `Loading the shell`.
+- [ ] T186 [P] [US5] Update `packages/web/test/terminal/screen-reader.test.ts` and `keyboard.test.ts`:
+  - covers 006-terminal-FR-028: the status region holds `Loading the shell` once while loading, a stopped line's text once, and `Cancelled` once after Ctrl+C, and focus stays in the command line;
+  - covers 006-terminal-FR-029: `work | grep -i {word}` shows text with no heading inside its run; `help`'s standard group is one list in the accessibility tree, a `listitem` per name;
+  - covers 006-terminal-FR-026: Tab from the command line still moves focus on with the value unchanged, with the readline keys in place.
+
+### Implementation for User Story 5
+
+- [ ] T187 [US5] Add the line keys to `packages/web/src/apps/terminal/CommandLine.tsx` after T182 (research R37's table): read the platform from `navigator.userAgentData?.platform`, then `navigator.platform`; on macOS only, Ctrl+A, Ctrl+E, Ctrl+B and Ctrl+F set the field's selection, and Ctrl+K, Ctrl+U and Ctrl+W select their range and delete it with `document.execCommand('delete')` (`setRangeText` where it is missing), so the system's undo still works; Ctrl+L sends the `clear` effect without a run, keeping the line; leave every other key to the field and the browser, and on Windows and Linux leave Ctrl+W, Ctrl+L, Ctrl+U, Ctrl+K and Ctrl+E alone. `input.command-line` lists `006-terminal-FR-074 006-terminal-FR-075` beside its IDs.
+- [ ] T188 [US5] Draw the line's selection in `packages/web/src/apps/terminal/CommandLine.tsx` and `terminal.css` after T187 (research R36, data-model.md "Cursor and selection"): the mirror draws `selectionStart` to `selectionEnd` in `--token-color-terminal-selection` behind `--token-color-terminal-selection-text`, with the cursor at the selection's moving end (`selectionDirection`), updated on `selectionchange`; `::selection` in the output uses the same two tokens; the input's own text and caret stay transparent. `span.cursor-mirror` lists `006-terminal-FR-074` beside its IDs.
+- [ ] T189 [US5] Add select all and Ctrl+C after T183 and T184, in `packages/web/src/apps/terminal/Terminal.tsx`, `CommandLine.tsx` and `session.ts` (research R33, R37): Cmd+A (macOS) and Ctrl+A (others) in the command line or the output call `Selection.selectAllChildren` on `.terminal-screen`, keeping focus in the input, and the next `beforeinput` collapses the page's selection so the letter is typed; the cursor's block draws no text past the line's end and controls copy their visible text; Ctrl+C with the page's selection collapsed calls the session's `cancel()`: with a line running, `shell-client.cancel()` and the "stopped" Ctrl+C line, else an entry with the typed text and `^C`, not added to `history`, and an empty draft. In the vim view its own keys apply (FR-060).
+- [ ] T190 [US5] Update `packages/web/src/apps/terminal/engine/announce.ts` and `session.ts` after T185 (contracts/terminal.md announcements): `help` counts its standard names; text runs give `{command}: {n} lines` through `counted`; `Cancelled`, the "stopped" lines and `Loading the shell` are written to `.terminal-status` once each, `Loading the shell` politely and only on the first open. T182 to T186 pass.
+
+**Checkpoint**: the command line works as a terminal's, and is heard once per event.
+
+---
+
+## Phase 22: User Story 6 - the blink, forced colors and the new states (Priority: P6)
+
+**Goal**: the cursor blinks while the line has focus and stops within 5 s, never under reduced
+motion; forced colors keep the filled and hollow cursor and the selection visible; every new state
+holds WCAG 2.2 AA, its targets and its wrapping.
+
+**Independent Test**: type in the command line and watch the cursor stop blinking after 5 s; with
+reduced motion it never blinks; with forced colors the filled and hollow cursor and a selection
+show; at 200% text zoom `seq -s ' ' 400` wraps.
+
+### Tests for User Story 6 (REQUIRED) ⚠️
+
+- [ ] T191 [P] [US6] Rewrite `packages/web/test/terminal/motion.test.ts`, covers 006-terminal-FR-032 (SC-008): with focus in the line and no reduced motion, the cursor has a running animation after a key press and none 5 s after the last one, staying filled, and a key press starts it again; with focus elsewhere it never animates; with reduced motion it never has one, and sampled frames while opening, running commands, a stopped line and pressing pocket keys show no `transform` or `scale` change, in both shells. The old "no animation at 0 and 6 s" case goes.
+- [ ] T192 [P] [US6] Extend `packages/web/test/terminal/modes.test.ts`, covers 006-terminal-FR-033: with forced colors the filled cursor is `Highlight` with a 1 px `Highlight` bottom edge and its letter `HighlightText`, the hollow one a 2 px `Highlight` outline, a selection in the line and in the output the system's `Highlight` and `HighlightText`, `p.shell-failed`'s `try again` chip and `p.run-stopped` are visible, and the command line has no border though every other control's focus outline shows; with reduced transparency the window stays solid.
+- [ ] T193 [P] [US6] Add the amendment's states to `packages/web/test/helpers/terminal.ts`'s `TERMINAL_STATES` and extend `packages/web/test/terminal/targets.test.ts` and `accessibility.test.ts`, covers 006-terminal-FR-034 and 006-terminal-FR-035: the states focus elsewhere (the hollow cursor), after `help` scrolled to its standard group, a selection in the line, selected all, after Ctrl+C, loading, failed to load, stopped by its limit, `ls` with the visitor's files, `rm` and `ls -l`, a pipe and a filter, and a syntax error after "command not found", on desktop and mobile; in each, every control is at least 24 × 24 px or within the design's spacing exception for the standard names, pocket keys 44 × 44, and axe finds nothing; 200% zoom, text-only 200%, 400% on 1280 px and text spacing keep every part of `help`'s standard group and `ls -l` visible.
+- [ ] T194 [P] [US6] Extend `packages/web/test/terminal/layout.test.ts`, `design.test.ts` and `packages/web/test/tokens.test.ts`:
+  - covers 006-terminal-FR-023: `seq -s ' ' 400` and a 400-character `echo` wrap with no horizontal scroll in a 400 px window and at 320 px; selecting output by drag still copies it;
+  - covers 006-terminal-FR-031: the filled cursor's computed fill and letter, the hollow outline, and the selection's colors come from T131's tokens, and the blink's duration from `motion.duration.cursor-blink`; `tokens.test.ts` asserts every token T131 added is read by a style sheet or `metrics.ts`.
+
+### Implementation for User Story 6
+
+- [ ] T195 [US6] Add the modes to `packages/web/src/apps/terminal/terminal.css` and `pocket.css` after T191 and T192 (research R19, R36): under `forced-colors: active`, the filled cursor in `Highlight` with a 1 px `Highlight` block-end border and `HighlightText` for its letter, the hollow cursor a 2 px `Highlight` outline, `::selection` and the mirror's selection in `Highlight` and `HighlightText`, the command line with no border, outline or background; under `prefers-reduced-motion: reduce`, no animation on the cursor. T191 and T192 pass.
+- [ ] T196 [US6] Fix any target, wrap, zoom or axe failure T193 and T194 find in `terminal.css`, `pocket.css` or the components, with tokens only. Record each fix here. T193 and T194 pass.
+
+**Checkpoint**: every new state holds WCAG 2.2 AA in every mode.
+
+---
+
+## Phase 23: User Story 7 - the shell offline and after an update (Priority: P7)
+
+**Goal**: after one online visit, the shell loads from the cache and every command works offline;
+a page from an older version still loads its shell after a new version activates.
+
+**Independent Test**: visit `/` once, go offline, open the Terminal at 375 and 1440 px, run every
+command `help` lists and a pipe. Then publish a second build with the page open, and open the
+Terminal: the shell loads, online and offline.
+
+### Tests for User Story 7 (REQUIRED) ⚠️
+
+- [ ] T197 [P] [US7] Extend `packages/web/test/terminal/offline.test.ts`, covers 006-terminal-FR-036 and 006-terminal-FR-070: after one visit to `/`, and separately to `/cv` only, `/` offline at 375 and 1440 px opens the Terminal, the shell starts from the cache (no `p.shell-failed`), every command `help` lists and `work | grep -i {word}` give the online output, and no offline message shows.
+- [ ] T198 [P] [US7] Extend `packages/web/test/offline.test.ts`, covers 006-terminal-FR-070 (research R35): with a page from build A open, build B is published and its service worker activates; the page then opens the Terminal and its shell loads, online and offline; once that page closes, A's cache is deleted on the next `fetch`, `message` or `activate`; with no page open, `activate` deletes older caches at once, as before; every cache holds one complete version.
+
+### Implementation for User Story 7
+
+- [ ] T199 [US7] Keep the caches open pages need in `packages/web/src/sw/service-worker.ts` after T198 (contracts/site.md "Service worker"): `activate` deletes older caches only when `clients.matchAll({ type: 'window' })` finds none, else keeps them and records, under `/__cv/kept` in its own cache, each kept cache's name and the open clients' ids; `fetch` answers a request under `/assets/` from the current cache, then a kept one, then the network; on `fetch`, `message` and `activate`, a kept cache whose recorded clients are all gone is deleted with its record. Nothing reloads or interrupts the page (005 FR-053). T198 passes.
+- [ ] T200 [US7] Confirm after T199 that the precache list holds `shell-*.js` and `shell-licenses-*.txt` and that the worker makes no request offline; fix only what T197 finds. T197 passes.
+
+**Checkpoint**: the shell works offline and survives an update.
+
+---
+
+## Phase 24: User Story 8 - the site check proves the shell (Priority: P8)
+
+**Goal**: the site check covers the amendment: its states in accessibility and the other parts,
+the `terminal` part's shell lines, the keyboard flow's cursor and keys, the worker offline and
+its requests, with failures naming shell, state, width and line.
+
+**Independent Test**: break one thing at a time in a copy of the build (`rm about` succeeding, an
+outline on the focused command line, a cursor still filled after Tab, the worker not precached, a
+worker that fetches an outside URL) and see the matching check fail with the line
+contracts/cli.md shows.
+
+### Tests for User Story 8 (REQUIRED) ⚠️
+
+- [ ] T201 [P] [US8] Extend `tools/site-check/test/shell-states.test.ts`, covers 006-terminal-FR-038: the states `terminal-unfocused`, `terminal-help-standard`, `terminal-loading`, `terminal-load-failed`, `terminal-stopped`, `terminal-selected-all` and `pocket-stopped` (contracts/cli.md, added 2026-10-29) are each reached by real input on the real build, and the summary lists `/` under `accessibility` in each.
+- [ ] T202 [P] [US8] Extend `tools/site-check/test/terminal.test.ts`, covers 006-terminal-FR-040: the `terminal` part passes on the real build with contracts/cli.md's added lines in both shells; copies where `rm about` succeeds, `jq '.work[0].name' cv.json` prints nothing, `grep -ril` misses a work file, and a line that never ends isn't stopped fail with lines naming the shell, the line and what differed.
+- [ ] T203 [P] [US8] Extend `tools/site-check/test/keyboard.test.ts`, covers 006-terminal-FR-039 and SC-015: the flow passes on the real build with its new steps; copies where the focused command line has an outline, where the cursor stays filled after Tab, where Ctrl+A selects the dock too, and where Ctrl+C clears nothing each fail naming the step.
+- [ ] T204 [P] [US8] Extend `tools/site-check/test/offline.test.ts` and `other-sites.test.ts`:
+  - covers 006-terminal-FR-041: a copy whose shell worker isn't precached fails the Terminal's offline run at both widths, naming the shell and width;
+  - covers 006-terminal-FR-038: `other-sites` records requests while the `terminal` part's added lines run in both shells; a copy whose worker fetches an outside URL fails, naming the shell.
+- [ ] T205 [P] [US8] Extend `tools/site-check/test/shell.test.ts` and `performance.test.ts`:
+  - covers 006-terminal-FR-035 and 006-terminal-FR-038: `modes` passes on the real build with the blink stopping within 5 s, and fails on a copy whose cursor never stops blinking and one whose cursor blinks under reduced motion;
+  - covers 006-terminal-FR-042: every new problem line names the shell, the state or line, and the width; two runs give the same result; the whole check stays within 005's time budget plus 4 minutes off CI.
+
+### Implementation for User Story 8
+
+- [ ] T206 [US8] Add the amendment's states to `tools/site-check/src/shell-states.ts` after T201 (contracts/cli.md States): `terminal-unfocused` (Tab out from `terminal-help`), `terminal-help-standard` (scrolled to the standard group), `terminal-loading` (the worker's file held back with `page.route` and `help` typed), `terminal-load-failed` (the worker's file answered 503), `terminal-stopped` (`while true; do :; done` and its stop), `terminal-selected-all` (Ctrl+A in the command line), and `pocket-stopped`; each from a fresh page by clicks, taps and typed keys.
+- [ ] T207 [US8] Add the shell's lines to `tools/site-check/src/parts/terminal.ts` after T202 (contracts/cli.md "Added 2026-10-29"), in each shell by typing, with the word read from the CV's first work summary: `work | grep -i {word}`, `grep -ril {word} ~/work`, `jq '.work[0].name' cv.json` compared with `JSON.stringify(resume.work[0].name)`, the `notes` line, `ls`, `rm -r notes`, `echo hi > about` and `rm about` with `cat about` unchanged, and `while true; do :; done` stopped with FR-069's text while a click on the window is answered; add any problem type the lines need to `tools/site-check/src/report.ts` (data-model.md Site check results).
+- [ ] T208 [US8] Extend the other parts after T203 to T205 (contracts/cli.md Parts): `parts/keyboard.ts` adds FR-039's steps after the existing ones (cursor filled in the line and hollow after Tab with no outline or border on the line; Home, End, Ctrl+Left and Ctrl+Right; Ctrl+Backspace; Ctrl+A holding only the Terminal's text; Ctrl+C on a typed line), checking each step's focus target and indicator; `parts/accessibility.ts` runs axe in T206's states; `parts/modes.ts` adds the blink's stop without reduced motion and the filled and hollow cursor in forced colors; `parts/other-sites.ts` records requests during the `terminal` part's added lines; `parts/offline.ts` checks the worker loads offline in both shells. T201 to T205 pass.
+
+**Checkpoint**: every pull request proves the shell in both shells.
+
+---
+
+## Phase 25: Amendment polish & constitution verification
+
+**Purpose**: traceability for 75 requirements, sizes and speed, the audits, the full verification,
+the owner's manual checks and the amendment's one pull request
+
+- [ ] T209 [P] Extend `packages/web/test/terminal/data-req.test.tsx`, covers 006-terminal-FR-037: every target contracts/terminal.md's `data-req` table adds or changes carries its IDs in the rendered Terminal (`div.starter`, `input.command-line` with FR-072, FR-074 and FR-075, `span.cursor-mirror` with FR-032, FR-072 and FR-074, `div.terminal-screen`, `p.shell-loading`, `p.shell-failed` and its `try again` control, `p.run-stopped`, `help`'s standard group), reaching each state as T193 does, and every `006-terminal-FR-###` in a `data-req` names an existing requirement.
+- [ ] T210 Run `npm run traceability` after T209 (Constitution III, SC-009): it exits 0, and its PASS line counts `006-terminal`'s 75 active requirements among the approved specs; every row of Amendment Requirement Coverage below has a passing test. Record the PASS line here.
+- [ ] T211 [P] Verify SC-013 and SC-005 on the real build: `/` and `/cv` load no shell bytes; the `os` script's gzipped size is within T127's measured size plus 5%; the worker's sizes are near research R34's; the shell is ready within 1 s, and 3 s with Lighthouse's mobile CPU and network slowdown; Lighthouse's mobile and desktop scores on `/` and `/cv` are 90 or more in every category. Record each number here.
+- [ ] T212 [P] Audit Constitution X, IV, V, VII and IX for the amendment in `package.json`, `packages/web/` and `tools/site-check/`:
+  - **X**: the only package added is `just-bash` 3.6.0, exact; the abstractions added are exactly plan.md's Dependencies table (add any helper this list made, such as T148's first-imported network lock, with its reason); the redirect guard is marked temporary with its issue link;
+  - **IV**: every new word is in `site-text.ts`; no design value is in script but through `metrics.ts`; the limits and timings are the spec's and contract's numbers, set once each; no CV fact is typed in `shell/`, `content-check` covering it;
+  - **V**: `os-core` is unchanged by the amendment; the shell worker and client are the Terminal's own, used by both shells;
+  - **VII**: `/` and `/cv` load as before, with none of the shell; the Terminal still never opens by itself;
+  - **IX**: the cursor, the selection and the new states are drawn in the site's tokens, with nothing from another terminal's look.
+  Record the result here.
+- [ ] T213 Run the full verification after T210 to T212: `npm run typecheck`, `npm test` (with GNU tools on `PATH` for T158), `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0, the last with the `terminal` part's added lines in both shells. Update plan.md, research.md, data-model.md and the contracts wherever the build differs from what they say, before the PR (Constitution I).
+- [ ] T214 Run quickstart.md scenarios 10 and 11's automatable steps (10.1 to 10.9; 11.1, 11.2, 11.4 and 11.5 on Linux keys) on the real build, scripted with Playwright, with scratch output in the scratchpad, and record any deviation here. Scenario 11.3's macOS keys are T215's.
+- [ ] T215 Owner action, by hand (quickstart 11, research R24): the macOS line-editing and readline keys in Safari and Firefox (FR-074); VoiceOver and NVDA with the new cursor, the loading line, a stopped line and Ctrl+C (SC-004); forced colors in Edge with the filled and hollow cursor and a selection (FR-033); and comparing every amendment state with `design/exports/` (FR-031, SC-010). Record each result here and in the PR. Under the constitution's interim provision on deferred manual checks, the owner may defer them to the final testing phase: then record that here, list each one in the PR, and leave this task open.
+- [ ] T216 Commit the remaining work with Conventional Commits, push `006-terminal-shell` and open one pull request to `main` holding the spec amendment, the plan's changes, the design update, the shell and every change above (Constitution XI, plan Constitution Check XI):
+  - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
+  - The description links `specs/006-terminal/spec.md` and `specs/006-terminal/tasks.md`; names the one new dependency and its reason (research R25); lists the upstream issues of T129 and the temporary redirect guard; and records the results of T211, T214 and T215, listing every manual check deferred under the interim provision.
+  - Confirm the CI jobs run and pass, that the `site` job's summary matches a local `npm run site-check` on the same commit (FR-042), and that the parity test ran with GNU tools on `ubuntu-latest`. Merging is the owner's.
+
+---
+
+## Amendment: Dependencies & Execution Order
+
+### Phase dependencies
+
+- **Phase 16 (Setup)**: T127 first, then T128; T129 after T128, in parallel with Phase 17.
+- **Phase 15 before the amendment's UI**: T121 to T126 change `Terminal.tsx`, `site-text.ts`,
+  `terminal.css`, `pocket.css` and the tests that name the greeting, which T132, T151 and every UI
+  task below change too. Finish Phase 15 first.
+- **Phase 17 (Foundational)**: after T128. BLOCKS every amendment story.
+  - T130 first; T131 after T130; T132 after T130 and Phase 15.
+  - T133, T134, T135, T136 and T137 in parallel; T138 then T139 (T139 needs T134).
+  - T140 after T134; T141 then T142 (needs T136, T139, T140); T143 then T144 (needs T142).
+  - T145 then T146; T147 then T148 (needs T144); T149 after T133 and T148.
+  - T150 after T146 and T149; T151 after T150; T152 after T151; T153 last.
+- **Design gate**: every amendment task that creates or changes UI (T151, T170, T171, T172, T178,
+  T181, T187 to T189, T195, T196) depends on T130 and Phase 15.
+- **US1 (Phase 18)**: after Phase 17. The amendment's MVP; every later amendment story runs on it.
+- **US3 (Phase 19)**: after US1 (its wrappers sit in `site-commands.ts` and `adapter.ts` after
+  T168 and T169).
+- **US4 (Phase 20)**: after US1 and US3 (its states include `ls -l`).
+- **US5 (Phase 21)**: after US1 (T187 to T189 change `CommandLine.tsx` after T171, and T189 uses
+  T149's `cancel()`).
+- **US6 (Phase 22)**: after US1 and US5 (the selection and select-all states); its pocket states
+  need US4.
+- **US7 (Phase 23)**: after Phase 17 (the worker file); T197 needs US1's lines.
+- **US8 (Phase 24)**: after US1 to US7, since the check covers every state and line they add.
+- **Polish (Phase 25)**: after every amendment story.
+
+### Within each phase
+
+- Tests first, failing before the code they cover.
+- `shell/` modules before the adapter, the adapter before the worker, the worker before the
+  client, the client before the session, the session before the components.
+- The token and site text tasks before the components that read them.
+
+### Parallel opportunities
+
+- Phase 17: T133 to T138 together after T130; T140, T141, T143, T145 and T147 are test or type
+  tasks on different files.
+- US1: T154 to T167 are all [P] (different files); T168 and T169 touch different files from T170
+  to T172.
+- US3: T174 to T177 [P]. US5: T182 to T186 [P]. US6: T191 to T194 [P]. US7: T197 and T198 [P].
+  US8: T201 to T205 [P].
+- Polish: T209, T211 and T212 [P].
+
+## Amendment: Parallel Example, Phase 17
+
+```bash
+# After T130, the shell's types, lists, block text and their tests together:
+Task: "Write shell/protocol.ts (T133)"
+Task: "Amend engine/block.ts with stream and blockText, and engine/block.test.ts (T134)"
+Task: "Extend engine/boundaries.test.ts over shell/ (T135)"
+Task: "Write shell/standard.ts (T136)"
+Task: "Write test/terminal/shell/context.ts (T137)"
+Task: "Write test/terminal/shell/fs.test.ts (T138)"
+```
+
+## Amendment: Parallel Example, User Story 1
+
+```bash
+Task: "Extend shell/adapter.test.ts (FR-067, FR-057, FR-022)"
+Task: "Write shell/standard.test.ts (FR-068, FR-008, FR-017)"
+Task: "Write shell/limits.test.ts (FR-069)"
+Task: "Write shell/jq.test.ts (FR-055, FR-056)"
+Task: "Write shell/bash-parity.test.ts (SC-014)"
+Task: "Write terminal/loading.test.ts (FR-070, SC-013)"
+Task: "Write terminal/cursor.test.ts (FR-072)"
+Task: "Write terminal/focus-click.test.ts (FR-071)"
+```
+
+## Amendment: Implementation Strategy
+
+### MVP first
+
+1. Phase 15 (no greeting), then Phase 16: baseline, `just-bash`, the upstream reports prepared.
+2. Phase 17: the Terminal on the shell, with today's behavior kept (CRITICAL: blocks every story).
+3. Phase 18 (US1): the shell's language and commands, limits, loading, the cursor and click to
+   focus.
+4. **STOP and VALIDATE**: quickstart 10 on the real build at 1440 × 900.
+
+### Incremental delivery
+
+1. Phase 17 → the shell runs every command; nothing the amendment doesn't change has moved.
+2. US1 → a bash-like shell on desktop (the amendment's MVP).
+3. US3 → files the visitor can make beside protected ones.
+4. US4 → the pocket terminal with the new states.
+5. US5 → a terminal's keys, select all, Ctrl+C.
+6. US6 → the blink, forced colors, the new states' accessibility.
+7. US7 → the shell offline and after an update.
+8. US8 → the site check.
+
+The amendment ships in one PR from `006-terminal-shell` (Constitution XI); the increments are
+checkpoints within it.
+
+## Amendment Requirement Coverage
+
+The requirements the 2026-10-29 amendment adds or amends, and the test tasks that cover them now.
+Every other requirement keeps the coverage of the table at the end of Phase 11, through tests that
+must still pass on the shell (T153).
+
+| Requirement | Test task(s) |
+|-------------|--------------|
+| 006-terminal-FR-005 | T121, T166 |
+| 006-terminal-FR-007 | T143 |
+| 006-terminal-FR-008 | T143, T155, T159 |
+| 006-terminal-FR-012 | T175, T177 |
+| 006-terminal-FR-014 | T141, T166 |
+| 006-terminal-FR-015 | T165 |
+| 006-terminal-FR-016 | T145, T159 |
+| 006-terminal-FR-017 | T141, T155, T159 |
+| 006-terminal-FR-018 | T145, T165 |
+| 006-terminal-FR-019 | T141 |
+| 006-terminal-FR-020 | T141, T150, T166 |
+| 006-terminal-FR-021 | T143, T150, T167, T177 |
+| 006-terminal-FR-022 | T154, T167 |
+| 006-terminal-FR-023 | T180, T194 |
+| 006-terminal-FR-025 | T180 |
+| 006-terminal-FR-026 | T182, T186 |
+| 006-terminal-FR-028 | T145, T185, T186 |
+| 006-terminal-FR-029 | T186 |
+| 006-terminal-FR-030 | T167 |
+| 006-terminal-FR-031 | T194 |
+| 006-terminal-FR-032 | T191 |
+| 006-terminal-FR-033 | T192 |
+| 006-terminal-FR-034 | T193 |
+| 006-terminal-FR-035 | T193, T205 |
+| 006-terminal-FR-036 | T197 |
+| 006-terminal-FR-037 | T209 |
+| 006-terminal-FR-038 | T201, T204, T205 |
+| 006-terminal-FR-039 | T203 |
+| 006-terminal-FR-040 | T202 |
+| 006-terminal-FR-041 | T204 |
+| 006-terminal-FR-042 | T205 |
+| 006-terminal-FR-043 | T138, T176 |
+| 006-terminal-FR-045 | T138 |
+| 006-terminal-FR-046 | T145, T176 |
+| 006-terminal-FR-047 | T134, T141 |
+| 006-terminal-FR-048 | T145 |
+| 006-terminal-FR-049 | T138, T174, T175, T176, T177 |
+| 006-terminal-FR-050 | T141, T176 |
+| 006-terminal-FR-052 | T180 |
+| 006-terminal-FR-053 | T180 |
+| 006-terminal-FR-055 | T157 |
+| 006-terminal-FR-056 | T157, T159, T166 |
+| 006-terminal-FR-057 | T134, T143, T145, T154, T160 |
+| 006-terminal-FR-058 | T141 |
+| 006-terminal-FR-059 | T141 |
+| 006-terminal-FR-067 | T143, T145, T154, T158, T160 |
+| 006-terminal-FR-068 | T155, T158, T177 |
+| 006-terminal-FR-069 | T145, T156, T162 |
+| 006-terminal-FR-070 | T147, T161, T197, T198 |
+| 006-terminal-FR-071 | T164, T180 |
+| 006-terminal-FR-072 | T163 |
+| 006-terminal-FR-073 | T138, T177 |
+| 006-terminal-FR-074 | T182 |
+| 006-terminal-FR-075 | T183, T184 |
+
+Success criteria added or changed: SC-002 T167; SC-013 T147, T161, T211; SC-014 T158; SC-015
+T203; SC-004 and SC-010 T215.
+
+## Amendment: Notes
+
+- T129's and T215's owner actions are the owner's: filing issues upstream and the hand checks.
+- **Choices made here that the design documents don't fix**. If the owner prefers otherwise,
+  change the plan or contract first:
+  - **One foundational phase moves the Terminal onto the shell** (T140 to T153), keeping every
+    behavior the amendment doesn't change, before any story adds what it changes. A story-by-story
+    move would leave the old parser and the shell side by side.
+  - **`blockText`'s unit test** is `engine/block.test.ts` (T134), a file the plan's Project
+    Structure doesn't list, as `blockText` is the engine's.
+  - **`shell/context.ts`** (T137) is a test helper the plan doesn't list, as `engine/context.ts` is
+    for the engine.
+  - **`packages/web/test/build.test.ts`** (T147) is new, as the plan allows ("or in the existing
+    build tests"); no build test file exists today.
+  - **SC-013's budget** is T127's measured `os` script size plus 5%, not research R34's 102 KB
+    plus 5%: T104 measured 107 KB before the amendment, so 102 KB plus 5% would fail a build that
+    hasn't grown.
+  - **The network lock** is a first-imported module of `shell/` (T148), since ES imports are
+    hoisted and the lock must run before just-bash's module body; plan.md gains it.

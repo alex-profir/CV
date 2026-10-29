@@ -15,11 +15,8 @@ The same tree renders in a window's `.window-content` and in a full-screen view'
 div.terminal                          data-shell-look desktop|pocket          FR-024 FR-031 FR-032 FR-033 FR-035
 ├── h1.visually-hidden                "Terminal"                              FR-029
 ├── div.terminal-screen               the scroll container; output never scrolls the page   FR-019 FR-023
-│   ├── div.greeting                  aria-labelledby nothing; plain text and controls      FR-005
-│   │   ├── p                         "cv-os terminal · read only · nothing you type leaves your browser" (desktop)
-│   │   ├── p                         {basics.name} — {basics.label}, or the site heading when the CV has no name
-│   │   ├── p                         "This is my CV as a terminal. … New here? Try " button.command-inline "help" "."
-│   │   └── div.chips                 button.command-chip × 5: help, about, work, projects, cv   FR-015
+│   ├── div.starter                   button.command-chip × 5: help, about, work, projects, cv; no greeting text   FR-005 FR-015 FR-030
+│   │                                 (amended 2026-10-29: the greeting's three lines are gone)
 │   ├── section.run × entries         aria-labelledby its h2                  FR-029
 │   │   ├── h2.run-command            span.prompt[aria-hidden] (guest · {path} · ◷ {hh:mm} · ❯; FR-027 FR-046), then {line as typed}   FR-006 FR-027 FR-029
 │   │   └── div.run-output            the output block (FR-009 to FR-018, FR-043 to FR-057)
@@ -27,7 +24,11 @@ div.terminal                          data-shell-look desktop|pocket          FR
 │       ├── span.prompt[aria-hidden]  guest · {path} [· ◷ {hh:mm}] · ❯         FR-027 FR-046
 │       ├── label.visually-hidden     "Command"                               FR-027
 │       ├── input.command-line        type=text, maxlength {command-line.max-length}   FR-006 FR-017 FR-018 FR-020 FR-026 FR-027
-│       └── span.cursor-mirror[aria-hidden]  the typed text and the block cursor   FR-032
+│       └── span.cursor-mirror[aria-hidden]  the typed text, its selection and the block cursor:
+│                                     data-focused (filled) or not (hollow), data-blinking   FR-032 FR-072 FR-074
+│   (while the shell loads, p.shell-loading under the starter chips; after a failed load,
+│    p.shell-failed and button.command-chip "try again" in its place; a stopped line's
+│    p.run-stopped in its .run)   FR-069 FR-070 FR-075
 ├── section.vim                       only while the vim view is open, in place of .terminal-screen   FR-058 to FR-065
 └── div.terminal-status[role=status].visually-hidden   announcements                FR-028
 ```
@@ -37,9 +38,14 @@ div.terminal                          data-shell-look desktop|pocket          FR
   `data-req="006-terminal-FR-046"`. On mobile the header shows
   `Terminal` (005 FR-032).
 - `.run` groups are in run order. `clear` and the Terminal menu's `Clear output` remove them all
-  and the greeting with them (FR-019).
+  and the starter chips with them (FR-019).
 - The prompt line's `form` has no submit button. Enter submits, and the handler prevents the
   page from navigating.
+- The command line has no border, outline, background or shadow, focused or not (FR-072). Its
+  cursor is filled while it has focus and hollow when it doesn't (research R36).
+- A `pointerup` on `.terminal-screen` outside a link, a control, an input and the vim view, that
+  leaves the page's selection collapsed or unchanged, focuses the command line without scrolling
+  (FR-071).
 - Command controls: `button.command-chip` (outlined, 26 px tall) or `button.command-inline`
   (underlined text in a 24 px row). Each is named by the command line it runs, such as `ls work`.
   The visible text may be shorter, such as `work/`, so `aria-label` holds the full line. Both carry
@@ -100,7 +106,11 @@ section.vim                           aria-label "{file} (read only)"          F
 | Command line | Enter | Runs the line (FR-006). An empty line gives a new prompt and nothing else (FR-007) |
 | Command line | Up, Down | Steps through the history, newest first, without running. Down past the newest gives back the saved draft (FR-020) |
 | Command line | Tab, Shift+Tab | The browser's: focus moves on. Nothing is completed or inserted (FR-026) |
-| Command line | Escape, Ctrl and Alt combinations, 005's `Alt+Shift` shortcuts | Not handled: the browser, the screen reader and the shell keep them (FR-026) |
+| Command line | The system's editing keys: Left, Right, Home, End, Cmd+Left/Right and Option+Left/Right (macOS), Ctrl+Left/Right (others), Shift with any, Backspace and Delete with their modifiers, undo, redo | The text field's own (FR-074) |
+| Command line | Ctrl+A, Ctrl+E, Ctrl+B, Ctrl+F, Ctrl+K, Ctrl+U, Ctrl+W, Ctrl+L (macOS only) | Readline's: line start, end, back, forward, delete to the end, to the start, the word before, clear the screen keeping the line (FR-074, research R37) |
+| Command line, output | Cmd+A (macOS), Ctrl+A (others) | Selects the Terminal's text and nothing else. A printable key then clears it and types (FR-075) |
+| Command line | Ctrl+C with nothing selected | Cancels the line with `^C`, or stops the running line (FR-075). With text selected: the browser's |
+| Command line | Escape, every other Ctrl, Alt and Meta combination, 005's `Alt+Shift` shortcuts, and on Windows and Linux Ctrl+W, Ctrl+L, Ctrl+U, Ctrl+K and Ctrl+E | Not handled: the browser, the screen reader and the shell keep them (FR-026) |
 | A command control | Enter, Space, click, tap | Runs its line as typed, and focus returns to the command line (FR-015) |
 | Pocket keys | Left, Right, Home, End | Move between keys |
 | Vim text | FR-060's keys | [data-model.md](../data-model.md#vim-view-key-entities-vim-view-pipe)'s transitions |
@@ -120,12 +130,15 @@ these keys, which act only while focus is in the command line or the vim view (F
 | `cv`, or `vim` opening the view | `.vim-text` (FR-065) |
 | `:q`, or the `:q` chip | The command line (FR-064) |
 | `clear` or `Clear output` | The command line |
+| A click or tap on the screen outside links and controls, that selects nothing (FR-071) | The command line, without scrolling |
+| A line stopped, or the shell restarted (FR-069) | Stays in the command line |
 | `exit` on desktop | 005 FR-023's rule: the next window's title, or the Terminal's dock item |
 | `exit` on mobile | The home screen's Terminal icon (005 FR-034) |
 | `open cv`, `open about` | The opened window's title, as the dock or site menu would (005 FR-040) |
 
 The focus indicator is 005's: a 2 px `color.focus-shell` outline, 2 px outside, on chips, inline
-controls, links, keys, fold lines, the command line and the vim text.
+controls, links, keys, fold lines and the vim text. The command line's is its filled cursor
+instead (FR-072).
 
 ## Announcements (FR-028, FR-065)
 
@@ -134,7 +147,10 @@ Written to `.terminal-status`, once each:
 | After | Announced |
 |-------|-----------|
 | A command whose output is at most 5 rows | The output's text |
-| A longer output | `{command}: {count} {unit}`, such as `work: 4 entries`, `help: 22 commands`, `ls: 11 entries` |
+| A longer output | `{command}: {count} {unit}`, such as `work: 4 entries`, `help: 22 commands`, `ls: 11 entries`, or `grep: 12 lines` for text the shell printed (research R30) |
+| A line stopped (FR-069) | The "stopped" line, once |
+| Ctrl+C with nothing selected (FR-075) | `Cancelled`, once |
+| The shell loading, then failing (FR-070) | `Loading the shell`, once, politely; then nothing when it is ready unless a waiting line runs; or the failure line, once |
 | `cd` | `Now in {path}` |
 | `clear` | `Cleared` |
 | Opening the vim view | `{file}, read only, {n} lines. Type :q to leave.` |
@@ -153,7 +169,7 @@ h1  Terminal                                  (visually hidden, once)
     h3  {entry}                               (when the output is one section, such as `work`)
 ```
 
-The greeting has no heading. The vim view is named by its `aria-label`.
+The starter chips have no heading. The vim view is named by its `aria-label`.
 
 ## `data-req` targets
 
@@ -163,11 +179,15 @@ Written literally in the TSX, so the traceability check (001) reads them (FR-037
 |---------|-----------|
 | `div.terminal` | `006-terminal-FR-019 006-terminal-FR-023 006-terminal-FR-031 006-terminal-FR-032 006-terminal-FR-033 006-terminal-FR-035` |
 | `h1` | `006-terminal-FR-029` |
-| `div.greeting` | `006-terminal-FR-005 006-terminal-FR-030` |
+| `div.starter` | `006-terminal-FR-005 006-terminal-FR-030` |
 | `section.run` | `006-terminal-FR-006 006-terminal-FR-029` |
 | `div.run-output` | `006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018` |
-| `input.command-line` | `006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027` |
-| `span.cursor-mirror` | `006-terminal-FR-032` |
+| `input.command-line` | `006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075` |
+| `span.cursor-mirror` | `006-terminal-FR-032 006-terminal-FR-072 006-terminal-FR-074` |
+| `div.terminal-screen` | `006-terminal-FR-071 006-terminal-FR-075` |
+| `p.shell-loading`, `p.shell-failed` and its `try again` control | `006-terminal-FR-070` |
+| `p.run-stopped` | `006-terminal-FR-069 006-terminal-FR-075` |
+| `help`'s standard group | `006-terminal-FR-008 006-terminal-FR-068` |
 | `.terminal-status` | `006-terminal-FR-028` |
 | `span.prompt`, live and echoed | `006-terminal-FR-027 006-terminal-FR-046` |
 | the Terminal's `WindowTitle` `span` | `006-terminal-FR-046` |
@@ -189,4 +209,5 @@ Written literally in the TSX, so the traceability check (001) reads them (FR-037
 | Terminal menu's `Clear output` | `006-terminal-FR-003 006-terminal-FR-019` |
 
 These are Non-UI and carry no target: FR-002, FR-012, FR-014, FR-021, FR-022, FR-036 to FR-042,
-FR-044, FR-045, FR-047, FR-049, FR-055, FR-057.
+FR-044, FR-045, FR-047, FR-049, FR-055, FR-057, FR-067 and FR-073. The shell's behavior is in the
+worker, which renders nothing (contracts/shell-worker.md).

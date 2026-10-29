@@ -16,7 +16,9 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 |------|---------|
 | `(guest)(~)` | The prompt's first line: a `guest` label joined to the working folder's path, then the time the prompt appeared |
 | `❯ ` | The prompt's second line, before the command line or an earlier command |
-| `█` | The cursor: a steady block at the end of the command line |
+| `█` | The cursor while the command line has focus: a filled block. It blinks until 5 s after focus or the last key press, then stays filled (FR-032) |
+| `▯` | The cursor while focus is elsewhere: a hollow block, an outline only, never blinking (FR-072) |
+| `▓text▓` | Selected text: lilac behind, night text (FR-074, FR-075) |
 | `‹help›` | A command control (FR-015): a button that runs the command. Drawn as a small outlined chip |
 | `_work/_` | A command control inside output: an underlined name. Folders are periwinkle with a trailing slash, files are plain (FR-043, FR-050) |
 | `_name ↗_` | A link to another site |
@@ -35,23 +37,29 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | Terminal window when opened | 760 × 536 px. Its right edge 40 px inside the desktop area's right edge, its top 120 px below the top of the window in front, so that window's title bar stays visible. Fitted to the area, at least 24 px above its bottom and never below 400 × 300. With no window open, centered in the area. At 1440 × 900 with the CV window open: x 640, y 176 | FR-003, 005 FR-018 |
 | Padding | 20 px on desktop (24 px maximized), 14 px on the pocket terminal's screen (12 px below 375 px wide) | FR-031 |
 | Rows holding command controls | 24 px tall, so every control in `help`, `ls` and `specs` has a 24 × 24 px target (FR-034). Chips are 26 px tall | FR-034 |
-| Greeting and prompt | See [Site text](#site-text). The greeting's name and label come from the CV document | FR-005, FR-030 |
+| Opening and prompt | No greeting text. The Terminal opens with a row of starter command chips, `help`, `about`, `work`, `projects`, `cv`, then the prompt. See [Site text](#site-text). Amended 2026-10-29: a three-line greeting, with the owner's name and label from the CV document, came first | FR-005, FR-030 |
 | Order of the home folder in `ls` | `cv.json`, `about`, `contact`, `work/`, `projects/`, `skills`, `education/`, `languages`, `interests`, `readme`, `specs/`: the whole CV, its parts in `/cv`'s order, then the site | FR-043 |
 | Command line limit | 500 characters. Typing or pasting past it adds nothing more | FR-017 |
-| Cursor | A steady block that never blinks, with or without reduced motion | FR-032 |
+| Command line | No box, border, outline, background or underline, focused or not. The prompt's `❯` and the cursor mark it. Amended 2026-10-29: it had the site's focus outline | FR-072 |
+| Cursor | A block one character wide, in `color.terminal-cursor` (haze). With focus: filled, the letter under it in night; it blinks, half of `motion.duration.cursor-blink` (1000 ms) on and half off, with no fade, from focus or a key press until `motion.duration.cursor-idle` (5000 ms) after the last, then stays filled. Without focus: hollow, a 2 px (`border.thick`) haze outline inside the block, steady. Reduced motion: never blinks. It is the command line's focus indicator. Amended 2026-10-29: it was a steady block at 90% that never blinked | FR-032, FR-072 |
+| Selection | `color.terminal-selection` (lilac) behind, `color.terminal-selection-text` (night) for everything selected, links, prompt and chip names included. Square bands, one per line. In the command line the cursor sits at the end the keys move, beside the selection, never on it | FR-074, FR-075 |
+| `help`'s standard commands | After the site's commands: `Standard commands` (snow, bold) and a fog note, then every command of FR-068 by name in alphabetical order, two spaces apart, wrapping within the window, each name a control that runs `help <name>`, in 24 px rows | FR-008, FR-015, FR-034 |
+| The shell loading and failing | A quiet fog line under the starter chips while it loads; a rose sentence, a haze one and a `try again` chip if it fails. The prompt and the command line stay in both | FR-070 |
+| The visitor's files in `ls` | After the built files, in name order, marked as they are | FR-073 |
+| Owner in `ls -l` | Protected files and folders are owned by `root`, read only (`-r--r--r--`, `dr-xr-xr-x`); the visitor's by `guest`, in haze, writable. Folder names keep their trailing slash | FR-049 |
 | Terminal menu | Titled `Terminal`. It holds `Clear output` (no shortcut), then 005's window commands with their shortcuts | FR-003, FR-019 |
 | Dock and home screen icon | An original glyph: a mint `❯` and a periwinkle `_` on a dark tile with a hairline edge. After the CV app | FR-001, FR-031 |
 | Command keys | 8 keys in this order: `help` (indigo, the way in), `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear`. At least 44 × 44 px: 52 px tall in portrait, 48 px below 375 px wide, at least 44 px in landscape | FR-051 |
 | Pocket terminal layout | Height ≥ width: the screen above, the keys below in 4 columns. Width > height: the screen on the left, the keys on the right in 2 columns of 4. The case fills the space below the header with an 8 to 14 px margin, at most 560 px wide in portrait and 900 px in landscape, centered | FR-024, FR-052 |
 | Device it evokes | A small handheld terminal of the site's own design: a glass case, a power light, a recessed screen, raised keys, a speaker grille and the owner's name, from the CV document, engraved (drawn only where it fits). It copies no real device | FR-054 |
 | On-screen keyboard open | The keys hide and the screen grows to fill the space above the keyboard, so the command line and the newest output stay in view. When the keyboard closes, the keys come back | FR-053 |
-| Output color | Commands and CV text in snow and haze, dates and descriptions in fog, controls and links in periwinkle, section headings in lilac, the prompt mark in mint, "is not a command" in rose. Slate is never used for text | FR-031, FR-035 |
+| Output color | Commands and CV text in snow and haze, dates and descriptions in fog, controls and links in periwinkle, section headings in lilac, the prompt mark in mint, "command not found", syntax errors, "Permission denied", "stopped" and the load error in rose, `^C` and the loading line in fog. Slate is never used for text | FR-031, FR-035 |
 | Vim view | Fills the Terminal window's content, or the pocket terminal's screen. A 4-character line-number gutter (3 on the phone), the text, then a 24 px status line and a 28 px message line (26 on the phone). Text 14 on 21 px, as the Terminal's. Long lines wrap at a space, continuations indented 2 past the line's own indent. Opens with each top-level section folded and the cursor on the first fold | FR-058, FR-061, FR-063 |
 | Vim view colors | Keys periwinkle, strings haze, numbers amber, `true`, `false` and `null` rose, punctuation and line numbers fog, the cursor line's number snow. Fold lines periwinkle on a faint band. Search matches on amber at 20%, the current one at 42% with an amber outline. The cursor a haze block with the character under it in night | FR-056, FR-062 |
 | Vim view status line | `NORMAL` (mint) or `HELP` (lilac) pill, the file name, `[RO]` and the pipe that opened it; on the right the file type, `line,column` and `Top`, `Bot`, `All` or a percentage | FR-058, FR-059 |
 | Vim view controls for pointers | `:help` and `:q` chips at the right of the message line, fold lines, and on the phone the vim keys | FR-061, FR-064, FR-066 |
 | Vim keys on the pocket terminal | `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q` (mint, the way out), in the command keys' places; the case reads `cv-os pocket · vim keys` | FR-066 |
-| Forced colors and reduced transparency | The glass, sheen and blur drop out. Forced colors: `Canvas` and `CanvasText`, a solid border, chips and keys outlined, the cursor in `Highlight`. Reduced transparency: the solid `color.shell-surface` | FR-033 |
+| Forced colors and reduced transparency | The glass, sheen and blur drop out. Forced colors: `Canvas` and `CanvasText`, a solid border, chips and keys outlined. The filled cursor is `Highlight` with a 1 px `Highlight` bottom edge, so it shows by more than its fill, and the letter under it `HighlightText`; the hollow cursor is a 2 px `Highlight` outline. A selection is the system's `Highlight` and `HighlightText`, as on any page. The command line still gets no border. Reduced transparency: the solid `color.shell-surface` | FR-033 |
 
 ## Desktop shell
 
@@ -73,16 +81,16 @@ a filled open mark. Export: `exports/desktop-1-just-opened-1440.png`.
 |              |                            #==================================================#  |
 |              | ---------------------------# [x] [-] [^]       Terminal — ~                    #  |
 |              | Location                   #                                                  #  |
-|              | Email                      # cv-os terminal · read only · nothing you type    #  |
-|              | GitHub                     #   leaves your browser                            #  |
-|              |                            # [Name] — [label]                                 #  |
-|              | [summary ...........]      # This is my CV as a terminal. Type a command and  #  |
-|              | [...................]      # press Enter, or pick one to start. New here?     #  |
-|              |                            # Try _help_.                                      #  |
-|              | EXPERIENCE                 # ‹help› ‹about› ‹work› ‹projects› ‹cv›            #  |
+|              | Email                      # ‹help› ‹about› ‹work› ‹projects› ‹cv›            #  |
+|              | GitHub                     #                                                  #  |
+|              |                            # (guest)(~) ◷ 18:25                               #  |
+|              | [summary ...........]      # ❯ █                                              #  |
+|              | [...................]      #                                                  #  |
+|              |                            #                                                  #  |
+|              | EXPERIENCE                 #                                                  #  |
 |              | ---------------------------#                                                  #  |
-|              | [position] · [company]     # (guest)(~) ◷ 18:25                               #  |
-|              |                            # ❯ █                                              #  |
+|              | [position] · [company]     #                                                  #  |
+|              |                            #                                                  #  |
 |              |                            #                                                  #  |
 |              +----------------------------#                                                  #  |
 |                                           #==================================================#  |
@@ -94,6 +102,8 @@ a filled open mark. Export: `exports/desktop-1-just-opened-1440.png`.
 +--------------------------------------------------------------------------------------------------+
 ```
 
+- No greeting: the starter chips, then the prompt (FR-005). Amended 2026-10-29: a three-line
+  greeting came first.
 - The window is glass: the CV window and the wallpaper show through it, blurred.
 - Page title: `Terminal – [Site name]` (005 FR-042).
 - The frames below show the Terminal window alone. The desktop around it is as in this frame.
@@ -101,7 +111,9 @@ a filled open mark. Export: `exports/desktop-1-just-opened-1440.png`.
 ### After `help` (FR-008, FR-015, FR-019)
 
 The command sits at the top of the view and the output scrolls inside the window. Every command
-and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
+and alias is a control. After the site's commands comes a group of the standard commands (FR-008,
+FR-068), names only. The frame shows the start of the output; the export shows it scrolled to its
+end, with the standard commands and the new prompt. Export: `exports/desktop-2-after-help-1440.png`.
 
 ```
 #==================================================================#
@@ -135,8 +147,33 @@ and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
 # _pwd_                          Show the current folder           #
 # _open_ <name>                  Open cv or about in the shell   v #
 #==================================================================#
-  (scrolled further: history, clear, exit, then a new prompt)
+  (scrolled further: history, clear, exit, the standard commands, then a new prompt)
 ```
+
+Scrolled to its end, as exported:
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — ~                           #
+#   ... cv, site, specs, ls, cd, cat, jq, vim, pwd, open ...     ^ #
+# _history_                      Commands run so far             | #
+# _clear_                        Clear the screen                | #
+# _exit_                         Close the Terminal              | #
+#                                                                | #
+# Standard commands  as in bash. help <command> shows its options.| #
+# _awk_  _basename_  _cp_  _cut_  _date_  _diff_  _dirname_  _echo_| #
+# _env_  _false_  _find_  _grep_  _head_ ... (every command of     | #
+# FR-068, alphabetical, wrapping within the window)              | #
+# _which_  _xargs_                                                v #
+#                                                                  #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ █                                                              #
+#==================================================================#
+```
+
+- The standard commands' names wrap where the window ends, never inside a name.
+- Each standard command's name runs `help <name>`, so a click on `grep` shows grep's help rather
+  than its usage error (FR-015). The site's commands above them still run themselves.
 
 - Descriptions start at the 25th column. In a narrow window they wrap under themselves.
 
@@ -238,18 +275,19 @@ closes the help first, then the view. Export: `exports/desktop-3c-vim-key-help-1
 
 ### After an unknown command (FR-016)
 
-The typed word as typed, "is not a command" in rose, a pointer to `help` as a control, then each
-suggestion as a chip, closest first, at most 3. With no suggestion the reply ends at `help`.
+The reply starts as bash's does (FR-016): the typed word as typed, then `: command not found` in
+rose, a pointer to `help` as a control, then each suggestion as a chip, closest first, at most 3.
+With no suggestion the reply ends at `help`. Amended 2026-10-29: it read `wrok is not a command.`
 Export: `exports/desktop-4-after-unknown-command-1440.png`.
 
 ```
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
 #                                                                  #
-#   ... the greeting, as when just opened ...                      #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ wrok                                                           #
-# wrok is not a command. Run _help_ to see them all, or try:       #
+# wrok: command not found. Run _help_ to see them all, or try:    #
 # ‹work›                                                           #
 #                                                                  #
 # (guest)(~) ◷ 18:26                                               #
@@ -265,7 +303,7 @@ Folders end in `/`. Every name is a control. Export: `exports/desktop-5-after-ls
 ```
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
-#   ... the greeting ...                                           #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ ls                                                             #
 # _cv.json_   _about_     _contact_   _work/_   _projects/_ _skills_
@@ -327,7 +365,8 @@ active requirements. Then a link to the repository. Export: `exports/desktop-7-a
 ### Maximized (005 FR-065)
 
 The window fills the desktop area, between the menu bar and the dock, with no corners or shadow.
-The maximize control shows its restore glyph. The output reflows, so `help` fits whole. Export:
+The maximize control shows its restore glyph. The output reflows: `help` fits down to its
+standard commands, and the new prompt is just below the view. Export:
 `exports/desktop-8-maximized-1440.png`.
 
 ```
@@ -341,8 +380,10 @@ The maximize control shows its restore glyph. The output reflows, so `help` fits
 # Click a command to run it, or type it. Join commands with |.                                     #
 # _help_ [command]  _?_          Every command, or one command's own help                          #
 #   ... every command, through _exit_ ...                                                          #
-# (guest)(~) ◷ 18:25                                                                               #
-# ❯ █                                                                                              #
+# Standard commands  as in bash. help <command> shows its options.                               ^ #
+# _awk_  _basename_  _cp_  _cut_  _date_  _diff_  _dirname_  _echo_  _env_  _false_ ... _wc_       | #
+# _which_  _xargs_                                                                               v #
+#   (scrolled further: a new prompt)                                                               #
 #==================================================================================================#
 |                                        +-----------------------+                                 |
 |                                        |  [ CV ]  [ ❯_ ]       |                                 |
@@ -353,7 +394,7 @@ The maximize control shows its restore glyph. The output reflows, so `help` fits
 
 The `Terminal` menu, open from the menu bar. `Clear output` does what `clear` does. While the
 window is maximized, `Maximize` reads `Restore` and `Move…` and `Resize…` are unavailable, as in
-005. Export: `exports/desktop-9-menu-open-1440.png`.
+005. Focus is in the menu, so the command line's cursor is hollow. Export: `exports/desktop-9-menu-open-1440.png`.
 
 ```
 +--------------------------------------------------------------------------------------------------+
@@ -377,7 +418,7 @@ window is maximized, `Maximize` reads `Restore` and `Move…` and `Resize…` ar
 ### Just opened (FR-024, FR-051)
 
 Full screen below 005's header. The case is decoration only: screen readers skip it and it never
-takes focus (FR-054). The screen holds the greeting, the prompt and the command line. Tapping the
+takes focus (FR-054). The screen holds the starter chips, the prompt and the command line. Tapping the
 command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-375.png`.
 
 ```
@@ -387,16 +428,12 @@ command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-37
 |  +-------------------------------+  |
 |  | • cv-os pocket                |  |
 |  | +---------------------------+ |  |
-|  | | read only · stays in your | |  |
-|  | |   browser                 | |  |
-|  | | [Name] — [label]          | |  |
-|  | | My CV as a terminal. Tap a| |  |
-|  | | key below, or type a      | |  |
-|  | | command. New? Try _help_. | |  |
 |  | | ‹help› ‹about› ‹work›     | |  |
-|  | | ‹projects› ‹cv›           | |  |
+|  | |   ‹projects› ‹cv›         | |  |
 |  | | (guest)(~)                | |  |
 |  | | ❯ █                       | |  |
+|  | |                           | |  |
+|  | |                           | |  |
 |  | |                           | |  |
 |  | +---------------------------+ |  |
 |  | [ help ][about][ work ][proj.]|  |
@@ -412,8 +449,10 @@ command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-37
 
 ### After `help` (FR-008, FR-025)
 
-Each command on its own row, its description below it, indented. The output scrolls inside the
-screen and the keys stay. Export: `exports/phone-2-after-help-375.png`.
+Each command on its own row, its description below it, indented. Then the standard commands, as
+on desktop, the note wrapped and indented, the names wrapping within the screen. The output
+scrolls inside the screen and the keys stay. The export shows it scrolled to its end. Export:
+`exports/phone-2-after-help-375.png`; at 320 px, `exports/phone-19-after-help-320.png`.
 
 ```
 +-------------------------------------+
@@ -429,6 +468,17 @@ screen and the keys stay. Export: `exports/phone-2-after-help-375.png`.
 |  | | _about_  _whoami_         | |  |
 |  | |   Name, role, location... | |  |
 |  | |   ...                     | |  |
+|  | | _exit_                    | |  |
+|  | |   Close the Terminal      | |  |
+|  | | Standard commands         | |  |
+|  | |   as in bash. help        | |  |
+|  | |   <command> shows its     | |  |
+|  | |   options.                | |  |
+|  | | _awk_  _basename_  _cp_   | |  |
+|  | |   ... wrapping ...        | |  |
+|  | | _which_  _xargs_          | |  |
+|  | | (guest)(~)                | |  |
+|  | | ❯ █                       | |  |
 |  | +---------------------------+ |  |
 |  | [ help ][about][ work ][proj.]|  |
 |  | [skills][ cv  ][  ls  ][clear]|  |
@@ -526,13 +576,6 @@ scrolls sideways. Export: `exports/phone-5-just-opened-320.png`.
 | +----------------------------+ |
 | | • cv-os pocket             | |
 | | +------------------------+ | |
-| | | read only · in your    | | |
-| | |   browser              | | |
-| | | [Name]                 | | |
-| | | [label]                | | |
-| | | My CV as a terminal.   | | |
-| | | Tap a key below, or    | | |
-| | | type. New? Try _help_. | | |
 | | | ‹help› ‹about› ‹work›  | | |
 | | | ‹projects› ‹cv›        | | |
 | | | (guest)(~)             | | |
@@ -546,8 +589,7 @@ scrolls sideways. Export: `exports/phone-5-just-opened-320.png`.
 
 ### In landscape, 568 × 320 (FR-052, SC-012)
 
-The screen on the left, the keys on the right in 2 columns of 4, each at least 44 px tall. The
-greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
+The screen on the left, the keys on the right in 2 columns of 4, each at least 44 px tall. Export: `exports/phone-6-landscape-568.png`.
 
 ```
 +--------------------------------------------------------+
@@ -556,29 +598,286 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | +----------------------------------------------------+ |
 | | • cv-os pocket                                     | |
 | | +----------------------------------+ [help][about] | |
-| | | [Name] — [label]                 | [work][proj.] | |
-| | | My CV as a terminal. Tap a key,  | [skls][ cv  ] | |
-| | | or type a command. New? _help_.  | [ ls ][clear] | |
-| | | ‹help› ‹about› ‹work› ‹projects› |               | |
-| | | (guest)(~)                       |               | |
+| | | ‹help› ‹about› ‹work› ‹projects› | [work][proj.] | |
+| | | ‹cv›                             | [skls][ cv  ] | |
+| | | (guest)(~)                       | [ ls ][clear] | |
 | | | ❯ █                              |               | |
 | | +----------------------------------+               | |
 | +----------------------------------------------------+ |
 +--------------------------------------------------------+
 ```
 
+## States added by the amendment of 2026-10-29
+
+These states follow the spec's amendment of 2026-10-29: a bash-like shell (FR-067 to FR-070,
+FR-073) and a terminal's cursor and keys (FR-071 to FR-075). Each is drawn on both shells, at
+1440 × 900 and at 375 × 812, and at 320 × 568 where text is at risk of wrapping badly. The
+desktop frames show the Terminal window alone; the desktop around it is as when just opened.
+
+### Focus elsewhere: the hollow cursor (FR-072, FR-032)
+
+Focus has moved to the dock with Tab or the shell's shortcut. The command line keeps what was
+typed. Its cursor turns hollow and stops blinking; the dock item has 005's focus outline. On the
+phone, focus is on the Home control. Exports: `exports/desktop-10-cursor-unfocused-1440.png`,
+`exports/phone-8-cursor-unfocused-375.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — ~                           #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ skills▯                                                        #
+#==================================================================#
+                  +-----------------------+
+                  |  [ CV ]  {[ ❯_ ]}     |   {…} the dock item's focus outline
+                  +-----------------------+
+```
+
+- Clicking anywhere on the screen that isn't a link or a control brings focus back without
+  scrolling (FR-071): the cursor is filled again and blinks.
+- The menu-open state (desktop 9) shows the same hollow cursor, as focus is in the menu.
+
+### Text selected in the command line (FR-074)
+
+`work | grep -i engineer` typed, then Option+Left to the start of `engineer` and
+Shift+Option+Right. The word is selected; the cursor stands after it, at the end the keys moved.
+Typing or deleting replaces the selection. Exports: `exports/desktop-11-line-selection-1440.png`,
+`exports/phone-9-line-selection-375.png`.
+
+```
+# (guest)(~) ◷ 18:25                                               #
+# ❯ work | grep -i ▓engineer▓█                                     #
+```
+
+### Cmd+A: all of the Terminal's text (FR-075)
+
+Cmd+A on macOS, Ctrl+A elsewhere, with focus in the command line or the output. Every line of
+the Terminal's output and the command line is selected, the prompt's pills and the chips' names
+included. Nothing outside the window is: not the CV window behind the glass, the menu bar or the
+dock. The cursor stays filled at the end of the line. Copying gives the text as shown, with no
+cursor and no control's name added. Exports: `exports/desktop-12-select-all-1440.png`,
+`exports/phone-10-select-all-375.png` (on a phone with a keyboard attached; the phone frame
+starts at `about`, the chips scrolled above).
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — ~                           #
+# ‹▓help▓› ‹▓about▓› ‹▓work▓› ‹▓projects▓› ‹▓cv▓›                  #
+# ▓(guest)(~) ◷ 18:25▓                                             #
+# ▓❯ about▓                                                        #
+# ▓[Name]▓                                                         #
+# ▓[label]▓                                                        #
+# ▓[city], [country]▓                                              #
+# ▓[summary .......................................]▓             #
+# ▓(guest)(~) ◷ 18:26▓                                             #
+# ▓❯ work▓█                                                        #
+#==================================================================#
+```
+
+- Typing a letter clears the selection and adds the letter to the command line (story 5, 9).
+
+### A typed line cancelled with Ctrl+C (FR-075)
+
+With no text selected, Ctrl+C ends the line: it stays as typed, `^C` follows it in fog, and a
+new empty prompt appears. Nothing runs and nothing goes into the history. With text selected,
+Ctrl+C copies. Exports: `exports/desktop-13-ctrl-c-1440.png`, `exports/phone-11-ctrl-c-375.png`
+(a phone with a keyboard attached).
+
+```
+# (guest)(~) ◷ 18:25                                               #
+# ❯ projects | grep -i mob^C                                       #
+#                                                                  #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ █                                                              #
+```
+
+- While a command line runs, Ctrl+C stops it: `^C` after it, then `stopped: you pressed Ctrl+C.`
+  as in the limit state below.
+
+### The shell loading, on first open (FR-070)
+
+The starter chips, the prompt and the command line show at once and take typing. A quiet line in
+fog under the chips says the shell is loading. Nothing spins or moves. A command line run now
+waits, after its prompt, and runs as soon as the shell is ready; the line then goes. Exports:
+`exports/desktop-14-loading-1440.png`, `exports/phone-12-loading-375.png`.
+
+```
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
+# loading the shell · type away, commands run once it is ready     #
+#                                                                  #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ help█                                                          #
+```
+
+- A screen reader hears "Loading the shell" once, politely, and nothing when it is ready unless a
+  waiting command then runs.
+
+### The shell failing to load (FR-070)
+
+The loading line becomes an error in site text, with a `try again` chip that loads the shell
+again. The prompt and the command line stay; command lines run meanwhile keep waiting and run
+once a try succeeds. Exports: `exports/desktop-15-load-failed-1440.png`,
+`exports/phone-13-load-failed-375.png`.
+
+```
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
+# The shell couldn't load. Check the connection, then try again.   #
+# ‹try again›                                                      #
+#                                                                  #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ █                                                              #
+```
+
+- "The shell couldn't load." is rose; the rest haze. On the phone the two sentences take a line
+  each.
+
+### A command line stopped by its limit (FR-069)
+
+`while true; do :; done` runs for 5 seconds, then stops. The page, the shell and other windows
+kept responding throughout. A line in site text says why, then a new prompt. Exports:
+`exports/desktop-16-stopped-by-limit-1440.png`, `exports/phone-14-stopped-by-limit-375.png`.
+
+```
+# (guest)(~) ◷ 18:25                                               #
+# ❯ while true; do :; done                                         #
+# stopped: it ran for 5 seconds, the longest a command line runs   #
+#   here.                                                          #
+#                                                                  #
+# (guest)(~) ◷ 18:25                                               #
+# ❯ █                                                              #
+```
+
+- `stopped` is rose, the reason haze. The three reasons are in [Site text](#site-text).
+- Output printed before the stop stays above the line.
+
+### `ls` with the visitor's own files (FR-073, FR-043)
+
+After `mkdir notes && touch todo`, which prints nothing, `ls` lists the built files in the
+design's order, then the visitor's in name order. They are marked as the built ones are: folders
+periwinkle and bold with a trailing slash, files plain. Every name is a control. Exports:
+`exports/desktop-17-ls-visitor-files-1440.png`, `exports/phone-15-ls-visitor-files-375.png`.
+
+```
+# (guest)(~) ◷ 18:27                                               #
+# ❯ mkdir notes && touch todo                                      #
+#                                                                  #
+# (guest)(~) ◷ 18:27                                               #
+# ❯ ls                                                             #
+# _cv.json_    _about_      _contact_    _work/_      _projects/_  _skills_
+# _education/_ _languages_  _interests_  _readme_     _specs/_     _notes/_
+# _todo_                                                           #
+#                                                                  #
+# (guest)(~) ◷ 18:27                                               #
+# ❯ █                                                              #
+```
+
+### `rm` on a protected file, and `ls -l` (FR-049)
+
+`rm about` gets GNU's reply and changes nothing. `ls -l` shows the protected files read only and
+owned by `root`, and the visitor's files owned by `guest`. Sizes and times come from the build
+and the visit. Exports: `exports/desktop-18-permission-denied-1440.png`,
+`exports/phone-16-permission-denied-375.png`, `exports/phone-20-permission-denied-320.png`.
+
+```
+# (guest)(~) ◷ 18:28                                               #
+# ❯ rm about                                                       #
+# rm: cannot remove 'about': Permission denied                     #
+#                                                                  #
+# (guest)(~) ◷ 18:28                                               #
+# ❯ ls -l                                                          #
+# total [n]                                                        #
+# -r--r--r-- 1 root  root  [size] [date] _cv.json_               ^ #
+# -r--r--r-- 1 root  root  [size] [date] _about_                 | #
+#   ... one row per built file, in the design's order ...        | #
+# dr-xr-xr-x 2 root  root  [size] [date] _specs/_                | #
+# drwxr-xr-x 2 guest guest [size] [date] _notes/_                | #
+# -rw-r--r-- 1 guest guest [size] [date] _todo_                  v #
+#==================================================================#
+```
+
+- "Permission denied" is rose; the rest of the reply haze. Each path a command touches gets its
+  own reply line, as in GNU's tools.
+- The details are fog, `guest` haze, names controls as in `ls`.
+- On the phone each row wraps after its date, the name on the next line; the output scrolls with
+  `ls -l` at the top of the view.
+
+### A pipe and a filter (FR-057, FR-056)
+
+`work | grep -i engineer` prints the line of `work`'s text that matches, as the pipe passes it on:
+each line, heading and list item on a line of its own, without the list's bullet. `jq` takes a
+filter and prints what jq prints. Exports: `exports/desktop-19-pipe-and-filter-1440.png`,
+`exports/phone-17-pipe-and-filter-375.png`, `exports/phone-21-pipe-and-filter-320.png`.
+
+```
+# (guest)(~) ◷ 18:29                                               #
+# ❯ work | grep -i engineer                                        #
+# [the highlight of a role that holds "engineer"]                  #
+#                                                                  #
+# (guest)(~) ◷ 18:29                                               #
+# ❯ jq '.work[0].name' cv.json                                     #
+# "[the first role's organization]"                                #
+#                                                                  #
+# (guest)(~) ◷ 18:30                                               #
+# ❯ █                                                              #
+```
+
+- Output of standard commands is plain text in haze, with no command controls in it. `jq`'s
+  output keeps the vim view's JSON colors (strings haze, numbers amber, and so on).
+
+### A syntax error and "command not found" (FR-067, FR-016)
+
+An unclosed quote gets bash's syntax error naming what it expected; a command the shell doesn't
+know gets the reply of FR-016. Both are followed by a new prompt. Exports:
+`exports/desktop-20-syntax-error-not-found-1440.png`,
+`exports/phone-18-syntax-error-not-found-375.png`.
+
+```
+# (guest)(~) ◷ 18:31                                               #
+# ❯ echo "hello                                                    #
+# unexpected EOF while looking for matching `"'                    #
+#                                                                  #
+# (guest)(~) ◷ 18:31                                               #
+# ❯ sudo ls                                                        #
+# sudo: command not found. Run _help_ to see them all.             #
+#                                                                  #
+# (guest)(~) ◷ 18:31                                               #
+# ❯ █                                                              #
+```
+
+- The syntax error is rose. In "command not found" the typed word is snow, `: command not found`
+  rose, and the rest haze with `help` as a control.
+- Bash puts `bash: ` before both messages. The design leaves it out, so the reply starts with the
+  typed word, as FR-016 asks (see review.md).
+
+### Forced colors (FR-033)
+
+- **The cursor**: with focus, filled with `Highlight`, the letter under it `HighlightText`, and a
+  1 px `Highlight` bottom edge so it shows by more than a fill. Without focus, a 2 px `Highlight`
+  outline, empty. It still blinks with focus unless reduced motion is set.
+- **The selection**: the system's own `Highlight` and `HighlightText`, in the command line and
+  across the output, so it reads as any selection on the visitor's system.
+- **The command line**: still no border or box; `CanvasText` for the typed text.
+- **The loading and error lines**: `CanvasText`; the `try again` chip is a `ButtonText` outline
+  like every chip.
+
 ## Keyboard, focus and screen readers
 
 | Moment | Where focus is | What a screen reader hears |
 |--------|----------------|----------------------------|
 | The Terminal opens | The command line | "Terminal", then the command line's name, "Command" (FR-004, FR-027) |
-| Enter runs a command | Stays in the command line | The output once: in full up to 5 lines, else a summary such as "help: 23 commands" (FR-028) |
+| Enter runs a command | Stays in the command line | The output once: in full up to 5 lines, else a summary such as "help: [n] commands", counting the standard commands too (FR-028) |
 | A command control is activated | Back to the command line | As if the command were typed (FR-015) |
 | Tab from the command line | The next control in the output, then out of the Terminal to the shell | Nothing is completed or inserted (FR-026) |
 | `cv`, or `vim` with a file | Into the vim view | The file's name, `read only`, its number of lines, and "Type :q to leave" (FR-065) |
 | `:q` in the vim view | Back to the command line | The Terminal's output, as it was |
 | Tab in the vim view | The next control: the `:help` and `:q` chips, then out to the shell | Nothing in the file changes |
 | `exit`, or Close in the menu | The Terminal item in the dock (005 FR-023) | — |
+| Focus leaves the command line | Wherever it went; the cursor turns hollow | Nothing from the Terminal |
+| A click or tap on the screen, not on a link or a control | The command line; the cursor fills and blinks; nothing scrolls (FR-071) | The command line's name, "Command" |
+| Cmd+A, or Ctrl+A outside macOS | Stays where it was | The screen reader's own report of a selection |
+| Ctrl+C with nothing selected | Stays in the command line | "Cancelled", once |
+| A command line stopped by its limit | Stays in the command line | The stop line, once |
+| The shell loading, then failing | Stays in the command line | "Loading the shell", then the error line, each once; `try again` is a button |
 
 - Headings: one heading names the Terminal (visually hidden). Each command run is a heading one
   level below, holding the command as typed. Sections in `cv` are a level below that, and entries
@@ -586,7 +885,9 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 - The prompt's `guest`, path and time are hidden from screen readers in each command's heading;
   the path is read once when it changes (FR-027).
 - Focus indicator: 005's 2 px periwinkle outline, 2 px outside, on chips, underlined controls,
-  links, keys and the command line.
+  links and keys. The command line has none: its filled cursor is its focus indicator, and the
+  hollow cursor shows that focus is elsewhere (FR-072). Amended 2026-10-29: the command line had
+  the outline too.
 
 ## Site text
 
@@ -595,13 +896,12 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | Window title | `Terminal — [path]`, such as `Terminal — ~/work` |
 | Menu title and dock name | `Terminal` |
 | Menu item | `Clear output` |
-| Greeting, desktop | `cv-os terminal · read only · nothing you type leaves your browser` / `[name] — [label]` / `This is my CV as a terminal. Type a command and press Enter, or pick one to start. New here? Try help.` |
-| Greeting, phone | `read only · stays in your browser` / `[name] — [label]` / `My CV as a terminal. Tap a key below, or type a command. New? Try help.` In landscape the first line is left out. At 320 px the first line reads `read only · in your browser` |
-| Greeting's controls | `help`, `about`, `work`, `projects`, `cv` |
+| Greeting | None (FR-005). Amended 2026-10-29: the greeting's text is gone, in both shells |
+| Starter controls | `help`, `about`, `work`, `projects`, `cv` |
 | Prompt | `guest`, the path, and on desktop `◷ [hh:mm]`; then `❯` |
 | Command line's name | `Command` |
-| `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then each command and its description as listed in the desktop `help` frame, plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal` |
-| Unknown command | `[typed] is not a command. Run help to see them all, or try:` and the suggestions. With none: `[typed] is not a command. Run help to see them all.` |
+| `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then each command and its description as listed in the desktop `help` frame, plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal`; then `Standard commands` and `as in bash. help <command> shows its options.`, then the standard commands' names |
+| Unknown command (FR-016) | `[typed]: command not found. Run help to see them all, or try:` and the suggestions. With none: `[typed]: command not found. Run help to see them all.` Amended 2026-10-29: `[typed] is not a command. …` |
 | `specs` | `Every feature is specified before it is built. [n] specs:` … `All specs, plans and history: [repository]` |
 | `cv` description in `help` | `The CV's JSON in vim: cat cv.json \| jq \| vim -` |
 | Vim view, opening | `"[file]" [readonly] [n] lines  ·  za or click opens a fold` (phone: `"[file]" [n] lines  ·  tap a fold`) |
@@ -609,8 +909,17 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | Vim view, unknown `:` command | `:[typed] is not a command here. :help lists the keys.` |
 | Vim view, search | `/[text]   match [i] of [n]  ·  n next  ·  N previous`, or `/[text]   not found` |
 | Vim view, key help | As in the key help frame |
-| `jq` errors | `jq: [path or input] is not JSON.` / `jq here only pretty-prints. Usage: jq [path], or … \| jq` |
-| Pipe into a command that reads no input | `[command] doesn't read piped input. Pipe into jq or vim -.` |
+| `jq` errors | jq's own messages, as jq prints them, for input that isn't JSON and for a filter it can't parse (FR-056). Amended 2026-10-29: `jq here only pretty-prints. …` went with the filter |
+| Pipe into a command that reads no input | None: the command runs and ignores its input, as in bash (FR-057). Amended 2026-10-29: `[command] doesn't read piped input. …` went |
+| Shell loading (FR-070) | `loading the shell · type away, commands run once it is ready` (phone: the same, on two lines) |
+| Shell failed to load (FR-070) | `The shell couldn't load. Check the connection, then try again.` and the control `try again` |
+| Command line stopped (FR-069) | `stopped: it ran for 5 seconds, the longest a command line runs here.` / `stopped: it ran 10,000 commands, the most a command line runs here.` / `stopped: it printed 1 MB, the most a command line prints here.` |
+| Ctrl+C (FR-075) | `^C` after the line as typed; while a command line runs, also `stopped: you pressed Ctrl+C.` |
+| A protected path (FR-049) | GNU's reply for the command, ending `Permission denied`, such as `rm: cannot remove 'about': Permission denied` or `bash: about: Permission denied` for a redirect |
+| The visitor's files full (FR-073) | GNU's reply ending `No space left on device`, such as `touch: cannot touch 'big': No space left on device` |
+| Syntax error (FR-067) | bash's message without its `bash: ` prefix, such as ``unexpected EOF while looking for matching `"'`` or `syntax error near unexpected token '\|'` |
+| A standard command's errors (FR-017, FR-068) | The GNU tool's own messages and `--help` text, in English |
+| `ls -l` owners (FR-049) | `root` for the protected files and folders, `guest` for the visitor's |
 | Empty section (FR-011) | `The CV lists no [section].` |
 | No such path (FR-048) | `[path]: no such file or folder.` |
 | `cd` on a file | `[path] is a file. Try cat [path].` with `cat [path]` as a control |

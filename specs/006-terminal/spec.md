@@ -7,7 +7,8 @@
 **Status**: Approved
 
 **Amended**: 2026-10-29, after the owner's review of the built Terminal: a real bash-like shell
-and a terminal's cursor, focus and keys (see Clarifications, Session 2026-10-29). Approved
+and a terminal's cursor, focus and keys, and, from the design review that day, no greeting and
+`help <name>` for the standard commands (see Clarifications, Session 2026-10-29). Approved
 2026-10-27; the amendment approved by the owner 2026-10-29.
 
 <!--
@@ -111,6 +112,13 @@ and a terminal's cursor, focus and keys (see Clarifications, Session 2026-10-29)
   the page, as a terminal window does. Ctrl+C with no text selected cancels the line or stops the
   running command. No key a browser or screen reader reserves is taken over (FR-074, FR-075,
   FR-026).
+- Q: (design review of the amendment) Should the Terminal still open with a greeting? → A: No. It
+  opens with the row of starter command controls, `help`, `about`, `work`, `projects` and `cv`,
+  then a prompt, as a terminal opens on its prompt. The controls stay so every CV section can still
+  be reached without typing (FR-005, SC-001).
+- Q: (design review of the amendment) What should clicking a standard command's name in `help` do,
+  when most of them need an argument? → A: Show its help: it runs `help <name>`, not the command
+  itself. The site's own commands in `help` still run themselves (FR-008, FR-015).
 - Q (from `/speckit-analyze`): SC-014 compares output with bash's, but the site's own commands,
   the replies of FR-016 and FR-048 and command controls differ from bash by design. What does it
   compare? → A: Only command lines that use the standard commands of FR-068; the site's commands,
@@ -121,7 +129,7 @@ and a terminal's cursor, focus and keys (see Clarifications, Session 2026-10-29)
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)
 
 A hiring manager on a laptop has the CV open and notices a Terminal in the dock. They open it.
-A short greeting says what the Terminal is and suggests typing `help`. They type it and see every
+It opens on a prompt with a few commands offered above it, `help` first. They type `help` and see every
 command with a one-line description. They type `work` and read each role with its dates and
 links, then `projects` and `skills`. They mistype `wrok`, and the Terminal says it doesn't know
 that command and offers `work` instead. Later they click a command name in the help list rather
@@ -138,7 +146,8 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
 
 1. **Given** the desktop shell on first load, with the CV window open, **When** the visitor
    clicks the Terminal item in the dock, **Then** the Terminal opens in a new window in front,
-   focused, showing the greeting and a prompt, with keyboard focus in the command line.
+   focused, showing the starter command controls and a prompt, with keyboard focus in the command
+   line.
 2. **Given** the Terminal is open, **When** the visitor types `help` and presses Enter, **Then**
    the typed command appears after the prompt, followed by every command the Terminal offers,
    each with a one-line description, and a new prompt appears below.
@@ -282,9 +291,10 @@ phone screen reader.
 
 1. **Given** the home screen, **When** the visitor taps the Terminal icon, **Then** the Terminal
    opens full screen with the shell's header and home control (005 FR-032), drawn as a pocket
-   terminal: its screen shows the greeting and a prompt, and its command keys sit below.
+   terminal: its screen shows the starter command controls and a prompt, and its command keys sit
+   below.
 2. **Given** the pocket terminal, **When** the visitor presses one of its command keys, or taps
-   a command offered in the greeting or in the output of `help`, **Then** it runs as if typed,
+   a starter command control or a command in the output of `help`, **Then** it runs as if typed,
    without the on-screen keyboard opening.
 3. **Given** the visitor taps the command line, **When** the on-screen keyboard opens, **Then** the
    command line and the latest output stay visible above it, and the command keys make room for
@@ -497,17 +507,17 @@ can't merge.
   output, command history and what was typed (005 FR-002).
 - **The Terminal window resized, minimized or maximized** (005 FR-061 to FR-065): output reflows
   to the new width and is kept.
-- **The Terminal closed and opened again** in the same visit: it starts afresh with the greeting
-  in the home folder, and its command history is empty (FR-021).
+- **The Terminal closed and opened again** in the same visit: it starts afresh with the starter
+  command controls and a prompt in the home folder, and its command history is empty (FR-021).
 - **A new visit**: nothing typed in an earlier visit is kept or shown.
 - **The CV document changes**: the next build shows the change in every command, with no edit to
   the Terminal.
 - **An empty or absent CV section**: its command still exists, still appears in `help`, and says
   the CV lists nothing for it (FR-011). Its folder or file is left out of the file system, as
   `/cv` leaves out an empty section (FR-043).
-- **The CV document has no name**: the greeting falls back to the site heading the design sets,
-  as the shell does (005 FR-066), and the pocket terminal's case leaves the name out. The prompt
-  holds no name, so it doesn't change.
+- **The CV document has no name**: the pocket terminal's case leaves the name out. Nothing else in
+  the Terminal shows the name: the prompt and the starter command controls hold none, so they
+  don't change.
 - **A shortcut a terminal user expects**: the line-editing keys of FR-074 and the keys of FR-075
   work as in a terminal. A key a browser or screen reader reserves on the visitor's system keeps
   the browser's meaning, such as Ctrl+W, Ctrl+L or Ctrl+U on Windows and Linux, so those systems
@@ -551,7 +561,7 @@ can't merge.
 - **A command line with bash syntax the shell can't parse**, such as an unclosed quote: bash's
   syntax error, naming what it expected, and a new prompt.
 - **The shell not loaded yet** when the Terminal first opens, such as on a slow connection: the
-  greeting, prompt and command line show at once, the visitor can type, and a command run before
+  starter command controls, the prompt and the command line show at once, the visitor can type, and a command run before
   the shell is ready runs as soon as it is (FR-070).
 - **A click on the Terminal's screen** that isn't on a link or a control: focus goes to the command
   line, the screen doesn't scroll, and what was typed stays (FR-071). A click that ends a text
@@ -592,10 +602,10 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-004**: Opening the Terminal MUST move focus to its command line, so the visitor can type at
   once, and a screen reader MUST announce the Terminal's name and the command line's name, as 005
   FR-040 allows an app made for typing to do.
-- **FR-005**: When it opens, the Terminal MUST show a short greeting that says what the Terminal is,
-  suggests `help`, and offers a few commands as controls that run them (FR-015), then a prompt.
-  The greeting and prompt MUST be site text set by the design (FR-030), and any CV fact in them,
-  such as the owner's name, MUST come from the CV document.
+- **FR-005**: When it opens, the Terminal MUST show a row of starter command controls that run a few
+  commands, `help` first (FR-015), then a prompt, and no greeting text. The controls and the prompt
+  MUST be site text set by the design (FR-030). Amended 2026-10-29: the Terminal opened with a
+  short greeting that said what it is, named the owner and suggested `help`.
 
 **Running commands**
 
@@ -635,8 +645,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   The Terminal MUST also offer the standard commands of FR-068, and every command line follows
   the shell language of FR-067, pipes (FR-057) included. `whoami` MUST run `about`, `experience`
   MUST run `work`, and `?` MUST run `help`. `help` MUST list every command above and every alias
-  with its description, then every standard command by name in a group of its own, and there MUST
-  be no command `help` doesn't list. `help <command>` MUST show any command's own help, standard
+  with its description, then every standard command by name in a group of its own, each name a
+  control that runs `help <name>` (FR-015), and there MUST be no command `help` doesn't list. `help <command>` MUST show any command's own help, standard
   commands included.
 - **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
   (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
@@ -744,10 +754,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 
 **Help for visitors who don't know terminals**
 
-- **FR-015**: Every command name in the greeting and in the output of `help`, every command
-  offered after an unknown one (FR-016) or a wrong path (FR-048), every name in the output of `ls`
-  (FR-050) and every key of the pocket terminal (FR-051) MUST be a control that runs that command
-  when activated with a click, a tap, Enter or Space. Running it MUST behave as if the command had
+- **FR-015**: Every starter command control (FR-005), every command name in the output of `help`,
+  every command offered after an unknown one (FR-016) or a wrong path (FR-048), every name in the
+  output of `ls` (FR-050) and every key of the pocket terminal (FR-051) MUST be a control that runs
+  that command when activated with a click, a tap, Enter or Space. A name in `help`'s group of
+  standard commands (FR-008) MUST run `help <name>` instead, as most standard commands need an
+  argument (amended 2026-10-29). Running it MUST behave as if the command had
   been typed and Enter pressed, including in the output and the command history, MUST NOT open the
   on-screen keyboard, and MUST return focus to the command line.
 - **FR-016**: A command the Terminal doesn't know MUST get a reply, in site text, that names what
@@ -932,7 +944,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 
 **Look, motion and accessibility**
 
-- **FR-030**: Text in the Terminal that isn't CV content, such as the greeting, the command names,
+- **FR-030**: Text in the Terminal that isn't CV content, such as the prompt, the command names,
   their descriptions, the replies of FR-011, FR-016 and FR-017, and the text of `site`, MUST be in
   English, MUST be set by the approved design, and MUST NOT contain a CV fact typed by hand (as 004
   FR-006 and 005 FR-043 require).
@@ -972,7 +984,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-070** (added 2026-10-29): The shell's code (FR-067, FR-068) MUST NOT be part of what the
   site root or `/cv` load. It MUST load when the Terminal first opens in a visit, and the site's
   offline copy MUST hold it after one complete online visit (FR-036). Until it is ready, the
-  greeting, the prompt and the command line MUST show and take typing, and command lines run
+  starter command controls, the prompt and the command line MUST show and take typing, and command lines run
   before then MUST run in order once it is. If it can't load, the Terminal MUST say so in site
   text, with a control that tries again.
 
@@ -1104,17 +1116,17 @@ plain server-rendered page.
 - [x] Penpot file link: [006 Terminal — Glass](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f)
 - [x] `review.md` sign-off by the project owner, naming the mockup version and date, and
   confirming the look is original (FR-031, FR-054)
-- [ ] For the 2026-10-29 amendment: the mockup and wireframes updated for the command line with
+- [x] For the 2026-10-29 amendment: the mockup and wireframes updated for the command line with
   no box and its cursor filled and hollow (FR-072), `help` with its group of standard commands
   (FR-008), the shell loading and failing to load (FR-070), a command line stopped by its limit
   (FR-069), and the command line's selection and the Terminal's text selected all (FR-074,
-  FR-075), with the owner's sign-off added to `review.md`
+  FR-075), the greeting removed (FR-005), with the owner's sign-off added to `review.md`
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: From the Terminal's greeting, every CV section can be shown with at most 2 clicks or
+- **SC-001**: From the Terminal as it opens, every CV section can be shown with at most 2 clicks or
   taps and no typing, in both shells. On mobile, `help`, `about`, `work`, `projects` and `cv` each
   take 1 tap on a command key.
 - **SC-002**: A command's output appears within 100 ms of pressing Enter at a desktop width, and
