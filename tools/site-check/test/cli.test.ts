@@ -9,6 +9,7 @@ import { describe, expect, onTestFinished, test } from 'vitest';
 import { runCheck } from '../src/check.ts';
 import { nodeVersionProblem } from '../src/main.js';
 import { PARTS, renderProblem, renderReport } from '../src/report.ts';
+import { TERMINAL_STATES } from '../src/shell-states.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { REPO_ROOT, fixture, makeProject, maskScores, runCli, siteProject } from './helpers/sites.ts';
 
@@ -72,6 +73,15 @@ const ROOT_STATES = [
 ];
 const ROOT_VARIANT = new RegExp(`^(?:desktop|mobile)/(?:${ROOT_STATES.join('|')})/\\d+px$`);
 
+// The Terminal's variants (006 contracts/cli.md Variants): its states, alone
+// or with a layout condition; a command's output, online or offline after
+// each visit; the files and the JSON; and the keyboard flow.
+const TERMINAL_VARIANT = new RegExp(
+  `^(?:desktop|mobile)/(?:(?:${TERMINAL_STATES.map(({ state }) => state).join('|')})(?:-(?:narrow-window|200%-zoom|400%-zoom|text-spacing))?|(?:terminal|terminal-after-cv)/[a-z]+(?:\\.json)?|terminal-keyboard)/\\d+px$`,
+);
+
+const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant);
+
 const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
 
 describe('005-os-shell-FR-060: the shell checks run in the same one command as the pull-request run', () => {
@@ -85,7 +95,7 @@ describe('005-os-shell-FR-060: the shell checks run in the same one command as t
     const first = await runCheck(root, { parts: WITHOUT_LIGHTHOUSE });
     const onRoot = first.results.filter((result) => result.page === '/' && !PLAIN_ON_ROOT.has(result.part));
     expect(onRoot.length).toBeGreaterThan(0);
-    expect(onRoot.filter((result) => !ROOT_VARIANT.test(result.variant)).map((result) => `${result.part} ${result.variant}`)).toEqual([]);
+    expect(onRoot.filter((result) => !onRootVariant(result.variant)).map((result) => `${result.part} ${result.variant}`)).toEqual([]);
     const second = await runCheck(root, { parts: WITHOUT_LIGHTHOUSE });
     expect(renderReport(second)).toBe(renderReport(first));
     expect(first.result).toBe('pass');
@@ -96,7 +106,36 @@ describe('005-os-shell-FR-060: the shell checks run in the same one command as t
     const report = await runCheck(copy, { parts: ['accessibility', 'keyboard'] });
     const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
     expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) expect(line.split(' ')[2]).toMatch(ROOT_VARIANT);
+    for (const line of lines) expect(onRootVariant(line.split(' ')[2]!)).toBe(true);
+  }, 300_000);
+});
+
+describe("006-terminal-FR-042: the Terminal's checks run in the same command, name what failed, and repeat", () => {
+  test('the local command is the CI step, and the terminal part is in it, after cv-app', () => {
+    expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
+    expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
+    expect(PARTS.indexOf('terminal')).toBe(PARTS.indexOf('cv-app') + 1);
+  });
+
+  test('every Terminal problem line names the shell, the state or the command, and the width', async () => {
+    const copy = seededCopy((repo) => {
+      replaceIn(repo, 'packages/web/src/apps/terminal/engine/cv.ts', '    range: input.format.dateRange(work.startDate, work.endDate),', '    range: input.format.dateRange(work.startDate, undefined),');
+      replaceIn(repo, 'packages/web/src/apps/terminal/CommandLine.tsx', '      <label className="visually-hidden" htmlFor="terminal-command-line">\n        {siteText.terminal.commandLine}\n      </label>\n', '');
+    });
+    const report = await runCheck(copy, { parts: ['terminal', 'accessibility'] });
+    const terminal = report.problems.filter((problem) => problem.page === '/' && TERMINAL_VARIANT.test(problem.variant));
+    expect(new Set(terminal.map((problem) => problem.part))).toEqual(new Set(['terminal', 'accessibility']));
+    expect(report.problems.filter((problem) => problem.page === '/' && !onRootVariant(problem.variant)).map(renderProblem)).toEqual([]);
+    for (const line of terminal.filter((problem) => problem.part === 'terminal').map(renderProblem)) expect(line.split(' ')[2]).toMatch(/^(?:desktop\/terminal\/[a-z.]+\/1440px|mobile\/terminal\/[a-z.]+\/375px)$/);
+  }, 300_000);
+
+  test("two runs of the Terminal's parts on the real build give the same report", async () => {
+    const root = realSiteProject();
+    const parts = ['terminal', 'keyboard', 'other-sites'] as const;
+    const first = await runCheck(root, { parts });
+    const second = await runCheck(root, { parts });
+    expect(renderReport(second)).toBe(renderReport(first));
+    expect(first.result).toBe('pass');
   }, 300_000);
 });
 
@@ -234,8 +273,9 @@ describe('004-cv-page-FR-058: the check exits 2 with one stderr line when it can
 //   transition -> `motion p.date` at 375 px, 1440 px and with reduced motion.
 // The offline part's `missing-font` isn't seeded: its detail names the
 // system's fallback font, which differs between macOS and Linux. The
-// `cv-app` part passes: the sample's root redirects, so there's no CV app
-// (005's broken cases are in `cv-app.test.ts`).
+// `cv-app` and `terminal` parts pass: the sample's root redirects, so
+// there's no CV app and no Terminal (005's broken cases are in
+// `cv-app.test.ts`, 006's in `terminal.test.ts`).
 describe('seeded sample (SC-009)', () => {
   test('the check on seeded/ exits 1 and its report, scores masked, is expected-report.txt byte for byte', () => {
     const root = fixture('seeded');

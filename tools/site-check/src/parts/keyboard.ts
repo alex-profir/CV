@@ -6,7 +6,7 @@ import zlib from 'node:zlib';
 import type { Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
-import { SHELL, settle } from '../shell-states.ts';
+import { SHELL, TERMINAL, settle } from '../shell-states.ts';
 
 export type Box = { x: number; y: number; width: number; height: number };
 
@@ -338,6 +338,10 @@ type StepOptions = {
   // `target` is a container focus must be inside, not the element itself.
   inside?: boolean;
   indicator?: boolean;
+  // Scroll the focused element into view before its indicator is measured,
+  // as typing into it would: the Terminal keeps a new output's start in
+  // view, so its command line may be below (006 FR-019).
+  reveal?: boolean;
 };
 
 function flow(page: Page, pageLabel: string, variant: string): Flow {
@@ -346,7 +350,7 @@ function flow(page: Page, pageLabel: string, variant: string): Flow {
   let number = 0;
   return {
     problems,
-    step: async (label, { keys = [], act, done, failed, target, targetName, inside = false, indicator = true }) => {
+    step: async (label, { keys = [], act, done, failed, target, targetName, inside = false, indicator = true, reveal = false }) => {
       number += 1;
       const name = `step ${number} "${label}"`;
       for (const key of keys) await page.keyboard.press(key);
@@ -362,6 +366,7 @@ function flow(page: Page, pageLabel: string, variant: string): Flow {
         return true;
       }
       if (indicator) {
+        if (reveal) await page.evaluate(() => document.activeElement?.scrollIntoView({ block: 'nearest' }));
         const wrong = await indicatorProblem(page);
         if (wrong !== null) problem('no-focus-indicator', name, `${wrong} (${await describeFocus(page)})`);
       }
@@ -529,6 +534,69 @@ export async function mobileKeyboardProblems(page: Page, pageLabel: string, vari
     if (!(await step('Home to the home screen', { keys: ['Enter'], done: closed, failed: { subject: 'Enter', detail: 'Home did not go back to the home screen' }, target: S.cvIcon, targetName: 'the CV icon' }))) return;
     if (!(await step('open the CV again', { keys: ['Enter'], done: () => visible(page, S.cvFullScreen), failed: { subject: 'Enter', detail: 'the CV icon did not open the CV' }, target: appTitle, targetName: "the CV app's title" }))) return;
     await step('Back to the home screen', { act: async () => void (await page.goBack()), done: closed, failed: { subject: 'Back', detail: 'Back did not go back to the home screen' }, target: S.cvIcon, targetName: 'the CV icon' });
+  };
+  await run();
+  return problems;
+}
+
+// The Terminal with the keyboard alone (006 FR-039, contracts/cli.md
+// `keyboard`), at 1440 × 900 from a fresh page. Each step checks where focus
+// lands and its indicator; `Alt+Shift+D` reaches the dock before Enter on
+// the Terminal's dock item brings focus back to the command line.
+export async function terminalKeyboardProblems(page: Page, pageLabel: string, variant: string): Promise<Problem[]> {
+  const { problems, step } = flow(page, pageLabel, variant);
+  const S = SHELL;
+  const T = TERMINAL;
+  const lineName = "the Terminal's command line";
+  const toTerminalItem = async () => void ((await focusOn(page, S.terminalDockItem)) || (await page.keyboard.press('ArrowRight')));
+  const vimName = "the vim view's text";
+  const runs = () => count(page, T.run);
+  const lastLine = () => page.locator(T.run).last().locator('.run-line').textContent();
+  const lineValue = () => page.locator(T.commandLine).inputValue();
+  const cursorFold = (expanded: boolean) => count(page, `${T.vimLine}:has(.vim-cursor) button.vim-fold[aria-expanded="${expanded}"]`);
+  const typed = (line: string) => async () => {
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type(line);
+    await page.keyboard.press('Enter');
+  };
+  const run = async (): Promise<void> => {
+    // With the CV window closed first, `exit` has no next window, so focus
+    // goes to the Terminal's dock item (contracts/terminal.md Focus).
+    if (!(await step('reach the CV window', { act: () => tabTo(page, S.cvWindow, FIRST_PRESSES, true), target: S.cvWindow, targetName: `the CV window within ${FIRST_PRESSES} presses of Tab`, inside: true }))) return;
+    if (!(await step('close the CV window', { keys: ['Alt+Shift+W'], done: async () => (await count(page, S.cvWindow)) === 0, failed: { subject: 'Alt+Shift+W', detail: 'the CV window did not close' }, target: S.cvDockItem, targetName: 'the CV dock item' }))) return;
+    if (!(await step("move to the Terminal's dock item", { act: toTerminalItem, target: S.terminalDockItem, targetName: "the Terminal's dock item" }))) return;
+    if (!(await step('open the Terminal', { keys: ['Enter'], done: () => visible(page, T.commandLine), failed: { subject: 'Enter', detail: "the Terminal's dock item did not open the Terminal" }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    const before = await runs();
+    if (!(await step('run help', { act: typed('help'), done: async () => (await runs()) > before && (await lastLine()) === 'help', failed: { subject: 'help Enter', detail: 'help did not run' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    // Back from the command line through help's controls to `about`'s.
+    const reached = await until(async () => {
+      if (await focusOn(page, `${T.run} button[aria-label="about"]`)) return true;
+      await page.keyboard.press('Shift+Tab');
+      return false;
+    }, 10_000);
+    if (!reached) {
+      problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'focus-target', subject: 'Shift+Tab', detail: `focus went to ${await describeFocus(page)}, expected about's control in help's output` });
+      return;
+    }
+    if (!(await step("run about from help's output", { keys: ['Enter'], done: async () => (await lastLine()) === 'about', failed: { subject: 'Enter', detail: "about's control did not run about" }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('recall it with Up', { keys: ['ArrowUp'], done: async () => (await lineValue()) === 'about', failed: { subject: 'ArrowUp', detail: 'Up did not recall about' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('run cv', { act: typed('cv'), done: () => visible(page, T.vimText), failed: { subject: 'cv Enter', detail: 'cv did not open the vim view' }, target: T.vimText, targetName: vimName }))) return;
+    const moved = async () => {
+      for (let presses = 0; presses < 50 && (await cursorFold(false)) === 0; presses += 1) await page.keyboard.press('j');
+    };
+    if (!(await step('move with j to a fold', { act: moved, done: async () => (await cursorFold(false)) === 1, failed: { subject: 'j', detail: 'j did not reach a closed fold' }, target: T.vimText, targetName: vimName }))) return;
+    if (!(await step('open the fold with za', { keys: ['z', 'a'], done: async () => (await cursorFold(true)) === 1, failed: { subject: 'za', detail: 'za did not open the fold' }, target: T.vimText, targetName: vimName }))) return;
+    if (!(await step('leave the vim view with :q', { keys: [':', 'q', 'Enter'], done: () => visible(page, T.commandLine), failed: { subject: ':q Enter', detail: ':q did not leave the vim view' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    await page.keyboard.press('Tab');
+    if (await until(() => focusOn(page, T.commandLine).then((on) => !on), 500).then((left) => !left)) {
+      problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'trapped', subject: 'input.command-line', detail: "Tab didn't move focus out of the command line" });
+      return;
+    }
+    if (!(await step('come back with Shift+Tab', { keys: ['Shift+Tab'], target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('go to the dock again', { keys: ['Alt+Shift+D'], done: () => focusIn(page, '#os .dock'), failed: { subject: 'Alt+Shift+D', detail: 'focus did not move to the dock' }, target: '#os .dock', targetName: 'the dock', inside: true }))) return;
+    if (!(await step("move to the Terminal's dock item again", { act: toTerminalItem, target: S.terminalDockItem, targetName: "the Terminal's dock item" }))) return;
+    if (!(await step('back to the Terminal', { keys: ['Enter'], target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    await step('exit', { act: typed('exit'), done: async () => (await count(page, S.terminalWindow)) === 0, failed: { subject: 'exit Enter', detail: 'exit did not close the Terminal' }, target: S.terminalDockItem, targetName: 'the Terminal dock item' });
   };
   await run();
   return problems;

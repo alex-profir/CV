@@ -3,11 +3,13 @@
 // order, and nothing here depends on the locale.
 import { compare } from '../../traceability/src/report.ts';
 
-// The check's parts, in the summary's order (research R11; 005
-// contracts/cli.md Parts). `cv-app` runs only when the site root is a page.
+// The check's parts, in the summary's order (research R11; 005 and 006
+// contracts/cli.md Parts). `cv-app` and `terminal` run only when the site
+// root is a page.
 export const PARTS = [
   'content',
   'cv-app',
+  'terminal',
   'accessibility',
   'lighthouse',
   'no-script',
@@ -29,7 +31,12 @@ export type Part = (typeof PARTS)[number];
 // for Lighthouse's profiles and the no-script part's plain widths (005
 // contracts/cli.md Variants on the root). `type` is a part's own, such as
 // `missing-field`, `axe:<rule>`, or, on the root, `focus-target`,
-// `shortcut`, `trapped` and `moved`, each rendered like any other.
+// `shortcut`, `trapped` and `moved`, each rendered like any other. The
+// Terminal (006 data-model.md Site check results) adds variants
+// `<shell>/terminal/<command>/<width>px`, `<shell>/terminal/files/<width>px`,
+// `<shell>/terminal/json/<width>px` and `desktop/terminal-keyboard/1440px`,
+// and types `missing-field`, `out-of-order`, `json-mismatch`,
+// `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`.
 export type Problem = {
   part: Part;
   page: string;

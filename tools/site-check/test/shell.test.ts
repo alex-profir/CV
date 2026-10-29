@@ -24,7 +24,7 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
   test('on the real build the keyboard part passes both flows on the root', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
-    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass']);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass', 'desktop/terminal-keyboard/1440px pass']);
   });
 
   test('a copy whose menu items show nothing when focused fails keyboard with no-focus-indicator at the site menu step', async () => {
@@ -49,7 +49,8 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
   test("a copy with the close shortcut's handler removed fails keyboard with shortcut Alt+Shift+W", async () => {
     const root = seededCopy((copy) => replaceIn(copy, DESKTOP, "        case 'close':\n          return dispatch({ type: 'close', view: focused! });\n", ''));
     const report = await runCheck(root, { parts: ['keyboard'] });
-    expect(report.problems.map(renderProblem)).toEqual(['keyboard / desktop/keyboard/1440px shortcut Alt+Shift+W: the CV window did not close']);
+    // The Terminal's flow (006) closes the CV window the same way first.
+    expect(report.problems.map(renderProblem)).toEqual(['keyboard / desktop/keyboard/1440px shortcut Alt+Shift+W: the CV window did not close', 'keyboard / desktop/terminal-keyboard/1440px shortcut Alt+Shift+W: the CV window did not close']);
   });
 
   test("a copy that sends a minimized window's focus to body fails keyboard with focus-target, naming the step", async () => {
@@ -71,5 +72,57 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
     const lines = report.problems.map(renderProblem);
     expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^other-sites / desktop/cv-app/1440px other-site-request ${font.replace(/\./g, '\\.')}: requested by `)));
     expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^other-sites / mobile/cv-app/375px other-site-request ${font.replace(/\./g, '\\.')}: requested by `)));
+  });
+});
+
+const COMMAND_LINE = 'packages/web/src/apps/terminal/CommandLine.tsx';
+
+const TERMINAL_STYLES = 'packages/web/src/apps/terminal/terminal.css';
+
+describe("006-terminal-FR-035: accessibility measures every Terminal state, and fails on a nameless command line", () => {
+  test("a copy with the command line's name removed fails accessibility with axe:label in desktop/terminal-open/1440px", async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, COMMAND_LINE, '      <label className="visually-hidden" htmlFor="terminal-command-line">\n        {siteText.terminal.commandLine}\n      </label>\n', ''),
+    );
+    const report = await runCheck(root, { parts: ['accessibility'] });
+    const lines = rootLines(report.problems.map(renderProblem));
+    expect(lines).toContainEqual(expect.stringMatching(/^accessibility \/ desktop\/terminal-open\/1440px axe:label /));
+    expect(lines.every((line) => / (?:desktop\/terminal-[a-z-]+\/1440px|mobile\/pocket[a-z-]*\/(?:375|812)px) axe:/.test(line))).toBe(true);
+  });
+});
+
+describe("006-terminal-FR-038: layout and modes measure the Terminal's states", () => {
+  test('on the real build layout and modes pass with the Terminal in them', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['layout', 'modes'] });
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    const variants = report.results.filter((result) => result.part === 'layout' && result.page === '/').map((result) => result.variant);
+    expect(variants).toEqual(
+      expect.arrayContaining([
+        'mobile/pocket/320px',
+        'mobile/pocket-vim/568px',
+        'desktop/terminal-help-narrow-window/1440px',
+        'mobile/pocket-vim-200%-zoom/640px',
+        'mobile/pocket-400%-zoom/320px',
+        'desktop/terminal-vim-text-spacing/1440px',
+        'mobile/pocket-vim-text-spacing/375px',
+      ]),
+    );
+  });
+
+  test('a copy whose output has a fixed width fails layout with horizontal-scroll in the Terminal', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, TERMINAL_STYLES, '.terminal-screen {\n', '.run-output {\n  min-inline-size: 60rem;\n}\n\n.terminal-screen {\n'));
+    const report = await runCheck(root, { parts: ['layout'] });
+    const lines = rootLines(report.problems.map(renderProblem));
+    expect(lines).toContainEqual(expect.stringMatching(/^layout \/ desktop\/terminal-help-narrow-window\/1440px horizontal-scroll /));
+  });
+
+  test('a copy whose cursor blinks fails modes with blinking, in both shells', async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, TERMINAL_STYLES, '\n.cursor-block {\n', '\n@keyframes blink {\n  50% {\n    opacity: 0;\n  }\n}\n\n.cursor-block {\n  animation: blink 1s steps(1) infinite;\n'),
+    );
+    const report = await runCheck(root, { parts: ['modes'] });
+    const lines = rootLines(report.problems.map(renderProblem));
+    expect(lines).toContain('modes / desktop/reduced-motion/1440px blinking span.cursor-block: repeats an animation for ever, so it blinks');
+    expect(lines).toContain('modes / mobile/reduced-motion/375px blinking span.cursor-block: repeats an animation for ever, so it blinks');
   });
 });

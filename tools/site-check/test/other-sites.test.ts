@@ -6,7 +6,7 @@ import { renderProblem } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture, siteProject } from './helpers/sites.ts';
 
-vi.setConfig({ testTimeout: 120_000 });
+vi.setConfig({ testTimeout: 180_000 });
 
 describe('004-cv-page-FR-055: no request from /cv or the not-found page goes to another site, and any is named', () => {
   test('other-sites/ fails naming both full addresses on both pages, and the service worker request', async () => {
@@ -42,7 +42,7 @@ describe('005-os-shell-FR-054: the shell loads everything it uses from the site 
   test('on the real build nothing from / goes to another site, while loading or opening the CV app, in either shell', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
     expect(report.problems).toEqual([]);
-    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['desktop/cv-app/1440px', 'mobile/cv-app/375px']);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px']);
   });
 
   test("a copy whose root loads a script from another site fails with the root's variants", async () => {
@@ -51,9 +51,27 @@ describe('005-os-shell-FR-054: the shell loads everything it uses from the site 
       replaceIn(copy, 'packages/web/src/pages/ShellPage.tsx', '          <script key={src} type="module" src={src} />\n        ))}\n', `          <script key={src} type="module" src={src} />\n        ))}\n        <script src="${script}" />\n`),
     );
     const report = await runCheck(root, { parts: ['other-sites'] });
+    expect(report.problems.map(renderProblem)).toEqual(
+      ['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px'].map((variant) => `other-sites / ${variant} other-site-request ${script}: requested by the page`),
+    );
+  });
+});
+
+describe('006-terminal-FR-038: the Terminal loads nothing from another site while it opens and every command runs', () => {
+  test('on the real build the Terminal passes in both shells', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
+    expect(report.results.filter((result) => result.variant.includes('terminal') || result.variant.includes('pocket')).map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/terminal-open/1440px pass', 'mobile/pocket/375px pass']);
+  });
+
+  test('a copy whose Terminal fetches an outside address on help fails, naming the shell', async () => {
+    const address = 'https://example.com/help';
+    const root = seededCopy((copy) =>
+      replaceIn(copy, 'packages/web/src/apps/terminal/Terminal.tsx', '  const result = session.run(line, os.shell);', `  if (line === 'help') void fetch('${address}').catch(() => undefined);\n  const result = session.run(line, os.shell);`),
+    );
+    const report = await runCheck(root, { parts: ['other-sites'] });
     expect(report.problems.map(renderProblem)).toEqual([
-      `other-sites / desktop/cv-app/1440px other-site-request ${script}: requested by the page`,
-      `other-sites / mobile/cv-app/375px other-site-request ${script}: requested by the page`,
+      `other-sites / desktop/terminal-open/1440px other-site-request ${address}: requested by the page`,
+      `other-sites / mobile/pocket/375px other-site-request ${address}: requested by the page`,
     ]);
   });
 });

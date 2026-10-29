@@ -81,6 +81,9 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: var(--token-size-terminal-padding);
+  /* Typing into a command line scrolled out of view brings it back with
+     room for its focus outline, not flush with the edge. */
+  scroll-padding-block: var(--token-size-terminal-padding);
   overflow-wrap: anywhere;
 }
 
@@ -405,6 +408,16 @@
   overscroll-behavior: contain;
   padding-block: var(--token-space-2);
   color: var(--token-color-vim-string);
+}
+
+/* The text and the help fill the view to its edges, where an outline
+   outside them would be cut off, so theirs is drawn inside, one thin
+   border wider: inside, its corners overlap, and it must still cover a
+   2 px band round the element (WCAG 2.4.13). */
+#os .vim-text:focus-visible,
+#os .vim-help:focus-visible {
+  outline-width: calc(var(--token-border-thick) + var(--token-border-thin));
+  outline-offset: calc(-1 * (var(--token-border-thick) + var(--token-border-thin)));
 }
 
 .vim-line {

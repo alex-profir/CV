@@ -22,6 +22,11 @@ function realRun(): Run {
 
 const NINE_MINUTES = 540_000;
 
+// 006 adds the Terminal's checks within 005's budget plus 3 minutes.
+const TERMINAL_BUDGET_MS = 480_000 + 180_000;
+
+const TWELVE_MINUTES = 720_000;
+
 describe('performance (SC-009, SC-010)', () => {
   test.skipIf(process.env.CI)('npm run site-check on the real repository exits 0 in under 480,000 ms', { timeout: NINE_MINUTES }, () => {
     const { status, stdout, elapsed } = realRun();
@@ -30,11 +35,20 @@ describe('performance (SC-009, SC-010)', () => {
   });
 });
 
+describe("006-terminal-FR-042: the Terminal's checks keep the site check within its time", () => {
+  test.skipIf(process.env.CI)('npm run site-check, with the terminal part and the Terminal in every other part, exits 0 within 660,000 ms', { timeout: TWELVE_MINUTES }, () => {
+    const { status, stdout, elapsed } = realRun();
+    expect(status, stdout).toBe(0);
+    expect(stdout).toMatch(/^ {2}terminal +pass /m);
+    expect(elapsed).toBeLessThan(TERMINAL_BUDGET_MS);
+  });
+});
+
 describe('004-cv-page-FR-058: stdout holds only the report', () => {
   test.skipIf(process.env.CI)('npm run --silent site-check on the real repository prints nothing before the report', { timeout: NINE_MINUTES }, () => {
     const { status, stdout } = realRun();
     expect(status === 0 || status === 1).toBe(true);
     expect(stdout).toMatch(/^(?:Site check: |[a-z-]+ (?:\/\S*|-) \S+ \S+ )/);
-    expect(stdout).toMatch(/\n {2}(?:No problems|\d+ problems? in \d+ parts?)\. \d+ of 12 parts passed\.\n$/);
+    expect(stdout).toMatch(/\n {2}(?:No problems|\d+ problems? in \d+ parts?)\. \d+ of 13 parts passed\.\n$/);
   });
 });

@@ -3,7 +3,7 @@
 // a background image; and no element moves, with or without reduced motion.
 import type { Page } from 'playwright';
 import type { Problem } from '../report.ts';
-import { SHELL, control, openAbout, openCvApp, settle } from '../shell-states.ts';
+import { SHELL, TERMINAL, control, openAbout, openCvApp, openTerminal, settle, tapPocketKey, typeLine } from '../shell-states.ts';
 
 type Found = { type: string; subject: string; detail: string };
 
@@ -157,6 +157,9 @@ export async function shellForcedColorsProblems(page: Page, shell: 'desktop' | '
   if (shell === 'mobile') {
     await openCvApp(page, 'mobile');
     take(await forcedColorsProblems(page, pageLabel));
+    await page.tap(SHELL.homeButton);
+    await page.locator(SHELL.cvFullScreen).waitFor({ state: 'detached', timeout: 5_000 });
+    await terminalForcedColors(page, 'mobile', found);
     return problems(found, pageLabel, variant);
   }
   await openAbout(page);
@@ -178,7 +181,53 @@ export async function shellForcedColorsProblems(page: Page, shell: 'desktop' | '
   await page.locator(SHELL.pad).waitFor({ timeout: 5_000 });
   await edgeProblems(page, SHELL.pad, found);
   await page.keyboard.press('Escape');
+  await terminalForcedColors(page, 'desktop', found);
   return problems(found, pageLabel, variant);
+}
+
+// What must stay visible in the Terminal in forced colors (006 FR-033):
+// each is drawn by its text, a border, an outline or a system color the
+// design keeps, never by a background image or an author color alone.
+const TERMINAL_SHOWN: Record<'desktop' | 'mobile', readonly string[]> = {
+  desktop: ['#os .terminal .prompt', TERMINAL.commandLine, '#os .terminal .cursor-block', '#os .terminal .command-chip'],
+  mobile: ['#os .terminal .prompt', TERMINAL.commandLine, '#os .terminal .cursor-block', '#os .terminal .command-chip', TERMINAL.pocketKey],
+};
+
+async function shownProblems(page: Page, selectors: readonly string[], found: Found[]): Promise<void> {
+  const missing = await page.evaluate((list) => {
+    const result: { subject: string; detail: string }[] = [];
+    for (const selector of list) {
+      const element = document.querySelector(selector);
+      if (element === null || element.getClientRects().length === 0) {
+        result.push({ subject: selector, detail: 'not shown in forced colors' });
+        continue;
+      }
+      const style = getComputedStyle(element);
+      const text = (element instanceof HTMLInputElement ? element.value || element.placeholder : element.textContent ?? '').trim() !== '' && style.color !== 'rgba(0, 0, 0, 0)';
+      const edged = ['Top', 'Right', 'Bottom', 'Left'].some((side) => Number.parseFloat(style.getPropertyValue(`border-${side.toLowerCase()}-width`)) > 0 && style.getPropertyValue(`border-${side.toLowerCase()}-style`) !== 'none');
+      const outlined = style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0;
+      const kept = style.forcedColorAdjust === 'none' && style.backgroundColor !== 'rgba(0, 0, 0, 0)';
+      if (!text && !edged && !outlined && !kept) result.push({ subject: selector, detail: 'has no text, border, outline or system color in forced colors' });
+      else if (style.backgroundImage !== 'none' && !text && !edged && !outlined) result.push({ subject: selector, detail: 'is shown by a background image alone in forced colors' });
+    }
+    return result;
+  }, selectors);
+  for (const { subject, detail } of missing) found.push({ type: 'invisible', subject, detail });
+}
+
+async function terminalForcedColors(page: Page, shell: 'desktop' | 'mobile', found: Found[]): Promise<void> {
+  await openTerminal(page, shell);
+  await shownProblems(page, TERMINAL_SHOWN[shell], found);
+  // The fold lines, in the vim view.
+  await typeLine(page, 'cv');
+  await page.locator(TERMINAL.vimText).waitFor({ timeout: 5_000 });
+  await shownProblems(page, [TERMINAL.vimFold], found);
+  // The focus indicator.
+  const outlined = await page.evaluate(() => {
+    const active = document.activeElement;
+    return active !== null && active !== document.body && getComputedStyle(active).outlineStyle !== 'none';
+  });
+  if (!outlined) found.push({ type: 'invisible', subject: TERMINAL.vimText, detail: 'its focus indicator is not shown in forced colors' });
 }
 
 type Recorded = { subject: string; properties: string[]; scales: number[]; transforms: string[]; translates: string[] };
@@ -264,6 +313,10 @@ export async function shellMotionProblems(page: Page, shell: 'desktop' | 'mobile
     await step('closing the CV app', () => page.tap(SHELL.homeButton));
     await step('opening About this site', () => page.tap(SHELL.aboutButton));
     await step('closing About this site', () => page.tap(SHELL.homeButton));
+    await step('opening the Terminal', () => openTerminal(page, 'mobile'));
+    await step('pressing a pocket key', () => tapPocketKey(page, 'help'));
+    await step('running a command', () => typeLine(page, 'ls'));
+    await blinkProblems(page, found);
     return problems(found, pageLabel, variant);
   }
   await step('closing the CV window', () => page.click(control('cv', 'close')));
@@ -275,5 +328,24 @@ export async function shellMotionProblems(page: Page, shell: 'desktop' | 'mobile
   await step('restoring the CV window', () => page.click(SHELL.cvDockItem));
   await step('maximizing the CV window', () => page.click(control('cv', 'maximize')));
   await step('restoring its size', () => page.click(control('cv', 'maximize')));
+  await step('opening the Terminal', () => openTerminal(page, 'desktop'));
+  await step('running a command', () => typeLine(page, 'help'));
+  await blinkProblems(page, found);
+  await step('opening the vim view', () => typeLine(page, 'cv'));
+  await blinkProblems(page, found);
   return problems(found, pageLabel, variant);
+}
+
+// The Terminal's cursors never blink (006 FR-032): no element in it runs an
+// animation that repeats for ever.
+async function blinkProblems(page: Page, found: Found[]): Promise<void> {
+  const blinking = await page.evaluate(() =>
+    [...document.querySelectorAll('#os .terminal *')]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return style.animationName !== 'none' && style.animationIterationCount.split(',').some((count) => count.trim() === 'infinite');
+      })
+      .map((element) => `${element.tagName.toLowerCase()}${element.classList.length === 0 ? '' : `.${element.classList[0]}`}`),
+  );
+  for (const subject of new Set(blinking)) found.push({ type: 'blinking', subject, detail: 'repeats an animation for ever, so it blinks' });
 }
