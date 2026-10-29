@@ -65,8 +65,9 @@ needs the network shows its own offline state; the shell has no offline indicato
 ### What the site remembers
 
 Files the visitor makes and their settings are kept in their browser, on their device, and can
-be reset. Nothing is sent anywhere. The OS shell (005) and the Terminal (006) remember nothing
-between visits today; the features that add files and settings amend their specs.
+be reset. The TypeScript playground (008) keeps the visitor's code and its options the same way.
+The OS shell (005) and the Terminal (006) remember nothing between visits today; the features that
+add files and settings amend their specs.
 
 ### Showing the process
 
