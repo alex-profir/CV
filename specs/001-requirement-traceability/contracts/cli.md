@@ -4,7 +4,8 @@
 
 This is the check's only interface. The owner runs it locally, and the pull-request workflow
 runs the same command ([ci.md](./ci.md)). The contract is the command, its exit codes and the
-exact text of the report.
+exact text of the report. The amendment of 2026-10-29 doesn't change it: the local full run
+runs this same command as one of its checks ([local-verify.md](./local-verify.md)).
 
 ## Command
 

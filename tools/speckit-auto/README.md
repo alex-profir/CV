@@ -61,6 +61,10 @@ also goes to `<repo>-worktrees/.logs/008-example.log`. A lock whose loop died is
 stale and cleared. A branch checked out in another checkout is refused: switch
 that checkout away first.
 
+An amendment of a shipped feature is built on a branch of its own named with the
+feature's number: `worktree start 001-local-verify` builds
+`specs/001-requirement-traceability`, the one spec folder numbered 001.
+
 `clean` runs before every `start` and `resume`. Merges are squash merges, so it
 asks GitHub (`gh`) which pull requests are merged rather than asking git. It
 removes a worktree, its branch and its log when the branch's last pull request is
@@ -77,7 +81,8 @@ before its pull request, not by the loop.
 
 1. `gates.sh` checks spec status and, for a UI feature, the wireframes, PNG
    mockups and an Approved `review.md` (Constitution I, II). `run.sh` also
-   refuses to start unless HEAD is the feature's branch, since sessions commit.
+   refuses to start unless HEAD is the feature's branch, or an amendment's branch
+   with the feature's number, since sessions commit.
 2. `/speckit-plan` and `/speckit-tasks`, each followed by `expect.sh`, which stops
    the run if the step exited cleanly but wrote nothing. Then `/speckit-analyze`, whose CRITICAL and
    HIGH findings are fixed in `plan.md` and `tasks.md` only. The report goes to
