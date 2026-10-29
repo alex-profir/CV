@@ -1,12 +1,14 @@
 // Every target in contracts/terminal.md's `data-req` table carries exactly
-// its 006 IDs in the rendered Terminal, and every 006 ID in a `data-req`,
-// in the source and the page, names a requirement of the spec (FR-037).
+// its 006 IDs in the rendered Terminal, the 2026-10-29 amendment's
+// included, and every 006 ID in a `data-req`, in the source and the page,
+// names a requirement of the spec (FR-037).
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { REPO_ROOT } from '../helpers/copy.ts';
-import { openTerminalPage, openVimView, runGroup, vimEntry } from '../helpers/terminal.ts';
+import { openShell } from '../helpers/shell.ts';
+import { openTerminalLoading, openTerminalPage, openVimView, runGroup, SHELL_PAGE, vimEntry } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -22,8 +24,11 @@ const DESKTOP: [string, string][] = [
   ['#os .terminal h1', ids(29)],
   ['#os .terminal section.run', ids(6, 29)],
   ['#os .terminal div.run-output', ids(9, 10, 11, 18)],
-  ['#os .terminal input.command-line', ids(4, 6, 7, 17, 18, 20, 26, 27)],
-  ['#os .terminal span.cursor-mirror', ids(32)],
+  ['#os .terminal input.command-line', ids(4, 6, 7, 17, 18, 20, 26, 27, 72, 74, 75)],
+  ['#os .terminal span.cursor-mirror', ids(32, 72, 74)],
+  ['#os .terminal div.terminal-screen', ids(71, 75)],
+  ['#os .terminal ul.out-standard', ids(8, 68)],
+  ['#os .terminal p.out-standard-heading', ids(8, 68)],
   ['#os .terminal .terminal-status', ids(28)],
   ['#os .terminal span.prompt', ids(27, 46)],
   ['#os .window[data-view="terminal"] .window-title span[data-req]', ids(46)],
@@ -31,8 +36,9 @@ const DESKTOP: [string, string][] = [
   ['#os .terminal .out-help button', ids(15, 34)],
   ['#os .terminal .starter', ids(5, 30)],
   ['#os .terminal .starter button', ids(15, 34)],
-  ['#os .terminal .out-columns', ids(43, 50)],
-  ['#os .terminal .out-columns button', ids(15, 34, 50)],
+  ['#os .terminal .out-columns:not(.out-standard)', ids(43, 50)],
+  ['#os .terminal .out-columns:not(.out-standard) button', ids(15, 34, 50)],
+  ['#os .terminal ul.out-standard button', ids(15, 34)],
   ['#os .terminal .out-specs', ids(13)],
   ['#os .terminal .out-json', ids(56)],
   ['#os .dock-item[data-app="terminal"] [data-req*="006-terminal-"]', ids(1)],
@@ -108,6 +114,19 @@ describe('006-terminal-FR-037: every Terminal target carries its requirement IDs
     await vimEntry(page, ':', 'q');
     await page.click('#menu-title-app');
     expect(await idsOf(page, '#menu-app [role="menuitem"][data-req*="006-terminal-"]')).toEqual([ids(3, 19)]);
+  });
+
+  test('the shell’s states: loading, failed with its try again control, and a stopped line', async () => {
+    const loading = await openShell(SHELL_PAGE.desktop);
+    const release = await openTerminalLoading(loading, 'desktop');
+    await expectRows(loading, [['#os .terminal p.shell-loading', ids(70)]], 'loading');
+    await release();
+    await runGroup(loading, 'while true; do :; done');
+    await expectRows(loading, [['#os .terminal p.run-stopped', ids(69, 75)]], 'stopped');
+    const failed = await openShell({ ...SHELL_PAGE.desktop, beforeGoto: async (opened) => void (await opened.route('**/assets/shell-*.js', (route) => route.fulfill({ status: 503, body: '' }))) });
+    await failed.locator('#os .dock-item[data-app="terminal"]').click();
+    await failed.waitForSelector('.terminal p.shell-failed');
+    await expectRows(failed, [['#os .terminal p.shell-failed', ids(70)], ['#os .terminal p.shell-failed button', ids(70)]], 'failed');
   });
 
   test('mobile: the pocket, its keys and its vim keys', async () => {

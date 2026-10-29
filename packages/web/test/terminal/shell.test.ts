@@ -85,7 +85,7 @@ describe('006-terminal-FR-057: a pipe’s output is plain text', () => {
 // A word of the first role's summary, read from the CV.
 const summaryWord = () => (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
 
-describe.each<TerminalShell>(['desktop', 'mobile'])('006-terminal-FR-049, FR-073 and FR-068: files in the %s shell', (shell) => {
+describe.each<TerminalShell>(['desktop', 'mobile'])('006-terminal-FR-049, 006-terminal-FR-073 and 006-terminal-FR-068: files in the %s shell', (shell) => {
   test('006-terminal-FR-049: US3 scenario 9, protected files say Permission denied and stay as they were', async () => {
     const page = await openTerminalPage(shell);
     const before = await runAll(page, ['cat about', 'ls work', 'cat cv.json']);
