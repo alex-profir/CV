@@ -3,7 +3,7 @@
 // a background image; and no element moves, with or without reduced motion.
 import type { Page } from 'playwright';
 import type { Problem } from '../report.ts';
-import { SHELL, TERMINAL, control, leaveSpecs, openAbout, openCvApp, openTerminal, openView, settle, showSpecs, tapPocketKey, typeLine } from '../shell-states.ts';
+import { INSPECTOR, SHELL, TERMINAL, control, leaveSpecs, openAbout, openCvApp, openTerminal, openView, settle, showSpecs, tapPocketKey, typeLine } from '../shell-states.ts';
 import type { InspectorView } from '../shell-states.ts';
 
 type Found = { type: string; subject: string; detail: string };
@@ -386,4 +386,22 @@ async function blinkProblems(page: Page, found: Found[]): Promise<void> {
       .map((element) => `${element.tagName.toLowerCase()}${element.classList.length === 0 ? '' : `.${element.classList[0]}`}`),
   );
   for (const subject of new Set(blinking)) found.push({ type: 'blinking', subject, detail: 'repeats an animation for ever, so it blinks' });
+}
+
+// ---- The inspector (007 FR-023) ---------------------------------------------
+
+// A spec view's controls, status chips and notes, each kept by its border
+// in forced colors, as the shell's windows are.
+const SPEC_EDGED = (view: InspectorView) => [`${INSPECTOR.specView(view)} button`, `${INSPECTOR.specView(view)} .status`, `${INSPECTOR.specView(view)} .spec-note`];
+
+// Forced colors in a state showing `view`'s specs: the page's own checks
+// (no background image, separators, underlined links, the focus outline)
+// under the state's variant, and the view's controls, chips and notes
+// edged. A note absent from the state is not flagged.
+export async function inspectorForcedColorsProblems(page: Page, view: InspectorView, pageLabel: string, variant: string): Promise<Problem[]> {
+  const found: Found[] = (await forcedColorsProblems(page, pageLabel)).map(({ type, subject, detail }) => ({ type, subject, detail }));
+  const [controls, ...rest] = SPEC_EDGED(view);
+  await edgeProblems(page, controls!, found);
+  for (const selector of rest) for (const { subject, edge } of await edges(page, selector)) if (edge === null) found.push({ type: 'invisible-edge', subject, detail: 'no border in forced colors' });
+  return problems(found, pageLabel, variant);
 }

@@ -46,7 +46,12 @@ export function seededCopy(edit: (root: string) => void): string {
   edit(root);
   // Committed, so the build is a clean one, as a pull request's is.
   commitAll(root, 'A seeded change');
+  buildCopy(root);
+  return root;
+}
+
+// Builds a copy into its own `packages/web/dist/` again, as it now stands.
+export function buildCopy(root: string): void {
   const result = spawnSync(process.execPath, [path.join(root, BUILD_SCRIPT), '--out', path.join(root, DIST)], { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) throw new Error(`the seeded copy's build failed (exit ${result.status}):\n${result.stderr}`);
-  return root;
 }
