@@ -3,7 +3,10 @@
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 
 The check holds everything in memory for one run. Nothing is stored between runs, and nothing is
-written to disk. The model below is the in-memory shape the check builds while it reads the
+written to disk. The amendment of 2026-10-29 adds the local full run and the sign-off, which do
+keep a result on the owner's machine. Their entities are at the end, under
+[The local full run and the sign-off](#the-local-full-run-and-the-sign-off-added-2026-10-29); the
+check's own model above them is unchanged. The model below is the in-memory shape the check builds while it reads the
 repository, and the rules it applies to each piece. Field names are descriptive. The code may
 name them differently.
 
@@ -244,3 +247,113 @@ The output of one run (FR-021, FR-023).
 | `result` | `pass` \| `fail` | `fail` exactly when `problems` is not empty (FR-020) |
 
 The text rendering of the report is defined in [contracts/cli.md](./contracts/cli.md).
+
+## The local full run and the sign-off (added 2026-10-29)
+
+These entities belong to `npm run verify` and `npm run signoff` (research.md, R14 to R18), not to
+the check. Unlike the check, they keep a result between runs, on the owner's machine only.
+
+### TestSet
+
+Which tests a run includes (FR-030, research.md R14).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | `fast` \| `slow` | The Vitest project's name |
+| `include` | string[] | `fast`: `FAST_TEST_GLOBS`. `slow`: `TEST_INCLUDE_GLOBS` |
+| `exclude` | string[] | `fast`: `TEST_EXCLUDE_GLOBS`. `slow`: `TEST_EXCLUDE_GLOBS` and `FAST_TEST_GLOBS` |
+| `globalSetup` | string[] | `fast`: none. `slow`: `packages/web/test/helpers/site.ts` |
+
+**Rules**
+
+- Every test file the check lists (`listFiles(root).testFiles`) is in exactly one set, and the
+  sets hold no other file. The **full set** is both; the **fast set** is `fast`.
+- No `fast` file's runtime import closure reaches a browser, Lighthouse, Vite, the site build or
+  the page-test helpers (research.md, R14, the machine check).
+- The check's own file selection never reads `FAST_TEST_GLOBS`.
+
+### Check (of a local full run)
+
+One step of the local full run, named after the pull-request job that runs it (research.md,
+R15, R16).
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | `typecheck` \| `traceability` \| `content` \| `tokens` \| `test` \| `site` | In this order |
+| `command` | string | As run, e.g. `npm run traceability`. `test` runs `npm test` with the JSON reporter added |
+| `status` | `pass` \| `fail` | `pass` exactly when the command exits 0 and, for `test`, the full-set rule below holds |
+| `exitCode` | integer \| null | null when it couldn't be started |
+| `durationMs` | integer | |
+| `detail` | string \| null | Why it failed when the exit code doesn't say, e.g. `ran 140 of 152 test files` |
+
+**Rules**
+
+- The commands are those of the pull-request workflow, with `npm run test:fast` replaced by the
+  full set, `npm test` (FR-031, FR-032).
+- `test` passes only when Vitest's report lists exactly the check's test files and reports
+  success (SC-010).
+- Every check runs, whatever an earlier one returned (FR-033).
+
+### LocalRunResult
+
+The result of one local full run, kept at
+`<git common dir>/local-verify/<sha>.json` (FR-037, research.md R17). The newest run on a commit
+replaces the file.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `version` | `1` | The file's format |
+| `sha` | string | The full commit SHA the run started and ended on |
+| `branch` | string \| null | The branch checked out, null when HEAD is detached |
+| `startedAt`, `finishedAt` | string | ISO 8601 times, for the owner. Never sent anywhere |
+| `clean` | `{ atStart: true, atEnd: boolean, changed: string[] }` | A run starts only on a clean tree (FR-032). `changed` lists what the checks left behind |
+| `checks` | Check[] | In run order |
+| `tests` | `{ files: integer, expectedFiles: integer, passed: integer, failed: integer, skipped: integer }` | From Vitest's JSON report. Zeros when `test` couldn't run |
+| `siteCheck` | `pass` \| `fail` | The `site` check's status |
+| `node` | string | `process.versions.node`, e.g. `26.1.0` |
+| `os` | string | `os.type() os.release() process.arch`, e.g. `Darwin 25.1.0 arm64` |
+| `result` | `pass` \| `fail` | `pass` exactly when every check passed and `clean.atEnd` is true |
+
+**Validation rules**
+
+- A result exists for a commit only after a run that started on a clean tree at that commit. A
+  refused run (dirty tree, missing prerequisite) writes nothing.
+- `signoff` accepts only a result whose `sha` is HEAD, whose `version` it knows, and whose
+  `result` is `pass`. Anything else is treated as no passing run (FR-033, FR-036).
+
+### SignOff
+
+The `local-verify` commit status that `signoff` creates on the host (FR-033 to FR-036, research.md
+R18).
+
+| Field | Value |
+|-------|-------|
+| commit | the result's `sha` |
+| `state` | `success`. `signoff` creates no other state |
+| `context` | `local-verify`, the ruleset's required check (FR-035) |
+| `description` | `<tests.passed> tests in <tests.files> files passed; site check passed; Node <node>; <os>`, at most 140 characters (the OS part is shortened to fit) |
+| `target_url` | none |
+| creator | the owner's own GitHub login, through `gh` |
+
+### States of a commit
+
+```text
+                      npm run verify
+ a commit ─────────────────────────────────┬──▶ result: fail ──▶ fix it in a new commit
+ (clean tree,                               │
+  prerequisites present)                    └──▶ result: pass
+                                                    │ npm run signoff
+                                                    ├─ commit not on the host ─▶ push its branch, then post
+                                                    ├─ host unreachable, push refused or gh fails ─▶ nothing recorded
+                                                    └──▶ signed off: local-verify success on that commit
+                                                            │ the pull request can merge once its
+                                                            │ other checks pass (FR-035)
+
+ A new commit, an amended or rebased commit, or a merge of main has no result and no
+ sign-off of its own, and starts again at the top (FR-034).
+```
+
+- A dirty working copy or a missing prerequisite refuses `verify` and leaves the state as it was.
+- Another `verify` on the same commit replaces its result, so a later failure takes back a pass
+  that wasn't signed off yet. A status already posted stays on the host: the pull request's head
+  still passed the full run once, on that exact commit.

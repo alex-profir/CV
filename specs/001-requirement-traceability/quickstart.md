@@ -3,14 +3,18 @@
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md)
 
 These scenarios prove the feature works end to end. Output formats are defined in
-[contracts/cli.md](./contracts/cli.md). The pull-request check and merge rule are defined in
-[contracts/ci.md](./contracts/ci.md). Scenarios 1 to 6 run locally. Scenario 7 needs GitHub.
+[contracts/cli.md](./contracts/cli.md). The pull-request checks and merge rule are defined in
+[contracts/ci.md](./contracts/ci.md), and the local full run and sign-off in
+[contracts/local-verify.md](./contracts/local-verify.md). Scenarios 1 to 6 and 8 to 10 run
+locally. Scenarios 7 and 11 to 13 need GitHub. Scenarios 8 to 13 were added with the amendment
+of 2026-10-29.
 
 ## Prerequisites
 
 - Node.js 26 (`nvm use` reads `.nvmrc`) and the npm bundled with it.
-- For scenario 7 only: the GitHub CLI (`gh`), signed in as the repository owner with admin
-  rights.
+- For scenarios 9 to 13: Playwright's Chromium (`npx playwright install chromium`).
+- For scenarios 7 and 11 to 13: the GitHub CLI (`gh`), signed in as the repository owner with
+  admin rights.
 
 ```sh
 npm ci
@@ -22,12 +26,15 @@ npm ci
 npm run traceability; echo "exit $?"
 ```
 
-**Expected**: no problem lines, then the summary. The last lines read:
+**Expected**: no problem lines, then the summary. The last lines read, with today's counts:
 
 ```text
-PASS: all 29 active requirements in 1 approved spec are covered.
+PASS: all <n> active requirements in <m> approved specs are covered.
 exit 0
 ```
+
+`<m>` includes `001-requirement-traceability`, whose 37 active requirements (FR-001 to FR-037)
+are among the `<n>`.
 
 The sample project under `tools/traceability/test/__fixtures__/` contains deliberately broken
 IDs, and none of them appear (FR-014).
@@ -87,7 +94,7 @@ as the local run on the same commit.
 ## 6. Speed (SC-004)
 
 ```sh
-npx vitest run tools/traceability/test/performance.test.ts
+npx vitest run --project fast tools/traceability/test/performance.test.ts
 ```
 
 **Expected**: passes. The test generates 50 specs and 2,000 tests and requires the check to
@@ -99,7 +106,7 @@ machine.
 Run this once the feature's pull request is open and its workflow has run once.
 
 **Apply the ruleset** (first time only; afterwards use `--method PUT` on
-`/repos/alex-profir/CV/rulesets/<id>`):
+`/repos/alex-profir/CV/rulesets/<id>`, as scenario 13 does):
 
 ```sh
 gh api --method POST /repos/alex-profir/CV/rulesets --input .github/rulesets/main.json
@@ -111,12 +118,14 @@ gh api --method POST /repos/alex-profir/CV/rulesets --input .github/rulesets/mai
 id=$(gh api /repos/alex-profir/CV/rulesets --jq '.[] | select(.name=="main") | .id')
 gh api /repos/alex-profir/CV/rulesets/$id --jq .current_user_can_bypass
 gh api /repos/alex-profir/CV/rulesets/$id \
-  | jq -S 'del(.id, .node_id, .source, .source_type, ._links, .created_at, .updated_at, .current_user_can_bypass)' \
+  | jq -S 'del(.id, .node_id, .source, .source_type, ._links, .created_at, .updated_at, .current_user_can_bypass)
+           | (.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[]) |= with_entries(select(.value != null))' \
   > /tmp/live-ruleset.json
 diff /tmp/live-ruleset.json <(jq -S . .github/rulesets/main.json) && echo "no drift"
 ```
 
-**Expected**: `never`, then `no drift`.
+**Expected**: `never`, then `no drift`. The second filter drops an `integration_id` that GitHub
+may read back as `null` for `local-verify`, which the committed file leaves out (research R19).
 
 **Demonstrate the block:**
 
@@ -124,8 +133,9 @@ diff /tmp/live-ruleset.json <(jq -S . .github/rulesets/main.json) && echo "no dr
 2. **Expected**: the `traceability` check fails. Its log names the uncovered requirement with
    the same line as scenario 3. GitHub shows the merge as blocked, with no option to bypass
    (US2 scenarios 1, 2 and 4).
-3. Revert the change and push. **Expected**: both checks pass and the pull request can be merged
-   (US2 scenario 3). Close it without merging.
+3. Revert the change and push. **Expected**: every check passes. Once the head commit is also
+   signed off (scenario 11), the pull request can be merged (US2 scenario 3). Close it without
+   merging.
 
 **Demonstrate that direct pushes are refused:**
 
@@ -135,3 +145,113 @@ git commit --allow-empty -m "chore: direct push probe"
 git push origin main            # Expected: rejected by the ruleset
 git reset --hard origin/main    # drop the probe commit (it exists only locally)
 ```
+
+## 8. The fast set and the full set (US4, FR-030, SC-010)
+
+```sh
+npx vitest list --filesOnly --json > /tmp/sets.json
+jq -r '.[].projectName' /tmp/sets.json | sort | uniq -c
+npm run test:fast
+```
+
+**Expected**: two counts, `fast` and `slow`, adding up to every test file (150 before the
+amendment, plus its new ones). `npm run test:fast` passes without Chromium installed and
+without building the site: its log shows no `site build` and finishes in well under a minute.
+The automated test `tools/traceability/test/test-sets.test.ts` checks the same partition against
+the traceability check's own file list, and that no fast file needs a browser or the build.
+
+## 9. The local full run refuses what it can't prove (US4 scenario 2, FR-032)
+
+```sh
+echo probe > probe.txt
+npm run verify; echo "exit $?"
+rm probe.txt
+```
+
+**Expected**: before anything runs, `local full run refused: the working copy differs from commit
+<sha>:` and a line `  ?? probe.txt`, then `exit 2`. Repeat with a changed tracked file instead:
+it is named with ` M`.
+
+Prerequisites: on a machine without Playwright's Chromium (or after
+`npx playwright uninstall`), `npm run verify` prints
+`site check needs Chromium: run npx playwright install chromium`, runs nothing and exits 2.
+With `nvm use 24`, it names the Node version `.nvmrc` asks for.
+
+## 10. A passing run, and a failing one (US4 scenarios 1 and 3, FR-033, FR-037, SC-010)
+
+On a clean checkout of a pushed commit:
+
+```sh
+npm run verify; echo "exit $?"
+ls "$(git rev-parse --git-common-dir)/local-verify/"
+git status --porcelain
+```
+
+**Expected**: every check's output, then the summary with six `pass` lines, the test count and
+`PASS: every check passed on <sha>`, `exit 0`. The result directory holds `<sha>.json`,
+`<sha>.log` and `<sha>.vitest.json`. `git status --porcelain` prints nothing (FR-037).
+
+Then break one browser test on a scratch branch (for example, change an expected text in
+`packages/web/test/terminal/output.test.ts`), commit, and run `npm run verify` again.
+**Expected**: the `test` check fails and is named in `FAIL: 1 check failed on <sha>: test`,
+`exit 1`, and `npm run signoff` then refuses with
+`the last local full run on <sha> failed (test)`. Drop the scratch commit.
+
+## 11. Signing off (US4 scenarios 1, 4 and 6, FR-033 to FR-036, SC-009)
+
+On a pull request's branch, after scenario 10's passing run, with one more local commit that
+isn't pushed yet:
+
+```sh
+git commit --allow-empty -m "chore: sign-off probe"
+npm run signoff; echo "exit $?"     # refused: no local full run on the new commit
+npm run verify && npm run signoff; echo "exit $?"
+gh api repos/alex-profir/CV/commits/$(git rev-parse HEAD)/statuses \
+  --jq '.[] | select(.context=="local-verify") | "\(.state) \(.description)"'
+```
+
+**Expected**:
+
+- The first `signoff` refuses, naming the new commit (FR-034).
+- The second prints `pushing <branch> to origin first`, then
+  `signed off <sha> on alex-profir/CV: local-verify success: <n> tests in <f> files passed; site
+  check passed; Node 26.<x>.<y>; <os>`, `exit 0`, and runs no test after `verify` ended (FR-036).
+- The query prints `success` and the same description, at most 140 characters.
+- On the pull request, `local-verify` shows as a passing check and the merge is allowed. Push one
+  more commit, or merge `main` into the branch: `local-verify` shows as expected again and the
+  merge is blocked until that commit is signed off (SC-009). The owner has no bypass option.
+
+## 12. Signing off offline, or from CI (US4, FR-034, FR-036)
+
+Turn the network off and run `npm run signoff` on a commit with a passing run.
+**Expected**: `can't reach origin, nothing was recorded: …`, `exit 1`, and no status appears on
+the commit once the network is back. `CI=true npm run signoff` refuses with
+`it runs only on the owner's machine, never in CI` and records nothing.
+
+The pull request's own checks never record a sign-off: in any pull request's checks list,
+`local-verify` is created by the owner's account, never by `github-actions`.
+
+## 13. Rolling out the amendment (research R19, SC-008)
+
+On the amendment's own pull request, from `001-local-verify`:
+
+1. **Expected**: its five checks, run by the new workflow, pass, and each job takes under 6
+   minutes:
+
+   ```sh
+   gh run view <run-id> --json jobs --jq '.jobs[] | "\(.name) \(.startedAt) \(.completedAt)"'
+   ```
+
+2. Check out its head commit clean and run `npm ci`, `npx playwright install chromium` and
+   `npm run verify`. **Expected**: `PASS`.
+3. Apply the new ruleset:
+
+   ```sh
+   id=$(gh api /repos/alex-profir/CV/rulesets --jq '.[] | select(.name=="main") | .id')
+   gh api --method PUT /repos/alex-profir/CV/rulesets/$id --input .github/rulesets/main.json
+   ```
+
+   **Expected**: the pull request now lists `local-verify` as expected, and merging is blocked.
+4. `npm run signoff`. **Expected**: `local-verify` passes and the pull request can merge. Merge it
+   (squash). It is the first pull request merged with a sign-off.
+5. On `main`, run scenario 7's drift check. **Expected**: `never`, then `no drift`.
