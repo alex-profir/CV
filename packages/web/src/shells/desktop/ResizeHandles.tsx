@@ -42,7 +42,7 @@ export function ResizeHandles({ window, dispatch }: { window: WindowState; dispa
     const current = drag.current;
     if (current === null || current.pointer !== event.pointerId) return;
     const geometry = resized(current.start, current.edge, event.clientX - current.startX, event.clientY - current.startY);
-    schedule(() => dispatch({ type: 'dragResize', view, edge: current.edge, geometry }));
+    schedule(() => dispatch({ type: 'dragResize', view, edge: current.edge, geometry, from: current.start }));
   };
   const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (drag.current?.pointer === event.pointerId) drag.current = null;

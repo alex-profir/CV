@@ -42,8 +42,11 @@ function randomAction(random: () => number, state: OsState, views: readonly View
       return { type: 'toggleMaximize', view };
     case 6:
       return { type: 'dragMove', view, x: number(-500, area.width + 500), y: number(-500, area.height + 500) };
-    case 7:
-      return { type: 'dragResize', view, edge: pick(EDGES), geometry: { x: number(-200, area.width), y: number(-200, area.height), width: number(-50, 3000), height: number(-50, 2000) } };
+    case 7: {
+      const geometry = { x: number(-200, area.width), y: number(-200, area.height), width: number(-50, 3000), height: number(-50, 2000) };
+      // A drag starts from where the window is.
+      return { type: 'dragResize', view, edge: pick(EDGES), geometry, from: state.windows.find((window) => window.view === view)?.geometry ?? geometry };
+    }
     case 8:
       return { type: 'sessionStart', kind: pick(['move', 'resize'] as const) };
     case 9:

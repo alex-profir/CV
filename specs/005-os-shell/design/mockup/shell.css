@@ -213,7 +213,38 @@ a {
   padding: var(--token-space-2) var(--token-space-2-5) var(--token-space-1-5);
   border: var(--token-border-thin) solid var(--token-color-chrome-border);
   border-radius: var(--token-radius-dock);
-  box-shadow: var(--token-shadow-dock);
+  /* Glass (FR-068): a tint dark enough for the names' contrast over white,
+     what is behind blurred and lifted, a bright rim, and, where the browser
+     can draw it, the edges bent as through a lens (the page's #dock-lens). */
+  background: var(--token-color-dock-glass);
+  backdrop-filter: url(#dock-lens) blur(var(--token-size-chrome-blur)) saturate(var(--token-scale-dock-saturate));
+  box-shadow:
+    inset 0 var(--token-border-thin) 0 var(--token-color-dock-rim),
+    inset 0 calc(-1 * var(--token-border-thin)) 0 var(--token-color-chrome-border),
+    var(--token-shadow-dock);
+}
+
+/* The glass's sheen, light on its upper half, behind the items. */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, var(--token-color-dock-sheen), transparent 45%);
+  pointer-events: none;
+}
+
+/* Reduced transparency: a solid dock (FR-068). */
+@media (prefers-reduced-transparency: reduce) {
+  .dock {
+    background: var(--token-color-chrome-solid);
+    backdrop-filter: none;
+  }
+
+  .dock::before {
+    content: none;
+  }
 }
 
 .dock-item {
@@ -477,6 +508,14 @@ a {
 .at-cv.resizing {
   inline-size: calc(var(--token-size-window-cv-width) - 14 * var(--token-space-4));
   block-size: calc(100vh - var(--token-size-menu-bar) - var(--token-size-dock-reserve) - 2 * var(--token-space-6) - 8 * var(--token-space-4));
+}
+
+/* Dragged 25 steps right and 25 down, 620 px from the left at 1440 px: the
+   window passes behind the dock and past the right and bottom edges, with
+   its title bar on screen (FR-010, FR-021). */
+.at-cv.past-edge {
+  inset-inline-start: calc((100vw - var(--token-size-window-cv-width)) / 2 + 25 * var(--token-space-4));
+  inset-block-start: calc(var(--token-size-menu-bar) + var(--token-space-6) + 25 * var(--token-space-4));
 }
 
 /* Where a window was when a keyboard move or resize started. */

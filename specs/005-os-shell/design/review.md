@@ -21,7 +21,9 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 ## Design decisions
 
 - **Look**: Graphite. A deep graphite wallpaper with soft indigo and teal glows and a faint dot
-  grid. The menu bar and the dock are dark glass that blurs what is behind them. Windows have
+  grid. The menu bar and the dock are dark glass that blurs what is behind them. Since
+  2026-10-28 the dock's glass also has a rim, a sheen and, where the browser can draw it, bending
+  edges (see the changes after sign-off). Windows have
   12 px corners, a hairline edge and a soft shadow. Menus and the move and resize pad are solid
   dark panels with 8 px and 12 px corners. A maximized window drops its corners and shadow.
 - **Window controls**: close, minimize and maximize (restore), on the left of the title bar in
@@ -119,13 +121,43 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   [wireframes.md](wireframes.md) (the focus indicator row). The menu's exports keep 4 px and no
   gap; no state or token changes. At the owner's request.
 
+- **2026-10-28, windows move behind the dock and past the screen's edge**, at the owner's request,
+  with the spec's clarifications of 2026-10-28 (FR-010, FR-021, FR-061, FR-067). A move stopped
+  when the title bar reached the desktop area's edge, and the window was cut off above the dock.
+  Now, as on a Mac, a window passes behind the dock, which stays in front and usable, and past
+  the left, right and bottom edges. Its title bar stays between the menu bar and the dock's
+  space, and at least 120 px of it stays on screen sideways. A resize's dragged edge stops at the
+  menu bar and the browser window's edges, and a bottom edge passes behind the dock. When keyboard
+  focus moves to an element the dock or an edge hides, the window moves just far enough to show
+  it. Added: the state "A window moved behind the dock and past the screen's edge" in
+  [wireframes.md](wireframes.md), `mockup/desktop-past-edge.html` and its export
+  `mockup/desktop-past-edge-1440.png`, and a `past-edge` placement in `mockup/shell.css`. Changed:
+  [wireframes.md](wireframes.md) (three design values, the first-load notes and the resize
+  notes). No other state, export or token changes. Confirmed by the owner on 2026-10-28.
+- **2026-10-28, the dock's glass and the minimize and maximize animations**, at the owner's
+  request, with the spec's clarifications of 2026-10-28 (FR-068 to FR-071). The dock was dark
+  glass that blurred what was behind it, at a 55% tint, which a white window behind it (now
+  possible, FR-010) would bring to 3.5:1 for its names. It is now a glass in the spirit of
+  current macOS, drawn for this site: a 70% tint (5.9:1 over white), the color behind lifted, a
+  light rim and a sheen, and, where the browser can draw it, edges that bend what is behind as a
+  lens does. Other browsers show the same glass without the bending, and reduced transparency
+  shows a solid dock. The menu bar, the menus and the phone shell are unchanged. Minimizing now
+  shrinks the window into its dock item behind the dock, and maximizing grows it to fill the
+  desktop, each over 250 ms, played backwards on restore. Added: the state "A window minimizing
+  into the dock" in [wireframes.md](wireframes.md), `mockup/desktop-minimizing.html` and its
+  export, the dock's glass and `#dock-lens` in `mockup/shell.css` and every desktop page, and 7
+  proposed tokens in `mockup/proposed-tokens.css`. Changed: [wireframes.md](wireframes.md) (three
+  new design values). Every desktop export is rendered again, as each shows the dock: apart from
+  the dock, they differ from the earlier exports only in text anti-aliasing, from a different
+  renderer. Confirmed by the owner on 2026-10-28.
+
 ## Sign-off
 
 - Reviewed mockup version: interim local mockup, Graphite, commit `4d2e29f` (`specs/005-os-shell/design/`)
 - Date: 2026-10-26
 - Approved by: Alex Profir (project owner)
-- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two at the owner's request.
-  The owner confirmed every change on 2026-10-28.
+- Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two and the last two at the
+  owner's request. The owner confirmed every change on 2026-10-28.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
   the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's

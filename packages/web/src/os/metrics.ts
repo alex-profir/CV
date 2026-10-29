@@ -33,6 +33,7 @@ export const METRICS: Metrics = Object.freeze({
   menuBar: px('size.menu-bar'),
   dockReserve: px('size.dock-reserve'),
   titleBar: px('size.title-bar'),
+  grab: px('size.title-bar-grab'),
   cvWidth: px('size.window-cv-width'),
   aboutWidth: px('size.window-about-width'),
   aboutHeight: px('size.window-about-height'),
@@ -50,6 +51,19 @@ export const METRICS: Metrics = Object.freeze({
   terminalMargin: px('size.terminal-window-margin'),
   terminalOffset: px('size.terminal-window-offset'),
 });
+
+// How far a focus indicator reaches past its element: its width and its
+// offset (FR-024), so a window brought into view shows it whole (FR-067).
+export const FOCUS_REACH: number = px('border.thick') + px('space.0_5');
+
+// How far the dock's lens bends what is behind it, at its edges (FR-068).
+// An SVG filter's attribute can't read a CSS variable, so the dock writes
+// it there from here.
+export const DOCK_LENS: number = px('size.dock-lens');
+
+// The length of the minimize, restore and maximize animations (FR-069,
+// FR-070), outside `Metrics`: os-core never animates.
+export const MOTION_BASE_MS: number = ms('motion.duration.base');
 
 // The easing of the open and close animations (research R13), outside
 // `Metrics`: os-core never animates.

@@ -186,7 +186,7 @@ describe('005-os-shell-FR-065: maximize fills the area and restore brings the bo
   test('moves, resizes and sessions are ignored while maximized', () => {
     const maximized = run(desktop(), [{ type: 'toggleMaximize', view: 'cv' }, { type: 'effectsDone' }]);
     expect(run(maximized, [{ type: 'dragMove', view: 'cv', x: 10, y: 10 }])).toBe(maximized);
-    expect(run(maximized, [{ type: 'dragResize', view: 'cv', edge: 'se', geometry: { x: 0, y: 0, width: 500, height: 400 } }])).toBe(maximized);
+    expect(run(maximized, [{ type: 'dragResize', view: 'cv', edge: 'se', geometry: { x: 0, y: 0, width: 500, height: 400 }, from: { x: 0, y: 0, width: 500, height: 400 } }])).toBe(maximized);
     expect(run(maximized, [{ type: 'sessionStart', kind: 'move' }])).toBe(maximized);
     expect(run(maximized, [{ type: 'sessionStart', kind: 'resize' }])).toBe(maximized);
   });
@@ -195,15 +195,16 @@ describe('005-os-shell-FR-065: maximize fills the area and restore brings the bo
 describe('005-os-shell-FR-020 005-os-shell-FR-027 005-os-shell-FR-062: keyboard and pad moves and resizes', () => {
   test('a move session steps by step and big step, clamps, and confirms with an announcement', () => {
     let state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }]);
-    expect(state.session).toEqual({ kind: 'move', view: 'cv', start: { x: 220, y: 24, width: 1000, height: 716 } });
+    expect(state.session).toEqual({ kind: 'move', view: 'cv', start: { x: 220, y: 24, width: 1000, height: 716 }, from: { x: 220, y: 24, width: 1000, height: 716 } });
     expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'pad', view: 'cv' } }]);
     state = run(state, [{ type: 'effectsDone' }, { type: 'sessionStep', dx: 16, dy: 0 }, { type: 'sessionStep', dx: 0, dy: 64 }]);
     expect(state.windows[0]!.geometry).toMatchObject({ x: 236, y: 88 });
-    state = run(state, Array.from({ length: 10 }, () => ({ type: 'sessionStep' as const, dx: 64, dy: 0 })));
-    expect(state.windows[0]!.geometry.x).toBe(AREA.width - 1000);
+    // Past the right edge, it stops with 120 px of the title bar on screen (FR-021).
+    state = run(state, Array.from({ length: 20 }, () => ({ type: 'sessionStep' as const, dx: 64, dy: 0 })));
+    expect(state.windows[0]!.geometry.x).toBe(AREA.width - METRICS.grab);
     state = run(state, [{ type: 'sessionEnd', confirm: true }]);
     expect(state.session).toBeNull();
-    expect(state.windows[0]!.geometry).toMatchObject({ x: 440, y: 88 });
+    expect(state.windows[0]!.geometry).toMatchObject({ x: 1320, y: 88 });
     expect(state.effects).toEqual([
       { kind: 'announce', message: 'CV moved.' },
       { kind: 'focus', target: { kind: 'window-title', view: 'cv' } },
@@ -240,6 +241,30 @@ describe('005-os-shell-FR-020 005-os-shell-FR-027 005-os-shell-FR-062: keyboard 
   test('switching from a move to a resize keeps the start, so a cancel goes back before the move', () => {
     const state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, { type: 'sessionStep', dx: 64, dy: 64 }, { type: 'sessionStart', kind: 'resize' }, { type: 'effectsDone' }, { type: 'sessionEnd', confirm: false }]);
     expect(state.windows[0]!.geometry).toEqual({ x: 220, y: 24, width: 1000, height: 716 });
+  });
+
+  test('an edge past the bottom of the screen can come back within one drag', () => {
+    const before = run(desktop(), [{ type: 'dragMove', view: 'cv', x: 220, y: 384 }]).windows[0]!.geometry;
+    expect(before.y + before.height).toBe(1100);
+    const state = run(desktop(), [
+      { type: 'dragMove', view: 'cv', x: 220, y: 384 },
+      { type: 'dragResize', view: 'cv', edge: 's', geometry: { ...before, height: 316 }, from: before },
+      { type: 'dragResize', view: 'cv', edge: 's', geometry: before, from: before },
+    ]);
+    expect(state.windows[0]!.geometry).toEqual(before);
+  });
+
+  test('a resize after a move past the bottom can come back to where the move left it', () => {
+    let state = run(desktop(), [{ type: 'sessionStart', kind: 'move' }, ...Array.from({ length: 6 }, () => ({ type: 'sessionStep' as const, dx: 0, dy: 64 })), { type: 'sessionStart', kind: 'resize' }]);
+    const moved = state.windows[0]!.geometry;
+    expect(moved).toEqual({ x: 220, y: 408, width: 1000, height: 716 });
+    state = run(state, [{ type: 'sessionStep', dx: 0, dy: -64 }, { type: 'sessionStep', dx: 0, dy: 64 }]);
+    expect(state.windows[0]!.geometry).toEqual(moved);
+  });
+
+  test('a resize past the left edge keeps the left edge, and 120 px of the title bar on screen', () => {
+    const state = run(desktop(), [{ type: 'dragMove', view: 'cv', x: -500, y: 24 }, { type: 'sessionStart', kind: 'resize' }, ...Array.from({ length: 10 }, () => ({ type: 'sessionStep' as const, dx: -64, dy: 0 }))]);
+    expect(state.windows[0]!.geometry).toEqual({ x: -500, y: 24, width: 620, height: 716 });
   });
 
   test('maximizing during a session ends it and moves focus from the pad to the title', () => {
@@ -382,5 +407,17 @@ describe('006-terminal-FR-003: the Terminal window works as every other window, 
     expect(phone.effects).toEqual([{ kind: 'focus', target: { kind: 'mobile-title', view: 'terminal' } }]);
     expect(THREE_APPS.slice(0, APPS.length)).toEqual(APPS);
     expect(run(desktop(), [{ type: 'open', view: 'about' }]).windows).toEqual(three([{ type: 'open', view: 'about' }]).windows);
+  });
+});
+
+describe('005-os-shell-FR-067: reveal moves a window to show a hidden focused element', () => {
+  test('it moves a shown window, and ignores a maximized or minimized one', () => {
+    const low = run(desktop(), [{ type: 'dragMove', view: 'cv', x: 220, y: 600 }]);
+    const box = { x: 300, y: 744, width: 100, height: 40 };
+    expect(run(low, [{ type: 'reveal', view: 'cv', box }]).windows[0]!.geometry).toMatchObject({ x: 220, y: 580 });
+    const maximized = run(low, [{ type: 'toggleMaximize', view: 'cv' }, { type: 'effectsDone' }]);
+    expect(run(maximized, [{ type: 'reveal', view: 'cv', box }])).toBe(maximized);
+    const minimized = run(low, [{ type: 'minimize', view: 'cv' }, { type: 'effectsDone' }]);
+    expect(run(minimized, [{ type: 'reveal', view: 'cv', box }])).toBe(minimized);
   });
 });

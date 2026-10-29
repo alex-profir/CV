@@ -68,7 +68,8 @@ export function Os({ resume, siteData, apps }: OsProps) {
   // Whether Home's `history.back()` is on its way, so a second Home before
   // its `popstate` doesn't go back again and leave the site (FR-033, FR-050).
   const homing = useRef(false);
-  // Windows closing or minimizing, until their animation ends (research R13).
+  // Windows closing, until their animation ends (research R13). Minimizing
+  // doesn't wait: the window animates on its own (FR-071).
   const leaving = useRef(new Map<ViewId, { stop: () => void; action: OsAction }>());
 
   const viewName = useCallback((view: ViewId) => nameOf(view, context), [context]);
@@ -116,7 +117,7 @@ export function Os({ resume, siteData, apps }: OsProps) {
     if (!hydrated) return undefined;
     const query = matchMedia(shellQuery(METRICS));
     const onChange = () => {
-      // A window still closing or minimizing does so at once, before the switch.
+      // A window still closing does so at once, before the switch.
       for (const { stop, action } of leaving.current.values()) {
         stop();
         finish(action);
@@ -192,11 +193,11 @@ export function Os({ resume, siteData, apps }: OsProps) {
     document.title = shellTitle(resume, view === null ? undefined : viewName(view));
   }, [state.shell, state.focused, state.mobile.open, resume, viewName]);
 
-  // What the shells dispatch: closing and minimizing a window wait for its
-  // closing animation (research R13). A second request meanwhile is
-  // dropped; opening the window again stops the animation and keeps it.
+  // What the shells dispatch: closing a window waits for its closing
+  // animation (research R13). A second request meanwhile is dropped;
+  // opening the window again stops the animation and keeps it.
   const act = useCallback((action: OsAction) => {
-    if (action.type === 'close' || action.type === 'minimize') {
+    if (action.type === 'close') {
       const { view } = action;
       if (leaving.current.has(view)) return;
       let done = false;

@@ -10,6 +10,7 @@ export const METRICS: Metrics = {
   menuBar: 32,
   dockReserve: 104,
   titleBar: 40,
+  grab: 120,
   cvWidth: 1000,
   aboutWidth: 560,
   aboutHeight: 520,
@@ -108,7 +109,8 @@ export function assertInvariants(state: OsState, metrics: Metrics, apps: readonl
         check(x === 0 && y === 0 && width === area.width && height === area.height, `${window.view} maximized fills the area (FR-065)`, state);
         continue;
       }
-      check(x >= 0 && x + width <= area.width && y >= 0 && y + metrics.titleBar <= area.height, `${window.view}'s title bar is inside the area (FR-021)`, state);
+      const grab = Math.min(metrics.grab, width);
+      check(x + width >= grab && x <= area.width - grab && y >= 0 && y + metrics.titleBar <= area.height, `${window.view}'s title bar is placed as FR-021 sets`, state);
       check(width <= area.width && height <= area.height, `${window.view} is no larger than the area (FR-061)`, state);
       check(width >= Math.min(metrics.minWidth, area.width) && height >= Math.min(metrics.minHeight, area.height), `${window.view} is at least the minimum size (FR-061)`, state);
     }

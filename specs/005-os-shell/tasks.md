@@ -725,7 +725,7 @@ Every FR in spec.md and the test task that covers it:
 | 005-os-shell-FR-007 | T032 |
 | 005-os-shell-FR-008 | T032, T056 |
 | 005-os-shell-FR-009 | T032 |
-| 005-os-shell-FR-010 | T054 |
+| 005-os-shell-FR-010 | T054, T140 |
 | 005-os-shell-FR-011 | T052 |
 | 005-os-shell-FR-012 | T027, T052 |
 | 005-os-shell-FR-013, FR-014, FR-015 | T053 |
@@ -734,7 +734,7 @@ Every FR in spec.md and the test task that covers it:
 | 005-os-shell-FR-018 | T028, T050, T054 |
 | 005-os-shell-FR-019 | T054 |
 | 005-os-shell-FR-020 | T049, T054 |
-| 005-os-shell-FR-021 | T050, T054 |
+| 005-os-shell-FR-021 | T050, T054, T138, T140 |
 | 005-os-shell-FR-022 | T054 |
 | 005-os-shell-FR-023 | T027, T049, T054 |
 | 005-os-shell-FR-024, FR-025, FR-028, FR-030 | T079 |
@@ -765,10 +765,15 @@ Every FR in spec.md and the test task that covers it:
 | 005-os-shell-FR-058 | T102 |
 | 005-os-shell-FR-059 | T104 |
 | 005-os-shell-FR-060 | T104 |
-| 005-os-shell-FR-061 | T050, T054 |
+| 005-os-shell-FR-061 | T050, T054, T138, T140 |
 | 005-os-shell-FR-062 | T049, T079 |
 | 005-os-shell-FR-063, FR-064, FR-065 | T049, T054 |
 | 005-os-shell-FR-066 | T033 |
+| 005-os-shell-FR-067 | T139, T140 |
+| 005-os-shell-FR-068 | T137, T141 |
+| 005-os-shell-FR-069 | T142 |
+| 005-os-shell-FR-070 | T142 |
+| 005-os-shell-FR-071 | T142 |
 
 Success criteria:
 
@@ -855,3 +860,22 @@ Success criteria:
   - **Result (2026-10-28)**: contracts/cli.md's Variants on the root now lists every `<state>` name the check reports, each with the parts that use it: the data-model shell states, `cv-app` (on both shells), `cv-app-after-cv`, `keyboard`, `reduced-motion`, `forced-colors`, `narrow-window`, `text-zoom`, `200%-zoom`, `400%-zoom` and `text-spacing`. Nothing is renamed, so reports keep their names. `cli.test.ts`'s `ROOT_VARIANT` accepts only those names, and passes on the real build.
 - [X] T136 Push Phase 13's commits with a normal push and bring PR #23 up to date. Confirm `traceability`, `test`, `content`, `tokens` and `site` pass on the new head, and that the `site` job's report matches a local `npm run site-check` on the same commit once Lighthouse scores are masked. Add to the PR description T131's design change (the review.md entry for the owner to confirm), T132's fix and the new test count. No AI or Claude attribution (CLAUDE.md), per Constitution XI and FR-060 (partial)
   - **Result (2026-10-28)**: pushed with a normal push (`9e8c9dc..ddad919`). CI passes every job (`traceability`, `test`, `content`, `tokens`, `site`) on `ddad919`. The `site` job's report is the same as a local `npm run site-check` on that commit, Lighthouse scores included, with the same build version (`f98460ecdda4254f`). PR #23's description now records T131's design change, with the review.md entry for the owner to confirm, T132's fix, T133 to T135, and the new test count (1011). No AI or Claude attribution.
+
+---
+
+## Phase 14: Amendment of 2026-10-28
+
+The owner amended the spec and the design on 2026-10-28 (spec clarifications, design/review.md):
+windows move past the screen's edges and behind the dock, a hidden focused element brings its
+window into view, the dock becomes glass, and minimize and maximize animate (FR-010, FR-021,
+FR-061, FR-067 to FR-071, research R20).
+
+- [X] T137 Add the amendment's tokens to the hand-written export (`packages/tokens/penpot/tokens.json`) and regenerate the token output: `color.base.glass-deep`, `color.base.sheen`, `color.dock-glass`, `color.dock-sheen`, `color.dock-rim`, `scale.dock-saturate`, `size.dock-lens` (design/mockup/README.md) and `size.title-bar-grab` (120 px, the wireframes' "How far a window moves").
+- [X] T138 [P] Change the clamps in `packages/os-core/src/geometry.ts` (FR-021, FR-061): `clampMove` keeps `grab` px of the title bar on screen sideways; `clampResize` takes the box before the drag and stops a dragged edge at the browser's bottom. Add `grab` to `Metrics` and `metrics.ts`. Update `geometry.test.ts`, the invariant in `test/helpers.ts` and `reducer.test.ts`.
+- [X] T139 [P] Add `revealMove` and the `reveal` action (FR-067) to `os-core`, with tests in `geometry.test.ts` and `reducer.test.ts`.
+- [X] T140 Draw windows behind the dock and past the edges (FR-010): unclip `.desktop-area`, `overflow: clip` on `.desktop`; dispatch `reveal` from `Window.tsx`'s focus listener one frame after focus. Rewrite `windows.test.ts`'s FR-010 and FR-021 tests and add FR-061's and FR-067's cases.
+- [X] T141 [P] The dock's glass (FR-068): styles in `desktop.css`, the lens layer and `#dock-lens` in `Dock.tsx`, the lens scale from `metrics.ts`. Tests in `dock.test.ts` and `accessibility.test.ts`.
+- [X] T142 Minimize, restore, maximize and restore animations (FR-069 to FR-071): `animateInto` and `animateBox` in `motion.ts`, `Window.tsx` plays them, `Os.tsx` no longer waits for minimize. Tests in `motion.test.ts`.
+- [X] T143 Run typecheck, `npm test`, the traceability, content and token checks and the site check; push.
+- [ ] T144 Owner action, deferred to the final testing phase (constitution 1.3.0, deferred manual checks): in Safari and Firefox, confirm the dock shows its glass without the lens and nothing else differs from Chrome (FR-068); with a window dragged behind the dock and past each edge, and with minimize, restore, maximize and restore played by mouse and by keyboard, compare the shell with `design/mockup/desktop-past-edge-1440.png` and `desktop-minimizing-1440.png` (FR-010, FR-021, FR-069, FR-070). The automated tests run in Chromium only.
+

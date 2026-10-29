@@ -47,6 +47,29 @@
   to an input inside it, which names the app for screen readers instead. The CV app and About
   this site keep focusing their title (FR-040).
 
+### Session 2026-10-28
+
+- Q: How far should a dragged window be able to go? A move stopped as soon as the title bar
+  touched the edge of the desktop area, and the window was cut off above the dock. → A: As on a
+  Mac. A window can move past the left, right and bottom edges of the browser window and under
+  the dock, which stays in front. Its title bar never goes under the menu bar or the dock, and a
+  part of it always stays on screen, so the window can be grabbed again (FR-010, FR-021, FR-061).
+- Q: Once a window can sit under the dock or partly off screen, keyboard focus can land on
+  something hidden there. Should the window stay where the visitor put it, or come back into
+  view? → A: It comes back into view: when focus moves to something the dock or the screen's
+  edge hides, the window moves just enough to show it, so focus is never hidden (FR-024, FR-067).
+- Q: The dock should look like the glass of current macOS, which also bends the light at its
+  edges, something only some browsers can draw. Should it bend where it can, or look the same in
+  every browser? → A: It bends where the browser can draw it. Other browsers show the same glass
+  without the bending (FR-068).
+- Q: Which parts of the shell get the new glass: the desktop dock only, the phone home screen's
+  bar too, or all the shell's chrome? → A: The desktop dock only. The menu bar, the menus and
+  the phone shell keep their look (FR-068).
+- Q: Should minimizing animate the window into the dock as a genie that bends into it, or as a
+  window that shrinks into its dock item? → A: It shrinks into its dock item and grows back out
+  on restore. Maximizing grows the window to fill the desktop and shrinks it back on restore
+  (FR-069, FR-070).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reach the CV in one click or tap, on either shell (Priority: P1)
@@ -116,9 +139,10 @@ app name follow each step.
    **Then** it comes to the front and becomes focused, and the menu bar shows its app's name.
 3. **Given** the CV window is focused, **When** the visitor drags its title bar, **Then** the
    window follows the pointer and stays where it is released.
-4. **Given** the visitor drags a window toward the top or a side of the screen, **When** the
-   title bar reaches the edge of the desktop area, **Then** the window stops there and its title
-   bar stays fully visible.
+4. **Given** the visitor drags a window toward the top of the screen, **When** the title bar
+   reaches the menu bar, **Then** the window stops there and its title bar stays fully visible.
+   **When** the visitor drags it toward a side, **Then** it moves past the screen's edge and stops
+   when only the part of its title bar the design sets is left on screen.
 5. **Given** the CV window is open, **When** the visitor moves it with the non-dragging
    alternative the design sets, using single clicks only, **Then** it moves as asked.
 6. **Given** two open windows, **When** the visitor chooses the other window in the Window menu,
@@ -130,7 +154,7 @@ app name follow each step.
    of the window now in front, or the desktop's own name when none is left.
 9. **Given** an open window near the right edge, **When** the browser window is made narrower
    but stays wide enough for the desktop shell, **Then** the window moves back so its title bar
-   is fully inside the desktop area.
+   stays on screen as FR-021 sets.
 10. **Given** the CV window is open and not maximized, **When** the visitor drags its bottom
     right corner, **Then** the window grows or shrinks with the pointer, never below the minimum
     size the design sets, and the CV reflows inside it without horizontal scrolling.
@@ -142,6 +166,13 @@ app name follow each step.
     the window fills the desktop area with the menu bar and dock still visible, and the control
     now restores it. **When** the visitor clicks it again, **Then** the window returns to its
     earlier position and size.
+13. **Given** the CV window is open, **When** the visitor drags its title bar down toward the
+    dock, **Then** the window passes behind the dock, which stays in front and usable, and its
+    lower part goes past the bottom of the screen. The move stops when the title bar reaches the
+    dock, so the title bar stays fully visible.
+14. **Given** a window moved so part of it is behind the dock or off screen, **When** keyboard
+    focus moves to an element in that hidden part, **Then** the window moves just enough to show
+    the element and its focus indicator, and keeps its size.
 
 ---
 
@@ -317,21 +348,33 @@ confirm that the matching check fails with a clear message and that the pull req
 - **A tablet**: gets the shell its screen size picks (FR-001), and touch works in either shell.
 - **A desktop zoomed to 400% on a 1280 px window** (320 CSS px wide): the mobile shell, which
   reflows to one column, as WCAG 2.2 success criterion 1.4.10 asks.
-- **A window dragged toward an edge**: it stops when its title bar reaches the edge of the
-  desktop area. Its title bar is never hidden under the menu bar or the dock, or off screen.
-- **The browser window shrinks** so a window would fall outside: the window moves back inside.
-  A window larger than the remaining desktop area is fitted to it, and its content scrolls.
+- **A window dragged toward an edge**: toward the top, it stops when its title bar reaches the
+  menu bar. Toward the bottom, the window passes behind the dock and past the screen's bottom
+  edge, and stops when its title bar reaches the dock. Toward a side, it passes the screen's
+  edge and stops when only the part of its title bar the design sets is left on screen. Its
+  title bar is never hidden under the menu bar or the dock, and never wholly off screen.
+- **The browser window shrinks** so a window's title bar would fall outside the limits FR-021
+  sets: the window moves back just far enough. A window larger than the remaining desktop area
+  is fitted to it, and its content scrolls.
+- **Focus moves to an element behind the dock or off screen**, by Tab, a shortcut or a screen
+  reader: the window moves just enough to show it (FR-067). A pointer or touch user's window
+  stays where it was put.
 - **A short desktop browser window**: the menu bar and dock stay visible, windows fit between
   them, and the CV scrolls inside its window.
 - **Double-clicking or quickly clicking a dock item**: opens one window, never two.
 - **A drag that starts on the close control**: does not move the window. Releasing away from the
   control does not close it. The same holds for the minimize and maximize controls.
-- **A resize past the minimum size or the desktop area's edge**: the window stops at the minimum
-  size, or at the edge, and its title bar stays inside the desktop area.
+- **A resize past the minimum size or the screen's edge**: the window stops at the minimum size,
+  at the menu bar, or at the edge of the browser window. A bottom edge may pass behind the dock.
+  The window is never larger than the desktop area, and its title bar stays as FR-021 sets.
 - **Dragging the title bar or an edge of a maximized window**: does nothing. The visitor restores
   the window first (FR-065).
 - **The browser window shrinks with a window maximized**: the window keeps filling the smaller
   desktop area.
+- **Minimizing, restoring or maximizing again before the animation ends**: the running
+  animation ends at once at its end state, and the new action plays from there (FR-071).
+- **The dock over a light window, such as the CV's white page**: the dock's tint keeps its names,
+  icons and open marks readable (FR-068).
 - **Every open window minimized**: the desktop shows no window, the menu bar shows the desktop's
   own name, and the dock and the Window menu bring each window back.
 - **The shell switches to mobile with a window minimized or maximized**: on mobile, every app
@@ -428,8 +471,9 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 **Desktop: menu bar, desktop and dock**
 
 - **FR-010**: The desktop shell MUST show a menu bar along the top, a desktop area with the
-  wallpaper, and a dock. The menu bar and the dock MUST stay visible and MUST NOT be covered by a
-  window.
+  wallpaper, and a dock. The menu bar and the dock MUST stay visible, in front of every window,
+  and MUST NOT be covered by one. No window may go under the menu bar (FR-021). A window moved
+  or resized under the dock MUST pass behind it, and the dock MUST stay usable over it.
 - **FR-011**: The dock MUST show one item per app (FR-003), with its icon. Each item's name MUST
   be shown when the item is hovered or focused, and MUST be its accessible name. An open app's
   item MUST carry an open mark that doesn't rely on color alone and is announced by screen
@@ -466,9 +510,13 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   MUST follow the pointer and stay where it is released.
 - **FR-020**: Every move possible by dragging MUST also be possible with single pointer actions
   and no dragging (WCAG 2.2 success criterion 2.5.7), and with the keyboard (FR-027).
-- **FR-021**: A window's title bar MUST stay fully inside the desktop area: a move MUST stop at
-  its edge. When the desktop area shrinks, every window MUST move back so its title bar is fully
-  inside, and a window larger than the area MUST be fitted to it.
+- **FR-021**: A window MUST be able to move past the left, right and bottom edges of the browser
+  window, and under the dock (FR-010). Its title bar MUST stay below the menu bar and above the
+  dock: a move MUST stop when the title bar reaches the top or the bottom of the desktop area. At
+  least the part of the title bar the design sets MUST stay on screen, across the desktop area's
+  width, so the window can always be grabbed again: a sideways move MUST stop there. When the
+  desktop area shrinks, every window MUST move back so its title bar is placed as this
+  requirement sets, and a window larger than the area MUST be fitted to it.
 - **FR-022**: A window's content MUST scroll inside the window when it is taller than the
   window. Windows MUST also be resizable, and able to be minimized and maximized, as FR-061 to
   FR-065 set.
@@ -482,7 +530,7 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   the menu bar and its menus, using the dock, and opening, focusing, switching, moving,
   resizing, minimizing, maximizing, restoring and closing windows (Constitution VIII). Focus MUST always be visible, with an indicator of at
   least 3:1 contrast against its surroundings, and MUST NOT be hidden behind a window, the menu
-  bar or the dock.
+  bar or the dock, or outside the browser window (FR-067).
 - **FR-025**: From anywhere in the desktop shell, a keyboard user MUST be able to move focus to
   the menu bar, to the dock and to the next open window, each with one shortcut, without passing
   through every element of every window.
@@ -508,9 +556,10 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
 
 - **FR-061**: Dragging any edge or corner of a window that isn't maximized, with a mouse, a pen
   or touch, MUST resize the window from that edge or corner. A window MUST NOT become smaller
-  than the minimum size the approved design sets, nor larger than the desktop area, and its
-  title bar MUST stay inside the desktop area as FR-021 sets. Its content MUST reflow to the new
-  size (FR-008).
+  than the minimum size the approved design sets, nor larger than the desktop area. A dragged
+  edge MUST stop at the menu bar and at the edge of the browser window, and a bottom edge MAY
+  pass behind the dock (FR-010). The title bar MUST stay as FR-021 sets. Its content MUST reflow
+  to the new size (FR-008).
 - **FR-062**: Every resize possible by dragging MUST also be possible with single pointer actions
   and no dragging (WCAG 2.2 success criterion 2.5.7), and with the keyboard: the user starts a
   resize from the window's menu or with a shortcut, changes the size with the arrow keys in
@@ -532,6 +581,37 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   had before, and their names MUST say so, such as "Restore CV". A maximized window MUST NOT be
   moved or resized until it is restored, and MUST keep filling the desktop area when that area
   changes size.
+- **FR-067**: When focus moves to an element inside a window that the dock covers, or that is
+  outside the browser window, the window MUST move by the least distance that shows the whole
+  element and its focus indicator inside the desktop area, or the element's start when it is
+  larger than that area. The move MUST keep the window's size, MUST place its title bar as
+  FR-021 sets, and MUST NOT be animated when the visitor asks for reduced motion (FR-046).
+  Otherwise the window MUST stay where the visitor put it: pointer moves, scrolling, and focus
+  moving to an element already in view MUST NOT move it.
+
+**Desktop: the dock's glass and window animations**
+
+- **FR-068**: The dock MUST be drawn as glass: what is behind it MUST show through blurred and
+  tinted, with a light rim along its edge and a sheen on its upper part. In browsers that can
+  draw it, the glass MUST also bend what is behind it near its edges, as a lens does. Browsers
+  that can't MUST show the same glass without the bending, and nothing else about the dock may
+  change between them. Whatever is behind the dock, a window's content included (FR-010), every
+  dock item's name MUST keep a contrast of at least 4.5:1, and its icon and open mark at least
+  3:1. When the visitor asks for reduced transparency, the dock MUST be solid. The glass is the
+  site's own drawing (FR-044). The menu bar, the menus and the mobile shell keep their look.
+- **FR-069**: Minimizing a window MUST animate it shrinking from its box into its app's dock
+  item, passing behind the dock (FR-010), and restoring it MUST animate it growing back out of
+  that item to its position and size. About this site, which has no dock item, MUST shrink into
+  and grow out of the site menu's title. Each animation MUST last no longer than the design sets.
+- **FR-070**: Maximizing a window MUST animate it growing from its position and size to fill the
+  desktop area, and restoring it MUST animate it back. A change of the desktop area's size while
+  a window is maximized MUST NOT animate.
+- **FR-071**: The animations of FR-069 and FR-070 MUST NOT hold anything up: focus MUST move, and
+  screen readers MUST be told, as FR-063 to FR-065 set, when the action starts, and the visitor
+  MUST be able to act at once. Acting on the window during its animation, or starting another
+  animation of it, MUST end the running animation at once at its end state, then act. None of
+  them plays on first load, on a shell switch, or when a window is restored by the shell rather
+  than by the visitor.
 
 **Mobile: home screen and full-screen apps**
 
@@ -593,8 +673,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   design value MUST come from tokens, and motion values from the motion token source. The token
   check (003) MUST pass over the shells with no exception added for them.
 - **FR-046**: When the visitor asks for reduced motion, every non-essential animation of the
-  shells, such as windows or apps opening, closing, minimizing, restoring and maximizing, and
-  menus appearing, MUST be removed or
+  shells, such as windows or apps opening, closing, minimizing, restoring and maximizing
+  (FR-069, FR-070), and menus appearing, MUST be removed or
   replaced with one that doesn't move or scale (Constitution VIII). A window being dragged MUST
   still follow the pointer.
 - **FR-047**: With forced colors active, every shell element MUST stay visible and
@@ -727,8 +807,9 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
 
 - [x] ASCII wireframes, per shell, of every state: on desktop, first load with the CV window
   open, the desktop with no window open, two windows open, a menu open, the Window menu, a
-  window resized, a window minimized, a window maximized, and a keyboard move and a keyboard
-  resize in progress; on
+  window resized, a window minimized, a window maximized, a keyboard move and a keyboard
+  resize in progress, a window moved behind the dock and past the screen's edge, the dock's
+  glass, and a frame of a window minimizing into the dock; on
   mobile, the home screen in portrait and landscape, the CV app full screen and About this site
   full screen; and the page shown without scripts
 - [x] PNG exports of the approved Penpot mockup of both shells, at a phone width and a desktop

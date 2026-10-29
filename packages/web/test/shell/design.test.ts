@@ -45,7 +45,8 @@ describe('005-os-shell-FR-044: the look is original', () => {
     const foreign = await page.evaluate(() =>
       [...document.querySelectorAll('#os svg, #os img, #os picture, #os [style*="background-image"]')]
         .filter((element) => element.closest('.cv') === null)
-        .filter((element) => !(element.tagName.toLowerCase() === 'svg' && (element.getAttribute('data-req')?.includes('005-os-shell-FR-044') || element.classList.contains('arrow'))))
+        // The dock lens's filter draws nothing of its own (FR-068).
+        .filter((element) => !(element.tagName.toLowerCase() === 'svg' && (element.getAttribute('data-req')?.includes('005-os-shell-FR-044') || element.classList.contains('arrow') || element.classList.contains('dock-lens-filter'))))
         .map((element) => element.outerHTML.slice(0, 80)),
     );
     expect(foreign).toEqual([]);

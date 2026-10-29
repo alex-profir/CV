@@ -13,6 +13,7 @@
   --token-color-base-dusk: #171821;
   --token-color-base-fog: #a3a3b0;
   --token-color-base-glass: #1212188c;
+  --token-color-base-glass-deep: #121218b3;
   --token-color-base-glow-lilac: #818cf861;
   --token-color-base-glow-teal: #2dd4bf33;
   --token-color-base-graphite: #2b2b28;
@@ -32,6 +33,7 @@
   --token-color-base-rose: #fda4af;
   --token-color-base-shade: #00000073;
   --token-color-base-shade-strong: #000000a6;
+  --token-color-base-sheen: #ffffff1f;
   --token-color-base-slate: #737482;
   --token-color-base-smoke: #262732;
   --token-color-base-snow: #ececf2;
@@ -48,6 +50,9 @@
   --token-color-control: #737482;
   --token-color-control-focused: #c9cad6;
   --token-color-control-glyph: #1b1c24;
+  --token-color-dock-glass: #121218b3;
+  --token-color-dock-rim: #ffffff33;
+  --token-color-dock-sheen: #ffffff1f;
   --token-color-focus: #3730a3;
   --token-color-focus-shell: #a5b4fc;
   --token-color-ghost: #a5b4fc;
@@ -162,6 +167,7 @@
   --token-radius-pocket-screen: 16px;
   --token-radius-small: 6px;
   --token-radius-window: 12px;
+  --token-scale-dock-saturate: 1.6;
   --token-scale-open-start: 0.96;
   --token-shadow-dock: 0px 16px 40px 0px #00000073;
   --token-shadow-menu: 0px 12px 32px 0px #00000073;
@@ -174,6 +180,7 @@
   --token-size-control-glyph: 10px;
   --token-size-desktop-min-height: 640px;
   --token-size-dock-icon: 48px;
+  --token-size-dock-lens: 24px;
   --token-size-dock-reserve: 104px;
   --token-size-home-target: 44px;
   --token-size-menu-bar: 32px;
@@ -201,6 +208,7 @@
   --token-size-terminal-window-width: 760px;
   --token-size-timeline-dot: 9px;
   --token-size-title-bar: 40px;
+  --token-size-title-bar-grab: 120px;
   --token-size-vim-message: 28px;
   --token-size-vim-status: 24px;
   --token-size-wallpaper-dots: 22px;
