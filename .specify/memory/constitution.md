@@ -203,14 +203,23 @@ part it changes (Principle XI).
 5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
    `data-req` attributes (Principle III).
 6. **Pull request**: one PR per new feature, and one or more per amendment, each linking its
-   spec and tasks (Principle XI).
+   spec and tasks (Principle XI). It merges once CI passes and the owner's local run has signed
+   off its head commit (Merge requirements).
 
 Merge requirements:
 
 - CI MUST enforce requirement-to-test traceability (Principle III).
 - Accessibility (WCAG 2.2 AA, keyboard operation, reduced motion), Lighthouse 90+, offline
   behavior and the one-click/one-tap CV path MUST be verified before merge. They are
-  automated in CI wherever tooling allows.
+  automated wherever tooling allows, in CI or in the owner's local run below.
+- **Cloud and local runs**: CI on every pull request runs the fast checks: type checking, the
+  tests that need no browser, the traceability, content and token checks, and the site's checks
+  on the built site. The full test suite, every browser test included, runs on the owner's
+  machine before merge, on a clean checkout of the pull request's head commit.
+- **Local sign-off**: a pull request merges only with a passing `local-verify` status on its head
+  commit. The owner's local run posts it, and only after every check of the full run passes on
+  that commit. CI never posts it. A new commit, a merge of the default branch included, needs a
+  new run. The status names what ran, so the pull request records it.
 - Until the interim provision on deferred manual checks ends, checks that only a person can do
   may be done after merge (see that section).
 - Hardcoded CV data or literal design-token values block merge (Principle IV).
@@ -264,8 +273,9 @@ While it applies:
   reader, shortcuts tried by hand in each browser and screen reader, forced colors and text-only
   zoom in a given browser, printing, and comparing the built pages with the approved design
   exports. These may be done after merge, in a final testing phase that covers several features.
-- **What may not wait**: every automated check still runs and passes before merge, as do the
-  requirement-to-test traceability check (Principle III) and the checks in CI. A deferred manual
+- **What may not wait**: every automated check still runs and passes before merge, in CI or in
+  the owner's signed-off local run, as do the requirement-to-test traceability check
+  (Principle III) and the checks in CI. A deferred manual
   check doesn't excuse a missing automated check where tooling allows one.
 - **Recording**: a deferred check stays an open task in the feature's `tasks.md`, with a note
   that it is deferred to the final testing phase. The feature's pull request lists every
