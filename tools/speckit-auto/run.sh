@@ -5,6 +5,7 @@
 #   tools/speckit-auto/run.sh spec  "<feature description>"
 #   tools/speckit-auto/run.sh build specs/<feature> [--review | --implement-only] [--guidance "<text>"]
 #   tools/speckit-auto/run.sh resume <run_id> [-i key=value ...]
+#   tools/speckit-auto/run.sh worktree start|resume|list|clean ...
 #
 # spec   run on main: drafts spec.md, commits it on a new branch named after the
 #        feature directory and stops. Review it, set Status: Approved and, for UI,
@@ -13,6 +14,7 @@
 #        --review pauses after plan, tasks and analyze for your approval;
 #        resume with: run.sh resume <run_id> -i plan_verdict=approve
 #        --implement-only skips planning and builds from the existing plan and tasks.
+# worktree  builds features side by side, each in its own worktree (worktree.sh).
 set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
@@ -21,7 +23,7 @@ here=tools/speckit-auto
 # shellcheck source=env.sh
 . "$here/env.sh"
 
-usage() { sed -n '5,15p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
+usage() { sed -n '5,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
 
 # The feature directory relative to the repository root, given either way.
 root_abs=$(cd "$root" && pwd -P)
@@ -161,5 +163,6 @@ case "$cmd" in
     [ -z "$feature" ] || summary
     exit "$status"
     ;;
+  worktree) exec "$here/worktree.sh" "$@" ;;
   *) usage ;;
 esac
