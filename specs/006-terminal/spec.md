@@ -6,6 +6,10 @@
 
 **Status**: Approved
 
+**Amended**: 2026-10-29: `open` accepts `playground`, for the TypeScript playground (008) (see
+Clarifications, Session 2026-10-29, and 008-typescript-playground FR-087). Approved 2026-10-27;
+the amendment approved by the owner 2026-10-29.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -67,6 +71,13 @@
   file is read only (FR-060).
 - Q: What happens to `cv` and the per-section commands? → A: `cv` opens the vim view. `work`,
   `about` and the other section commands keep their short text output (FR-008, FR-009, FR-059).
+
+### Session 2026-10-29 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground (008) is a new app. Should `open` accept it? → A: Yes. `open
+  playground` opens the Playground, or brings it to the front, as its dock item or home-screen icon
+  does; on mobile that is its "best on desktop" screen. Running code from the Terminal is not part
+  of it (FR-008, FR-014).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -521,14 +532,16 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `jq [path]` | Pretty-prints JSON from the path or from piped input (FR-056). |
   | `vim <path>`, `vim -` | Opens the file, or the piped input, in the read-only vim view (FR-058). |
   | `pwd` | The working folder's path. |
-  | `open <name>` | Opens the CV app (`open cv`) or About this site (`open about`) in the shell. |
+  | `open <name>` | Opens the CV app (`open cv`), the Playground (`open playground`) or About this site (`open about`) in the shell. |
   | `history` | The commands run since the Terminal opened, oldest first. |
   | `clear` | Clears the output. |
   | `exit` | Closes the Terminal on desktop, or returns to the home screen on mobile. |
 
   Commands MAY be joined with `|` (FR-057). `whoami` MUST run `about`, `experience` MUST run
   `work`, and `?` MUST run `help`. Every command
-  and alias MUST be listed by `help`, and there MUST be no command `help` doesn't list.
+  and alias MUST be listed by `help`, and there MUST be no command `help` doesn't list. Amended
+  2026-10-29 (008-typescript-playground): the `open <name>` row said "Opens the CV app (`open cv`)
+  or About this site (`open about`) in the shell."
 - **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
   (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
   (004 Key Entities), in the CV document's order, and MUST follow 004's rules for them: an absent
@@ -552,9 +565,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   requirement isn't counted, and MUST link to the spec in the repository. Nothing in the list may
   be typed by hand: a spec added, approved or changed MUST show at the next build with no edit to
   the Terminal.
-- **FR-014**: `open cv` and `open about` MUST open, or bring to the front, the CV app or About this
-  site exactly as the dock or the site menu does on desktop (005 FR-012, FR-064) and as the home
-  screen does on mobile. `open` with any other name MUST list the names it accepts.
+- **FR-014**: `open cv`, `open playground` and `open about` MUST open, or bring to the front, the
+  CV app, the Playground (008) or About this site exactly as the dock or the site menu does on
+  desktop (005 FR-012, FR-064) and as the home screen does on mobile, where the Playground shows
+  its "best on desktop" screen (008 FR-058). `open` with any other name MUST list the names it
+  accepts. Amended 2026-10-29 (008-typescript-playground): it said "`open cv` and `open about`
+  MUST open, or bring to the front, the CV app or About this site".
 
 **The file system**
 
