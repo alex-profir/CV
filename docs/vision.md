@@ -125,10 +125,6 @@ conversations the site starts, not by traffic.
   so itself.
 - **A C++ playground**: the compiler is too large to load in a browser for a CV site.
 - **AI in the Terminal**: it needs a server, rate limits and a spending cap.
-- **Live presence** (other visitors' cursors, a visitor count, a guestbook): it needs a server,
-  and a visitor count comes close to tracking.
-- **A game or a mascot**: games and easter eggs are non-goals.
-- **An app switcher on phones, and drag and drop between apps**: too little value for the cost.
 
 ## Open questions
 
