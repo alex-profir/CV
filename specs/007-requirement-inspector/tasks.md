@@ -502,11 +502,28 @@ the single PR
     as 004's T105 and 006's T108 were. Still to do by hand: VoiceOver (macOS, iPhone), NVDA (Windows) and TalkBack
     (Android) through stories 1–4 (SC-007); Edge with Windows' contrast themes (FR-023); Firefox's text-only zoom at
     200% (FR-024); the built views against `design/exports/` (FR-021). Left open for the owner.
-- [ ] T089 Commit the remaining work with Conventional Commits; merge `main` again if it changed since T001, such as 006's amendments (as T001 sets, a merge commit, then rerun T086); push `007-requirement-inspector` and open one pull request to `main` (Constitution XI):
+- [X] T089 Commit the remaining work with Conventional Commits; merge `main` again if it changed since T001, such as 006's amendments (as T001 sets, a merge commit, then rerun T086); push `007-requirement-inspector` and open one pull request to `main` (Constitution XI):
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/007-requirement-inspector/spec.md` and `specs/007-requirement-inspector/tasks.md`; records the token rename (T004) and that the tokens were written into the hand-written export under the interim provision on local mockups; and records the results of T082, T084, T087 and T088, listing every manual check deferred under the interim provision on deferred manual checks.
   - Confirm the CI jobs run and pass, and that the `site` job summary matches a local `npm run site-check` on the same commit (FR-034). Merging is the owner's.
 
+  - Done (2026-10-29): pushed `007-requirement-inspector` and opened PR #29 (no AI attribution). `main` had not
+    moved since T001 when the PR opened. The owner then merged `main` (#28, 001's local full run and sign-off)
+    into the branch (95fece5), and it was merged locally (86e7e32).
+    - CI's first run (pre-#28 workflow, full `npm test`) failed 6 tests:
+      - The SC-005 timing test on the slower runner: now asserted off CI only (see T082).
+      - `public.test.ts` FR-014: the data file holds a test title naming the repository owner, and CI's `GITHUB_ACTOR`
+        is that name. The test now treats the repository's owner and name as the repository's own, as it already did
+        the commit and spec folders.
+      - 006's `terminal/controls.test.ts` (dock over a click target): it couldn't be reproduced locally (2/2 alone,
+        454/454 under load), and it no longer runs on pull requests.
+    - On 86e7e32, under #28's workflow, CI's five jobs pass (content 18 s, site 5 m 32 s, test:fast 42 s, tokens 18 s,
+      traceability 15 s). The `site` job's report matches a local `npm run site-check` on the same commit, apart from
+      the version line (CI builds the PR's merge commit) and Lighthouse scores (FR-034).
+    - `npm run verify` on 86e7e32: the first run failed one load-dependent 005 test (`shell/history.test.ts`, the
+      phone's double click on Home; 4/4 alone). The second run passed all six checks: 1,753 tests in 185 files, and
+      the site check.
+    - Left to the owner: `npm run signoff` (records `local-verify` under the owner's account) and the merge.
 ---
 
 ## Dependencies & Execution Order
