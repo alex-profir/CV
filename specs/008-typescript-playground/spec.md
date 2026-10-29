@@ -1011,17 +1011,17 @@ server-rendered page, unchanged by this feature.
 
 **UI change**: design artifacts live in `specs/008-typescript-playground/design/`:
 
-- [ ] ASCII wireframes of every state: on desktop, the window downloading TypeScript, the offline
+- [x] ASCII wireframes of every state: on desktop, the window downloading TypeScript, the offline
   first open, the editor with errors, a type on hover, suggestions open, a definition shown in
   place, a rename, quick fixes, the command palette, the list of keys, each pane, the settings
   panel, the examples list, a run with timers pending, the stuck popup inside the window beside the
   CV window, the share message, the too-long and broken-link messages, a shared link opened, the
   Playground's spec view, and a narrow window; on mobile, the "best on desktop" screen from its icon
   and from a shared link, at 320 px wide and in landscape
-- [ ] PNG exports of the approved Penpot mockup, per shell, at a phone width and a desktop width (or
+- [x] PNG exports of the approved Penpot mockup, per shell, at a phone width and a desktop width (or
   of the interim local mockup, under the constitution's interim provision)
-- [ ] Penpot file link: [URL] (not needed for an interim local mockup until the provision ends)
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date, and confirming
+- [ ] Penpot file link: not needed for an interim local mockup until the provision ends
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date, and confirming
   the look is original and doesn't copy the official TypeScript Playground (FR-068)
 
 ## Success Criteria *(mandatory)*
