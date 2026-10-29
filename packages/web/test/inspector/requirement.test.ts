@@ -79,7 +79,7 @@ function expectRequirementsAsData(data: RequirementData, view: InspectorView, gr
       expect(
         shown.tests.map((test) => ({ name: test.name, place: test.place })),
         `${where}: tests`,
-      ).toEqual(record.tests.map((test) => ({ name: test.name.replace(/\s+/g, ' ').trim(), place: `${test.file}:${test.line}` })));
+      ).toEqual(record.tests.map((test) => ({ name: test.name.replace(/\s+/g, ' ').trim() || text.unnamedTest, place: `${test.file}:${test.line}` })));
     }
     // A reference's link reads as written, and its name adds the full ID.
     const refs = nodesOf(record.text, 'ref');
@@ -126,6 +126,18 @@ describe('007-requirement-inspector-FR-007: each requirement shows its ID, its t
 });
 
 describe('007-requirement-inspector-FR-008: each requirement lists the tests that cover it, or says none does', () => {
+  test('a test whose title is built when it runs has no name in the data, and shows a stand-in, still linked to its line', async () => {
+    const data = requirementData();
+    const record = data.views.terminal!.map((id) => data.requirements[id]!).find((candidate) => candidate.tests.some((test) => test.name.trim() === ''))!;
+    expect(record, 'the Terminal view lists a requirement with such a test').toBeDefined();
+    const at = record.tests.findIndex((test) => test.name.trim() === '');
+    const page = await openShell(SHELL_PAGE.desktop);
+    await showSpecs(page, 'terminal', 'desktop');
+    const link = page.locator(`${specViewSelector('terminal')} li.requirement[data-id="${record.fullId}"] ul.tests > li`).nth(at).locator('a.test-name');
+    expect((await link.innerText()).trim()).toBe(text.unnamedTest);
+    expect(await link.getAttribute('href')).toMatch(new RegExp(`/${record.tests[at]!.file.replace(/[.]/g, '\\.')}#L${record.tests[at]!.line}$`));
+  });
+
   test('a draft spec\'s requirement with code, a web link, a file link and a reference, carried by Show specs and covered by no test', async () => {
     const { server, site } = await copyBuild((root) => {
       const file = path.join(root, SPEC);

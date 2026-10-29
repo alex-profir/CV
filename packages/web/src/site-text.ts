@@ -335,6 +335,8 @@ export const siteText = deepFreeze({
     tests: 'Tests',
     testsCount: 'Tests, {n}',
     noTests: 'No test covers this yet.',
+    // A test whose title is built when it runs, so the data has no name.
+    unnamedTest: 'A test named when it runs',
     whatsThis: {
       button: "What's this?",
       heading: "What's this?",

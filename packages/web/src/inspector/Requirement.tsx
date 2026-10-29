@@ -10,6 +10,9 @@ import { NoTestsMark } from './glyphs/NoTestsMark.tsx';
 import { InlineText } from './InlineText.tsx';
 import type { InlineLinks } from './InlineText.tsx';
 
+// A test's name, or what stands for it when its title is built at run time.
+const testName = (name: string) => (name.trim() === '' ? siteText.inspector.unnamedTest : name);
+
 export function Requirement({ requirement, file, links }: { requirement: RequirementRecord; file: string; links: InlineLinks }) {
   const text = siteText.inspector;
   const { repository, commit } = links;
@@ -46,10 +49,10 @@ export function Requirement({ requirement, file, links }: { requirement: Require
               <li key={`${test.file}:${test.line}`}>
                 {linked ? (
                   <a className="test-name" href={fileUrl(repository, commit, test.file, test.line)} data-req="007-requirement-inspector-FR-010">
-                    {test.name}
+                    {testName(test.name)}
                   </a>
                 ) : (
-                  <span className="test-name">{test.name}</span>
+                  <span className="test-name">{testName(test.name)}</span>
                 )}{' '}
                 <span className="test-place">
                   {test.file}:{test.line}
