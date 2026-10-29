@@ -149,6 +149,15 @@ export async function goOffline(context: BrowserContext): Promise<void> {
 
 export const cacheNames = (page: Page) => page.evaluate(() => caches.keys());
 
+// The cache holding a newer worker's record of the caches it kept for open
+// pages (006 research R35), or null: once it's there, that worker has
+// activated with those pages open.
+export const keptRecord = (page: Page) =>
+  page.evaluate(async () => {
+    for (const name of await caches.keys()) if ((await (await caches.open(name)).match('/__cv/kept')) !== undefined) return name;
+    return null;
+  });
+
 // Polls `test` until it holds or `ms` pass.
 export async function until(test: () => Promise<boolean>, ms = INSTALL_WAIT_MS): Promise<boolean> {
   const end = Date.now() + ms;

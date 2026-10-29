@@ -171,14 +171,19 @@ describe('006-terminal-FR-026: no key a browser or screen reader keeps is taken'
       // Taken by the Terminal: not prevented when it reaches the command
       // line, prevented once React's handlers on `#os` have run. The OS
       // shell's own shortcuts (005) are handled before, on the document.
-      await page.evaluate((selector) => {
+      await page.evaluate(() => {
         const store = window as unknown as { taken: string[]; before: boolean };
         store.taken = [];
-        document.querySelector(selector)!.addEventListener('keydown', (event) => (store.before = event.defaultPrevented), true);
         document.getElementById('os')!.addEventListener('keydown', (event) => {
           if (event.defaultPrevented && !store.before) store.taken.push(event.key);
         });
-      }, COMMAND_LINE);
+      });
+      const watchLine = () =>
+        page.evaluate((selector) => {
+          const store = window as unknown as { before: boolean };
+          document.querySelector(selector)!.addEventListener('keydown', (event) => (store.before = event.defaultPrevented), true);
+        }, COMMAND_LINE);
+      await watchLine();
       for (const key of RESERVED[platform]) {
         // Each from the command line, with text in it.
         await page.locator(COMMAND_LINE).focus();
@@ -188,6 +193,12 @@ describe('006-terminal-FR-026: no key a browser or screen reader keeps is taken'
         expect(taken, `${platform} ${key}`).toEqual([]);
         // A shortcut that moved focus or opened something is undone.
         await page.keyboard.press('Escape');
+        // Alt+Shift+W is the OS shell's close: the Terminal opens again.
+        if (key === 'Alt+Shift+W') {
+          await page.locator(COMMAND_LINE).waitFor({ state: 'detached' });
+          await openTerminal(page, 'desktop');
+          await watchLine();
+        }
       }
     });
   }

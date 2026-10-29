@@ -17,7 +17,7 @@ import { unservedFonts } from '../../../tools/site-check/src/parts/fonts.ts';
 import { fieldProblems, mainSequence, unstyledDetail } from '../../../tools/site-check/src/parts/no-script.ts';
 import { waitForWorker } from '../../../tools/site-check/src/parts/offline.ts';
 import { openHtml } from './helpers/browser.ts';
-import { HANG_MS, cacheNames, firstPage, goOffline, settled, switchableServer, until, version, visit } from './helpers/offline.ts';
+import { HANG_MS, cacheNames, firstPage, goOffline, keptRecord, settled, switchableServer, until, version, visit } from './helpers/offline.ts';
 import { builtSite } from './helpers/site.ts';
 import type { BuiltSite } from './helpers/site.ts';
 
@@ -114,6 +114,7 @@ describe('004-cv-page-FR-039: a new version shows on the next visit and replaces
     const second = await visit(context, `${server.url}/cv`);
     expect(await second.locator('h1').textContent()).toBe('Version Bee Name');
     expect(await until(async () => (await cacheNames(second)).some((name) => name !== storedA))).toBe(true);
+    expect(await until(async () => (await keptRecord(second)) !== null)).toBe(true);
     await first.close();
     await second.close();
     const later = await visit(context, `${server.url}/cv`);
@@ -219,6 +220,7 @@ describe('004-cv-page-FR-041: offline support adds no step, prompt or error', ()
     expect(await bodyHtml(first)).toBe(before);
     // A's copy goes once the pages open at B's activation close (006
     // research R35).
+    expect(await until(async () => (await keptRecord(second)) !== null)).toBe(true);
     await first.close();
     await second.close();
     const later = await visit(context, `${server.url}/cv`);
@@ -245,13 +247,6 @@ describe('004-cv-page-FR-041: offline support adds no step, prompt or error', ()
 });
 
 describe('006-terminal-FR-070: a page from an older version still loads its shell (research R35)', () => {
-  // Whether the newer worker has activated: its cache holds the record of
-  // the caches it kept.
-  const keptRecord = (page: Page) => page.evaluate(async () => {
-    for (const name of await caches.keys()) if ((await (await caches.open(name)).match('/__cv/kept')) !== undefined) return name;
-    return null;
-  });
-
   async function openTerminalIn(page: Page): Promise<string> {
     await page.locator('#os .dock-item[data-app="terminal"]').click();
     await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="failed"])');

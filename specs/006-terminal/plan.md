@@ -40,9 +40,10 @@ Technical approach (details in [research.md](./research.md)):
 - **The shell is just-bash 3.6.0** (R25), Vercel Labs' bash interpreter in TypeScript, built for
   agents that need a shell without a machine. It gives FR-067's language and FR-068's commands, a
   pluggable file system, custom commands, execution limits, and no network or other language. Its
-  gaps found while researching (G1 to G11) are each handled, and four are reported upstream.
+  gaps found while researching and building (G1 to G20) are each handled, and six are reported
+  upstream.
 - **In a worker, loaded on first open** (R26, R34): a module worker, `assets/shell-<hash>.js`
-  (274 KB Brotli), so a runaway line never freezes the page and `/` and `/cv` load none of it.
+  (295 KB Brotli as built), so a runaway line never freezes the page and `/` and `/cv` load none of it.
   Ctrl+C and the watchdog stop a line by restarting the worker from the last line's snapshot. The
   service worker keeps the version an open page came from, so the shell still loads after an
   update (R35).
@@ -307,12 +308,13 @@ listed first, unchanged unless noted; then the amendment's.
 | Network lock (`shell/no-network.ts`) | abstraction | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` before just-bash's module body runs (R39, FR-022) | Doing it in `worker.ts`'s body: ES imports are hoisted, so just-bash would already be evaluated | N/A |
 | Shell adapter (`shell/adapter.ts`) | abstraction | Carries variables, functions, options, `$?` and the working folder between lines, which just-bash resets, and checks syntax first (R27) | One endless `exec`: loses per-line limits. just-bash's private state: not an interface | N/A |
 | TerminalFs (`shell/fs.ts`) | abstraction | Protected files with bash's "Permission denied", the visitor's files with a 1 MB limit, names without regard to capitals, owners for `ls -l` (R28) | `MountableFs` read-only: answers "Read-only file system", and can't mix both kinds in one folder | N/A |
-| Site commands and wrappers (`shell/site-commands.ts`) | abstraction | The FR-008 commands as shell commands that print text and record their blocks; `cat`, `ls`, `rm` and `jq` wrapped for blocks, owners and protected `rm -r` (R29); `sed`, `tee`, `cp` and `mv` wrapped so a refused write gives GNU's wording, naming the path as typed (G5, G19, G20) | Telling commands whether output is a terminal: decided at parse time, wrong for functions. Escape sequences: forgeable with `printf` | N/A |
+| Site commands and wrappers (`shell/site-commands.ts`) | abstraction | The FR-008 commands as shell commands that print text and record their blocks, except where the adapter marks them piped (`__CV_PIPED`); `cat`, `ls`, `rm` and `jq` wrapped for blocks, owners and protected `rm -r` (R29); `sed`, `tee`, `cp` and `mv` wrapped so a refused write gives GNU's wording, naming the path as typed (G5, G19, G20) | Telling commands whether output is a terminal, with no output match: decided at parse time, wrong for functions. Escape sequences: forgeable with `printf` | N/A |
 | Output mapping (`engine/output-map.ts`) | abstraction | A run's result to the shown block: recordings, text, bash's messages with the site's replies, limits, announcements (R30) | Mapping inside the renderer: untestable in Node | N/A |
 | `STANDARD_COMMANDS` and `SHELL_BUILTINS` (`shell/standard.ts`) | abstraction | The one list just-bash registers and `help` lists, so no command is missing from `help`, and each left-out name has a reason (R32) | All of just-bash's commands: the network, other languages and scripts | N/A |
 | Redirect guard plugin (in `shell/adapter.ts`) | abstraction (temporary) | Refuses a redirect to a protected path before the line runs, until just-bash's G1 fix is released (R28) | Nothing: a refused redirect rejects the whole line and loses its output. Deleted once the fix ships | N/A |
 | Kept caches in the service worker (`src/sw/service-worker.ts`) | abstraction | A page from an older version can still load its shell file (R35, FR-070) | Deleting old caches at once: strands the page. Mixing files into the new cache: against 004 FR-039 | N/A |
 | Linux key sender (`pressLinux`, `asLinux` in `tools/site-check/src/parts/keyboard.ts`) | abstraction (check only) | Playwright gives a key the editing command of the machine it runs on, so on a Mac FR-074's Linux keys (Home, End, Ctrl+Left…) do nothing in a field; the sender gives them Linux's editing command through CDP there, and presses them plainly elsewhere, with the page reporting Linux (FR-039) | Skipping the steps on a Mac: the local full run is the merge gate, and would never check them | N/A |
+| Worker license file (`scripts/shell-licenses.ts`) | abstraction (build only) | A Vite plugin of the worker build that writes `assets/shell-licenses-<hash>.txt` from each bundled package's `package.json` and `LICENSE`, and puts the comment naming it at the top of the worker file (R40); it reads the worker chunk's modules and the license list just-bash's browser build carries for what it inlined (`re2js`, `ieee754`) | A hand-kept list in `build-site.ts`: misses what just-bash inlines, and goes stale on an update | N/A |
 | Bash parity test (`test/terminal/shell/bash-parity.test.ts`) | abstraction (tests only) | Compares the shell with real bash and GNU tools on the same files (R38, SC-014) | Committed expected outputs: a second edit for every CV change | N/A |
 
 ## Project Structure
@@ -360,9 +362,10 @@ packages/
 ├── os-core/                         # unchanged by the amendment
 └── web/
     ├── package.json                 # ~ "just-bash": "3.6.0"
-    ├── vite.config.ts               # ~ the worker build: one file, node:zlib aliased
+    ├── vite.config.ts               # ~ the worker build: one file, node:zlib resolved to a stub
     ├── scripts/
-    │   ├── build-site.ts            # ~ the os script and one worker file; os script budget; licenses file
+    │   ├── build-site.ts            # ~ the os script and one worker file; os script budget
+    │   ├── shell-licenses.ts        # + the worker's license file and its header comment (R40)
     │   └── spec-list.ts
     ├── src/
     │   ├── site-text.ts             # ~ terminal: replies, standard group, loading, stopped, footer

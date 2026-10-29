@@ -13,6 +13,7 @@ The same tree renders in a window's `.window-content` and in a full-screen view'
 
 ```text
 div.terminal                          data-shell-look desktop|pocket          FR-024 FR-031 FR-032 FR-033 FR-035
+                                      data-shell-state idle|loading|ready|running|failed   (FR-069, FR-070)
 ├── h1.visually-hidden                "Terminal"                              FR-029
 ├── div.terminal-screen               the scroll container; output never scrolls the page   FR-019 FR-023
 │   ├── div.starter                   button.command-chip × 5: help, about, work, projects, cv; no greeting text   FR-005 FR-015 FR-030
@@ -43,7 +44,8 @@ div.terminal                          data-shell-look desktop|pocket          FR
   page from navigating.
 - The command line has no border, outline, background or shadow, focused or not (FR-072). Its
   cursor is filled while it has focus and hollow when it doesn't (research R36).
-- A `pointerup` on `.terminal-screen` outside a link, a control, an input and the vim view, that
+- A `pointerup` (for a touch, its `click`: a tap's compatibility `mousedown` moves focus after
+  the `pointerup`) on `.terminal-screen` outside a link, a control, an input and the vim view, that
   leaves the page's selection collapsed or unchanged, focuses the command line without scrolling
   (FR-071).
 - Command controls: `button.command-chip` (outlined, 26 px tall) or `button.command-inline`

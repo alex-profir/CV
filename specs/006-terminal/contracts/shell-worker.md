@@ -10,7 +10,7 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | `src/apps/terminal/shell-client.ts` | the page, in the `os` script | Starts the worker on first open, queues lines, the watchdog, Ctrl+C, restarts, `reset` |
 | `src/apps/terminal/shell/worker.ts` | the worker | The entry: imports `no-network.ts` first, creates the adapter, answers messages |
 | `src/apps/terminal/shell/no-network.ts` | the worker | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` with functions that throw, before just-bash's module body runs (research R39) |
-| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(data)`: just-bash with the limits, the allow-list, TerminalFs and the site's commands; `run(request)`, `reset()`, `restore(state, files)` (research R27) |
+| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect guard, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
 | `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
 | `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS` (research R32) |
@@ -33,8 +33,8 @@ From the page to the worker:
 | `{ type: 'reset' }` | The Terminal closed (FR-021) | `{ type: 'ready' }` |
 
 `ShellData` is what the worker can't build alone: nothing today, since the worker imports the CV,
-the site data and the spec list from the same modules as the page. It exists so a test can start
-a worker on a fixture CV.
+the site data and the spec list from the same modules as the page. As built, it is typed empty
+and the worker ignores it: tests that need a fixture CV call `createShell` in Node instead.
 
 One line runs at a time. The page never sends `run` while one is running. A line entered then
 waits, as a line entered before `ready` does (FR-070).
@@ -45,7 +45,7 @@ waits, as a line entered before `ready` does (FR-070).
 |-------|-------|-----------------|
 | A line's run time | 5,000 ms | just-bash's `maxExecutionTimeMs` (FR-069) |
 | Commands in a line | 10,000 | `maxCommandCount` |
-| A line's output, stdout and stderr | 1,048,576 bytes | `maxOutputSize`, and the adapter for output that reached it exactly (research G13) |
+| A line's output, stdout and stderr | 1,048,576 bytes | The adapter (`LIMITS.output`); just-bash's `maxOutputSize` is 4,194,304 (`LIMITS.pipe`), what one command may pass on inside the line (research R33, Built) |
 | No answer to `run` | 6,000 ms | The page terminates the worker, starts a new one with `restore`, and shows the "stopped" text |
 | No `ready` after `start` | 10,000 ms | The page shows the failure line with its retry control (FR-070) |
 | Ctrl+C while a line runs | at once | The page terminates the worker and restarts it as above (FR-075) |
@@ -58,10 +58,12 @@ new Bash({
   cwd: '/home/guest',
   env: { HOME: '/home/guest', USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash' },
   commands: STANDARD_COMMANDS,          // research R32
-  customCommands: [...siteCommands, cvState, cvDenied],   // research R27, R28, R29
-  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000, maxOutputSize: 1048576,
+  customCommands: [...siteCommands, cvState],             // research R27, R28, R29
+  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + preludeLines,
+                     maxOutputSize: 4 * 1048576,            // LIMITS.pipe, research R33
                      maxLoopIterations: 1_000_000_000 },   // research R33, G15
 });
+// then registerTransformPlugin(sitePlugin) and registerTransformPlugin(guardPlugin(fs, cwd))
 // no network, fetch, python or javascript option (research R39)
 ```
 
@@ -75,4 +77,5 @@ that names them gets "command not found" (the adapter refuses a line whose words
 - `build-site.ts` fails with `site build failed: the shell worker is not one file` when the worker
   imports anything, and `site build failed: the os script loads the shell` when the `os` entry
   imports it other than through `new Worker`.
-- `resolve.alias` maps `node:zlib` to `shell/no-zlib.ts` for the worker build only.
+- A worker-only Vite plugin (`cv:no-zlib`, in `worker.plugins`) resolves `node:zlib` and `zlib` to
+  `shell/no-zlib.ts`.

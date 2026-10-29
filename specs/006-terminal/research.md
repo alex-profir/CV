@@ -555,7 +555,10 @@ What it gives, checked by running it:
   (FR-022, FR-068).
 - **Browser support**: a browser build, `just-bash/browser`, one file with no dynamic import.
   It runs in a module worker in Chromium (R26).
-- **Its parser and serializer are public** (`parse`, `serialize`), which R27 uses.
+- **Its parser and serializer are reachable**, which R27 uses. The package exports `parse` and
+  `serialize`, but `just-bash/browser` doesn't, so the adapter reaches both through a second
+  `Bash`'s public `transform`: a transform plugin captures the parsed tree, or swaps in a given
+  one, and `transform(…).script` is its serialized text (built 2026-10-29, T144).
 
 Its cost (R34): the browser build is 1.26 MB, 343 KB with gzip and 274 KB with Brotli, about
 three times the rest of the site's script. That is why FR-070 loads it only when the Terminal
@@ -648,7 +651,8 @@ command against SC-002).
 `exec` with a **prelude** and an **epilogue** around it, and keeps the state between lines
 itself, since just-bash resets it after each `exec` (G4):
 
-1. **Syntax first.** The line alone goes through just-bash's `parse`. A parse error is returned
+1. **Syntax first.** The line alone goes through just-bash's parser (R25: a second `Bash`'s
+   `transform`). A parse error is returned
    as just-bash words it (``line 1: unexpected EOF while looking for matching `"'``), with
    status 2, and nothing runs. A pipeline with an empty side (`ls |`, `| jq`) is a syntax error
    too, worded as bash words it (`syntax error near unexpected token '|'`) (FR-057, G2). The
@@ -666,7 +670,7 @@ itself, since just-bash resets it after each `exec` (G4):
    its context. Its arguments give the status, the names of the functions that exist now, and the
    options.
 5. **Functions**: just-bash can't print a function's body (G10). So the adapter takes bodies from
-   the parser: every function definition in each line is serialized with `serialize` and kept by
+   the parser: every function definition in each line is serialized (R25) and kept by
    name. After the line, only the names `declare -F` listed are kept, so `unset -f` and a
    definition that never ran are honored. A function defined only through `eval` has no known
    body and isn't carried, a known limit.
@@ -752,7 +756,9 @@ FR-049 sets, and the home folder must hold both kinds of file side by side); per
 
 **Decision**: every command of FR-008 is a just-bash custom command, built from the `COMMANDS`
 table (R7's table, kept), in `apps/terminal/shell/site-commands.ts`. Custom commands win over
-built-ins of the same name, so `whoami`, `help`, `history` and `clear` are the site's (FR-068).
+standard commands of the same name, so `whoami`, `history` and `clear` are the site's (FR-068).
+just-bash's `help` builtin wins over a custom command, so the adapter's transform plugin renames
+a typed `help` to `__cv_help` (`RENAMED` in `site-commands.ts`), which is the site's `help`.
 
 - **Text out**: each command prints its block (R3) as text, through one function,
   `blockText(block)`: the visible text of every node, line by line, in reading order, with list
@@ -764,9 +770,16 @@ built-ins of the same name, so `whoami`, `help`, `history` and `clear` are the s
   each recorded text in the line's stdout, in order. Where one appears whole, that part is drawn
   as its block, with headings, links and controls (FR-009, FR-015, FR-029). Where a pipe or a
   redirect changed it, the text is drawn as text. This is how a real command prints color and
-  columns to a terminal and plain lines to a pipe, without the command having to know which. A
+  columns to a terminal and plain lines to a pipe. A
   recording carries no text of its own beyond what the command printed, so a visitor can't make
   one: typed or piped text never becomes a link or a control (FR-018).
+- **Piped commands record nothing** (built 2026-10-29): the adapter's transform plugin adds
+  `__CV_PIPED=1` to every command whose output goes into a pipe or a `$(…)`, and a site command
+  or wrapper that sees it prints its text and records no block. Without it, a block piped through
+  a command that passes it on unchanged (`work | cat`) would be found whole in the output and
+  drawn rich. The mark is decided where the line is parsed, so a function defined elsewhere and
+  called in a pipe records its blocks, and the output match above then draws them only where
+  they appear whole: a known limit.
 - **Wrappers** of built-ins, through `ctx.origCommand`: `cat` records the block of each protected
   file it prints whole (FR-047); `ls` records a listing with controls for the names it printed
   (FR-050), fixes the owner columns (R28) and, for the home folder, the order; `rm` walks
@@ -781,9 +794,10 @@ built-ins of the same name, so `whoami`, `help`, `history` and `clear` are the s
 - **A command that reads no input** ignores what is piped into it, as just-bash does for any
   command (FR-057): `ls | work` runs `work`.
 
-**Alternatives considered**: telling a command whether its output is a terminal, through an
-assignment the parser adds (`__tty=1 work`), as `isatty` does (it is decided where the line is
-parsed, so a function defined in one place and called in a pipe elsewhere gets it wrong); escape
+**Alternatives considered**: telling a command whether its output is a terminal through that
+assignment alone, as `isatty` does, with no output match (it is decided where the line is parsed,
+so a function defined in one place and called in a pipe elsewhere gets it wrong; the build uses it
+only to keep piped commands from recording, above); escape
 sequences in the output, as OSC 8 links are (a visitor could print them with `printf`, against
 FR-018).
 
@@ -860,14 +874,16 @@ order, each a control that runs `help <name>` (FR-015). The design left whether 
 listed to the plan (review.md, decision 5). They are, because FR-008 allows no command `help`
 doesn't list, and in bash a builtin is a command (`type export`). `help <name>` shows a site
 command's own help, runs `<name> --help` for a standard command, and for a builtin runs
-just-bash's own `help <name>`, which the site's `help` wraps through `ctx.origCommand`. A test
+just-bash's own help through `ctx.exec('builtin help <name>')`, since the site's `help` runs
+under another name (R29). A test
 runs every registered name and every listed name and checks the two sets are equal, so no
 command exists that `help` doesn't list.
 
 ## R33. Limits and stopping
 
 **Decision**: just-bash's limits, set to FR-069's: `maxExecutionTimeMs: 5000`, `maxCommandCount:
-10000` and `maxOutputSize: 1048576`, and `maxLoopIterations: 1000000000` so its own iteration limit
+10000` (plus the prelude's own lines, built) and `maxOutputSize: 1048576` (4 MB as built, below),
+and `maxLoopIterations: 1000000000` so its own iteration limit
 never stops a line first (G15), with the `normal` profile for the rest. Measured: `while true; do :;
 done` ends at 10,000 commands in about 200 ms, and with a higher count at the 5 s deadline; `seq
 1000000` ends at the output limit with status 126; `yes` prints exactly 1,048,576 bytes and ends
@@ -919,7 +935,8 @@ the typed text with `^C` after it, as an entry that isn't added to the history, 
 - **The `os` script** keeps the interface, the session, the output renderer and the vim view. The
   command implementations, the file system and the JSON lexer used by `jq` move into the worker,
   so the `os` script doesn't grow. SC-013's "within 5%" is checked by `build-site.ts` against a
-  budget written next to the check (R21's 102 KB, plus 5%).
+  budget written next to the check: as built, T127's 108,962 bytes (gzip -9, measured before the
+  amendment) plus 5%, `OS_BUDGET = 114_410`.
 - **Warm-up**: the worker runs `true` once before it answers `ready`, so the first visitor line
   doesn't pay just-bash's first-run cost (about 100 ms in Node) (SC-002).
 
@@ -936,8 +953,8 @@ version A may open the Terminal after B has activated, and ask for A's `shell-<h
 B's cache doesn't hold and the host no longer serves.
 
 - On `activate`, the worker lists the window clients. If there are none, it deletes older caches
-  as today. Otherwise it keeps them and records, in a small entry of its own cache, which old
-  cache each open client came from.
+  as today. Otherwise it keeps them and records, in a small entry of its own cache
+  (`/__cv/kept`), each older cache with the ids of every window open at activation.
 - Its `fetch` handler answers an `/assets/` request from the current cache, then from a kept one.
 - On later events (`fetch`, `message`, the next `activate`), it deletes a kept cache once none of
   its recorded clients is open.
@@ -975,7 +992,8 @@ worker, and the message protocol could differ); a "reload" control when the file
   `color.terminal-selection` behind `color.terminal-selection-text` (lilac behind night, design).
   The same colors style `::selection` in the output. It updates on `selectionchange`. The input's
   own text and caret stay transparent, as before.
-- **Click to focus** (FR-071): a `pointerup` on `.terminal-screen` that isn't on or inside an
+- **Click to focus** (FR-071): a `pointerup` (for a touch, its `click`, since a tap's
+  compatibility `mousedown` moves focus after the `pointerup`) on `.terminal-screen` that isn't on or inside an
   `a`, a `button`, an `input` or the vim view, and after which the page's selection is collapsed
   or unchanged from the `pointerdown`, focuses the command line with `preventScroll` and no change
   to its text. A drag that selected text keeps its selection and moves no focus (FR-023). On
@@ -1067,7 +1085,8 @@ idea of GNU, not GNU).
 ## R40. Licenses of what the shell bundles
 
 **Decision**: the worker file bundles just-bash (Apache-2.0), `diff` (BSD-3-Clause), `sprintf-js`
-(BSD-3-Clause) and `turndown` (MIT, pulled in by a command the Terminal leaves out, and kept
+(BSD-3-Clause), `re2js` (MIT) and `ieee754` (BSD-3-Clause), the last two inlined by just-bash, and
+`turndown` (MIT, pulled in by a command the Terminal leaves out, and kept
 rather than stubbed: about 3 KB). Apache-2.0 asks that whoever receives the work gets a copy of
 the license. The build writes `assets/shell-licenses-<hash>.txt` with each bundled package's name,
 version and license text, from their `package.json` and `LICENSE` files, and the worker file

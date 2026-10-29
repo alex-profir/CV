@@ -26,18 +26,21 @@ file lists what 006 adds.
 | File | Change |
 |------|--------|
 | `assets/os-<hash>.js` | Holds the Terminal's interface, still one file with no import and no dynamic import. It creates the shell worker with `new Worker(new URL(…), { type: 'module' })` and loads nothing else. Gzipped, within 5% of its size before the amendment (SC-013) |
-| `assets/shell-<hash>.js` | New: the shell worker, one file with no import, about 1.26 MB, 343 KB gzip, 274 KB Brotli. Loaded only when the Terminal first opens. Starts with a comment naming the license file |
+| `assets/shell-<hash>.js` | New: the shell worker, one file with no import, about 1.34 MB, 368 KB gzip, 295 KB Brotli as built (just-bash alone: 1.26 MB, 343 KB, 274 KB). Loaded only when the Terminal first opens. Starts with a comment naming the license file |
 | `assets/shell-licenses-<hash>.txt` | New: the name, version and license text of every package the worker bundles (research R40) |
 | `assets/os-<hash>.css` | Holds the Terminal's and the pocket terminal's styles |
 | `index.html` | Unchanged in structure. The dock and the home screen gain the Terminal's item, after the CV's. The Terminal isn't pre-rendered open. No preload of the shell |
 | `sw.js` | Its precache list and version follow the files above, so the worker is stored after one visit (FR-070). Its code changes as below |
 
 `build-site.ts` fails the build when the `os` entry imports anything (as today), when the worker
-isn't exactly one file with no import, or when the `os` script's gzipped size passes its budget
-(research R34).
+isn't exactly one file with no import, or when the `os` script's gzipped size passes its budget:
+108,962 bytes (gzip -9, before the amendment, T127) plus 5%, `OS_BUDGET = 114_410` (research R34).
+The license file and the worker's header comment are written by the worker build's
+`scripts/shell-licenses.ts` plugin.
 
 No new route, page or font file, and no other-site request. Budget for `/`, compressed: script
-about 102 KB, style sheet about 12 KB, HTML about 16 KB, unchanged by the shell (SC-005, SC-013).
+about 110 KB as built, within 5% of its 108,962 bytes (gzip -9) before the amendment; style sheet
+about 12 KB and HTML about 16 KB, unchanged by the shell (SC-005, SC-013).
 
 ## Service worker (research R35, added 2026-10-29)
 

@@ -397,7 +397,7 @@ type RunResult = {
   recorded: readonly Recorded[];            // research R29, in the order they were printed
   effects: readonly Effect[];               // applied by the interface after the line
   end: 'done' | 'exited' | 'limit' | 'syntax';
-  limit?: 'time' | 'commands' | 'output';   // when end is 'limit' (FR-069)
+  limit?: 'time' | 'commands' | 'output' | 'cancelled';   // when end is 'limit' (FR-069); cancelled: Ctrl+C (FR-075)
   state: ShellState;                        // unchanged when end is 'syntax' or 'limit'
   files?: VisitorFiles;                     // only when the visitor's files changed
 };
@@ -435,7 +435,8 @@ their visible label, `json` rows as their tokens' text. A test renders each bloc
 
 ## Shown run (research R30)
 
-`mapOutput(result: RunResult, line: string): { block: Block; announce: Announcement }`, in
+`mapOutput(result: ShownResult, typed: string, context: MapContext): { block: Block; announce: Announcement }`,
+with `MapContext` the site text, the desktop window's columns and the working folder, in
 `engine/output-map.ts`, pure.
 
 | Part of the result | Becomes |
