@@ -140,16 +140,31 @@ portfolio, so it has to be the author's own work.
 **Rationale**: a small, explainable stack is easier to maintain and easier for a reviewer
 to trust.
 
-### XI. One Feature, One PR
+### XI. Features and Amendments in Their Own PRs
 
-- Each feature ships in exactly one pull request. Its description links the feature's
-  `spec.md` and `tasks.md`.
+- A new feature ships in one pull request. Its description links the feature's `spec.md` and
+  `tasks.md`.
+- A shipped feature can be amended. The amendment starts in its spec (Principle I) and is
+  recorded there: a dated clarification session that says what changes and why, the owner's
+  approval of the amendment beside the spec's `Status`, each changed requirement marked
+  `Amended <date>` with what it said before, and each new requirement added under a new ID
+  marked `(added <date>)`. IDs are never reused or renumbered (Principle III).
+- An amendment ships in one or more pull requests of its own. Each one links the amended
+  `spec.md` and `tasks.md` and names the amendment it builds by its date.
+- When an amendment ships in several pull requests, each one carries the part of the spec
+  amendment it builds, with that part's tests, design and tasks. So the default branch never
+  holds an approved requirement without its test (Principle III), or a UI change without its
+  approved design (Principle II).
+- An amendment's tasks are a new phase in the feature's `tasks.md`. Earlier tasks keep their
+  record: a task the amendment overturns is marked as superseded, never deleted or unticked.
 - Commits follow Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
   `chore:` and so on).
 - Unrelated changes go in their own PR.
 
-**Rationale**: one PR per feature keeps history readable. Spec, tasks and code can be
-reviewed together.
+**Rationale**: one PR per feature keeps history readable, with spec, tasks and code reviewed
+together. A shipped feature still changes as the owner learns from it. Recording each amendment
+in its spec, and building it in PRs that each keep the default branch true to its specs, lets
+a reader follow what changed, when and why, without one PR growing too large to review.
 
 ## Product Scope & Architecture
 
@@ -172,7 +187,8 @@ reviewed together.
 ## Development Workflow & Quality Gates
 
 Every feature moves through these gates in order. A gate that has not passed blocks the
-next one.
+next one. An amendment of a shipped feature moves through the same gates, from Specify, for the
+part it changes (Principle XI).
 
 1. **Specify**: `/speckit-specify` produces `spec.md`, with `FR-###` IDs, per-shell scope and
    offline behavior. Open questions are resolved with `/speckit-clarify`. The owner then sets
@@ -186,14 +202,24 @@ next one.
    prerequisite.
 5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
    `data-req` attributes (Principle III).
-6. **Pull request**: one PR per feature, linking its spec and tasks (Principle XI).
+6. **Pull request**: one PR per new feature, and one or more per amendment, each linking its
+   spec and tasks (Principle XI). It merges once CI passes and the owner's local run has signed
+   off its head commit (Merge requirements).
 
 Merge requirements:
 
 - CI MUST enforce requirement-to-test traceability (Principle III).
 - Accessibility (WCAG 2.2 AA, keyboard operation, reduced motion), Lighthouse 90+, offline
   behavior and the one-click/one-tap CV path MUST be verified before merge. They are
-  automated in CI wherever tooling allows.
+  automated wherever tooling allows, in CI or in the owner's local run below.
+- **Cloud and local runs**: CI on every pull request runs the fast checks: type checking, the
+  tests that need no browser, the traceability, content and token checks, and the site's checks
+  on the built site. The full test suite, every browser test included, runs on the owner's
+  machine before merge, on a clean checkout of the pull request's head commit.
+- **Local sign-off**: a pull request merges only with a passing `local-verify` status on its head
+  commit. The owner's local run posts it, and only after every check of the full run passes on
+  that commit. CI never posts it. A new commit, a merge of the default branch included, needs a
+  new run. The status names what ran, so the pull request records it.
 - Until the interim provision on deferred manual checks ends, checks that only a person can do
   may be done after merge (see that section).
 - Hardcoded CV data or literal design-token values block merge (Principle IV).
@@ -247,8 +273,9 @@ While it applies:
   reader, shortcuts tried by hand in each browser and screen reader, forced colors and text-only
   zoom in a given browser, printing, and comparing the built pages with the approved design
   exports. These may be done after merge, in a final testing phase that covers several features.
-- **What may not wait**: every automated check still runs and passes before merge, as do the
-  requirement-to-test traceability check (Principle III) and the checks in CI. A deferred manual
+- **What may not wait**: every automated check still runs and passes before merge, in CI or in
+  the owner's signed-off local run, as do the requirement-to-test traceability check
+  (Principle III) and the checks in CI. A deferred manual
   check doesn't excuse a missing automated check where tooling allows one.
 - **Recording**: a deferred check stays an open task in the feature's `tasks.md`, with a note
   that it is deferred to the final testing phase. The feature's pull request lists every
@@ -283,4 +310,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.3.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-27
+**Version**: 1.4.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-29
