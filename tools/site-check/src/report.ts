@@ -3,13 +3,14 @@
 // order, and nothing here depends on the locale.
 import { compare } from '../../traceability/src/report.ts';
 
-// The check's parts, in the summary's order (research R11; 005 and 006
-// contracts/cli.md Parts). `cv-app` and `terminal` run only when the site
-// root is a page.
+// The check's parts, in the summary's order (research R11; 005, 006 and 007
+// contracts/cli.md Parts). `cv-app`, `terminal` and `inspector` run only
+// when the site root is a page.
 export const PARTS = [
   'content',
   'cv-app',
   'terminal',
+  'inspector',
   'accessibility',
   'lighthouse',
   'no-script',
@@ -36,7 +37,13 @@ export type Part = (typeof PARTS)[number];
 // `<shell>/terminal/<command>/<width>px`, `<shell>/terminal/files/<width>px`,
 // `<shell>/terminal/json/<width>px` and `desktop/terminal-keyboard/1440px`,
 // and types `missing-field`, `out-of-order`, `json-mismatch`,
-// `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`.
+// `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`. The
+// inspector (007 data-model.md Check results) adds variants
+// `<shell>/<view>-specs/<width>px`, `<shell>/elements/<width>px` and
+// `desktop/inspector-keyboard/1440px`, and types `missing-requirement`,
+// `extra-requirement`, `out-of-order`, `wrong-count`, `text-mismatch`,
+// `tests-mismatch`, `link-mismatch`, `uncarried-element`, `state-lost` and
+// `focus-target`.
 export type Problem = {
   part: Part;
   page: string;

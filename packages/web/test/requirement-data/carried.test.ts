@@ -35,7 +35,7 @@ describe('007-requirement-inspector-FR-006 007-requirement-inspector-FR-011: eac
     expect([...carried.views.keys()]).toEqual(['shell', 'alpha', 'beta']);
     // The shell: its own modules, the shared one, the alpha icon and beta's
     // menu item in its declaration; never an app's content.
-    expect(ids(carried.views.get('shell'))).toEqual([id('005'), id('006'), id('007'), id('010'), id('011')]);
+    expect(ids(carried.views.get('shell'))).toEqual([id('005'), id('006'), id('007'), id('010'), id('011'), id('012')]);
     // A re-export is followed; a type-only import, a computed value and a
     // package import aren't.
     expect(ids(carried.views.get('alpha'))).toEqual([id('001'), id('002'), id('005')]);
@@ -55,6 +55,7 @@ describe('007-requirement-inspector-FR-006 007-requirement-inspector-FR-011: eac
         'apps/beta/app.tsx',
         'apps/index.ts',
         'client/os.tsx',
+        'os/NoScript.tsx',
         'os/Shell.tsx',
         'pages/ShellPage.tsx',
         'shared/Shared.tsx',
@@ -88,10 +89,14 @@ describe('007-requirement-inspector-FR-006 007-requirement-inspector-FR-011 007-
     }
     expect(shell.has('007-requirement-inspector-FR-001')).toBe(true);
     // 004's only through a module an app reaches too, such as the CV's link
-    // that About this site shows: a shared module counts for both.
+    // that About this site shows: a shared module counts for both; or
+    // through /cv's footer, which the root's no-script page shows.
     const appModules = new Set([...carried.modules].filter(([view]) => view !== 'shell').flatMap(([, files]) => [...files]));
-    const shellOnly = [...carried.modules.get('shell')!].filter((file) => !appModules.has(file));
+    const shellOnly = [...carried.modules.get('shell')!].filter((file) => !appModules.has(file) && file !== `${SRC}/cv/SiteFooter.tsx`);
     expect(shellOnly.flatMap(referencesIn).filter((reference) => reference.startsWith('004-cv-page-'))).toEqual([]);
+    // The no-script page is the shell's (005 FR-049), its footer too.
+    expect(shell.has('005-os-shell-FR-049')).toBe(true);
+    expect(shell.has('004-cv-page-FR-032')).toBe(true);
   });
 
   test("the CV app carries 004's, and the Terminal 006's, including output no command has produced yet", () => {

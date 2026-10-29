@@ -1,7 +1,7 @@
 // Which requirements each app's content and the shell carry (007 research
 // R5): every `data-req` written in the modules each reaches by static
 // imports, read with 001's own reader. An app's content starts at the
-// modules its declaration takes `Content` from. The shell starts at its two
+// modules its declaration takes `Content` from. The shell starts at its
 // roots and never enters an app's content, so the frames, the dock, the
 // menus, an app's icon and About this site are the shell's.
 import fs from 'node:fs';
@@ -22,7 +22,10 @@ export type Carried = {
 
 const SRC = 'packages/web/src';
 const APPS_FILE = `${SRC}/apps/index.ts`;
-export const SHELL_ROOTS = [`${SRC}/client/os.tsx`, `${SRC}/pages/ShellPage.tsx`];
+// The shell's roots: the hydrated shell, the root document, and the root's
+// no-script page, which the server render puts beside `#os` rather than
+// the root document importing it.
+export const SHELL_ROOTS = [`${SRC}/client/os.tsx`, `${SRC}/pages/ShellPage.tsx`, `${SRC}/os/NoScript.tsx`];
 
 // Modules that can hold UI. Style sheets and JSON are bundled too, but hold
 // no element.

@@ -21,6 +21,8 @@ import { axeProblems } from './parts/accessibility.ts';
 import { contentProblems } from './parts/content.ts';
 import { cvAppProblems } from './parts/cv-app.ts';
 import { terminalProblems, terminalVariants } from './parts/terminal.ts';
+import { INSPECTOR_VIEWS, elementProblems, inspectorVariants, inspectorViewProblems, readInspectorExpected, sweepProblems } from './parts/inspector.ts';
+import type { InspectorExpected } from './parts/inspector.ts';
 import { fontProblems } from './parts/fonts.ts';
 import { desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
 import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
@@ -84,7 +86,10 @@ const TERMINAL_LAYOUTS: readonly { condition: string; shell: Shell; width: numbe
 
 const TERMINAL_ROOT = '#os .terminal';
 
-export type CheckOptions = { parts?: readonly Part[] };
+// `repository` is where the inspector part reads the requirement data and
+// the site's repository address: the root itself, unless a test checks a
+// built site laid out apart from its repository.
+export type CheckOptions = { parts?: readonly Part[]; repository?: string };
 
 export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
@@ -155,7 +160,7 @@ const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' &&
 
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
-export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {}): Promise<Report> {
+export async function runCheck(root: string, { parts = PARTS, repository = root }: CheckOptions = {}): Promise<Report> {
   const manifest = readManifest(root);
   const siteDir = path.join(root, SITE_DIR);
   // Read when a part needs it, so an unreadable CV document fails only
@@ -220,6 +225,43 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           } catch (error) {
             for (const variant of terminalVariants(shell, target.width)) results.push(crashed('terminal', ROOT, variant, error));
           }
+        }
+      },
+      inspector: async () => {
+        // As `cv-app`: with no shell at the root, there's no inspector.
+        if (!shellRoot) {
+          results.push(result('inspector', '-', '-', []));
+          return;
+        }
+        let expected: InspectorExpected;
+        try {
+          expected = readInspectorExpected(repository, siteDir);
+        } catch (error) {
+          for (const shell of SHELLS) for (const variant of inspectorVariants(shell, shellAt(shell).width)) results.push(crashed('inspector', ROOT, variant, error));
+          return;
+        }
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          for (const view of INSPECTOR_VIEWS) {
+            const variant = stateVariant(shell, `${view}-specs`, target.width);
+            results.push(await run('inspector', ROOT, variant, () => withShell(chromium, rootUrl, target, {}, (page) => inspectorViewProblems(page, shell, view, expected, ROOT, variant))));
+          }
+          // Every `data-req` in every state the driver reaches (FR-012).
+          const variant = stateVariant(shell, 'elements', target.width);
+          results.push(
+            await run('inspector', ROOT, variant, () =>
+              sweepProblems(
+                SHELL_STATES.filter((state) => state.shell === shell),
+                (state) =>
+                  withShell(chromium, rootUrl, state, {}, async (page) => {
+                    await reachState(page, state);
+                    return elementProblems(page, expected);
+                  }),
+                ROOT,
+                variant,
+              ),
+            ),
+          );
         }
       },
       accessibility: async () => {
