@@ -6,6 +6,11 @@
 
 **Status**: Approved
 
+**Amended**: 2026-10-29: the Minimize and Maximize shortcuts are dropped, so the TypeScript
+playground's editor (008) can keep VS Code's Format Document key (see Clarifications, Session
+2026-10-29, and 008-typescript-playground FR-086). Approved 2026-10-23; the amendment approved by
+the owner 2026-10-29.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -69,6 +74,13 @@
   window that shrinks into its dock item? → A: It shrinks into its dock item and grows back out
   on restore. Maximizing grows the window to fill the desktop and shrinks it back on restore
   (FR-069, FR-070).
+
+### Session 2026-10-29 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground's editor (008) uses VS Code's keys, and VS Code's Format Document
+  key, `Shift+Alt+F`, is the Maximize shortcut. Which keeps it? → A: Format Document. The shell
+  drops its Maximize and Minimize shortcuts, which aren't needed. The minimize and maximize
+  controls and the window's menu commands stay (FR-063, FR-065).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -566,21 +578,24 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   steps the design sets, then confirms with Enter or cancels with Escape. Cancelling MUST return
   the window to the size it had. The end of a resize MUST be announced (FR-041).
 - **FR-063**: The minimize control's accessible name MUST name the window, such as "Minimize
-  CV". The window's menu MUST hold a minimize command with a shortcut. Minimizing MUST hide the
+  CV". The window's menu MUST hold a minimize command, with no shortcut. Minimizing MUST hide the
   window without closing its app: the app keeps its open mark in the dock, screen readers are
   told its window is minimized, and the Window menu lists it as minimized. Focus MUST move to
   the window now in front or, when no window is left visible, to the dock item of the app that
-  was minimized, or to the site menu's title for About this site.
+  was minimized, or to the site menu's title for About this site. Amended 2026-10-29
+  (008-typescript-playground): it said "a minimize command with a shortcut"; the shortcut is
+  dropped.
 - **FR-064**: Activating a minimized app's dock item, choosing its window in the Window menu, or,
   for About this site, choosing it again from the site menu MUST restore the window at the
   position and size it had, in front and focused.
 - **FR-065**: The maximize control's accessible name MUST name the window, such as "Maximize
-  CV". The window's menu MUST hold a maximize command with a shortcut. Maximizing MUST make the
+  CV". The window's menu MUST hold a maximize command, with no shortcut. Maximizing MUST make the
   window fill the desktop area, with the menu bar and the dock still visible (FR-010). While the
   window is maximized, the control and the command MUST restore it to the position and size it
   had before, and their names MUST say so, such as "Restore CV". A maximized window MUST NOT be
   moved or resized until it is restored, and MUST keep filling the desktop area when that area
-  changes size.
+  changes size. Amended 2026-10-29 (008-typescript-playground): it said "a maximize command with a
+  shortcut"; the shortcut is dropped.
 - **FR-067**: When focus moves to an element inside a window that the dock covers, or that is
   outside the browser window, the window MUST move by the least distance that shows the whole
   element and its focus indicator inside the desktop area, or the element's start when it is
