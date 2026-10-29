@@ -181,3 +181,144 @@ describe('006-terminal-FR-073: the visitor’s files, within 1 MB', () => {
     expect((await runLine(shell, 'ls')).stdout.split('\n')).toContain('notes');
   });
 });
+
+describe('006-terminal-FR-049: whole command lines on protected paths', () => {
+  // Every kind of protected path: a built file, a built folder, a file in a
+  // built folder (there and new), a system path, the root's folders, and a
+  // built name typed in other capitals.
+  const WORK_FILE = 'work/fixture-work-company';
+  const REFUSED: readonly (readonly [string, string])[] = [
+    ['rm about', "rm: cannot remove 'about': Permission denied"],
+    ['rm ABOUT', "rm: cannot remove 'ABOUT': Permission denied"],
+    [`rm ${WORK_FILE}`, `rm: cannot remove '${WORK_FILE}': Permission denied`],
+    ['rm /bin/ls', "rm: cannot remove '/bin/ls': Permission denied"],
+    ['rm -r work', `rm: cannot remove '${WORK_FILE}': Permission denied`],
+    ['mv work jobs', "mv: cannot move 'work' to 'jobs': Permission denied"],
+    ['mv ABOUT x', "mv: cannot move 'ABOUT' to 'x': Permission denied"],
+    ['mv /usr/bin x', "mv: cannot move '/usr/bin' to 'x': Permission denied"],
+    ['touch mine; mv mine work', "mv: cannot move 'mine' to 'work/mine': Permission denied"],
+    ['cp skills about', "cp: cannot create regular file 'about': Permission denied"],
+    ['cp skills work/x', "cp: cannot create regular file 'work/x': Permission denied"],
+    ['cp skills /bin/ls', "cp: cannot create regular file '/bin/ls': Permission denied"],
+    ['cp -r work specs', "cp: cannot create directory 'specs/work': Permission denied"],
+    ['touch about', "touch: cannot touch 'about': Permission denied"],
+    ['touch work/new', "touch: cannot touch 'work/new': Permission denied"],
+    ['touch WORK/new', "touch: cannot touch 'WORK/new': Permission denied"],
+    ['touch /home/x', "touch: cannot touch '/home/x': Permission denied"],
+    ['mkdir specs/x', "mkdir: cannot create directory 'specs/x': Permission denied"],
+    ['mkdir /x', "mkdir: cannot create directory '/x': Permission denied"],
+    ['echo hi > about', 'bash: about: Permission denied'],
+    ['echo hi > About', 'bash: About: Permission denied'],
+    ['echo hi > work/new', 'bash: work/new: Permission denied'],
+    ['echo hi > /usr/bin/x', 'bash: /usr/bin/x: Permission denied'],
+    ['echo hi >> about', 'bash: about: Permission denied'],
+    [`echo hi >> ${WORK_FILE}`, `bash: ${WORK_FILE}: Permission denied`],
+    // just-bash's own `tee` says "No such file or directory" (research G5);
+    // the wrapper gives bash's reason.
+    ['echo hi | tee about', 'tee: about: Permission denied'],
+    ['echo hi | tee work/x', 'tee: work/x: Permission denied'],
+    ['echo hi | tee -a /bin/x', 'tee: /bin/x: Permission denied'],
+    ['sed -i s/a/b/ about', 'sed: about: Permission denied'],
+    [`sed -i s/a/b/ ${WORK_FILE}`, `sed: ${WORK_FILE}: Permission denied`],
+    ['sed -i s/a/b/ /bin/ls', 'sed: /bin/ls: Permission denied'],
+  ];
+
+  test.each(REFUSED)('%s', async (line, message) => {
+    const shell = shellFor('every-field');
+    const before = (await runLine(shell, 'cat about')).stdout;
+    const result = await runLine(shell, line);
+    expect(result.stderr).toBe(`${message}\n`);
+    expect(result.status).not.toBe(0);
+    expect((await runLine(shell, 'cat about')).stdout).toBe(before);
+    expect((await runLine(shell, 'ls work')).stdout).toBe('fixture-work-company\n');
+  });
+
+  test('a refused write keeps what the line printed before and after it (research G1)', async () => {
+    const result = await runLine(shellFor('every-field'), 'echo a; echo hi > about; echo b');
+    expect(result.stdout).toBe('a\nb\n');
+    expect(result.stderr).toBe('bash: about: Permission denied\n');
+    expect(result.status).toBe(0);
+  });
+
+  test('a missing file or folder keeps its own reason', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'echo hi | tee nope/x')).stderr).toBe('tee: nope/x: No such file or directory\n');
+    expect((await runLine(shell, 'sed -i s/a/b/ work/nope')).stderr).toBe('sed: work/nope: No such file or directory\n');
+  });
+
+  test('rm -rf ~ removes the visitor’s files and names each protected file once', async () => {
+    const shell = shellFor('every-field');
+    await runLines(shell, ['mkdir -p notes/deep', 'echo a > notes/deep/a', 'echo b > mine']);
+    const files = (await runLine(shell, 'find ~ -type f')).stdout.split('\n').filter((path) => path !== '' && !path.includes('notes') && !path.endsWith('/mine'));
+    const result = await runLine(shell, 'rm -rf ~');
+    const lines = result.stderr.split('\n').filter((entry) => entry !== '');
+    expect(lines).toEqual(files.map((path) => `rm: cannot remove '${path}': Permission denied`));
+    expect(new Set(lines).size).toBe(lines.length);
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'ls')).stdout.split('\n').filter((name) => name !== '')).toEqual([...BUILT].sort());
+    expect((await runLine(shell, 'find ~ -type f')).stdout.split('\n').filter((path) => path !== '')).toEqual(files);
+  });
+
+  test('rm -r / is refused as GNU’s rm refuses it; rm -rf /tmp empties it', async () => {
+    const shell = shellFor('every-field');
+    const root = await runLine(shell, 'rm -rf /');
+    expect(root.stderr).toBe("rm: it is dangerous to operate recursively on '/'\nrm: use --no-preserve-root to override this failsafe\n");
+    expect(root.status).toBe(1);
+    const tmp = await runLine(shell, 'touch /tmp/a; rm -rf /tmp');
+    expect(tmp.stderr).toBe("rm: cannot remove '/tmp': Permission denied\n");
+    expect((await runLine(shell, 'ls /tmp')).stdout).toBe('');
+  });
+
+  test('the adapter’s own commands aren’t in /bin or /usr/bin', async () => {
+    const shell = shellFor('every-field');
+    for (const folder of ['/bin', '/usr/bin']) expect((await runLine(shell, `ls ${folder}`)).stdout).not.toContain('__cv_');
+  });
+
+  test('the protected tree is equal before and after every standard command run on it', async () => {
+    const shell = shellFor('every-field');
+    const DUMP = 'for f in $(find / -path /tmp -prune -o -print); do echo "$f"; [ -f "$f" ] && cat "$f"; done';
+    const before = (await runLine(shell, DUMP)).stdout;
+    // One line per command of FR-068, on protected paths, writing where it can.
+    const lines = [
+      `awk '{print > "about"}' skills`, 'basename about > about', 'cp skills about', 'cut -c1 about > about', 'date > about', 'diff about contact > contact', 'dirname work > work/x', 'echo hi > about', 'env >> about',
+      'false > about', 'find ~ -name about -delete', 'find ~/work -type f -delete', 'grep -r a ~ > about', 'head about > skills', 'mkdir work/x', 'mv work jobs', 'printf x > about', 'rm -rf ~',
+      'sed -i s/a/b/ about', 'seq 3 > about', 'sort -o about skills', 'tail about >> about', 'echo hi | tee about', 'touch about', 'tr a-z A-Z < about > about', 'tree > about', 'true > about',
+      'uniq skills about', 'wc about > about', 'which ls > /bin/ls', 'ls ~ | xargs rm -rf', 'yes | head -1 > about', 'cat skills > about', 'jq . cv.json > cv.json', 'ls > work/list', 'pwd > about',
+    ];
+    for (const line of lines) await runLine(shell, line);
+    expect((await runLine(shell, DUMP)).stdout).toBe(before);
+  });
+});
+
+describe('006-terminal-FR-049: ls -l shows who owns what', () => {
+  // Mode, links, owner, group, size, date, name.
+  const fields = (line: string) => /^(\S{10}) +\d+ (\S+) +(\S+) +\d+ .+ (\S+)$/.exec(line)?.slice(1);
+
+  test('protected entries read only and root’s; the visitor’s guest’s', async () => {
+    const shell = shellFor('every-field');
+    const lines = (await runLine(shell, 'touch mine; mkdir dir; ls -l | cat')).stdout.split('\n').filter((line) => line !== '' && !line.startsWith('total'));
+    const rows = new Map(lines.map((line) => [fields(line)![3]!, fields(line)!.slice(0, 3)]));
+    expect(rows.get('about')).toEqual(['-r--r--r--', 'root', 'root']);
+    expect(rows.get('work')).toEqual(['dr-xr-xr-x', 'root', 'root']);
+    expect(rows.get('mine')).toEqual(['-rw-r--r--', 'guest', 'guest']);
+    expect(rows.get('dir')).toEqual(['drwxr-xr-x', 'guest', 'guest']);
+    expect(lines.every((line) => !/\buser\b/.test(line))).toBe(true);
+    const work = (await runLine(shell, 'ls -l work')).stdout.split('\n')[1]!;
+    expect(fields(work)!.slice(0, 3)).toEqual(['-r--r--r--', 'root', 'root']);
+    const root = (await runLine(shell, 'ls -ld /')).stdout;
+    expect(fields(root.trim())!.slice(0, 3)).toEqual(['dr-xr-xr-x', 'root', 'root']);
+  });
+
+  test('unpiped, the listing is recorded with its names as controls; piped, it is text', async () => {
+    const shell = shellFor('every-field');
+    const shown = await runLine(shell, 'mkdir dir; ls -l');
+    expect(shown.recorded.length).toBe(1);
+    expect(shown.recorded[0]!.text).toBe(shown.stdout);
+    const block = JSON.stringify(shown.recorded[0]!.block);
+    expect(block).toContain('"ls ~/dir"');
+    expect(block).toContain('"dir/"');
+    expect(block).toContain('"cat ~/about"');
+    const piped = await runLine(shell, 'ls -l | cat');
+    expect(piped.recorded).toEqual([]);
+  });
+});

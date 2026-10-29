@@ -584,6 +584,8 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G16 | `cat` on a folder says `cat: work: No such file or directory`, where GNU's says `Is a directory` | The `cat` wrapper rewrites the line when the path is a folder (R29) |
 | G17 | A command only the Node build holds (`python`, `python3`, `js-exec`, `sqlite3`…) says `bash: python: command not available in browser environments. Exclude 'python' from your commands or use the Node.js bundle.` | The adapter rewrites it to `bash: python: command not found` (FR-022, R27) |
 | G18 | `rm`, `mkdir`, `touch` and `seq` don't answer `--help` (`rm: unrecognized option '--help'`, `seq: invalid floating point argument: '--help'`) | Wrappers in `site-commands.ts` print their help in the form just-bash's other commands use (`MISSING_HELP` in `standard.ts`), with the options it implements (FR-068). Upstream report |
+| G19 | `sed -i` reports any write error as "No such file or directory", like `tee` (G5): `sed -i s/a/b/ about` says `sed: about: No such file or directory` | The `sed` wrapper in `site-commands.ts` rewrites it to `Permission denied` when the file exists and the write is refused, as it does `tee`'s (FR-049). Upstream report |
+| G20 | `cp` and `mv` name only the source of a refused copy or move (`cp: cannot copy 'skills': Permission denied`, `mv: cannot move 'mine': Permission denied`), where GNU's name the destination (`cp: cannot create regular file 'about': Permission denied`, `mv: cannot move 'mine' to 'work/mine': Permission denied`) | The `cp` and `mv` wrappers rewrite the line in GNU's form, so the protected path is named as typed (FR-049). `awk`'s `print > "about"` and `sort -o about` still say only `awk: Permission denied` and `sort: Permission denied`, without the path; the file is unchanged. Upstream report |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -729,8 +731,15 @@ public interface, and it changes between versions); asking upstream for persiste
   resolves to a protected path with `__cv_denied '<target>'`. That prints bash's
   `bash: <target>: Permission denied` and returns 1 without running the command, which is what
   bash does when a redirect fails. A target built from an expansion, and a redirect that passes
-  the 1 MB limit, still lose the line's output and show only the error, until the fix. The plugin
-  is deleted once the fix is released.
+  the 1 MB limit, still lose the line's output and show only the error, until the fix. The guard
+  resolves a relative target from the folder the line starts in, as it runs before the line: after
+  a `cd` in the same line (`cd work; echo x > y`), a refused redirect still ends the line with
+  `bash: Permission denied`, and the file is unchanged. The plugin is deleted once the fix is
+  released.
+- **`rm -r /`** is refused as GNU's `rm` refuses it by default (`--preserve-root`), and a folder
+  the visitor can empty but not remove (`rm -rf /tmp`, as `/` is protected) says
+  `rm: cannot remove '/tmp': Permission denied` once. The command stubs of the adapter's own
+  commands (`__cv_help`, `__cv_denied`, `__cv_state`) aren't listed in `/bin` or `/usr/bin`.
 - **Reset** (FR-021): `reset` rebuilds TerminalFs from the CV and the spec list. `restore(files)`
   rebuilds it with the visitor's files from a snapshot (R26).
 

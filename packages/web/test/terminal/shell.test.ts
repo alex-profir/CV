@@ -5,7 +5,9 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Locator, Page } from 'playwright';
 import { resume } from '@cv/content';
 import { LANGUAGE_CASES, runLines, shellFor } from './shell/context.ts';
-import { openTerminalPage, runGroup } from '../helpers/terminal.ts';
+import { resize, settle } from '../helpers/shell.ts';
+import { openTerminal, openTerminalPage, runGroup, typeLine } from '../helpers/terminal.ts';
+import type { TerminalShell } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -77,5 +79,59 @@ describe('006-terminal-FR-057: a pipe’s output is plain text', () => {
       if (command === 'ls') expect(shown.map((name) => name.replace(/\/$/, '')).sort(), command).toEqual([...piped].sort());
       else expect(shown, command).toEqual(piped);
     }
+  });
+});
+
+// A word of the first role's summary, read from the CV.
+const summaryWord = () => (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+
+describe.each<TerminalShell>(['desktop', 'mobile'])('006-terminal-FR-049, FR-073 and FR-068: files in the %s shell', (shell) => {
+  test('006-terminal-FR-049: US3 scenario 9, protected files say Permission denied and stay as they were', async () => {
+    const page = await openTerminalPage(shell);
+    const before = await runAll(page, ['cat about', 'ls work', 'cat cv.json']);
+    expect(await shownLines(await runGroup(page, 'rm about'))).toEqual(["rm: cannot remove 'about': Permission denied"]);
+    expect(await shownLines(await runGroup(page, 'mv work jobs'))).toEqual(["mv: cannot move 'work' to 'jobs': Permission denied"]);
+    expect(await shownLines(await runGroup(page, 'echo hi > cv.json'))).toEqual(['bash: cv.json: Permission denied']);
+    expect(await runAll(page, ['cat about', 'ls work', 'cat cv.json'])).toEqual(before);
+  });
+
+  test('006-terminal-FR-073 and 006-terminal-FR-021: US3 scenario 10, the visitor’s folder, gone after closing', async () => {
+    const page = await openTerminalPage(shell);
+    expect(await shownLines(await runGroup(page, 'mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b'))).toEqual(['hi']);
+    const listed = await runGroup(page, 'ls');
+    const names = await listed.locator('.out-columns button').evaluateAll((list) => list.map((control) => (control.textContent ?? '').trim()));
+    expect(names.indexOf('notes/')).toBeGreaterThan(names.indexOf('specs/'));
+    await runGroup(page, 'touch /tmp/t');
+    expect(await shownLines(await runGroup(page, 'rm -r notes'))).toEqual([]);
+    expect(await shownLines(await runGroup(page, 'ls notes'))).toEqual(['ls: notes: No such file or directory']);
+    await runGroup(page, 'mkdir notes');
+    // `exit` on a phone goes home and keeps the session (FR-021), and the
+    // phone shell has no close: it is closed as a desktop window.
+    if (shell === 'mobile') await resize(page, 1440, 900);
+    await typeLine(page, 'exit');
+    await expect.poll(() => page.locator('#os .terminal').count()).toBe(0);
+    if (shell === 'mobile') await resize(page, 375, 812);
+    await settle(page);
+    await openTerminal(page, shell);
+    const after = await runGroup(page, 'ls');
+    expect(await after.locator('.out-columns button').evaluateAll((list) => list.map((control) => (control.textContent ?? '').trim()))).not.toContain('notes/');
+    expect(await shownLines(await runGroup(page, 'ls /tmp'))).toEqual([]);
+  });
+
+  test('006-terminal-FR-012 and 006-terminal-FR-068: US3 scenario 11, the standard commands search the CV’s files', async () => {
+    const word = summaryWord();
+    expect(word).toBeDefined();
+    const files = (await runLines(shellFor(), ['find ~/work -type f']))[0]!.stdout.split('\n').filter((path) => path !== '');
+    const holding: string[] = [];
+    for (const path of files) {
+      const text = (await runLines(shellFor(), [`cat ${path}`]))[0]!.stdout;
+      if (text.toLowerCase().includes(word.toLowerCase())) holding.push(path);
+    }
+    expect(holding.length).toBeGreaterThan(0);
+    const page = await openTerminalPage(shell);
+    expect((await shownLines(await runGroup(page, `grep -ril ${word} ~/work`))).sort()).toEqual(holding.sort());
+    expect(await shownLines(await runGroup(page, "find ~ -name '*.json'"))).toEqual(['/home/guest/cv.json']);
+    const tree = (await shownLines(await runGroup(page, 'tree ~/work'))).join('\n');
+    for (const path of files) expect(tree).toContain(path.slice(path.lastIndexOf('/') + 1));
   });
 });

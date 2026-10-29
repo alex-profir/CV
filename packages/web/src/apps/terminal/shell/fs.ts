@@ -309,8 +309,10 @@ export class TerminalFs extends InMemoryFs {
   }
 
   // The home folder's built entries in the design's order, then the
-  // visitor's in name order (FR-043, FR-073).
+  // visitor's in name order (FR-043, FR-073). The command stubs of the
+  // adapter's own commands (`__cv_help`…) aren't listed.
   private ordered(path: string, names: string[]): string[] {
+    if (path === '/bin' || path === '/usr/bin') return names.filter((name) => !name.startsWith('__cv_'));
     if (path !== HOME) return names;
     const built = this.homeOrder.filter((name) => names.includes(name));
     return [...built, ...names.filter((name) => !this.homeOrder.includes(name)).sort()];

@@ -197,8 +197,35 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         result.stderr.split('\n').map(async (entry) => {
           const typed = new RegExp(`^${name}: (.+): No such file or directory$`).exec(entry)?.[1];
           if (typed === undefined) return entry;
-          const path = ctx.fs.resolvePath(ctx.cwd, typed);
-          return shell.fs.refusesWrite(path) && (await shell.fs.exists(shell.fs.canonical(path))) ? `${name}: ${typed}: Permission denied` : entry;
+          // Refused, on a file `sed` read or in a folder `tee` can write
+          // to: a missing one is still "No such file or directory".
+          const path = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, typed));
+          return shell.fs.refusesWrite(path) && (await shell.fs.exists(name === 'sed' ? path : parentOf(path))) ? `${name}: ${typed}: Permission denied` : entry;
+        }),
+      );
+      return { ...result, stderr: lines.join('\n') };
+    });
+
+  // just-bash's `cp` and `mv` name only the source of a refused copy or
+  // move (`cp: cannot copy 'skills': Permission denied`); GNU's name where
+  // it was going too, so the protected path is named as typed (FR-049,
+  // research G20).
+  const destinationMessage = (name: 'cp' | 'mv') =>
+    defineCommand(name, async (args, ctx) => {
+      const result = await ctx.origCommand!(args);
+      const operands = args.filter((arg) => !arg.startsWith('-'));
+      if (result.exitCode === 0 || operands.length < 2 || args.some((arg) => arg.startsWith('-t') || arg.startsWith('--target'))) return result;
+      const destination = operands[operands.length - 1]!;
+      const into = (await shell.fs.stat(shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, destination))).catch(() => null))?.isDirectory === true;
+      const pattern = new RegExp(`^${name}: cannot (?:copy|move) '(.+)': Permission denied$`);
+      const lines = await Promise.all(
+        result.stderr.split('\n').map(async (entry) => {
+          const source = pattern.exec(entry)?.[1];
+          if (source === undefined) return entry;
+          const target = into ? `${destination.replace(/\/+$/, '')}/${nameOf(source.replace(/\/+$/, ''))}` : destination;
+          if (name === 'mv') return `mv: cannot move '${source}' to '${target}': Permission denied`;
+          const folder = (await shell.fs.stat(shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, source))).catch(() => null))?.isDirectory === true;
+          return `cp: cannot create ${folder ? 'directory' : 'regular file'} '${target}': Permission denied`;
         }),
       );
       return { ...result, stderr: lines.join('\n') };
@@ -332,16 +359,23 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         // A folder that keeps a protected entry stays; that entry said why.
         if (!emptied) return false;
       }
-      if (shell.fs.isProtected(path)) {
+      // A protected entry, or one in a protected folder (`/tmp` in `/`).
+      const refused = shell.fs.isProtected(path) || (await shell.fs.rm(path, { recursive: true, force: true }).then(() => false, () => true));
+      if (refused) {
         stderr += `rm: cannot remove '${shown}': Permission denied\n`;
         status = 1;
         return false;
       }
-      await shell.fs.rm(path, { recursive: true, force: true });
       return true;
     };
     for (const target of targets) {
       const path = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, target));
+      // GNU's `--preserve-root`, on by default.
+      if (path === '/') {
+        stderr += `rm: it is dangerous to operate recursively on '${target}'\nrm: use --no-preserve-root to override this failsafe\n`;
+        status = 1;
+        continue;
+      }
       if ((await shell.fs.stat(path).catch(() => null)) === null) {
         if (!force) {
           stderr += `rm: cannot remove '${target}': No such file or directory\n`;
@@ -364,5 +398,5 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, rm, denied, deniedMessage('sed'), deniedMessage('tee'), ...helped];
+  return [...rows, vim, cv, cat, ls, jq, rm, denied, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), ...helped];
 }
