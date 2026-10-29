@@ -50,6 +50,18 @@ const inWindow = (page: Page) => page.evaluate((selector) => document.querySelec
 const focusables = (page: Page) => page.evaluate(() => document.querySelectorAll('a[href], button, input, textarea, select, [tabindex]').length);
 const scrollTop = (page: Page) => page.locator(SCROLLER).evaluate((element) => element.scrollTop);
 
+// Waits until the view's scroll position holds for a few frames, so the
+// next key starts from where the last one ended, even on a busy machine.
+const scrollSettled = (page: Page) =>
+  page.locator(SCROLLER).evaluate(async (element) => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    for (let still = 0, last = element.scrollTop; still < 3; ) {
+      await frame();
+      still = element.scrollTop === last ? still + 1 : 0;
+      last = element.scrollTop;
+    }
+  });
+
 // Tabs until the CV's "Show specs" has focus.
 async function tabToShowSpecs(page: Page): Promise<void> {
   const limit = await focusables(page);
@@ -138,6 +150,7 @@ describe('007-requirement-inspector-FR-016: the inspector works with a keyboard 
     await page.keyboard.press('End');
     const max = await page.locator(SCROLLER).evaluate((element) => element.scrollHeight - element.clientHeight);
     await expect.poll(() => scrollTop(page), { timeout: 5000 }).toBeGreaterThanOrEqual(max - 1);
+    await scrollSettled(page);
     await page.keyboard.press('ArrowUp');
     await expect.poll(() => scrollTop(page), { timeout: 5000 }).toBeLessThan(max - 1);
     await page.keyboard.press('Home');

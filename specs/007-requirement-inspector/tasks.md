@@ -434,7 +434,13 @@ the single PR
   - Done (2026-10-29), 4× CPU throttling, on the real build, with other test runs going at the same time: mobile About show 105 ms, back 63 ms; mobile CV 63 / 48 ms; desktop About 118 / 62 ms; desktop CV 94 / 42 ms. All are under 300 ms and 100 ms, so R10's fallback isn't needed and `SpecView.tsx` is unchanged.
 - [X] T083 Run `npm run traceability` after T080 (Constitution III, SC-012): it exits 0, its PASS line counts `007-requirement-inspector`'s 34 active requirements among the approved specs, and every row of Requirement Coverage below has a passing test. Record the PASS line here.
   - Done (2026-10-29): `npm run traceability` exits 0 with `PASS: all 351 active requirements in 7 approved specs are covered.` The self-check confirms 007 is Approved with 34 active requirements, all counted.
-- [ ] T084 [P] Verify research R16 (**Verify**): on the real build, the root's compressed script, style sheet and HTML are near 108 KB, 14 KB and 16 KB, the data file near 20 KB, and Lighthouse's mobile and desktop scores on `/` and `/cv` are 90 or more in every category (SC-006). Record the figures here.
+- [X] T084 [P] Verify research R16 (**Verify**): on the real build, the root's compressed script, style sheet and HTML are near 108 KB, 14 KB and 16 KB, the data file near 20 KB, and Lighthouse's mobile and desktop scores on `/` and `/cv` are 90 or more in every category (SC-006). Record the figures here.
+  - Done (2026-10-29), real build: the root's HTML is 7.0 KB gzip (5.7 KB brotli), near 16 KB;
+    `os-*.css` is 12.4 KB gzip, near 14 KB; `os-*.js` is 113.4 KB gzip (98.2 KB brotli), near 108 KB. The data file
+    `requirements-*.json` is 37.8 KB gzip (30.0 KB brotli, 184 KB raw), not near 20 KB: R16's estimate was low.
+    It loads after the shell is ready (quickstart 5) and isn't render-blocking, so the Lighthouse scores don't move.
+    Lighthouse (`npm run site-check` on b12e55d): `/` mobile performance 98, accessibility 100, best-practices 100,
+    SEO 100; `/` desktop all 100; `/cv` mobile 99/100/100/100; `/cv` desktop all 100. Every score is 90 or more (SC-006).
 - [X] T085 [P] Audit Constitution X, IV, V, VII and IX in `package.json`, `packages/os-core/`, `packages/web/`, `tools/traceability/` and `tools/site-check/`:
   - **X**: no package added; the abstractions added are exactly plan.md's Dependencies table (add any helper this list created, with its reason); no agent skill added;
   - **IV**: `site-text.ts` holds no CV fact and no design value; the inspector reads no token in script; the data is never typed by hand; `siteData.repository` is the only CV value read;
@@ -462,8 +468,36 @@ the single PR
     - **IX**: the glyphs are the design's SVG components under `src/inspector/glyphs/`. Fonts come only
       from `var(--token-font-family-…)`. There is no image, Apple asset or system font.
 - [ ] T086 Run the full verification after T083 to T085: `npm run typecheck`, `npm test`, `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0, the last with the `inspector` part in both shells. Run them again with an untracked file in the working copy: the same result (FR-034). Record the counts here.
-- [ ] T087 Run quickstart.md scenarios 1 to 5, 8 and 9, and the automated parts of 7, and record any deviation here. Scenario 3.4 and 3.5 edit files: do them in a `repoCopy` or revert each change with `git checkout`. Write scratch output to the scratchpad. Scenarios 6 and the hand parts of 7 are T088.
+  - Pass 1 (2026-10-29, b12e55d, clean copy): `typecheck`, `content-check`, `token-check` and `traceability` exit 0.
+    `npm test`: 1,683 of 1,684 tests passed in 182 files (966 s). The one failure was 005's `shell.test.ts`
+    keyboard result list, which didn't yet expect `desktop/inspector-keyboard/1440px`; fixed in 0620c46 (10/10).
+    `npm run site-check`: `PASSED`, 14 of 14 parts, `inspector` passing in both shells (228 s).
+  - Pass 2 (0620c46, with an untracked file at the root): the four checks exit 0. `npm test`: 1,683 of 1,684
+    passed (958 s). The one failure was a different, load-dependent one: `inspector/keyboard.test.ts`'s ArrowUp
+    after End, while other browser runs were going. It passes alone (3/3), and now waits for the scroll to settle
+    before the next key. `npm run site-check`: `PASSED`, 14 of 14. Its report is the same as pass 1's except the
+    version line (the build is dirty, R8) and `/` mobile Lighthouse performance (98, then 97) (FR-034).
+  - Pass 3: `npm test` again on the committed fixes (see below).
+- [X] T087 Run quickstart.md scenarios 1 to 5, 8 and 9, and the automated parts of 7, and record any deviation here. Scenario 3.4 and 3.5 edit files: do them in a `repoCopy` or revert each change with `git checkout`. Write scratch output to the scratchpad. Scenarios 6 and the hand parts of 7 are T088.
+  - Done (2026-10-29). Scenario 1 is T086. Scenarios 2, 3.1–3.3, 4, 5, 8 and 9 were run by a Playwright script on
+    the built site (scratch, `/tmp/claude-007/scripts/quickstart.ts`), and 3.4 and 3.5 in `copyBuild` repository
+    copies. Everything matched except one deviation:
+    - **4**: About this site's view lists 005, 006 and 007, and also five of 004's requirements (FR-012, FR-013, FR-025,
+      FR-029, FR-032). The root's no-script page (`os/NoScript.tsx`) is shell code and holds /cv's footer, so these are
+      the shell's. T076 recorded this, and the site check's `inspector` part agrees with the data. The quickstart's
+      "none of 004's" predates that change; the implementation is right.
+    - 2.5 (close and reopen shows the CV) passed on a second, careful run. The first run's script checked while the
+      window was still closing.
+    - 3.4: 007 as Draft shows `DRAFT`, and an uncovered FR-035 on `button.show-specs` says `No test covers this yet.`
+      3.5: a changed word in 004 FR-012 shows in the CV view, with the uncommitted note naming the commit. A clean
+      build has no note.
+    - 7, automated parts: covered by `npm run site-check`'s `modes` (forced colors and reduced motion in every
+      inspector state) and `layout` (200%/400% zoom, text spacing, 320 px, landscape, narrow window). Both pass.
 - [ ] T088 Owner action, by hand (quickstart 6 and 7, research R17): screen readers on a desktop (VoiceOver on macOS and NVDA on Windows) and on a phone (VoiceOver on iPhone and TalkBack on Android) through stories 1 to 4 (SC-007); forced colors in Edge with Windows' contrast themes (FR-023); text-only zoom at 200% in Firefox (FR-024); and comparing the built views with `design/exports/` (FR-021). Record each result here and in the PR. Under the interim provision on deferred manual checks they may wait for the final testing phase: record that here, list them in the PR and leave this task open.
+  - Deferred (2026-10-29) under the interim provision on deferred manual checks, to the final multi-spec testing phase,
+    as 004's T105 and 006's T108 were. Still to do by hand: VoiceOver (macOS, iPhone), NVDA (Windows) and TalkBack
+    (Android) through stories 1–4 (SC-007); Edge with Windows' contrast themes (FR-023); Firefox's text-only zoom at
+    200% (FR-024); the built views against `design/exports/` (FR-021). Left open for the owner.
 - [ ] T089 Commit the remaining work with Conventional Commits; merge `main` again if it changed since T001, such as 006's amendments (as T001 sets, a merge commit, then rerun T086); push `007-requirement-inspector` and open one pull request to `main` (Constitution XI):
   - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
   - The description links `specs/007-requirement-inspector/spec.md` and `specs/007-requirement-inspector/tasks.md`; records the token rename (T004) and that the tokens were written into the hand-written export under the interim provision on local mockups; and records the results of T082, T084, T087 and T088, listing every manual check deferred under the interim provision on deferred manual checks.
