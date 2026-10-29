@@ -10,6 +10,7 @@
   "scripts": {
     "traceability": "node --permission --allow-fs-read=. --allow-addons tools/traceability/src/main.js",
     "test": "vitest run",
+    "test:fast": "vitest run --project fast",
     "typecheck": "tsc --noEmit && tsc --noEmit -p packages/web/src/sw/tsconfig.json",
     "content-check": "node --permission --allow-fs-read=. tools/content-check/src/main.js",
     "content-shape": "node tools/content-check/src/generate-shape.ts",
@@ -17,7 +18,9 @@
     "token-output": "node tools/token-check/src/generate-output.ts",
     "build": "node packages/web/scripts/build-site.ts",
     "serve": "node tools/site-check/src/server.ts",
-    "site-check": "npm run build && node tools/site-check/src/main.js"
+    "site-check": "npm run build && node tools/site-check/src/main.js",
+    "verify": "node tools/local-verify/src/main.js verify",
+    "signoff": "node tools/local-verify/src/main.js signoff"
   },
   "devDependencies": {
     "@jsonresume/schema": "1.3.1",

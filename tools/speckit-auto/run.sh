@@ -36,12 +36,14 @@ relative() {
   esac
 }
 
-# Implement sessions commit as they go, so HEAD must be the feature's branch.
+# Implement sessions commit as they go, so HEAD must be the feature's branch,
+# or for an amendment of a shipped feature, a branch of its own named with the
+# feature's number (001-local-verify for specs/001-requirement-traceability).
 on_branch() {
   local want branch
   want=$(basename "$1")
   branch=$(git branch --show-current)
-  [ "$branch" = "$want" ] \
+  [ "$branch" = "$want" ] || { [[ $want =~ ^[0-9]+- ]] && [[ $branch == "${want%%-*}"-* ]]; } \
     || { echo "On ${branch:-a detached HEAD}, not $want. Run: git switch $want" >&2; exit 1; }
 }
 
