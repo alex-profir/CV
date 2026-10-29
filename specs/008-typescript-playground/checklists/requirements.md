@@ -42,4 +42,6 @@
 - Numbers chosen as defaults and recorded in Assumptions: the 5-second popup period, 1,000 log
   entries, 10,000 characters per entry, 8,000-character links.
 - Feature number: 008, after 007-requirement-inspector.
+- Approved by the owner 2026-10-29, with the amendment of 005 made in this feature's pull request
+  (FR-086). 005's spec records the amendment; the plan records the exception to Constitution XI.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

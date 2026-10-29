@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-29
 
-**Status**: Draft
+**Status**: Approved
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -73,7 +73,9 @@
 - Q: VS Code's Format Document key, `Shift+Alt+F`, is the shell's Maximize shortcut (005 FR-065).
   Which keeps it? → A: Format Document. The shell drops its Maximize and Minimize shortcuts, which
   aren't needed: the window controls and the window's menu commands stay. This is an amendment of
-  005, made in its own pull request (Constitution XI) and merged before this feature's code.
+  005, made in this feature's pull request (FR-086). Constitution XI ships an amendment in pull
+  requests of its own, so the plan records this as a justified exception in its Complexity
+  Tracking table.
 - Q: Constitution XI ships an amendment in pull requests of its own, so how does the Terminal get
   `open playground`? → A: Through an amendment of 006 in its own pull request, after this feature
   ships, as it can only be tested once the Playground exists. FR-006 moves there.
@@ -674,11 +676,17 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   so the menu bar, the dock and the other windows are always one shortcut away (005 FR-030), nor a
   key the current main desktop browsers or screen readers reserve. A command whose VS Code key is
   taken MUST get another key, shown in the command palette and the keyboard list (FR-085). Format
-  Document MUST keep VS Code's key, `Shift+Alt+F`, which the amendment of 005 frees (Assumptions).
+  Document MUST keep VS Code's key, `Shift+Alt+F`, which the amendment of 005 frees (FR-086).
 - **FR-085**: A command palette MUST list every editor command with its key, and run the one the
   visitor picks. The Playground's menu MUST show each of its commands with its key (005 FR-029),
   and MUST open a list of every key of the Playground and its editor, saying where one differs from
   VS Code and why (FR-084).
+- **FR-086**: Before the shell's shortcuts change, 005's spec MUST be amended in this feature's pull
+  request, as Constitution XI records an amendment: 005 FR-063 and FR-065 drop the Minimize and
+  Maximize shortcuts, and keep the minimize and maximize controls and the window's menu commands.
+  The amendment MUST carry 005's updated wireframes and review sign-off, the shell's list of
+  shortcuts in About this site, its tasks and its tests, and the shell MUST then answer neither
+  shortcut.
 
 **Panes**
 
@@ -1059,8 +1067,9 @@ server-rendered page, unchanged by this feature.
   keeps `Shift+Alt+F`, freed by the amendment of 005 below.
 - **The amendment of 005**: the shell drops its Minimize and Maximize shortcuts (005 FR-063 and
   FR-065), so `Shift+Alt+F` (`Shift+Option+F` on a Mac) is free for Format Document. The minimize
-  and maximize controls and the window's menu commands stay. It is made in its own pull request,
-  spec first with its design and tests (Constitution XI), and merges before this feature's code.
+  and maximize controls and the window's menu commands stay. The owner chose to make it in this
+  feature's pull request (FR-086), not in one of its own as Constitution XI sets, so the plan
+  records the exception in its Complexity Tracking table.
   Editor settings, keymaps, themes chosen by the visitor and extensions are not part of it.
 - **When TypeScript is downloaded**: on the Playground's first open, as the description says, not on
   the site's first visit, so recruiters on phones never pay for it. Constitution VI is met by keeping
@@ -1115,7 +1124,7 @@ server-rendered page, unchanged by this feature.
 - **Depends on**: Constitution II to IX and the interim provisions on local mockups and deferred
   manual checks; the requirement traceability check (001); the CV content source and its rules
   (002); the design tokens source and token check (003); `/cv`, its offline rules and its checks
-  (004); the OS shell, its windows, menus, full-screen apps and checks (005), amended to drop its
-  Minimize and Maximize shortcuts before this feature's code; the requirement inspector's "Show
+  (004); the OS shell, its windows, menus, full-screen apps and checks (005), amended by this
+  feature to drop its Minimize and Maximize shortcuts (FR-086); the requirement inspector's "Show
   specs" (007); and an approved mockup of the Playground in both shells with its review sign-off.
   The amendment of the Terminal (006) for `open playground` follows this feature.
