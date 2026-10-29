@@ -16,6 +16,13 @@ spec says **No UI**.
 automated test. Each test task names the `001-requirement-traceability-FR-###` IDs it covers, and
 every FR in spec.md (FR-001 to FR-029) is covered by at least one test task.
 
+**Amendment of 2026-10-29**: the local full run and its `local-verify` sign-off (spec.md, Session
+2026-10-29, User Story 4, FR-030 to FR-037, SC-008 to SC-010) is built by Phases 8 to 11 below,
+appended after the first release's tasks (Constitution XI). Its inputs add
+[contracts/local-verify.md](./contracts/local-verify.md), research R14 to R21 and quickstart
+scenarios 8 to 13. Earlier tasks keep their record. The ones it overturns (T006, T012, T025,
+T026) are marked superseded in part, where they stand.
+
 **Organization**: Tasks are grouped by user story. US2 and US3 build on US1, as the spec says
 ("The other stories build on this one"). Once US1 is done, US2 and US3 don't depend on each other.
 
@@ -114,6 +121,7 @@ adds or changes no user interface."
   - `TEST_INCLUDE_GLOBS`: `['**/*.{test,spec}.?(c|m)[jt]s?(x)']`.
   - `TEST_EXCLUDE_GLOBS`: `**/<name>/**` for each excluded name, plus `**/.*/**`.
 - [X] T006 Create `vitest.config.ts` at the repository root. Use `defineConfig` from `vitest/config`. Set `test.include` to `TEST_INCLUDE_GLOBS` and `test.exclude` to `TEST_EXCLUDE_GLOBS`, both imported from `./tools/traceability/src/files.ts`. Declare no `tags`, because no tag may carry `skip` or `todo` (research R3).
+  - **Superseded in part 2026-10-29 by T063**: the root `test.include` and `test.exclude` (and the `globalSetup` 004 added) move into the `fast` and `slow` projects (research R14). The rest stands.
 - [X] T007 [P] Create the test helper `tools/traceability/test/helpers/project.ts` (plan Dependencies table, research R13):
   - `REPO_ROOT`: the repository root, as a real path, computed from `import.meta.dirname`.
   - `CLI_PATH`: `<REPO_ROOT>/tools/traceability/src/cli.ts`.
@@ -201,6 +209,7 @@ exactly the requirements whose tests arrive in later phases (T024).
   - Test files are selected by `TEST_FILE_PATTERN`. Yes: `a.test.ts`, `a.spec.tsx`, `a.test.mjs`, `a.test.cjs`, `a.spec.jsx`. No: `a.tests.ts`, `a.test.md`, `test.ts`.
   - Paths are relative, use `/`, and are sorted by code unit.
   - `vitest.config.ts`'s `test.include` and `test.exclude` deep-equal `TEST_INCLUDE_GLOBS` and `TEST_EXCLUDE_GLOBS`. `TEST_EXCLUDE_GLOBS` names every `EXCLUDED_DIR_NAMES` entry plus `**/.*/**`.
+  - **Superseded in part 2026-10-29 by T055**: the config assertion now checks each project's `include` and `exclude` against the constants, and that the root sets none (research R20). The other assertions stand.
 - [X] T013 [P] [US1] Write `tools/traceability/test/check.test.ts`. It covers 001-requirement-traceability-FR-015, 001-requirement-traceability-FR-020, 001-requirement-traceability-FR-021 and 001-requirement-traceability-FR-029. It tests `runCheck(root)` and `runCli` on sample projects.
   - FR-015 (US1 scenario 1): the approved spec `002-example` defines FR-001 to FR-003, and tests reference only `002-example-FR-001` and `002-example-FR-002`. The problems are exactly one `uncovered` for `002-example-FR-003`, at its spec line and column 5, with the detail `no test references this requirement`.
   - FR-020: `result` is `fail` and `runCli` exits 1 when there are problems. With full coverage, `result` is `pass` and it exits 0 (US1 scenario 2).
@@ -363,6 +372,7 @@ once this feature's pull request exists.
     - `bypass_actors` is `[]`;
     - `rules` deep-equals the four rules with every parameter from contracts/ci.md, and there is no `update` rule.
   - Consistency: every `context` in `required_status_checks` is the name of a `ci.yml` job. `traceability` is a script in `package.json`, and it is the command the `traceability` job runs (FR-026).
+  - **Superseded in part 2026-10-29 by T056**: the `test` job's expected steps become `actions/checkout`, `actions/setup-node`, `npm ci`, `npm run typecheck`, `npm run test:fast`, and "every `context` is a job" applies only to checks bound to GitHub Actions (`integration_id: 15368`), since `local-verify` is no job (research R15, R19, R20). The rest stands.
 
 ### Implementation for User Story 2
 
@@ -374,6 +384,7 @@ once this feature's pull request exists.
     - `test`: the same first three steps, then `npm run typecheck`, then `npm test`.
   - Pin each action to the full commit SHA of its latest v7 release tag, with the version in a trailing comment, e.g. `uses: actions/checkout@<sha> # v7.x.y`. Find the SHA with `git ls-remote --tags https://github.com/actions/checkout 'v7*'`, and use the peeled `^{}` entry for annotated tags. Do the same for `actions/setup-node`.
   - No `if:`, `strategy`, `matrix`, `continue-on-error` or path filters.
+  - **Superseded in part 2026-10-29 by T071**: the `test` job runs `npm run typecheck` then `npm run test:fast`, with no browser cache or install (004 had added them), and every job gets `timeout-minutes: 6` (research R15). The rest stands.
 - [X] T027 [P] [US2] Create `.github/rulesets/main.json` with exactly the fields in contracts/ci.md, formatted with two-space indentation:
   - `name: "main"`, `target: "branch"`, `enforcement: "active"`
   - `conditions.ref_name`: `include: ["refs/heads/main"]`, `exclude: []`
@@ -731,3 +742,295 @@ checkpoints within it. The PR can't merge until the repository passes its own ch
   - R9 says the guard "holds in every run", but it only holds on Node 25 and later. In the owner's default shell (Node 24.21.0), `npm run traceability` passes with no warning while network calls stay allowed: the FR-027 positive control prints `ECONNREFUSED`, not `ERR_ACCESS_DENIED`. `engines` doesn't stop `npm run`.
   - In `tools/traceability/src/cli.ts`, before reading any file, write a message naming the required version (Node 26, as in `.nvmrc`) to stderr and set exit code 2 when the Node major version is below 26. Exit code 2 already means the check couldn't run (contracts/cli.md). Add this case to that table.
   - Keep the version comparison in a side-effect-free function outside `cli.ts`, because importing `cli.ts` runs the check. Test it with values such as `'24.21.0'` and `'26.0.0'` in the 001-requirement-traceability-FR-027 group in `tools/traceability/test/cli.test.ts`.
+
+---
+
+## Amendment of 2026-10-29: the local full run and its sign-off
+
+The phases below build the amendment of 2026-10-29 (spec.md, Clarifications, Session
+2026-10-29; User Story 4; FR-030 to FR-037; SC-008 to SC-010; the amended Edge Cases and
+Assumptions). The design is in plan.md (its amendment parts), research.md R14 to R21,
+data-model.md (The local full run and the sign-off), contracts/ci.md (amended),
+contracts/local-verify.md and quickstart.md scenarios 8 to 13. FR-001 to FR-029 don't change.
+
+It ships in one pull request of its own, from `001-local-verify` (plan.md, Constitution Check
+row XI). Phases 1 to 7 stay as recorded. The tasks it overturns are marked superseded in part
+where they stand: T006 (by T063), T012 (by T055), T025 (by T056) and T026 (by T071).
+
+**Rules for these phases**, in addition to "Rules that apply to every task" above, which still
+hold:
+
+- Every new test is in the fast set, makes no network request, posts no status and needs no
+  browser or site build (research R20). Sample repositories live in temporary directories, never
+  inside the repository.
+- `tools/local-verify/` follows the other tools' style: plain modules, erasable TypeScript,
+  explicit `.ts` import extensions, a plain-JavaScript `main.js` gate. It adds no npm package
+  (Constitution X).
+- **The fast set's import rule applies to the tool's own code** (research R14, the machine check,
+  rule 3). `tools/local-verify/test/` is a fast directory, so nothing `verify.test.ts` or
+  `signoff.test.ts` imports may reach `tools/site-check/src/browser.ts` (which imports
+  `playwright`), and no `node:child_process` call in that closure may take a string literal, or
+  an array-literal element, naming `site-check`, `build`, `build-site` or
+  `site-check/src/main.js`. So:
+  - the real Chromium probe (`hasChromium()`) is imported only by `main.js`, after its Node gate,
+    and passed to `verify` through the `prerequisites` seam. `verify.ts` never imports
+    `browser.ts`, statically or by a literal `import()`. (Decision taken in this tasks run: the
+    plan says the seam "defaults to the real probes"; the Node and lockfile probes can default
+    in `verify.ts`, the Chromium probe can't.)
+  - the check commands are data in `checks.ts`, and the process call receives them through
+    variables.
+- Test titles carry the full IDs they cover. They contain no other `fr-` text in any letter case
+  (FR-011, FR-018, FR-028). The edits to 002's, 003's and 004's tests keep those features' IDs and
+  meaning (research R20).
+- Commits use Conventional Commits with the `001` scope (`test(001):`, `feat(001):`,
+  `ci(001):`, `docs(001):`) and no AI or Claude attribution (CLAUDE.md).
+
+---
+
+## Phase 8: Foundational for the amendment (Blocking Prerequisites)
+
+**Purpose**: the baseline, the one list of fast directories, and the two test helpers the
+amendment's tests need.
+
+**⚠️ CRITICAL**: no User Story 4 task can begin until this phase is complete.
+
+**Design gate (Constitution II)**: omitted. The spec still says **No UI**, and the amendment adds
+none.
+
+- [ ] T050 Confirm the baseline on `001-local-verify`, with Node 26 active (`nvm use`): `npm ci`, then `npm run typecheck` and `npm test` pass. `npm run traceability` exits 1 with exactly eight `uncovered` problems, 001-requirement-traceability-FR-030 to -FR-037, which the amendment approved and whose tests come in Phase 9. Any other problem is a defect to fix first. Record the counts here.
+- [ ] T051 [P] Add `FAST_TEST_GLOBS` to `tools/traceability/src/files.ts`, beside `TEST_INCLUDE_GLOBS` (research R14, data-model.md TestSet). It is a `string[]`, one glob per directory, each the directory followed by `/**/` and the same file pattern as `TEST_INCLUDE_GLOBS` (`*.{test,spec}.?(c|m)[jt]s?(x)`), in this order:
+  - `tools/traceability/test`, `tools/content-check/test`, `tools/token-check/test`, `tools/local-verify/test`
+  - `packages/content/test`, `packages/os-core/test`, `packages/tokens/test`, `packages/web/test/terminal/engine`
+
+  Add a comment that a directory joins the fast set only when none of its tests needs a browser or the site build, and that `test-sets.test.ts` checks the choice. `listFiles` and every other function in `files.ts` must not read `FAST_TEST_GLOBS`: the check reads every test, in either set (FR-030).
+- [ ] T052 [P] Create the import-closure helper `tools/traceability/test/helpers/imports.ts` (plan Dependencies table, research R14 rule 3). It is test-only and uses the check's own `parseSource` and `visitAll` from `tools/traceability/src/source.ts`.
+  - `forbiddenReach(root: string, file: string, rules: { packages: string[]; files: string[]; spawnNames: string[]; npmScripts: string[] }): { target: string; chain: string[] } | null`. `file` and every path are relative to `root` with `/` separators. `chain` runs from `file` to the module that reaches the target, then the target.
+  - Follow only runtime imports: `import … from '<literal>'` and `export … from '<literal>'` whose `importKind`/`exportKind` isn't `type`, side-effect `import '<literal>'`, and `import('<literal>')` with a string-literal or substitution-free template argument. Skip `import type` and `export type`.
+  - Resolve relative specifiers against the importing file (the repository writes explicit extensions; also try `.ts`, `.tsx`, `/index.ts` when the file doesn't exist). Resolve `@cv/<name>` and `@cv/<name>/<sub>` through `packages/<name>/package.json` `exports`. Any other bare specifier is a package: record its name (`@scope/name` or `name`), don't follow it. `node:` built-ins are neither followed nor forbidden.
+  - A target is reached when a package name is in `rules.packages`, a resolved file is in `rules.files`, or a module of the closure calls `spawn`, `spawnSync`, `exec`, `execSync`, `execFile`, `execFileSync` or `fork` (imported from `node:child_process` or `child_process`, by name or as a namespace member) with a string-literal argument, or an element of an array-literal argument, that contains one of `rules.spawnNames`, or that names one of `rules.npmScripts` as an npm script (an element equal to the name after `run`, or a string matching `npm run [--silent ]<name>` as a whole word). Plain strings outside such a call never count.
+  - Visit each module once (breadth-first, in code-unit order of specifiers), so the chain reported is a shortest one and the result is deterministic. A module that can't be read or parsed is reported as the target, with its chain, rather than skipped (fail closed, like FR-029).
+- [ ] T053 [P] Create the sample-repository helper `tools/local-verify/test/helpers/repo.ts` (research R20). Reuse `makeProject` from `tools/traceability/test/helpers/project.ts` for files.
+  - `makeRepo(files, options?)`: writes the files, runs `git init -b <branch>` (default `001-local-verify`), and commits everything with `git -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit`. It adds `.gitignore` (`node_modules/`) and `.nvmrc` (`26`) unless given. Returns `{ root, sha, git(args) }`.
+  - `withOrigin(repo, { reachable = true, pushed = true })`: creates a bare repository in another temporary directory, sets `origin` to `https://github.com/alex-profir/CV` and rewrites it with `git config url.<file URL of the bare repo>.insteadOf https://github.com/alex-profir/CV`. `pushed` pushes the branch; `reachable: false` points the rewrite at a missing path. Returns the bare repository's path and `remoteHead(branch)`.
+  - Every git the helper or the code under test starts gets `GIT_ALLOW_PROTOCOL=file`, `GIT_CONFIG_NOSYSTEM=1`, `GIT_TERMINAL_PROMPT=0` and a `HOME` in a temporary directory, so no real transport, credential helper or user config is used. Export the resulting `env` for tests to pass to `verify` and `signoff`.
+  - `fakeBin({ gh?: { exitCode, stderr }, npm?: Record<string, { exitCode, leaveFile?, report? }> })`: a temporary `bin/` with executable `#!/bin/sh` scripts `gh` and `npm` that append their arguments (and, for `gh`, the bare repository's head of the branch at that moment) as one JSON line to a log file, then exit with the chosen code. For `npm test -- … --outputFile.json=<path>`, the fake `npm` writes a Vitest-shaped JSON report to `<path>` (`success`, `numTotalTests`, `numPassedTests`, `numFailedTests`, `numPendingTests`, `testResults[].name` as absolute paths), listing the sample repository's test files, or the subset the test chooses (SC-010's guard). `leaveFile` makes a check leave an untracked file behind (FR-037). Also put a symlink to the real `git` in `bin/`, so a test can set `PATH` to `bin/` alone and a real `gh` or `npm` elsewhere is never found. Returns `{ bin, env, log(): Entry[] }`.
+  - Register cleanup with `onTestFinished`, as `makeProject` does.
+
+**Checkpoint**: the foundation is ready; User Story 4's tests can be written.
+
+---
+
+## Phase 9: User Story 4 - Prove the full test run before merge (Priority: P4) *(added 2026-10-29)*
+
+**Goal**: pull requests run only the fast checks, within 6 minutes. `npm run verify` runs every
+check with the full set on a clean commit and keeps its result outside the working copy.
+`npm run signoff` records a passing `local-verify` commit status on that exact commit with the
+owner's `gh` login. The ruleset makes that status required.
+
+**Independent Test**: on a pull request, `npm run verify` refuses with an uncommitted change.
+Commit, run it, sign off, and the pull request shows `local-verify` passing and can merge. Push
+another commit and it can't merge until that commit is signed off. Break one browser test, and
+the run fails and no passing sign-off can be recorded (spec US4). Statically, the tests below
+prove all of it on sample repositories and the committed files; live, Phase 11 does.
+
+### Tests for User Story 4 (REQUIRED) ⚠️
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation.** T054 to T061 are in
+> different files and can be written in parallel once Phase 8 is done.
+
+- [ ] T054 [P] [US4] Write `tools/traceability/test/test-sets.test.ts`, covering 001-requirement-traceability-FR-030 (and SC-010). Title the group `001-requirement-traceability-FR-030: …`. Following research R14's machine check:
+  - **Every test file is in the full set, exactly once**: run `npx vitest list --filesOnly --json` with `spawnSync` from `REPO_ROOT`, with every `VITEST*` variable removed from `env`. Parse it; map each entry's file to a repository-relative path with `/`. The sorted list equals `listFiles(REPO_ROOT).testFiles`, no file appears twice, and every `projectName` is `fast` or `slow`. Give the test a generous timeout (60 s).
+  - **The check reads every test**: the same equality proves it; also assert `tools/traceability/src/files.ts`'s `listFiles` source doesn't mention `FAST_TEST_GLOBS` (read the file and find no use outside its declaration).
+  - **The fast set needs no browser or build**: for every `fast` file from the listing, `forbiddenReach` (T052) with `packages: ['playwright', 'playwright-core', 'lighthouse', 'chrome-launcher', 'vite']`, `files: ['tools/site-check/src/browser.ts', 'packages/web/scripts/build-site.ts', 'packages/web/test/helpers/site.ts', 'packages/web/test/helpers/browser.ts', 'packages/web/test/helpers/copy.ts']`, `spawnNames: ['build-site', 'site-check/src/main.js']` and `npmScripts: ['build', 'site-check']` returns null. Assert the whole list at once, so a failure names every offending file with its chain. 001's repo-settings test may still compare text with `npm run --silent site-check` in plain strings (R14).
+  - **The rule catches what it must** (sample projects from `makeProject`, inputs in bodies only): a fast file that imports `playwright` directly is reported with chain `[file, 'playwright']`; one that reaches `packages/web/test/helpers/site.ts` through a relative helper is reported with the three-step chain; one that imports only `import type { Browser } from 'playwright'` is not; one that calls `spawnSync('npm', ['run', 'site-check'])` is; one with the string `'npm run --silent site-check'` outside a process call is not; an unparseable module in the closure is reported.
+  - **The config matches the constants**: import `vitest.config.ts` as `files.test.ts` does. `test.projects` has exactly two inline projects named `fast` and `slow`. `fast`: `include` deep-equals `FAST_TEST_GLOBS`, `exclude` deep-equals `TEST_EXCLUDE_GLOBS`, no `globalSetup`. `slow`: `include` deep-equals `TEST_INCLUDE_GLOBS`, `exclude` deep-equals `[...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]`, `globalSetup` deep-equals `['packages/web/test/helpers/site.ts']`. The root `test` has no `include`, `exclude` or `globalSetup`.
+  - **The scripts**: `package.json`'s `test` is `vitest run` (no project or file filter, SC-010) and `test:fast` is `vitest run --project fast`.
+- [ ] T055 [P] [US4] Update the config assertion in `tools/traceability/test/files.test.ts` (supersedes that part of T012), keeping its group title `001-requirement-traceability-FR-014: …`: each project's `include` and `exclude` are built from the constants exactly as in T054, and the root sets none. Add one test titled with 001-requirement-traceability-FR-030 asserting `listFiles` returns the same `testFiles` for a sample project whether or not its paths match `FAST_TEST_GLOBS` (a fast-directory file and a slow-directory file are both listed).
+- [ ] T056 [P] [US4] Update `tools/traceability/test/repo-settings.test.ts` (supersedes that part of T025), reading `ci.yml` as text and the ruleset with `JSON.parse` as before. Keep the layout guard and the existing FR-025 and FR-026 groups, with these changes and additions:
+  - 001-requirement-traceability-FR-025: the `test` job's steps are `actions/checkout`, `actions/setup-node`, `npm ci`, `npm run typecheck`, `npm run test:fast`. The ruleset's `required_status_checks` deep-equals `traceability`, `test`, `content`, `tokens`, `site`, each with `integration_id: 15368`, then `{ context: 'local-verify' }`. "Every required check is a workflow job" becomes "every required check with `integration_id: 15368` is the name of a `ci.yml` job".
+  - New group `001-requirement-traceability-FR-031: pull requests run the fast checks and nothing else`: across all jobs, the set of `run:` commands is exactly the eight of contracts/ci.md (`npm ci`, `npm run traceability`, `npm run typecheck`, `npm run test:fast`, `npm run content-check`, `npm run token-check`, `npx playwright install --with-deps chromium`, and the site-check step, matched by containing `npm run --silent site-check`); the `test` job has no `actions/cache` step and no `playwright` text; `package.json`'s `test:fast` is `vitest run --project fast`; no line runs `npm test`, `npm run test ` or `vitest` directly.
+  - New group `001-requirement-traceability-FR-034: the workflow can't record a sign-off`: the top-level `permissions:` block is exactly `contents: read`; no job has its own `permissions:`; no line of `ci.yml` contains `local-verify`, `signoff`, `npm run verify` or a `gh ` command.
+  - New group `001-requirement-traceability-FR-035: merging needs the owner's sign-off`: the last required check is `{ context: 'local-verify' }` with no `integration_id` key; it is the only one without one; it is the name of no job; `strict_required_status_checks_policy` is `true`; `bypass_actors` is `[]`; no `update` rule.
+  - New group `SC-008: every pull-request job has a 6-minute limit` (no FR ID needed, as SC-001's test): every job under `jobs:` has `timeout-minutes: 6`, and the `test` job installs no browser.
+- [ ] T057 [P] [US4] Update `tools/content-check/test/repo-settings.test.ts`, keeping its group 002-cv-content-FR-033 (research R20): the expected required list gains `{ context: 'local-verify' }` last, and "every required check is a workflow job" is limited to checks with `integration_id: 15368`. Rename the test titles that list the checks to include `local-verify`.
+- [ ] T058 [P] [US4] Update `tools/token-check/test/repo-settings.test.ts`, keeping its group 003-design-tokens-FR-039, with the same change as T057.
+- [ ] T059 [P] [US4] Update `tools/site-check/test/repo-settings.test.ts`, keeping its group 004-cv-page-FR-048 (research R20): the expected required list gains `local-verify`; the browser-cache key (Playwright version from `package-lock.json`) is checked for the `site` job only; "the test job caches and installs the browser before running the tests" becomes "the test job installs no browser and runs the typecheck and the fast set" (`npm ci`, `npm run typecheck`, `npm run test:fast`, no `actions/cache`, no `playwright install`). The `site` job's assertions don't change. `tools/site-check/test/cli.test.ts` stays as it is.
+- [ ] T060 [P] [US4] Write `tools/local-verify/test/verify.test.ts`, covering 001-requirement-traceability-FR-032, 001-requirement-traceability-FR-033 and 001-requirement-traceability-FR-037 (and SC-010). Call `verify({ root, env, exec, prerequisites })` from `tools/local-verify/src/verify.ts` on sample repositories (T053) with the fake `npm` first on `PATH`, and a `prerequisites` stub reporting Chromium present unless the test says otherwise. Assert stdout, stderr, the exit code it returns, the fake `npm` log and the result files. Messages are contracts/local-verify.md's, word for word.
+  - FR-032, the clean tree: a modified, a staged, a deleted and an untracked file (including one in a new directory, `--untracked-files=all`) each refuse with exit 2, the message `local full run refused: the working copy differs from commit <sha>:`, one `  <XY> <path>` line per path and `Commit or remove these, then run it again.`; the fake `npm` log is empty and no result is written. A file ignored by `.gitignore` (`node_modules/x`, `dist/x`) doesn't refuse. Outside a git work tree: `local full run: not a git work tree`, exit 2.
+  - FR-032, prerequisites: `.nvmrc` naming another major gives `local full run needs Node <nvmrc> (see .nvmrc), but this is Node <version>: run nvm use`; a missing `node_modules/.package-lock.json`, or one whose package versions differ from `package-lock.json`, gives `local full run needs the locked dependencies installed: run npm ci`; the stub reporting no Chromium gives `site check needs Chromium: run npx playwright install chromium`. Several missing ones are listed together. Each exits 2 with nothing run and no result written.
+  - FR-032, the checks: read `.github/workflows/ci.yml` from `REPO_ROOT`; the commands `checks.ts` runs are its `run:` commands other than `npm ci` and the Playwright install (for the site step, the `npm run --silent site-check` inside it), with `npm run test:fast` replaced by `npm test` plus the reporter flags, in the contract's order `typecheck`, `traceability`, `content`, `tokens`, `test`, `site`; `site` runs exactly `npm run --silent site-check` (the same command as 004 FR-049). `package.json`'s `verify` is `node tools/local-verify/src/main.js verify`. Each check's output follows a `== <name>: <command>` header in stdout and in `<sha>.log`.
+  - FR-033: with every fake check passing, exit 0; the summary lists six `pass` lines and ends `PASS: every check passed on <sha>. Sign off with: npm run signoff`; the result reads `result: 'pass'`, the test counts from the report, `siteCheck: 'pass'`, `node: process.versions.node`, and `os` as `os.type() os.release() process.arch`. With `traceability` and `site` failing, every check still runs (all six in the fake log, in order), exit 1, `FAIL: 2 checks failed on <sha>: traceability, site. Nothing can be signed off for this commit.`, result `fail`, `siteCheck: 'fail'`.
+  - SC-010: the `test` check runs `npm test` with no `--project` or file argument; a report listing fewer files than `listFiles(root).testFiles` fails `test` with the detail `ran <n> of <m> test files`; a report with `success: false` fails it.
+  - FR-037: after a run, `<git common dir>/local-verify/<sha>.json`, `<sha>.log` and `<sha>.vitest.json` exist (for a linked worktree too, via `git worktree add`, using the common directory); `git status --porcelain` is empty and `git ls-files` is unchanged. A check that leaves an untracked file fails the run, naming the path, with `clean.atEnd: false`. A second run on the same commit replaces the result.
+  - Through `main.js` as a subprocess (a few tests only, refusals that come before the prerequisites, so no browser is probed): `verify extra` is a usage error, exit 2; a dirty tree exits 2 with the same message.
+- [ ] T061 [P] [US4] Write `tools/local-verify/test/signoff.test.ts`, covering 001-requirement-traceability-FR-033, 001-requirement-traceability-FR-034 and 001-requirement-traceability-FR-036. Call `signoff({ root, env, exec })` from `tools/local-verify/src/signoff.ts` on sample repositories with a local bare `origin` and the fake `gh` and `npm` (T053). Produce a passing result by running T060's `verify` with passing fakes, or by writing a result file through `result.ts`.
+  - FR-033: after a passing run, the fake `gh` log holds exactly one call: `api --method POST repos/alex-profir/CV/statuses/<sha> -f state=success -f context=local-verify -f description=<d>`, where `<d>` is `<passed> tests in <files> files passed; site check passed; Node <version>; <os>`, with no `target_url`. stdout is `signed off <sha> on alex-profir/CV: local-verify success: <d>`, exit 0. `describeSignOff` (from `result.ts`) with the longest plausible values (six-digit counts, `Node 26.999.999`, a 100-character OS string) returns at most 140 characters, shortening only the OS part. A failed result is refused with `sign-off refused: the last local full run on <sha> failed (<checks>)`, exit 1, and the `gh` log is empty.
+  - FR-034: with `CI=true`, and separately `GITHUB_ACTIONS=true`, signing off refuses with `sign-off refused: it runs only on the owner's machine, never in CI` before reading git or the result (assert via the `exec` seam's call list), and `gh` isn't called. After a passing run, a new commit, an amended commit (`commit --amend`) and a merge commit each have no result: signing off refuses with `sign-off refused: no local full run on <new sha>: run npm run verify`. A result file whose `sha` isn't HEAD, or whose `version` isn't `1`, counts as none.
+  - FR-036: signing off a passing run starts no check (the fake `npm` log is empty). A commit not yet on `origin` prints `pushing <branch> to origin first`, then is pushed without force, and the fake `gh` logged the bare repository's branch head equal to `<sha>` when it was called. An unreachable `origin` prints `can't reach origin, nothing was recorded: <git's message>`, exit 1, `gh` log empty. A rejected push (the bare repository has a commit the local branch lacks) prints `could not push <branch>, nothing was recorded: …`, exit 1, `gh` log empty. A failing fake `gh` gives `could not record the sign-off: <gh's message>`, exit 1. With `PATH` set to a `bin/` holding only `git`, `signing off needs the GitHub CLI: install it from https://cli.github.com and run gh auth login`, exit 1.
+  - The other refusals of the contract, titled with 001-requirement-traceability-FR-034: a detached HEAD gives `sign-off refused: check out the pull request's branch first`; an `origin` on another host gives `sign-off refused: origin is not a github.com repository: <url>`; both `https://github.com/<o>/<r>(.git)` and `git@github.com:<o>/<r>(.git)` forms parse.
+  - Through `main.js` as a subprocess: `signoff extra` is a usage error, exit 2; `CI=true` refuses with exit 1.
+- [ ] T062 [US4] Red check, after T054 to T061: run `npx vitest run` on the new and edited test files. Each fails for the expected reason (missing `tools/local-verify/src/` modules, the config without projects, `ci.yml` and the ruleset not yet changed), not because of a helper defect. The 002, 003 and 004 repo-settings tests fail only on the lists they compare. Note any surprise here.
+
+### Implementation for User Story 4
+
+- [ ] T063 [US4] Rewrite `vitest.config.ts` as two inline projects (research R14, data-model.md TestSet; supersedes that part of T006). Keep the root `plugins` (`specListPlugin()`) and `oxc` options, which both projects inherit, and the comment that no `tags` are declared. Set `test.projects` to two `{ extends: true, test: { … } }` entries:
+  - `name: 'fast'`, `include: FAST_TEST_GLOBS`, `exclude: TEST_EXCLUDE_GLOBS`, no `globalSetup`;
+  - `name: 'slow'`, `include: TEST_INCLUDE_GLOBS`, `exclude: [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]`, `globalSetup: ['packages/web/test/helpers/site.ts']`.
+
+  The root `test` sets no `include`, `exclude` or `globalSetup`. Confirm with `npx vitest list --filesOnly --json` that the two counts add up to every test file (quickstart scenario 8), and that `npx vitest run --project fast` builds no site.
+- [ ] T064 [US4] Add three scripts to `package.json`, leaving every other script and `devDependencies` unchanged (contracts/local-verify.md Scripts): `"test:fast": "vitest run --project fast"`, `"verify": "node tools/local-verify/src/main.js verify"`, `"signoff": "node tools/local-verify/src/main.js signoff"`. `test` stays `vitest run`. Run `npm install --package-lock-only` only if npm insists, and confirm `package-lock.json` is unchanged (no new package).
+- [ ] T065 [P] [US4] Implement `tools/local-verify/src/result.ts` (research R17, data-model.md LocalRunResult and SignOff):
+  - `resultDir(root, exec)`: `<git rev-parse --git-common-dir>/local-verify`, made absolute against `root`. `resultPaths(dir, sha)`: `<sha>.json`, `<sha>.log`, `<sha>.vitest.json`.
+  - The `LocalRunResult` type with exactly data-model.md's fields: `version: 1`; `sha`; `branch: string | null`; `startedAt`, `finishedAt` (ISO 8601); `clean: { atStart: true; atEnd: boolean; changed: string[] }`; `checks: Check[]` in run order, each `{ name: 'typecheck' | 'traceability' | 'content' | 'tokens' | 'test' | 'site'; command: string; status: 'pass' | 'fail'; exitCode: number | null; durationMs: number; detail: string | null }`; `tests: { files; expectedFiles; passed; failed; skipped }` (zeros when `test` couldn't run); `siteCheck: 'pass' | 'fail'`; `node`; `os`; `result: 'pass' | 'fail'`, `pass` exactly when every check passed and `clean.atEnd` is true.
+  - `writeResult` (replaces any earlier file) and `readPassingResult(dir, sha)`, which returns the result only when the file parses, `version` is `1`, `sha` equals the given SHA; otherwise a reason (`none` or `failed` with the failing check names).
+  - `describeSignOff(result)`: `<passed> tests in <files> files passed; site check passed; Node <node>; <os>`, at most 140 characters, shortening only the OS part (cut and end with `…`) when needed.
+- [ ] T066 [P] [US4] Implement `tools/local-verify/src/git.ts`: small functions over the `exec` seam (`(command, args, { cwd, env }) => { status, stdout, stderr }`, default `spawnSync` with `encoding: 'utf8'`), each returning data or a typed failure, never throwing on a non-zero exit: `head` (`rev-parse HEAD`, null outside a work tree), `branch` (`symbolic-ref --short -q HEAD`, null when detached), `porcelain` (`status --porcelain=v1 -z --untracked-files=all`, parsed into `{ xy, path }[]`, renames giving the new path), `trackedFiles` (`ls-files -z`), `commonDir`, `originUrl` (`remote get-url origin`), `parseGitHubRepo(url)` (only `https://github.com/<owner>/<repo>(.git)` and `git@github.com:<owner>/<repo>(.git)`), `remoteHead(branch)` (`ls-remote origin refs/heads/<branch>`, distinguishing failure from "no such branch"), and `push(branch)` (`push origin HEAD:refs/heads/<branch>`, never `--force`).
+- [ ] T067 [P] [US4] Implement `tools/local-verify/src/checks.ts`: the ordered `CHECKS` table of contracts/local-verify.md as data (`name`, `command`, `args`), with `test`'s args built by `testArgs(vitestJsonPath)`: `['test', '--', '--reporter=default', '--reporter=json', `--outputFile.json=${path}`]`, and `site` as `['run', '--silent', 'site-check']`. Comment that these are the pull request's `run:` commands with `test:fast` replaced by `npm test` (FR-031, FR-032), that T060 checks them against `ci.yml`, and that the arrays must stay out of process-call argument positions (Rules above).
+- [ ] T068 [US4] Implement `verify({ root, env, exec, prerequisites, runCommand })` in `tools/local-verify/src/verify.ts`, after T065 to T067, following research R16 and contracts/local-verify.md step by step. It returns the exit code and writes to stdout/stderr; it never calls `process.exit()`.
+  1. HEAD via `git.ts`, or `local full run: not a git work tree`, exit 2.
+  2. The clean-tree refusal, naming every path, exit 2, before any probe.
+  3. Prerequisites, all listed together, exit 2, nothing run: Node major against `.nvmrc`; every `packages` entry of `package-lock.json` (other than the root `""`) with the same `version` in `node_modules/.package-lock.json`; `prerequisites.hasChromium()` (supplied by `main.js`, see Rules above). The Node and lockfile probes may default here.
+  4. Run every check in order, even after a failure, printing `== <name>: <command>` before each and streaming its stdout and stderr to the terminal and to `<sha>.log` as it runs. Implementation note: `spawnSync` can't stream, so run checks through a `runCommand` seam whose default is an async `spawn` that writes each chunk to both; the `exec` seam (git, probes) stays `spawnSync` as the plan says. Record the deviation in research R20's "Function seams" bullet in the same commit.
+  5. After `test`, read `<sha>.vitest.json`: fail `test` with `ran <n> of <m> test files` unless its files equal `listFiles(root).testFiles` (imported from `tools/traceability/src/files.ts`) and `success` is true; take `tests` counts from it (SC-010).
+  6. After the last check, fail the run when HEAD moved or `porcelain` isn't empty, naming the paths (`clean.atEnd: false`, `changed`).
+  7. Write the result (T065) and print the summary of contracts/local-verify.md (each check, status, duration in seconds, and for `test` `<n> tests in <f> files passed`), then the `PASS:` or `FAIL:` line with the full SHA. Exit 0 or 1.
+- [ ] T069 [US4] Implement `signoff({ root, env, exec })` in `tools/local-verify/src/signoff.ts`, after T065 and T066, following research R18's steps in order, each refusal recording nothing and exiting 1 with contracts/local-verify.md's message: `CI`/`GITHUB_ACTIONS` set (checked before anything else); detached HEAD; no passing result for HEAD (none, or failed naming the checks), never running a test (FR-036); `gh --version` fails; `origin` not a github.com URL; `ls-remote` fails (`can't reach origin, nothing was recorded: …`); remote head not `<sha>`: print `pushing <branch> to origin first` to stdout and push, reporting a failure as `could not push <branch>, nothing was recorded: …`; then `gh api --method POST repos/<owner>/<repo>/statuses/<sha> -f state=success -f context=local-verify -f description=<describeSignOff(result)>`, reporting a failure as `could not record the sign-off: <gh's stderr>`; on success print `signed off <sha> on <owner>/<repo>: local-verify success: <description>`, exit 0.
+- [ ] T070 [US4] Create `tools/local-verify/src/main.js`, plain JavaScript like `tools/traceability/src/main.js`: reuse `nodeVersionProblem` from `tools/traceability/src/node-version.js` (exit 2 with its message on an old Node), then read `process.argv`: exactly one subcommand, `verify` or `signoff`, else `usage: npm run verify | npm run signoff (takes no arguments)` on stderr, exit 2. For `verify`, import `hasChromium` from `../../site-check/src/browser.ts` here (only here) and pass it as `prerequisites.hasChromium`; then `await import('./verify.ts')` or `./signoff.ts` and set `process.exitCode` from the result. Catch internal errors: message on stderr, exit 2. Never call `process.exit()`. Check that `tsconfig.json`'s `include` already covers `tools/local-verify/**/*.ts` (it does: `tools/**/*.ts`).
+- [ ] T071 [P] [US4] Change `.github/workflows/ci.yml` (contracts/ci.md amended, research R15; supersedes that part of T026):
+  - The `test` job's steps become checkout, setup-node (`.nvmrc`, `cache: npm`), `npm ci`, `npm run typecheck`, `npm run test:fast`. Remove its `actions/cache` (Playwright) step and its `npx playwright install --with-deps chromium` step.
+  - Add `timeout-minutes: 6` to every job (`traceability`, `test`, `content`, `tokens`, `site`), right after `runs-on:` (SC-008). **Note for the owner**: the limit makes a slow runner fail the job rather than run slow, which is the point of SC-008. The owner may loosen it; if so, that is an explicit decision recorded in this file (T081) and in plan.md's Open points, made in one commit that also updates contracts/ci.md and T056's SC-008 assertion, and ideally the job is made faster or SC-008 amended instead (plan.md, Open points). Never raise it quietly.
+  - The `site` job's steps are unchanged. `permissions: contents: read` stays the only permission. Job ids and names are unchanged, so the required checks keep their names. Keep the layout rules (two-space indentation, one command per `run:` line, no `if:`, matrix or `continue-on-error`, SHA-pinned actions).
+- [ ] T072 [P] [US4] Add `{ "context": "local-verify" }` as the last entry of `required_status_checks` in `.github/rulesets/main.json`, with **no `integration_id`** (research R19, contracts/ci.md Ruleset). Keep everything else byte for byte: the other five checks with `integration_id: 15368`, `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false`, empty `bypass_actors`, squash only. **Open point, recorded here**: GitHub may read the missing `integration_id` back as absent or as `null`. The owner's first application (T083) settles which, and the drift check of quickstart scenario 7 already drops `null` values before comparing, so it must accept either. Don't add `"integration_id": null` to the committed file.
+- [ ] T073 [US4] Checkpoint.
+  - `npm run typecheck`, `npm run test:fast` and `npm test` pass. `npm run test:fast` passes with Chromium unavailable (e.g. `PLAYWRIGHT_BROWSERS_PATH` pointing at an empty directory) and builds no site.
+  - `npm run traceability` exits 0. Its passing line counts every active requirement of the approved specs (001 now has 37), and FR-030 to FR-037 are no longer uncovered.
+  - Quickstart scenario 9 by hand: `echo probe > probe.txt && npm run verify` refuses with exit 2 naming `?? probe.txt`; remove it.
+  - Commit the work in logical groups (`test(001):`, `feat(001):`, `ci(001):`), no AI attribution.
+
+**Checkpoint**: User Story 4 is complete in the repository. Its live half (the new workflow on a
+real pull request, the ruleset, the first sign-off) is Phase 11.
+
+---
+
+## Phase 10: Polish & Constitution Verification (amendment)
+
+**Purpose**: the cross-cutting checks for the amendment. As in Phase 6, Principles II, IV, V,
+VII, VIII and IX are N/A (plan.md Constitution Check): no UI, no CV data or tokens, no shells or
+apps, nothing visitor-facing, no visual assets. So there is no task for screen readers, forced
+colors or comparing pages with design exports, and none is deferred under the interim provision.
+
+- [ ] T074 [P] Verify Constitution III for the amendment: each of 001-requirement-traceability-FR-030 to -FR-037 is in the title of at least one counting test (see Requirement Coverage below), `npm run traceability` passes, and the plan's Requirement Traceability rows for FR-030 to FR-037 and SC-008 to SC-010 match the tests as built. Fix the tests, not the table, when they differ.
+- [ ] T075 [P] Audit Constitution X for the amendment: `git diff main -- package-lock.json` is empty and `package.json`'s `devDependencies` and `dependencies` are unchanged; no agent skill was added; the new abstractions are exactly those in plan.md's Dependencies table (two Vitest projects, `FAST_TEST_GLOBS`, `imports.ts`, `tools/local-verify/`, the `exec`/`prerequisites` seams plus T068's `runCommand` seam, the fake-`bin` helper); `gh` is used only by `signoff`, on the owner's machine.
+- [ ] T076 [P] Verify FR-037 and the offline rules on the real repository: after `npm run verify`, the result files are under `$(git rev-parse --git-common-dir)/local-verify/`, `git status --porcelain` is empty, `.gitignore` is unchanged, and no file of the run is tracked. `npm run verify` makes no network request of its own (spec Offline Behavior): read `verify.ts`, `checks.ts` and `git.ts` and confirm no `fetch`, `http`, `ls-remote` or `push` is reachable from `verify`.
+- [ ] T077 Bring `specs/001-requirement-traceability/quickstart.md` in line with the built commands (scenarios 8 to 13 and Prerequisites): every expected message and summary line is the one the tools print, word for word. contracts/local-verify.md is authoritative; research R16 step 7's summary wording (`PASS: local full run on <sha>: …`) differs from the contract's (`PASS: every check passed on <sha>. Sign off with: npm run signoff`), so correct R16 to the contract's wording in the same commit. If the T068 seam deviation was recorded, check R20 says so. `docs(001):` commit.
+- [ ] T078 Run quickstart.md scenarios 8, 9 and 10 locally, and scenario 12's CI half (`CI=true npm run signoff` refuses and records nothing), and record each result and any deviation here. Scenario 10's failing half breaks one browser test on a scratch commit; drop that commit afterwards and make sure its result file doesn't matter (it's keyed by the dropped SHA). Scenario 12's network-off half is the owner's (T086).
+- [ ] T079 Final local run of every check, on the clean head commit, after T074 to T078, with Node 26: `npm run typecheck`, `npm run test:fast`, `npm test`, `npm run traceability`, `npm run content-check`, `npm run token-check` and `npm run site-check`. Each passes. Record here, for each, the exit code and its summary line (test counts and files for `test:fast` and `test`, the passing line for `traceability`, the site check's result), with the date, OS and Node version.
+- [ ] T080 Push `001-local-verify` and open the amendment's pull request to `main` (Constitution XI), after T079:
+  - The title and every commit use Conventional Commits; per CLAUDE.md none carries AI or Claude attribution.
+  - The description names the amendment by its date, "the amendment of 2026-10-29 to 001-requirement-traceability", links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`, summarizes T074 to T079's results, and lists the owner actions of Phase 11 in order. It notes that 002's, 003's and 004's repo-settings tests change only the lists they compare (research R20), and that no manual check is deferred (No UI).
+  - It is the only pull request for this amendment.
+
+---
+
+## Phase 11: Rollout (owner actions, in order)
+
+**Purpose**: the live half of the amendment (research R19, quickstart scenario 13). Each task
+needs the one before it. They change GitHub state, so the owner runs them or explicitly
+approves them; merging is the owner's alone.
+
+**Recording results**: note each result in the pull request as it happens. Ticking these tasks
+and copying the results into this file is a new commit: before the merge it needs its own
+`npm run verify` and `npm run signoff` (FR-034), so prefer recording them after the merge, in a
+follow-up `docs(001):` pull request (itself signed off).
+
+- [ ] T081 Owner action: the amendment's pull request (T080) runs the new workflow and is green. Its five checks pass, `test` runs the typecheck and the fast set with no browser install, and each job finishes within 6 minutes (quickstart scenario 13 step 1, SC-008): record each job's duration from `gh run view <run-id> --json jobs`. If a job hits the 6-minute limit on a slow runner, it fails rather than runs slow, as designed; the owner may loosen `timeout-minutes`, as the explicit, recorded decision T071 describes, or make the job faster first.
+- [ ] T082 Owner action: on a clean checkout of the pull request's head commit, run `npm ci`, `npx playwright install chromium` and `npm run verify` (quickstart scenario 13 step 2, FR-032, FR-033, SC-010). Expected: six `pass` lines and `PASS: every check passed on <sha>`. Record the summary (test count, files, durations).
+- [ ] T083 Owner action: apply the new ruleset with `PUT` (quickstart scenario 13 step 3): `id=$(gh api /repos/alex-profir/CV/rulesets --jq '.[] | select(.name=="main") | .id')`, then `gh api --method PUT /repos/alex-profir/CV/rulesets/$id --input .github/rulesets/main.json`. Then run scenario 7's read-back: `current_user_can_bypass` is `never` and the drift check prints `no drift`.
+  - **Settle the open point**: record whether GitHub read `local-verify`'s `integration_id` back as absent or as `null`. Either way the drift filter accepts it. If it comes back as anything else (for example a number), stop: the ruleset may not accept the owner's status, so decide with the owner, update contracts/ci.md, research R19 and T056's assertion, and re-apply before signing off.
+  - Expected on the pull request: `local-verify` is listed as expected and merging is blocked, with no bypass (SC-009, live). Applying it before the merge is the intent: it also blocks other open pull requests until they're signed off (R19).
+- [ ] T084 Owner action: run the full suite locally on the PR's clean head commit and sign it off, so the required `local-verify` status passes (Constitution, Merge requirements): `npm run signoff` on the commit T082 verified (FR-033, FR-034, FR-036). Expected: `signed off <sha> on alex-profir/CV: local-verify success: <description>`, exit 0, and no test runs. Check with `gh api repos/alex-profir/CV/commits/<sha>/statuses` that the status is `success`, at most 140 characters, and created by the owner's account, not `github-actions`. If any commit lands on the branch after T082, a merge of `main` included, run T082 and this task again on the new head.
+- [ ] T085 Owner action: merge the pull request (squash) once every check of FR-031 and `local-verify` pass on its head commit (FR-035). It is the first pull request merged with a sign-off. Merging is the owner's; nobody merges it on their behalf.
+- [ ] T086 Owner action, after T085, on `main`:
+  - Run scenario 7's drift check against `main`'s file (R19 step 5): `never`, then `no drift`.
+  - Demonstrate quickstart scenarios 11 and 12 live (US4 scenarios 4 and 6, SC-009): on a scratch branch from `main`, open a pull request, verify and sign off its head, then push one more commit and confirm `local-verify` is expected again and merging is blocked until that commit is signed off; sign off with the network off and confirm `can't reach origin, nothing was recorded`, exit 1, and no status once the network is back. Close the pull request unmerged and delete the branch.
+  - Record T081 to T086's results in this file and tick them, in the follow-up `docs(001):` pull request described above.
+
+---
+
+## Requirement Coverage (amendment of 2026-10-29)
+
+Every requirement and success criterion the amendment adds, with the tasks that test and build
+it. Test tasks name the full IDs in their test titles (Constitution III).
+
+| Requirement | Test tasks | Implementation tasks | Live check |
+|-------------|------------|----------------------|------------|
+| 001-requirement-traceability-FR-030 | T054 (`test-sets.test.ts`), T055 (`files.test.ts`) | T051, T052, T063, T064 | T078 (scenario 8) |
+| 001-requirement-traceability-FR-031 | T056 (`repo-settings.test.ts`); T057, T058, T059 keep 002 FR-033, 003 FR-039 and 004 FR-048 true | T064, T071 | T081 |
+| 001-requirement-traceability-FR-032 | T060 (`verify.test.ts`) | T066, T067, T068, T070 | T073, T078 (scenario 9), T082 |
+| 001-requirement-traceability-FR-033 | T060, T061 (`signoff.test.ts`) | T065, T068, T069 | T078 (scenario 10), T082, T084 |
+| 001-requirement-traceability-FR-034 | T061, T056 | T069, T071 | T078 (scenario 12, CI half), T084, T086 |
+| 001-requirement-traceability-FR-035 | T056 | T072 | T083, T085, T086 |
+| 001-requirement-traceability-FR-036 | T061 | T066, T069 | T084, T086 (scenario 12, offline half) |
+| 001-requirement-traceability-FR-037 | T060 | T065, T068 | T076, T078 (scenario 10) |
+| SC-008 | T056 (`timeout-minutes: 6` on every job, no browser in `test`) | T071 | T081 (measured durations) |
+| SC-009 | T056 (FR-035), T061 (FR-034) | T069, T072 | T083, T085, T086 |
+| SC-010 | T054 (full set is every file; `test` has no filter), T060 (`ran <n> of <m> test files`) | T063, T068 | T082 |
+
+Every FR from FR-030 to FR-037 has at least one test task. Nothing in the amendment is left
+unmapped. FR-001 to FR-029 keep the coverage of Phases 3 to 7; T055 and T056 edit FR-014's and
+FR-025's tests without dropping what they cover.
+
+---
+
+## Dependencies & Execution Order (amendment)
+
+### Phase Dependencies
+
+- **Phase 8 (Foundational)**: depends on the shipped feature (Phases 1 to 7). T050 first; T051,
+  T052 and T053 then in parallel. It blocks Phase 9.
+- **Phase 9 (US4)**: tests T054 to T061 in parallel (T054 and T055 need T051 and T052; T060 and
+  T061 need T053), then T062. Implementation: T063 needs T051; T064 any time; T065, T066 and
+  T067 in parallel; T068 after T065 to T067; T069 after T065 and T066; T070 after T068 and T069;
+  T071 and T072 in parallel with the tool work; T073 last.
+- **Phase 10 (Polish)**: after T073. T074, T075 and T076 in parallel; T077 then T078; T079 after
+  T074 to T078; T080 after T079.
+- **Phase 11 (Rollout)**: strictly in order, T081 → T082 → T083 → T084 → T085 → T086. T081 needs
+  the open pull request from T080. A new commit at any point sends the owner back to T082.
+
+### Parallel Opportunities
+
+- Phase 8: T051, T052, T053.
+- Phase 9 tests: T054 to T061, eight files.
+- Phase 9 implementation: T065, T066, T067 together, with T063, T064, T071 and T072 alongside.
+- Phase 10: T074, T075, T076.
+
+## Parallel Example: User Story 4
+
+```bash
+# Tests first, together:
+Task: "test-sets.test.ts, covers 001-requirement-traceability-FR-030, in tools/traceability/test/test-sets.test.ts"
+Task: "files.test.ts config assertion, covers 001-requirement-traceability-FR-014 and FR-030"
+Task: "repo-settings.test.ts, covers 001-requirement-traceability-FR-025, FR-031, FR-034, FR-035 and SC-008"
+Task: "repo-settings.test.ts lists for 002, 003 and 004, in tools/{content,token,site}-check/test/"
+Task: "verify.test.ts, covers 001-requirement-traceability-FR-032, FR-033, FR-037, in tools/local-verify/test/"
+Task: "signoff.test.ts, covers 001-requirement-traceability-FR-033, FR-034, FR-036, in tools/local-verify/test/"
+
+# Then the independent modules together:
+Task: "result.ts in tools/local-verify/src/"
+Task: "git.ts in tools/local-verify/src/"
+Task: "checks.ts in tools/local-verify/src/"
+Task: "ci.yml test job and timeouts; ruleset local-verify entry"
+```
+
+## Implementation Strategy (amendment)
+
+1. Phase 8: baseline (eight uncovered requirements, as expected), the fast-set constant and the
+   helpers.
+2. Phase 9: tests first and red (T062), then the config and scripts, the tool, the workflow and
+   the ruleset, until T073 is green and the check passes again.
+3. Phase 10: audits, quickstart alignment, the full local run of every check, and the pull
+   request.
+4. Phase 11: the owner's rollout, in order. The pull request is the first merged with a sign-off.
+
+The amendment ships in this one pull request (Constitution XI). The ruleset change is applied
+during it, not after, so it can't merge without the sign-off it introduces (research R19).
