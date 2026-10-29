@@ -951,10 +951,11 @@ colors or comparing pages with design exports, and none is deferred under the in
     - `npm run content-check`: exit 0, `PASS: both documents are valid and no key facts are hardcoded.`
     - `npm run token-check`: exit 0, `PASS: both token sources are valid and no literal design values were found.`
     - `npm run site-check`: exit 0, `Site check: PASSED`, `No problems. 13 of 13 parts passed.`
-- [ ] T080 Push `001-local-verify` and open the amendment's pull request to `main` (Constitution XI), after T079:
+- [X] T080 Push `001-local-verify` and open the amendment's pull request to `main` (Constitution XI), after T079:
   - The title and every commit use Conventional Commits; per CLAUDE.md none carries AI or Claude attribution.
   - The description names the amendment by its date, "the amendment of 2026-10-29 to 001-requirement-traceability", links `specs/001-requirement-traceability/spec.md` and `specs/001-requirement-traceability/tasks.md`, summarizes T074 to T079's results, and lists the owner actions of Phase 11 in order. It notes that 002's, 003's and 004's repo-settings tests change only the lists they compare (research R20), and that no manual check is deferred (No UI).
   - It is the only pull request for this amendment.
+  - **Recorded 2026-10-29**: pushed and opened as https://github.com/alex-profir/CV/pull/28, `feat(001): run the fast checks on pull requests and sign off the full run locally`, with no AI attribution.
 
 ---
 
