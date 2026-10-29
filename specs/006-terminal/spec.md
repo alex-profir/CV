@@ -648,6 +648,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   with its description, then every standard command by name in a group of its own, each name a
   control that runs `help <name>` (FR-015), and there MUST be no command `help` doesn't list. `help <command>` MUST show any command's own help, standard
   commands included.
+  Amended 2026-10-29: commands could only be joined with `|`, the Terminal offered no standard
+  commands, and `help` listed only the commands above and their aliases.
 - **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
   (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
   (004 Key Entities), in the CV document's order, and MUST follow 004's rules for them: an absent
@@ -665,6 +667,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   and the site as folders and files, browsed and searched with the shell's commands (FR-068), as
   FR-043 to FR-050 and FR-073 set. It holds the same CV as the named commands, and is never needed to read
   it.
+  Amended 2026-10-29: the file system was a pretend one, browsed only with `ls`, `cd`, `cat` and
+  `pwd`.
 - **FR-013**: `specs` MUST list every feature spec the repository holds when the site is built,
   in numbered order. Each entry MUST show the spec's number, its name, its status and its count of
   active requirements, read as the requirement traceability check (001) reads them, so a removed
@@ -677,14 +681,14 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 
 **The shell** (added 2026-10-29)
 
-- **FR-067**: Every command line MUST be run by the Terminal's own bash-like shell, with bash's
+- **FR-067** (added 2026-10-29): Every command line MUST be run by the Terminal's own bash-like shell, with bash's
   meaning for at least: pipes (FR-057); `;`, `&&` and `||`; single and double quotes and
   backslash escapes; variables, `$VAR`, `${VAR}`, `${VAR:-default}`, `export` and `$?`; globs
   `*`, `?` and `[...]`; redirects `>`, `>>`, `2>`, `2>&1` and `<`; `if`, `for`, `while` and
   `until`; and functions. Variables and functions last until the Terminal closes (FR-021). The
   commands of FR-008 MUST behave as commands of that shell: they can be piped, redirected,
   chained and run in loops.
-- **FR-068**: Besides the commands of FR-008, the shell MUST offer the standard commands a bash
+- **FR-068** (added 2026-10-29): Besides the commands of FR-008, the shell MUST offer the standard commands a bash
   user expects, at least `echo`, `printf`, `grep`, `head`, `tail`, `wc`, `sort`, `uniq`, `cut`,
   `tr`, `sed`, `awk`, `find`, `tree`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `xargs`, `diff`,
   `seq`, `date`, `env`, `which`, `basename`, `dirname`, `true` and `false`. `ls`, `cd`, `cat`,
@@ -694,7 +698,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   may reach the network, run a real program or run code in another language, so the shell offers
   no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
   is also a command of FR-008, such as `whoami`, FR-008's meaning wins.
-- **FR-069**: A command line MUST be stopped, with a message in site text that says it ran too
+- **FR-069** (added 2026-10-29): A command line MUST be stopped, with a message in site text that says it ran too
   long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 commands
   or printed 1 MB, whichever comes first. While a command line runs, the Terminal's screen, the
   shell's windows and the rest of the page MUST keep responding to input.
@@ -721,6 +725,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   globs such as `~/work/*` (FR-067). The home folder MUST be `/home/guest`, shown as `~`, and the
   root MUST hold only `home` and `tmp` and whatever the plan needs for the shell to run. Names of
   the home folder's files and folders MUST be matched without regard to capitals.
+  Amended 2026-10-29: only `ls`, `cd` and `cat` took paths, with no globs; `/` meant the home
+  folder, and `..` in the home folder stayed there.
 - **FR-046**: The prompt MUST show the working folder's path, with `~` for the home folder, and
   `pwd` MUST show the same path.
 - **FR-047**: `cat` on a CV entry's file MUST show exactly what the matching named command shows
@@ -759,9 +765,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   output of `ls` (FR-050) and every key of the pocket terminal (FR-051) MUST be a control that runs
   that command when activated with a click, a tap, Enter or Space. A name in `help`'s group of
   standard commands (FR-008) MUST run `help <name>` instead, as most standard commands need an
-  argument (amended 2026-10-29). Running it MUST behave as if the command had
+  argument. Running it MUST behave as if the command had
   been typed and Enter pressed, including in the output and the command history, MUST NOT open the
   on-screen keyboard, and MUST return focus to the command line.
+  Amended 2026-10-29: the controls were the command names in the greeting and in `help`, and every
+  name in `help` ran its own command.
 - **FR-016**: A command the Terminal doesn't know MUST get a reply, in site text, that names what
   was typed, shown exactly as typed, says it is not a command, and mentions `help`. The reply MUST
   offer, as controls (FR-015), every command or alias whose name is at most 2 single-letter edits
@@ -774,11 +782,15 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   get a reply that says so and shows how to use the command. A standard command (FR-068) with a
   wrong option or argument MUST give the error bash's version of it gives. The command line MUST accept at least 200
   characters and MAY stop accepting more after a limit the design sets.
+  Amended 2026-10-29: the first sentence covered every command, and there were no standard
+  commands.
 - **FR-018**: Typed and pasted text MUST be shown exactly as typed, and MUST never be rendered as
   markup, turned into a link, or run as anything but a command line of the Terminal's own shell
   (FR-067), which runs no code of the page, the browser or any real program. Output MUST be shown
   as text, so a file or command that prints markup shows the markup. Line breaks in pasted text
   MUST become spaces, and nothing MUST run until Enter is pressed.
+  Amended 2026-10-29: typed text MUST never be run as code, and nothing said output is shown as
+  text.
 
 **Output, history and scrolling**
 
@@ -795,6 +807,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   folder.
   Minimizing it, going home on mobile and the shell switching between desktop and mobile MUST
   keep all of them, along with what was typed and the scroll position (005 FR-002, FR-034).
+  Amended 2026-10-29: closing cleared only the output and the command history, as there were no
+  variables or visitor's files.
 - **FR-022**: Nothing typed in the Terminal MUST leave the visitor's browser or be kept after the
   visit ends. The Terminal MUST make no request to any other site (005 FR-054).
 - **FR-023**: Output MUST wrap within the Terminal's width at every window and screen size the
@@ -948,6 +962,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   their descriptions, the replies of FR-011, FR-016 and FR-017, and the text of `site`, MUST be in
   English, MUST be set by the approved design, and MUST NOT contain a CV fact typed by hand (as 004
   FR-006 and 005 FR-043 require).
+  Amended 2026-10-29: the first example was the greeting.
 - **FR-031**: The Terminal's look MUST be the site's own. It MUST NOT copy or trace the look of
   macOS's Terminal, its icon or its default themes, nor any other terminal's (Constitution IX).
   Text MUST use the site's fonts (004 FR-045). The Terminal MUST match the approved mockup for each
@@ -958,6 +973,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   filled, within 5 seconds of the last key press (WCAG 2.2 success criterion 2.2.2). A key press
   MUST start it blinking again. When the visitor asks for reduced motion, the cursor MUST NOT blink and no part of the
   Terminal may move or scale, except scrolling (Constitution VIII).
+  Amended 2026-10-29: the cursor MAY blink, and nothing said a key press starts it again.
 - **FR-033**: With forced colors active, the prompt, typed commands, output, links, command
   controls, the command line, its cursor, focus indicators and, on mobile, the pocket terminal's
   screen and keys MUST stay visible and distinguishable. None may rely on a background image or a
@@ -1007,6 +1023,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   and end and by word with the keys FR-074 sets for the check's system, delete a word, select all
   with the key FR-075 sets and confirm the selection holds the Terminal's text and nothing else,
   and cancel a typed line with Ctrl+C.
+  Amended 2026-10-29: the check didn't cover the cursor, the line-editing keys, select all or
+  Ctrl+C.
 - **FR-040**: A Terminal content check MUST run every CV command in each shell and confirm that its
   output holds every shown field the CV document holds for that section, in the CV document's
   order, and that `cat cv.json`, `cat cv.json | jq` and the vim view opened by `cv` hold the CV
@@ -1018,6 +1036,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   `cv.json`, a file made, moved and removed in the home folder, a write to a protected file, and a
   command line that never ends, confirming each gives what FR-049, FR-056, FR-057, FR-069 and
   FR-073 set.
+  Amended 2026-10-29: the check ran no pipe, `grep`, `jq` filter, write or line that never ends.
 - **FR-041**: The offline check (005 FR-059) MUST also open the Terminal with no network at a phone
   width and a desktop width and run every command `help` lists, confirming each output matches the
   online one.

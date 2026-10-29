@@ -8,7 +8,8 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | File | Runs in | Holds |
 |------|---------|-------|
 | `src/apps/terminal/shell-client.ts` | the page, in the `os` script | Starts the worker on first open, queues lines, the watchdog, Ctrl+C, restarts, `reset` |
-| `src/apps/terminal/shell/worker.ts` | the worker | The entry: removes the network globals (research R39), creates the adapter, answers messages |
+| `src/apps/terminal/shell/worker.ts` | the worker | The entry: imports `no-network.ts` first, creates the adapter, answers messages |
+| `src/apps/terminal/shell/no-network.ts` | the worker | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` with functions that throw, before just-bash's module body runs (research R39) |
 | `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(data)`: just-bash with the limits, the allow-list, TerminalFs and the site's commands; `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
 | `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
