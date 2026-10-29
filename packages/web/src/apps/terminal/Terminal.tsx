@@ -3,6 +3,7 @@
 // The session lives outside the component (research R5), so unmounting on
 // mobile Home or a shell switch keeps it (FR-021).
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import type { PointerEvent as ScreenPointerEvent } from 'react';
 import type { AppOs, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
 import { CommandLine, focusCommandLine, Prompt } from './CommandLine.tsx';
@@ -14,6 +15,22 @@ import type { VimInput } from './engine/vim.ts';
 import { VimView } from './VimView.tsx';
 
 const words = siteText.terminal;
+
+// The page's selection, so a pointer up can tell whether a drag changed it.
+type Selected = { text: string; anchor: Node | null; anchorOffset: number; focus: Node | null; focusOffset: number } | null;
+
+function selected(): Selected {
+  const selection = document.getSelection();
+  if (selection === null || selection.isCollapsed) return null;
+  return { text: selection.toString(), anchor: selection.anchorNode, anchorOffset: selection.anchorOffset, focus: selection.focusNode, focusOffset: selection.focusOffset };
+}
+
+const same = (a: Selected, b: Selected) =>
+  a === b || (a !== null && b !== null && a.text === b.text && a.anchor === b.anchor && a.anchorOffset === b.anchorOffset && a.focus === b.focus && a.focusOffset === b.focusOffset);
+
+// What a click on the screen leaves alone: links, controls, inputs and the
+// vim view (FR-071).
+const OWN_TARGETS = 'a, button, input, section.vim';
 
 // Runs a line as typed, in the shell worker, and does what it asks of the
 // desktop or phone shell once it has run (FR-014). Gives back whether focus
@@ -49,6 +66,24 @@ export function Terminal({ os }: AppProps) {
   const desktop = os.shell === 'desktop';
 
   const focusLine = useCallback(() => input.current?.focus({ preventScroll: true }), []);
+
+  // A click on the output's text or empty space puts focus back in the
+  // command line, without scrolling or changing its text; a drag that
+  // selects text keeps its selection. On touch, the keyboard opens
+  // (FR-071, research R36).
+  const downSelection = useRef<Selected>(null);
+  const pointerDown = useCallback(() => {
+    downSelection.current = selected();
+  }, []);
+  const pointerUp = useCallback((event: ScreenPointerEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.closest(OWN_TARGETS) !== null) return;
+    const now = selected();
+    if (now !== null && !same(now, downSelection.current)) return;
+    const line = input.current;
+    if (line === null || document.activeElement === line) return;
+    line.removeAttribute('inputmode');
+    line.focus({ preventScroll: true });
+  }, []);
 
   const run = useCallback((line: string) => runInShell(line, os), [os]);
 
@@ -116,7 +151,7 @@ export function Terminal({ os }: AppProps) {
         {siteText.os.views.terminal}
       </h1>
       {state.vim === null ? (
-        <div ref={screen} className="terminal-screen" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
+        <div ref={screen} className="terminal-screen" onPointerDown={pointerDown} onPointerUp={pointerUp} data-req="006-terminal-FR-071 006-terminal-FR-075" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
           {state.starter && (
             <div className="starter" data-req="006-terminal-FR-005 006-terminal-FR-030">
               {words.starter.map((line) => (

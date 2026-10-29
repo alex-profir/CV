@@ -91,6 +91,8 @@ const advance = monoAdvance();
 // announcements count rows by on both shells.
 export const TERMINAL = Object.freeze({
   maxLength: plain('command-line.max-length'),
+  // How long the cursor blinks after focus or a key press (FR-032).
+  cursorIdle: ms('motion.duration.cursor-idle'),
   windowWidth,
   padding,
   fontSize,

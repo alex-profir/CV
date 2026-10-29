@@ -88,7 +88,8 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     expect(await standardGroup(shell)).toEqual(expected);
     const { standard } = siteText.terminal;
     const text = (await runLine(shell, 'help')).stdout;
-    expect(text).toContain(`\n${standard.heading}\n${standard.note}\n`);
+    // The heading and its note share one line, two spaces apart (design/wireframes.md).
+    expect(text).toContain(`\n${standard.heading}  ${standard.note}\n`);
   });
 
   test('each name in the group is a control running help <name>', async () => {

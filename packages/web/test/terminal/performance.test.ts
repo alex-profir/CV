@@ -2,7 +2,8 @@
 // lists, `cv` included, the time from pressing Enter to the frame that shows
 // its output. It is measured in the page, from the Enter key's event to the
 // first animation frame after the output is in the document, so the test's
-// own round trips don't count.
+// own round trips don't count. The line runs in the shell's worker, so its
+// output is in once its run is no longer busy (FR-070).
 import type { Page } from 'playwright';
 import { describe, expect, test, vi } from 'vitest';
 import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
@@ -21,7 +22,8 @@ declare global {
 }
 
 // Watches for the next Enter in the command line, and for what it changes in
-// the Terminal: a run added or removed, the vim view, or the Terminal gone.
+// the Terminal once the line has run: a run added or removed, the vim view,
+// or the Terminal gone.
 function watchNextEnter(page: Page): Promise<void> {
   return page.evaluate((selector) => {
     const timing: { start: number; shown: number | null } = { start: 0, shown: null };
@@ -29,8 +31,9 @@ function watchNextEnter(page: Page): Promise<void> {
     const shell = document.querySelector('#os')!;
     const state = () => `${document.querySelectorAll('.terminal section.run').length} ${document.querySelector('.terminal .vim-text') !== null} ${document.querySelector('.terminal') !== null}`;
     const before = state();
+    const running = () => document.querySelector('.terminal section.run[aria-busy="true"]') !== null;
     const observer = new MutationObserver(() => {
-      if (timing.start === 0 || state() === before) return;
+      if (timing.start === 0 || state() === before || running()) return;
       observer.disconnect();
       requestAnimationFrame(() => {
         timing.shown = performance.now();
@@ -41,7 +44,7 @@ function watchNextEnter(page: Page): Promise<void> {
       (event) => {
         if (event.key === 'Enter' && (event.target as Element).matches(selector)) {
           timing.start = performance.now();
-          observer.observe(shell, { childList: true, subtree: true });
+          observer.observe(shell, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-busy'] });
         }
       },
       { capture: true, once: true },

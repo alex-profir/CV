@@ -73,6 +73,26 @@ describe("006-terminal-FR-008: help lists every command and alias, and there is 
     expect(await textOf('help experience', context)).toBe(own);
     expect(await textOf('HELP Work', context)).toBe(own);
     expect(await textOf('? cv', context)).toContain(siteText.terminal.commands.cv.help);
-    expect(await textOf('help nothing', context)).toMatch(/^nothing is not a command\./);
+    expect(await textOf('help nothing', context)).toBe('help takes at most one command. Usage: help [command]');
+  });
+
+  test("after the table, help lists the standard group: its heading and note, then each name as a control running help <name>", async () => {
+    const block = output(await run('help', contextFor('every-field')));
+    const at = block.findIndex((node) => node.kind === 'rows' && node.req === 'help');
+    const [heading, group] = block.slice(at + 1);
+    const { standard } = siteText.terminal;
+    expect(heading).toMatchObject({ kind: 'line', req: 'standard' });
+    expect(heading?.kind === 'line' && heading.children).toEqual([
+      { kind: 'text', text: standard.heading, tone: 'primary' },
+      { kind: 'text', text: '  ' },
+      { kind: 'text', text: standard.note, tone: 'dim' },
+    ]);
+    expect(group).toMatchObject({ kind: 'columns', req: 'standard' });
+    const names = group?.kind === 'columns' ? group.cells.map((cell) => (cell.kind === 'command' ? cell.label : undefined)) : [];
+    expect(names.length).toBeGreaterThan(0);
+    expect(names).toEqual([...names].sort());
+    expect(controls([group!])).toEqual(names.map((name) => `help ${name}`));
+    const words = new Set(COMMANDS.flatMap((command) => [command.name, ...command.aliases]));
+    for (const name of names) expect(words.has(name!), name).toBe(false);
   });
 });

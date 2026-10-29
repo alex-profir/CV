@@ -3,7 +3,7 @@
 // matched in any case, `exit` detected, and reset and restore.
 import { describe, expect, test } from 'vitest';
 import { INITIAL_STATE } from '../../../src/apps/terminal/shell/protocol.ts';
-import { runLine, runLines, shellFor } from './context.ts';
+import { LANGUAGE_CASES, runLine, runLines, shellFor } from './context.ts';
 
 describe('006-terminal-FR-067: the shell’s state carries to the next line', () => {
   test('variables, exported variables, a function with local, if and a pipe, pipefail, $? and the working folder', async () => {
@@ -122,31 +122,7 @@ describe('006-terminal-FR-021: reset and restore', () => {
 });
 
 describe('006-terminal-FR-067: bash’s language', () => {
-  const cases: [string, string, string][] = [
-    [';', 'echo a; echo b', 'a\nb\n'],
-    ['&&', 'true && echo yes; false && echo no', 'yes\n'],
-    ['||', 'false || echo yes; true || echo no', 'yes\n'],
-    ['single quotes', "echo '$HOME a  b'", '$HOME a  b\n'],
-    ['double quotes', 'X=1; echo "x is $X  !"', 'x is 1  !\n'],
-    ['backslash escapes', 'echo a\\ b \\$HOME', 'a b $HOME\n'],
-    ['$VAR and ${VAR}', 'V=ab; echo $V ${V}c', 'ab abc\n'],
-    ['${VAR:-d}', 'echo ${NOPE:-d} ${HOME:-d}', 'd /home/guest\n'],
-    ['export', 'export E=1; env | grep -c "^E=1$"', '1\n'],
-    ['$?', 'false; echo $?; true; echo $?', '1\n0\n'],
-    ['*', 'cd work; echo * | wc -w', ''],
-    ['?', 'echo ab?ut', 'about\n'],
-    ['[...]', 'echo [a]bout', 'about\n'],
-    ['>', 'echo one > /tmp/x; cat /tmp/x', 'one\n'],
-    ['>>', 'echo one > /tmp/x; echo two >> /tmp/x; cat /tmp/x', 'one\ntwo\n'],
-    ['2>', 'cat nowhere 2> /tmp/e; wc -l < /tmp/e', '1\n'],
-    ['2>&1', 'cat nowhere 2>&1 | wc -l', '1\n'],
-    ['<', 'echo in > /tmp/i; tr a-z A-Z < /tmp/i', 'IN\n'],
-    ['if', 'if [ -f about ]; then echo file; else echo none; fi', 'file\n'],
-    ['for', 'for n in 1 2 3; do echo n$n; done', 'n1\nn2\nn3\n'],
-    ['while', 'i=0; while [ $i -lt 2 ]; do echo $i; i=$((i+1)); done', '0\n1\n'],
-    ['until', 'i=0; until [ $i -ge 2 ]; do echo $i; i=$((i+1)); done', '0\n1\n'],
-    ['functions', 'twice() { echo "$1$1"; }; twice ab', 'abab\n'],
-  ];
+  const cases = LANGUAGE_CASES;
 
   test.each(cases)('%s', async (_, line, stdout) => {
     const result = await runLine(shellFor('every-field'), line);

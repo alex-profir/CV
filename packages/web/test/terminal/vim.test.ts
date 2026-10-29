@@ -61,6 +61,18 @@ describe('006-terminal-FR-056: cat cv.json | jq prints the JSON colored, in the 
   });
 });
 
+describe('006-terminal-FR-056: jq’s colored rows are its printed text, and piped on it is plain', () => {
+  test('cat cv.json | jq’s rows read, row by row, as what it prints; jq . cv.json | head is plain text', async () => {
+    const page = await openTerminalPage('desktop');
+    const colored = await runGroup(page, 'cat cv.json | jq');
+    const rows = await colored.locator('.run-output .json-row').allTextContents();
+    expect(rows.map((row) => row.trim())).toEqual(CV_LINES.map((row) => row.trim()));
+    const plain = await runGroup(page, 'jq . cv.json | head');
+    expect(await plain.locator('[data-req~="006-terminal-FR-056"], .json-row').count()).toBe(0);
+    expect(await plain.locator('.run-output p.out-line').allTextContents()).toEqual(CV_LINES.slice(0, 10));
+  });
+});
+
 describe('006-terminal-FR-058: the vim view fills the window, with line numbers, a status line and a message line', () => {
   test('cv opens it with NORMAL, the name, [RO], json, line and column and position, and the opening message', async () => {
     const page = await openTerminalPage('desktop');

@@ -99,6 +99,9 @@ function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run
 function One({ node, run, level }: { node: Node; run: RunControl; level: number }): ReactNode {
   switch (node.kind) {
     case 'text':
+      // What a command printed keeps its spaces and tabs, as a terminal
+      // shows them (FR-067).
+      if (node.stream !== undefined) return <span className={['out-stream', toneClass(node.tone)].filter(Boolean).join(' ')}>{node.text}</span>;
       return node.tone === undefined ? node.text : <span className={toneClass(node.tone)}>{node.text}</span>;
     case 'time':
       return node.spoken === undefined ? (
@@ -121,6 +124,20 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
         </a>
       );
     case 'line':
+      // `help`'s standard group's heading and note, and a stopped run's line
+      // (FR-008, FR-068, FR-069).
+      if (node.req === 'standard')
+        return (
+          <p className="out-line out-standard-heading" data-req="006-terminal-FR-008 006-terminal-FR-068">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'stopped')
+        return (
+          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
       return (
         <p className="out-line">
           <Nodes block={node.children} run={run} level={level} />
@@ -144,16 +161,24 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
           ))}
         </ul>
       );
-    case 'columns':
+    case 'columns': {
+      const cells = node.cells.map((cell, index) => (
+        <li key={index}>
+          <One node={cell} run={run} level={level} />
+        </li>
+      ));
+      if (node.req === 'standard')
+        return (
+          <ul className="out-columns out-standard" data-req="006-terminal-FR-008 006-terminal-FR-068">
+            {cells}
+          </ul>
+        );
       return (
         <ul className="out-columns" data-req="006-terminal-FR-043 006-terminal-FR-050">
-          {node.cells.map((cell, index) => (
-            <li key={index}>
-              <One node={cell} run={run} level={level} />
-            </li>
-          ))}
+          {cells}
         </ul>
       );
+    }
     case 'rows':
       return <Rows node={node} run={run} level={level} />;
     case 'json':

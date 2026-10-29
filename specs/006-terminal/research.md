@@ -1027,6 +1027,13 @@ first checks `bash --version` and `grep --version` name GNU, and fails with a me
 tools to install when they don't (macOS: `brew install bash coreutils grep gnu-sed gawk findutils
 diffutils`, then those first on `PATH`), so the result is the same locally and in CI (FR-042).
 
+**Built 2026-10-29** (T158, T173): 42 lines. Two differ from the list above: `grep -ril rest
+~/work` is piped to `sort`, as GNU grep lists files in directory order and the shell in name
+order; and `tree` has no line, as it isn't a GNU tool and isn't in the install list, so bash
+on a stock system has none to compare with. The bash side hasn't run yet: the machine the
+amendment was built on has macOS bash 3.2 and no GNU tools, so the real differences are still to
+be seen in CI or with the tools installed.
+
 **Alternatives considered**: committed expected outputs (every CV edit would need a second edit
 to them, against Constitution IV); only hand-written expectations (would test the test's author's
 idea of GNU, not GNU).

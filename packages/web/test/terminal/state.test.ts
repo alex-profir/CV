@@ -173,6 +173,63 @@ describe('006-terminal-FR-021: minimizing, going home and a shell switch keep th
   });
 });
 
+// The shell's own state: a variable, a function, a visitor's folder and the
+// working folder (FR-021, research R27).
+const SET_UP = 'X=kept; f() { echo fn; }; mkdir notes; cd work';
+const READ_BACK = 'echo $X; f; ls -d ~/notes; pwd';
+
+const printed = async (page: Page, line: string) => (await runGroup(page, line)).locator('.run-output p.out-line').allTextContents();
+
+async function expectShellKept(page: Page, how: string): Promise<void> {
+  expect(await printed(page, READ_BACK), how).toEqual(['kept', 'fn', '/home/guest/notes', '/home/guest/work']);
+}
+
+describe('006-terminal-FR-021: the shell’s variables, functions, files and working folder are kept with the session', () => {
+  test('minimize and restore', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Minimize Terminal' }).click();
+    await settle(page);
+    await page.locator(DOCK_ITEM).click();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await expectShellKept(page, 'minimized and restored');
+  });
+
+  test('on a phone, Home and opening the Terminal again', async () => {
+    const page = await openTerminalPage('mobile');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Home' }).tap();
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await openTerminal(page, 'mobile');
+    await expectShellKept(page, 'home and back');
+  });
+
+  test('a 1440 → 375 → 1440 resize', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await resize(page, 375, 812);
+    await page.locator(VIEW).waitFor();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await resize(page, 1440, 900);
+    await page.locator(WINDOW).waitFor();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await expectShellKept(page, '1440 → 375 → 1440');
+  });
+
+  test('closing and opening again keeps none of them', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Close Terminal' }).click();
+    await expect.poll(() => page.locator(WINDOW).count()).toBe(0);
+    await settle(page);
+    await openTerminal(page, 'desktop');
+    expect(await printed(page, 'echo "[$X]"')).toEqual(['[]']);
+    expect((await printed(page, 'f'))[0]).toMatch(/^f: command not found\./);
+    expect(await printed(page, 'ls notes')).toEqual(['ls: notes: No such file or directory']);
+    expect(await printed(page, 'pwd')).toEqual(['/home/guest']);
+  });
+});
+
 // Closes the Terminal one way.
 const CLOSE: Record<string, (page: Page) => Promise<void>> = {
   'the close control': (page) => page.getByRole('button', { name: 'Close Terminal' }).click(),

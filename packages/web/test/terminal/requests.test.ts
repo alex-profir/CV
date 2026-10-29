@@ -16,6 +16,7 @@ import {
   vimView,
 } from '../helpers/terminal.ts';
 import type { TerminalShell } from '../helpers/terminal.ts';
+import { LANGUAGE_CASES } from './shell/context.ts';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -58,7 +59,9 @@ async function visit(shell: TerminalShell): Promise<{ hosts: string[]; page: Pag
   const help = await runGroup(page, 'help');
   const lines = await help.locator('.run-output').locator('button.command-chip, button.command-inline').evaluateAll((list) => list.map((control) => control.getAttribute('aria-label')!));
   expect(lines.length).toBeGreaterThanOrEqual(22);
-  for (const line of [...lines.filter((name) => name !== 'exit'), 'cat cv.json', 'cat cv.json | jq', 'vim cv.json', 'help work', MARKER]) await run(page, line);
+  // Then the shell's language, one line per feature (FR-067).
+  const language = LANGUAGE_CASES.map(([, line]) => line);
+  for (const line of [...lines.filter((name) => name !== 'exit'), 'cat cv.json', 'cat cv.json | jq', 'vim cv.json', 'help work', ...language, MARKER]) await run(page, line);
   await page.locator(COMMAND_LINE).focus();
   await page.keyboard.type(`draft ${MARKER}`);
   await page.locator(COMMAND_LINE).fill('');

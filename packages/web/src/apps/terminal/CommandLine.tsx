@@ -2,9 +2,11 @@
 // input named "Command", under the prompt. Enter runs the line, Up and Down
 // step through the history, and every other key, Tab and the modified ones
 // included, is left to the browser, the screen reader and the shell
-// (FR-026). Its own caret is hidden: an `aria-hidden` mirror over it draws
-// the text and the design's steady block cursor (FR-032).
-import { useState } from 'react';
+// (FR-026). It has no box: its own caret is hidden, and an `aria-hidden`
+// mirror over it draws the text and a terminal's block cursor, filled and
+// blinking with focus, hollow without, so the cursor is its focus indicator
+// (FR-032, FR-072, research R36).
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, FormEvent, KeyboardEvent, RefObject, SyntheticEvent } from 'react';
 import { siteText } from '../../site-text.ts';
 import { TERMINAL } from '../../os/metrics.ts';
@@ -56,6 +58,34 @@ type Props = {
 export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit, onStep }: Props) {
   const [caret, setCaret] = useState(draft.length);
   const at = Math.min(caret, draft.length);
+  const [focused, setFocused] = useState(false);
+  // The cursor blinks from focus or a key press until `cursorIdle` after the
+  // last; each press starts the blink again, with the cursor shown.
+  const [wakes, setWakes] = useState(0);
+  const [blinking, setBlinking] = useState(false);
+  const idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const wake = () => {
+    setBlinking(true);
+    setWakes((count) => count + 1);
+    clearTimeout(idle.current);
+    idle.current = setTimeout(() => setBlinking(false), TERMINAL.cursorIdle);
+  };
+
+  const sleep = () => {
+    clearTimeout(idle.current);
+    setBlinking(false);
+  };
+
+  // Drawn again with focus already in it, as after a shell switch.
+  useLayoutEffect(() => {
+    if (inputRef.current !== null && document.activeElement === inputRef.current) {
+      setFocused(true);
+      wake();
+    }
+  }, []);
+
+  useEffect(() => () => clearTimeout(idle.current), []);
 
   const track = (event: SyntheticEvent<HTMLInputElement>) => setCaret(event.currentTarget.selectionStart ?? event.currentTarget.value.length);
 
@@ -65,6 +95,7 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
   };
 
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    wake();
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     event.preventDefault();
@@ -115,11 +146,21 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
           onPointerDown={(event) => event.currentTarget.removeAttribute('inputmode')}
           onKeyDown={keyDown}
           onPaste={paste}
-          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027"
+          onFocus={() => {
+            setFocused(true);
+            wake();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            sleep();
+          }}
+          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072"
         />
-        <span className="cursor-mirror" aria-hidden="true" data-req="006-terminal-FR-032">
+        <span className="cursor-mirror" aria-hidden="true" data-focused={focused ? '' : undefined} data-blinking={focused && blinking ? '' : undefined} data-req="006-terminal-FR-032 006-terminal-FR-072">
           {draft.slice(0, at)}
-          <span className="cursor-block">{draft[at] ?? ' '}</span>
+          <span key={wakes} className="cursor-block">
+            {draft[at] ?? ' '}
+          </span>
           {draft.slice(at + 1)}
         </span>
       </span>

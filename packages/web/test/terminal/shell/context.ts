@@ -55,3 +55,31 @@ export async function runLines(shell: TestShell, lines: readonly string[]): Prom
   for (const line of lines) results.push(await runLine(shell, line));
   return results;
 }
+
+// One line per feature of bash's language FR-067 names: the feature, the
+// line and what it prints on the every-field CV ('' when only a count).
+export const LANGUAGE_CASES: readonly (readonly [string, string, string])[] = [
+  [';', 'echo a; echo b', 'a\nb\n'],
+  ['&&', 'true && echo yes; false && echo no', 'yes\n'],
+  ['||', 'false || echo yes; true || echo no', 'yes\n'],
+  ['single quotes', "echo '$HOME a  b'", '$HOME a  b\n'],
+  ['double quotes', 'X=1; echo "x is $X  !"', 'x is 1  !\n'],
+  ['backslash escapes', 'echo a\\ b \\$HOME', 'a b $HOME\n'],
+  ['$VAR and ${VAR}', 'V=ab; echo $V ${V}c', 'ab abc\n'],
+  ['${VAR:-d}', 'echo ${NOPE:-d} ${HOME:-d}', 'd /home/guest\n'],
+  ['export', 'export E=1; env | grep -c "^E=1$"', '1\n'],
+  ['$?', 'false; echo $?; true; echo $?', '1\n0\n'],
+  ['*', 'cd work; echo * | wc -w', ''],
+  ['?', 'echo ab?ut', 'about\n'],
+  ['[...]', 'echo [a]bout', 'about\n'],
+  ['>', 'echo one > /tmp/x; cat /tmp/x', 'one\n'],
+  ['>>', 'echo one > /tmp/x; echo two >> /tmp/x; cat /tmp/x', 'one\ntwo\n'],
+  ['2>', 'cat nowhere 2> /tmp/e; wc -l < /tmp/e', '1\n'],
+  ['2>&1', 'cat nowhere 2>&1 | wc -l', '1\n'],
+  ['<', 'echo in > /tmp/i; tr a-z A-Z < /tmp/i', 'IN\n'],
+  ['if', 'if [ -f about ]; then echo file; else echo none; fi', 'file\n'],
+  ['for', 'for n in 1 2 3; do echo n$n; done', 'n1\nn2\nn3\n'],
+  ['while', 'i=0; while [ $i -lt 2 ]; do echo $i; i=$((i+1)); done', '0\n1\n'],
+  ['until', 'i=0; until [ $i -ge 2 ]; do echo $i; i=$((i+1)); done', '0\n1\n'],
+  ['functions', 'twice() { echo "$1$1"; }; twice ab', 'abab\n'],
+];

@@ -11,6 +11,7 @@ import {
   commandLineFocused,
   fixtureBuild,
   openTerminal,
+  openTerminalLoading,
   openTerminalPage,
   quitVim,
   runCount,
@@ -104,6 +105,19 @@ const inside = (inner: Box, outer: Box) => inner.y >= outer.y - 1 && inner.y + i
 
 const scrollTop = (page: Page) => page.locator(SCREEN).evaluate((element) => element.scrollTop);
 const documentScroll = (page: Page) => page.evaluate(() => ({ x: window.scrollX, y: window.scrollY, root: document.scrollingElement?.scrollTop ?? 0 }));
+
+describe('006-terminal-FR-005: while the shell loads, its line sits under the starter chips', () => {
+  test('p.shell-loading follows the starter chips and comes before the prompt, then goes', async () => {
+    const page = await openShell(SHELL_PAGE.desktop);
+    const release = await openTerminalLoading(page, 'desktop');
+    const order = await page.locator('.terminal .terminal-screen').evaluate((screen) => [...screen.children].map((child) => child.className));
+    expect(order.slice(0, 2)).toEqual(['starter', 'shell-loading']);
+    expect(order.at(-1)).toBe('prompt-line');
+    expect(await page.locator('.terminal p.shell-loading').textContent()).toBe(siteText.terminal.shellLoading);
+    await release();
+    expect(await page.locator('.terminal p.shell-loading').count()).toBe(0);
+  });
+});
 
 describe('006-terminal-FR-019: output stays, scrolls inside the Terminal, and each run shows', () => {
   test('output stays until clear, Clear output or closing', async () => {

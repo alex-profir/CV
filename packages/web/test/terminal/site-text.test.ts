@@ -7,6 +7,7 @@ import { resume } from '@cv/content';
 import fonts from '../../src/fonts/fonts.json' with { type: 'json' };
 import { siteText } from '../../src/site-text.ts';
 import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
+import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
 import { readSpecList } from '../../scripts/spec-list.ts';
 import { openTerminalPage, openVimView, runGroup } from '../helpers/terminal.ts';
 
@@ -69,6 +70,17 @@ describe('006-terminal-FR-030: the Terminal’s words are site text, CV text or 
     }
   });
 
+  test('the shell’s words are there, in English, with no key fact of the real CV', () => {
+    const { replies, standard, shellLoading, shellFailed, tryAgain, owners, announce } = siteText.terminal;
+    const added = strings({ unknown: replies.unknown, stopped: replies.stopped, cancelMark: replies.cancelMark, standard, shellLoading, shellFailed, tryAgain, owners, cancelled: announce.cancelled, loading: announce.loading });
+    expect(added.length).toBe(15);
+    const facts = [resume.basics?.name, resume.basics?.email, resume.basics?.label, ...(resume.work ?? []).map((work) => work.name)].filter((fact): fact is string => typeof fact === 'string' && fact !== '');
+    for (const value of added) {
+      expect(value, value).toMatch(ENGLISH);
+      for (const fact of facts) expect(value.toLowerCase(), value).not.toContain(fact.toLowerCase());
+    }
+  });
+
   test('every character of siteText.terminal is in a served subset of the Terminal’s font', () => {
     const mono = fonts.families.find((entry) => entry.token === 'font.family.mono')!;
     const covered = mono.files.flatMap((file) => ranges(file.unicodeRange));
@@ -91,6 +103,8 @@ describe('006-terminal-FR-030: the Terminal’s words are site text, CV text or 
       ...keys(resume),
       ...readSpecList().flatMap((spec) => strings(spec)),
       ...COMMANDS.flatMap((command) => [command.name, ...command.aliases]),
+      // help's standard group names the shell's commands (FR-008, FR-068).
+      ...STANDARD_GROUP,
       'cv.json',
       'json',
       ...siteText.monthsShort,

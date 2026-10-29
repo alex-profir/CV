@@ -124,11 +124,6 @@ export const siteText = deepFreeze({
       isFile: '{path} is a file. Try {command}.',
       isFolder: '{path} is a folder. Try {command}.',
       open: 'open takes {cv} or {about}.',
-      jqNotJson: 'jq: {source} is not JSON.',
-      jqFilter: 'jq here only pretty-prints. Usage: jq [path], or … | jq',
-      noInput: "{command} doesn't read piped input. Pipe into jq or vim -.",
-      pipeUsage: 'Usage: {command} | jq, or {command} | vim -',
-      pipeExample: 'cat cv.json',
       emptySection: 'The CV lists no {section}.',
       // A line the shell stopped (FR-069, FR-075).
       stopped: {

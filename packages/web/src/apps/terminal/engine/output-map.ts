@@ -70,6 +70,14 @@ function unknown(word: string, context: MapContext): Node[] {
   return [lead, line(...suggestions.flatMap((name, index) => [...(index === 0 ? [] : [text(' ')]), command(name, 'chip', { req: 'suggestion' })]))];
 }
 
+// The line a stopped run ends with: `stopped` in the error tone, the reason
+// after it in the secondary one (design/wireframes.md, FR-069).
+export function stoppedLine(message: string): Node {
+  const at = message.indexOf(':');
+  const children = at < 0 ? [text(message, 'error')] : [text(message.slice(0, at), 'error'), text(message.slice(at), 'secondary')];
+  return { kind: 'line', children, req: 'stopped' };
+}
+
 // A limit's own message, which FR-069's site text replaces.
 const LIMIT_MESSAGE = /^bash: (?:.*: )?(?:execution exceeded execution deadline|too many commands executed|output size limit exceeded|total output size exceeded)/;
 
@@ -123,7 +131,7 @@ export function mapOutput(result: ShownResult, typed: string, context: MapContex
   if (errors.length > 0) recordedOnly = false;
   block.push(...errors);
   if (result.end === 'limit' && result.limit !== undefined) {
-    block.push({ kind: 'line', children: [text(context.text.terminal.replies.stopped[result.limit], 'secondary')], req: 'stopped' });
+    block.push(stoppedLine(context.text.terminal.replies.stopped[result.limit]));
     recordedOnly = false;
   }
 

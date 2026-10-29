@@ -19,6 +19,7 @@ import {
   typedLines,
   vimView,
 } from '../helpers/terminal.ts';
+import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -68,7 +69,8 @@ describe('006-terminal-FR-015: every command control is a button named by its fu
     const starter = await controlsIn(page.locator('.terminal .starter'));
     expect(starter.map((control) => control.name)).toEqual(['help', 'about', 'work', 'projects', 'cv']);
     const help = await controlsIn((await runGroup(page, 'help')).locator('.run-output'));
-    expect(help.map((control) => control.name)).toEqual(HELP_LINES);
+    // The site's commands, then the standard group's names, each running help <name>.
+    expect(help.map((control) => control.name)).toEqual([...HELP_LINES, ...STANDARD_GROUP.map((name) => `help ${name}`)]);
     const unknown = await controlsIn((await runGroup(page, 'wrok')).locator('.run-output'));
     expect(unknown.map((control) => control.name)).toEqual(['help', 'work']);
     const open = await controlsIn((await runGroup(page, 'open settings')).locator('.run-output'));
@@ -121,6 +123,21 @@ describe('006-terminal-FR-015: a control runs its line as typed, by click, Enter
       await settle(page);
       await openTerminal(page, 'desktop');
     }
+  });
+
+  test('help’s standard group: a name runs help <name>, as typed in the output and history', async () => {
+    const page = await openTerminalPage('desktop');
+    const ran: string[] = ['help'];
+    await runGroup(page, 'help');
+    for (const name of ['grep', 'export', 'yes']) {
+      const control = page.locator(`${runSelector(1)} .run-output .out-standard button.command-inline[aria-label="help ${name}"]`);
+      expect(await control.textContent()).toBe(name);
+      for (const how of WAYS) {
+        await expectRuns(page, control, how, ran);
+        expect(await page.locator('.terminal section.run').last().locator('.run-output').textContent(), `help ${name} by ${how}`).toContain(name);
+      }
+    }
+    expect((await historyRows(page)).map((row) => row.line)).toEqual([...ran, 'history']);
   });
 
   test('the unknown reply’s and open’s reply’s controls', async () => {
