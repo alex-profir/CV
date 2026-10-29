@@ -154,7 +154,7 @@ Examples of other foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Run Lighthouse on mobile and desktop profiles; every category scores 90+ (Constitution VIII)
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Owner action, by hand: the checks only a person can do, such as screen readers, forced colors and comparing the built pages with the design exports. Record each result here and in the PR. Under the interim provision on deferred manual checks, they may wait for the final testing phase: record that here, list them in the PR and leave the task open
-- [ ] TXXX Open the PR linking spec.md and tasks.md, with Conventional Commits: one PR for a new feature; for an amendment, one PR per part it ships in, each naming the amendment by its date (Constitution XI)
+- [ ] TXXX Open the PR linking spec.md and tasks.md, with Conventional Commits: one PR for a new feature, also linking any older spec it amends; for an amendment of its own, one PR per part it ships in, each naming the amendment by its date (Constitution XI)
 - [ ] TXXX Owner action: run the full suite locally on the PR's clean head commit and sign it off, so the required `local-verify` status passes (Constitution, Merge requirements). Run it again after every new commit, a merge of the default branch included
 
 ---
@@ -227,9 +227,9 @@ Task: "Build [mobile variant or fallback per Shell Scope] in [path]/[file]"
 4. Add User Story 3 → Test independently → Deploy/Demo
 5. Each story adds value without breaking previous stories
 
-A new feature's stories ship in its single PR (Constitution XI); the increments above are
-checkpoints within it. An amendment may ship in several PRs, each with its part of the spec
-amendment, its tests and its design.
+A new feature's stories ship in its single PR (Constitution XI), with any amendment of an older
+spec the feature makes; the increments above are checkpoints within it. An amendment of its own
+may ship in several PRs, each with its part of the spec amendment, its tests and its design.
 
 ---
 
