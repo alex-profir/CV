@@ -66,8 +66,8 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
   const focused = state.focused === view;
   const session = state.session !== null && state.session.view === view ? state.session : null;
   // A keyboard move or resize puts the window where the visitor chose: the
-  // focus it gives, to its pad and, when it ends, back to the title, leaves
-  // the window there (FR-021, FR-067).
+  // focus it gives, to its pad and, when it ends, back into the window,
+  // leaves the window there (FR-021, FR-067).
   const placed = useRef(false);
   const hadSession = useRef(false);
   useLayoutEffect(() => {
@@ -81,7 +81,7 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
   // Focus that follows a pointer doesn't move the window: the visitor
   // points at what they see, and their window stays where they put it.
   const reveal = (target: Element) => {
-    const afterSession = placed.current && target.classList.contains('window-title');
+    const afterSession = placed.current;
     placed.current = false;
     if (byPointer() || session !== null || afterSession) return;
     requestAnimationFrame(async () => {
