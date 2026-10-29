@@ -52,11 +52,20 @@ export async function horizontalScroll(page: Page, pageLabel: string, variant: s
     const root = document.documentElement;
     const width = root.clientWidth;
     if (root.scrollWidth > width) result.push({ type: 'horizontal-scroll', subject: 'document', detail: `${root.scrollWidth}px wide in a ${width}px viewport` });
+    // Text in a box of 1 px or less, the visually hidden pattern, isn't
+    // drawn, however wide its own box.
+    const hidden = (element: Element) => {
+      for (let box: Element | null = element; box !== null; box = box.parentElement) {
+        const rect = box.getBoundingClientRect();
+        if (rect.width <= 1 && rect.height <= 1) return true;
+      }
+      return false;
+    };
     for (const element of document.body.querySelectorAll('*')) {
       const ownText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== '');
       if (!ownText) continue;
       const box = element.getBoundingClientRect();
-      if (box.width <= 1 && box.height <= 1) continue;
+      if (hidden(element)) continue;
       const right = box.right + window.scrollX;
       const left = box.left + window.scrollX;
       if (right > width + 0.5 || left < -0.5) {
@@ -188,6 +197,14 @@ export async function boxScroll(page: Page, root: string, pageLabel: string, var
       return `${element.tagName.toLowerCase()}${classes}`;
     };
     const result: { type: string; subject: string; detail: string }[] = [];
+    // As `horizontalScroll`: visually hidden text isn't drawn.
+    const hidden = (element: Element) => {
+      for (let box: Element | null = element; box !== null; box = box.parentElement) {
+        const rect = box.getBoundingClientRect();
+        if (rect.width <= 1 && rect.height <= 1) return true;
+      }
+      return false;
+    };
     const box = document.querySelector(target);
     if (box === null) return [{ type: 'missing', subject: target, detail: 'not on the page' }];
     const edge = box.getBoundingClientRect();
@@ -198,7 +215,7 @@ export async function boxScroll(page: Page, root: string, pageLabel: string, var
       const ownText = [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== '');
       if (!ownText) continue;
       const rect = element.getBoundingClientRect();
-      if (rect.width <= 1 && rect.height <= 1) continue;
+      if (hidden(element)) continue;
       if (rect.right > edge.right + 0.5 || rect.left < edge.left - 0.5) {
         result.push({ type: 'horizontal-scroll', subject: describe(element), detail: `reaches past the ${Math.round(edge.width)}px window` });
       }

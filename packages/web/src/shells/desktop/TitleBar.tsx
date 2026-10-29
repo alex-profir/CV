@@ -19,9 +19,12 @@ import { useFrameBatch } from './frame-batch.ts';
 // opens (FR-040).
 export const windowTitleId = (view: string) => `window-title-${view}`;
 
-export function TitleBar({ window, session, dispatch, viewName }: ShellProps & { window: WindowState; session: Session }) {
+export function TitleBar({ window, session, dispatch, viewName, apps }: ShellProps & { window: WindowState; session: Session }) {
   const { view, maximized } = window;
   const name = viewName(view);
+  // An app's own title bar text, such as `Terminal — ~/work`, in place of
+  // its name; the controls, dock and menus keep the name (006 contracts/shell.md).
+  const WindowTitle = apps.find((app) => app.id === view)?.WindowTitle;
   const drag = useRef<{ pointer: number; startX: number; startY: number; x: number; y: number } | null>(null);
   const schedule = useFrameBatch();
 
@@ -46,7 +49,7 @@ export function TitleBar({ window, session, dispatch, viewName }: ShellProps & {
       {/* First in the DOM, so Tab from the focused title reaches the controls
           next, then the content (research R9); the style sheet centers it. */}
       <div className="window-title" id={windowTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
-        {name}
+        {WindowTitle === undefined ? name : <WindowTitle />}
       </div>
       {session === null ? (
         <div className="controls">

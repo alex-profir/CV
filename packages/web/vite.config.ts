@@ -4,6 +4,7 @@
 import { defineConfig } from 'vite';
 import { containerBreakpoints } from './scripts/container-breakpoints.ts';
 import { cvFonts, fontAssetName } from './scripts/fonts-plugin.ts';
+import { specListPlugin } from './scripts/spec-list.ts';
 
 export default defineConfig({
   root: import.meta.dirname,
@@ -12,7 +13,7 @@ export default defineConfig({
   // A successful build prints nothing on stdout: the site check's report
   // owns it.
   logLevel: 'warn',
-  plugins: [cvFonts()],
+  plugins: [cvFonts(), specListPlugin()],
   oxc: {
     jsx: { runtime: 'automatic', importSource: 'react' },
   },

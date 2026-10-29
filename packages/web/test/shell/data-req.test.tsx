@@ -33,7 +33,7 @@ const DESKTOP: [string, string][] = [
   ['#menu-site', ids(13, 15)],
   ['#menu-app', ids(14, 15, 27, 62, 63, 65)],
   ['#menu-window', ids(14, 25, 26, 29, 64)],
-  ['section.window', ids(17, 18, 21, 30, 39)],
+  ['section.window', ids(17, 18, 21, 30, 39, 67, 69, 70, 71)],
   ['div.title-bar', ids(16, 19)],
   ['div.window-title', ids(40)],
   ['button.control-close', ids(16, 23, 28)],
@@ -42,7 +42,8 @@ const DESKTOP: [string, string][] = [
   ['div.window-content', ids(22)],
   ['div.resize-handles', ids(61)],
   ['div.pad[role="group"]', ids(20, 27, 62)],
-  ['div.dock[role="toolbar"]', ids(3, 39)],
+  ['div.dock[role="toolbar"]', ids(3, 39, 68)],
+  ['div.dock-lens', ids(68)],
   ['button.dock-item', ids(11, 12, 64)],
   ['div.about-view', ids(38)],
   ['div.about-shortcuts', ids(29)],
@@ -120,7 +121,7 @@ describe('005-os-shell-FR-055: every target in the shell carries its requirement
   });
 
   test('every 005 ID in a data-req, in the source and the rendered root, names a requirement of the spec', async () => {
-    expect(REQUIREMENTS.size).toBe(66);
+    expect(REQUIREMENTS.size).toBe(71);
     const source: string[] = [];
     const walk = (dir: string) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

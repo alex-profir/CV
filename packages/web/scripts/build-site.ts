@@ -29,6 +29,7 @@ import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
+import { checkSpecList } from './spec-list.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
 
@@ -227,6 +228,9 @@ export async function buildSite(out: string): Promise<SiteManifest> {
 
   // 0. The fonts match the font tokens, and every listed file exists.
   checkFonts();
+  // The Terminal's spec list, read before both builds so an empty one fails
+  // with its own message (006 contracts/site.md).
+  checkSpecList();
 
   // 1. Client build.
   await build(clientConfig(siteDir));

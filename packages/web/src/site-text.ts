@@ -50,7 +50,7 @@ export const siteText = deepFreeze({
   // Patterns hold `{key}` placeholders, filled by `fill`.
   os: {
     // Window, app and view names.
-    views: { cv: 'CV', about: 'About this site' },
+    views: { cv: 'CV', terminal: 'Terminal', about: 'About this site' },
     // Between the app's name and the site name in the title (FR-042).
     titleSeparator: ' – ',
     // The CV app's link to /cv (FR-007).
@@ -63,6 +63,166 @@ export const siteText = deepFreeze({
       resizeCancelled: 'Resize cancelled.',
       maximized: '{window} maximized.',
       restored: '{window} restored.',
+    },
+  },
+  // The Terminal (006 design/wireframes.md Site text, contracts/commands.md
+  // Replies). Patterns hold `{key}` placeholders; a placeholder for a command
+  // control, such as `{help}`, is filled with the control by the engine.
+  terminal: {
+    // The window title: `Terminal — ~/work`, or `Terminal — vim`.
+    windowTitle: '{name} — {path}',
+    vimTitle: 'vim',
+    clearOutput: 'Clear output',
+    commandLine: 'Command',
+    prompt: { user: 'guest' },
+    greeting: {
+      desktop: {
+        status: 'cv-os terminal · read only · nothing you type leaves your browser',
+        intro: 'This is my CV as a terminal. Type a command and press Enter, or pick one to start. New here? Try {help}.',
+      },
+      phone: {
+        status: 'read only · stays in your browser',
+        statusNarrow: 'read only · in your browser',
+        intro: 'My CV as a terminal. Tap a key below, or type a command. New? Try {help}.',
+      },
+      name: '{name} — {label}',
+      // A CV with a name and no label.
+      nameAlone: '{name}',
+      commands: ['help', 'about', 'work', 'projects', 'cv'],
+    },
+    // By command name, in `help`'s order: the arguments `help` shows after
+    // the name, the one-line description and the command's own help.
+    commands: {
+      help: { args: '[command]', description: "Every command, or one command's own help", help: 'Lists every command with what it does. Give a command, such as help work, to read its own help.' },
+      about: { args: '', description: 'Name, role, location and summary', help: "Shows the CV's basics: the name, the role, the location and the summary." },
+      work: { args: '', description: 'Every role', help: 'Shows every role in the CV, in its order: the position and organization, the dates, the location, the summary and the highlights.' },
+      projects: { args: '', description: 'Every project', help: 'Shows every project in the CV: its name, dates, description, highlights, keywords and link.' },
+      education: { args: '', description: 'Every school and degree', help: 'Shows every school in the CV: the institution, the study type and area, the dates, the score and the courses.' },
+      skills: { args: '', description: 'Every skill with its level and keywords', help: 'Shows every skill in the CV with its level and keywords.' },
+      languages: { args: '', description: 'Every language with its fluency', help: 'Shows every language in the CV with its fluency.' },
+      interests: { args: '', description: 'Every interest', help: 'Shows every interest in the CV with its keywords.' },
+      contact: { args: '', description: 'Email, website and profiles', help: 'Shows the email address, the website and every profile, as links.' },
+      cv: { args: '', description: "The CV's JSON in vim: cat cv.json | jq | vim -", help: 'Opens the whole CV as JSON in a read-only vim view, by running cat cv.json | jq | vim -. Type :q to come back.' },
+      site: { args: '', description: 'What this site is and how it was built', help: 'Says what this site is and how it was built, with a link to its source code.' },
+      specs: { args: '', description: "The site's feature specs", help: 'Lists every feature spec the site was built from, with its status and its number of requirements.' },
+      ls: { args: '[path]', description: 'List a folder', help: 'Lists the folder you are in, or the folder or file a path names. Click a name to open it.' },
+      cd: { args: '[path]', description: 'Change folder. cd alone goes home', help: 'Changes the folder you are in. cd .. goes up, and cd alone goes back to the home folder, ~.' },
+      cat: { args: '<path>', description: 'Show a file', help: 'Shows a file. cat cv.json shows the whole CV as JSON.' },
+      jq: { args: '[path]', description: 'Pretty-print JSON', help: 'Pretty-prints JSON, from a path or from what is piped in, such as cat cv.json | jq.' },
+      vim: { args: '[path | -]', description: 'Read a file in vim. - reads what is piped in', help: 'Opens a file in a read-only vim view. vim - reads what is piped in. Type :help there for its keys, and :q to leave.' },
+      pwd: { args: '', description: 'Show the current folder', help: 'Shows the path of the folder you are in.' },
+      open: { args: '<name>', description: 'Open cv or about in the shell', help: 'Opens the CV app with open cv, or About this site with open about.' },
+      history: { args: '', description: 'Commands run so far', help: 'Lists the commands run since the Terminal opened, oldest first. The Up and Down arrows step through them.' },
+      clear: { args: '', description: 'Clear the screen', help: 'Clears the output. The commands stay in the history.' },
+      exit: { args: '', description: 'Close the Terminal', help: 'Closes the Terminal on a computer, or goes back to the home screen on a phone.' },
+    },
+    // `help`'s lead, before the table.
+    helpLead: { desktop: 'Click a command to run it, or type it and press Enter.', phone: 'Tap a command to run it.' },
+    // What a command takes, by its kind of arguments, for the usage reply.
+    takes: {
+      none: 'no arguments',
+      'optional-path': 'at most one path',
+      path: 'one path',
+      'optional-command': 'at most one command',
+      name: 'one name, cv or about',
+      'path-or-input': 'one path, or - with piped input',
+      'optional-path-or-input': 'at most one path, or piped input',
+    },
+    replies: {
+      unknown: '{typed} is not a command.',
+      unknownRun: 'Run {help} to see them all, or try:',
+      unknownRunAlone: 'Run {help} to see them all.',
+      usage: '{command} takes {what}. Usage: {usage}',
+      noSuchPath: '{path}: no such file or folder.',
+      isFile: '{path} is a file. Try {command}.',
+      isFolder: '{path} is a folder. Try {command}.',
+      open: 'open takes {cv} or {about}.',
+      jqNotJson: 'jq: {source} is not JSON.',
+      jqFilter: 'jq here only pretty-prints. Usage: jq [path], or … | jq',
+      noInput: "{command} doesn't read piped input. Pipe into jq or vim -.",
+      pipeUsage: 'Usage: {command} | jq, or {command} | vim -',
+      pipeExample: 'cat cv.json',
+      emptySection: 'The CV lists no {section}.',
+    },
+    // The section names in the empty-section reply where 004's section
+    // headings don't name them.
+    emptyNames: { about: 'basics', contact: 'contact details' },
+    // A file's name when its entry's name gives none (FR-044).
+    singular: { work: 'role', projects: 'project', education: 'school' },
+    site: {
+      paragraphs: [
+        'This site is a CV presented as a small operating system that runs in the browser. The CV app opens first, and this Terminal reads the same CV by typing.',
+        'It was built spec first: every feature has a public spec, a reviewed design, a plan and tasks, and every requirement is traced from its spec to the interface and to a test that checks it on every pull request.',
+      ],
+      source: 'Source code, specs and history:',
+    },
+    specs: {
+      // Each counted phrase has its form for 1 and for any other count.
+      lead: { one: 'Every feature is specified before it is built. {n} spec:', other: 'Every feature is specified before it is built. {n} specs:' },
+      tail: 'All specs, plans and history:',
+      link: '{repository}/blob/main/specs/{folder}/spec.md',
+      requirements: { one: '{n} requirement', other: '{n} requirements' },
+      statuses: { Approved: 'Approved', Draft: 'Draft', Invalid: 'Invalid' },
+    },
+    // The status region (FR-028, FR-065).
+    announce: {
+      summary: '{command}: {count} {unit}',
+      units: {
+        entries: { one: 'entry', other: 'entries' },
+        commands: { one: 'command', other: 'commands' },
+        files: { one: 'file', other: 'files' },
+        lines: { one: 'line', other: 'lines' },
+        specs: { one: 'spec', other: 'specs' },
+      },
+      cd: 'Now in {path}',
+      cleared: 'Cleared',
+      vim: '{file}, read only, {n} lines. Type :q to leave.',
+    },
+    vim: {
+      label: '{file} (read only)',
+      roleDescription: 'vim view',
+      readOnlyMark: '[RO]',
+      modes: { normal: 'NORMAL', help: 'HELP' },
+      positions: { top: 'Top', bottom: 'Bot', all: 'All' },
+      fold: '+-- {n} lines: "{key}": {bracket} ',
+      // The message line (contracts/commands.md The vim view's keys).
+      opened: { desktop: '"{file}" [readonly] {n} lines  ·  za or click opens a fold', phone: '"{file}" {n} lines  ·  tap a fold' },
+      readOnly: '{file} is read only: nothing can be changed',
+      unknown: ':{typed} is not a command here. :help lists the keys.',
+      match: '/{text}   match {index} of {count}  ·  n next  ·  N previous',
+      notFound: '/{text}   not found',
+      entry: { '/': 'Search', ':': 'Command' },
+      chips: { help: ':help', quit: ':q' },
+      helpName: 'keys',
+      helpHeading: 'KEYS FOR {file} · the file is read only',
+      helpRows: [
+        { label: 'Move', keys: ['h j k l or arrows', 'w b word', '0 $ line start, end', 'gg G top, bottom', '{ } previous, next section', 'PgUp PgDn'] },
+        { label: 'Search', keys: ['/text then Enter', 'n N next, previous match'] },
+        { label: 'Folds', keys: ['za open or close', 'zR open all', 'zM close all'] },
+        { label: 'Lines', keys: [':12 go to line 12', ':set nu / :set nonu'] },
+        { label: 'Leave', keys: [':q back to the Terminal', 'Tab moves focus out'] },
+      ],
+      helpNote: "i, a, o, x, dd and :w can't change the file. Folds and the cursor can be clicked or tapped too.",
+    },
+    pocket: {
+      brand: 'cv-os pocket',
+      vimBrand: 'cv-os pocket · vim keys',
+      commandKeys: 'Command keys',
+      vimKeys: 'Vim keys',
+      // A vim key's name: the key it shows, then what it does, so the
+      // name starts with the key's own text (WCAG 2.5.3).
+      vimKeyName: '{key}, {name}',
+      commands: ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'],
+      vim: [
+        { key: 'j', name: 'Down' },
+        { key: 'k', name: 'Up' },
+        { key: 'za', name: 'Open or close fold' },
+        { key: '/', name: 'Search' },
+        { key: 'n', name: 'Next match' },
+        { key: 'gg', name: 'Top' },
+        { key: 'G', name: 'Bottom' },
+        { key: ':q', name: 'Quit' },
+      ],
     },
   },
   desktop: {
@@ -153,5 +313,8 @@ export const siteText = deepFreeze({
 export function fill(pattern: string, values: Record<string, string | number>): string {
   return pattern.replace(/\{(\w+)\}/g, (match, key: string) => (Object.hasOwn(values, key) ? String(values[key]) : match));
 }
+
+// A counted phrase's form for `n`: English says 1 in the singular (FR-028).
+export const counted = (forms: { one: string; other: string }, n: number): string => (n === 1 ? forms.one : forms.other);
 
 export type SiteText = typeof siteText;

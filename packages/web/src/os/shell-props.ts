@@ -15,4 +15,7 @@ export type ShellProps = {
   mac: boolean;
   // A view's name: its app's, or About this site's.
   viewName: (view: ViewId) => string;
+  // Going home, on mobile: what Home does, and an app's `os.exit()` there
+  // (006 contracts/shell.md).
+  onHome?: () => void;
 };

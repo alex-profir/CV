@@ -164,3 +164,26 @@ describe('004-cv-page-FR-046: the fonts are declared without a literal the token
     expect(result.status).toBe(0);
   });
 });
+
+describe('006-terminal-FR-028: the Terminal’s column count rests on the served mono font’s advance', () => {
+  test("in Chromium, the served JetBrains Mono's advance width equals fonts.json's advance within 0.001 em", async () => {
+    const mono = fonts.families.find((entry) => entry.token === 'font.family.mono')!;
+    const advance = (mono as { advance?: number }).advance;
+    expect(advance).toBe(0.6);
+    const { url } = await serveBuilt();
+    const page = await openPage(`${url}/cv`, { width: 1440 });
+    const measured = await page.evaluate(async (family) => {
+      const size = 100;
+      await document.fonts.load(`${size}px "${family}"`, 'M');
+      const span = document.createElement('span');
+      span.style.cssText = `font: ${size}px "${family}"; white-space: pre; position: absolute; letter-spacing: 0`;
+      span.textContent = 'M0i.'.repeat(25);
+      document.body.append(span);
+      const width = span.getBoundingClientRect().width;
+      span.remove();
+      return { em: width / 100 / size, loaded: document.fonts.check(`${size}px "${family}"`, 'M') };
+    }, mono.family);
+    expect(measured.loaded).toBe(true);
+    expect(Math.abs(measured.em - advance!)).toBeLessThanOrEqual(0.001);
+  });
+});

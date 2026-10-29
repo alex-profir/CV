@@ -37,6 +37,9 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Menu bar height | 32 px | FR-010 |
 | Space the dock keeps at the bottom | 104 px: the dock is 88 px tall, 8 px above the bottom edge, with 8 px between it and the desktop area | FR-010 |
 | Desktop area | The window minus the menu bar and the dock's space: 1440 × 764 at 1440 × 900 | FR-010, FR-021 |
+| How far a window moves | Its title bar stays between the menu bar and the dock's space: its top runs from the desktop area's top to its height less the 40 px title bar. Sideways, at least 120 px of the title bar stays inside the browser window, so its left edge runs from 120 px less its width to the area's width less 120 px. Below the title bar, the window passes behind the dock and past the bottom edge. 120 px keeps the three window controls on screen when a window goes past the right edge | FR-010, FR-021 |
+| How far a resize goes | A dragged edge stops at the menu bar and at the browser window's edges. A bottom edge passes behind the dock. The window stays between 400 × 300 and the desktop area's size | FR-061 |
+| Bringing a focused element into view | The window moves the least distance that shows the element and its focus outline inside the desktop area, at once, never animated | FR-067 |
 | CV window on first load and when opened | Centered, 24 px below the menu bar, 1000 px wide (at most the area's width minus 64), the area's height minus 48. At 1440 × 900 that is 1000 × 716 at x 220, y 56. When that box would cover a shown window's title bar, as when About this site is open, its top moves down 48 px at a time, its bottom edge staying where it is, until it covers no title bar, never shorter than the 300 px minimum. With no such box, the first whose title bar is on no other window's stands, or else the centered box. With About open alone at 1440 × 900, the CV opens 1000 × 668 at x 220, y 104 | FR-005, FR-018 |
 | About this site window when opened | 560 × 520 (fitted to the area), 48 px right of and 48 px below the window in front, so that window's title bar stays visible. With no window open, it is centered like the CV window | FR-018 |
 | Smallest window size | 400 × 300 px | FR-061 |
@@ -54,6 +57,9 @@ The spec sets these "as the design sets". The mockup and its review confirm them
 | Wallpaper | One original wallpaper from tokens, proposed: a deep graphite with an indigo glow top left, a teal glow bottom right and a faint dot grid. Set by the mockup | FR-044 |
 | Theme | One theme, Graphite: a dark shell (menu bar, dock, windows, menus, home screen) around the CV app, which keeps `/cv`'s light look. `/cv`'s fonts: Space Grotesk, Schibsted Grotesk, JetBrains Mono | FR-044 |
 | Opening and closing animation | Windows and full-screen apps fade and grow from 96% over `motion.duration.fast` (150 ms) with `motion.easing.standard`. With reduced motion: the same fade with no movement or scaling | FR-046 |
+| Minimize and restore animation | The window's box shrinks and moves to its dock item's icon, behind the dock, over `motion.duration.base` (250 ms) with `motion.easing.standard`, fading out over the last third. Restoring plays it backwards, out of the icon. About this site goes into and comes out of the site mark in the menu bar. With reduced motion: a fade in place over `motion.duration.fast` (150 ms) | FR-069, FR-046 |
+| Maximize and restore animation | The window's box grows from its position and size to the desktop area over `motion.duration.base` (250 ms) with `motion.easing.standard`, and its corners and shadow drop at the end. Restoring plays it backwards. With reduced motion: no animation, the window changes at once | FR-070, FR-046 |
+| Dock glass | A 70% graphite tint (`color.dock-glass`), with what is behind blurred by 24 px and its color lifted by 1.6. A light rim along the top edge and a hairline along the bottom, and a white sheen fading out halfway down. Where the browser can draw it, the outer 16 px or so bend what is behind toward the edge, by up to 24 px (`size.dock-lens`). The tint keeps the names at 5.9:1 over a white window behind the dock, which the sheen doesn't reach. With reduced transparency: the solid `color.chrome-solid`. In forced colors: the dock's border, as today | FR-068, FR-047 |
 
 ## Desktop shell
 
@@ -104,7 +110,8 @@ dock's CV item has a filled open mark.
 
 - The CV window holds the whole CV, as `/cv` does (FR-006), below a link to `/cv` (FR-007). Its
   content scrolls inside the window, and the desktop never scrolls.
-- The menu bar and the dock are never covered: windows stay between them (FR-010).
+- The menu bar and the dock are never covered: they stay in front of every window. A window moved
+  down passes behind the dock (FR-010).
 - Page title: `CV – [Site name]` (FR-042).
 
 ### The desktop with no window open (FR-013)
@@ -388,10 +395,110 @@ content width the CV uses `/cv`'s phone layout, so it reads without scrolling si
 +--------------------------------------------------------------------------------------------------+
 ```
 
-- Every edge and corner resizes. A resize stops at the smallest window size (400 × 300) and at
-  the edges of the desktop area (FR-061).
+- Every edge and corner resizes. A resize stops at the smallest window size (400 × 300), at the
+  menu bar and at the browser window's edges, and a bottom edge passes behind the dock (FR-061).
 - Dragging a resize handle never moves the window, and dragging a control does nothing (spec:
   edge cases).
+
+### A window moved behind the dock and past the screen's edge (FR-010, FR-021, FR-067)
+
+The CV window after its title bar was dragged down and to the right. The window passes behind the
+dock, which stays in front, and goes past the right and bottom edges. Its title bar stays fully
+visible, above the dock's space.
+
+```
++--------------------------------------------------------------------------------------------------+
+| [*]  CV   Window                                                                                 |
++--------------------------------------------------------------------------------------------------+
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                          #=======================================================|
+|                                          # [x] [-] [^]                     CV                    |
+|                                          #=======================================================|
+|                                          # Open as a page to print or share ->                   |
+|                                          # ----------------------------------------------------  |
+|                                          # [label]                                               |
+|                                          # [NAME]                                                |
+|                                          #                                                       |
+|                                          # [summary ...............]     Based in      [city], [c|
+|                                          # [.......................]     Email               [ema|
+|                                        +----------------+..........]     [network]       [usern  |
+|                                        |  [ CV icon ]   |======================================  |
+|                                        |       CV       || o [start] – [end]                     |
+|                                        |       •        || | [position]                          |
+|                                        |                || | [company]                           |
+|                                        +----------------+| | [summary ............               |
+|                                          # ... the rest of the window is past the bottom edge    |
++--------------------------------------------------------------------------------------------------+
+```
+
+- A move stops when the title bar reaches the menu bar or the dock's space, or when only 120 px of
+  it is left on screen sideways (FR-021). The window can always be grabbed again by its title bar.
+- The dock stays usable over the window: its items, names and open marks are drawn on top
+  (FR-010).
+- When keyboard focus moves to an element behind the dock or past an edge, the window moves just
+  far enough to show it with its focus outline, and keeps its size (FR-067). Pointer moves and
+  scrolling never move it.
+- Page title, menu bar and focus are as on first load.
+
+### A window minimizing into the dock (FR-069)
+
+One frame of the minimize animation, about 70% of the way: the CV window's box shrinks and moves
+toward the CV item's icon, behind the dock, and fades out over the last third. The dock shows its
+glass over the window (FR-068).
+
+```
++--------------------------------------------------------------------------------------------------+
+| [*]  CV   Window                                                                                 |
++--------------------------------------------------------------------------------------------------+
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                                                                                  |
+|                                    #========================#                                    |
+|                                    # [x][-][^]     CV       #                                    |
+|                                    #========================#                                    |
+|                                    # [NAME]                 #                                    |
+|                                    # [summary ....]  [....] #                                    |
+|                                    # [...........]   [....] #                                    |
+|                                    # [...........]          #                                    |
+|                                    #       +----------------+                                    |
+|                                    #=======|  [ CV icon ]   |                                    |
+|                                            |       CV       |                                    |
+|                                            |       •        |                                    |
+|                                            |                |                                    |
+|                                            +----------------+                                    |
++--------------------------------------------------------------------------------------------------+
+```
+
+- The window ends at the CV item's icon and is hidden. The dock's open mark turns hollow
+  (FR-063). Restoring plays the same frames backwards.
+- Focus has already moved, and screen readers have already been told, when the animation starts.
+  Acting again ends it at once (FR-071).
+- Maximizing has no frame of its own: the window's box grows to the desktop area as in "A window
+  maximized", and back on restore (FR-070).
 
 ### A window minimized, with no other window open (FR-063)
 

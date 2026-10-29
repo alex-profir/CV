@@ -2,7 +2,7 @@
 // off, `<main>` holds every shown field of the CV document in order, the
 // style sheet applied, and there's no control a script would have to make
 // work. The offline part reuses the field and style checks.
-import type { Page } from 'playwright';
+import type { Locator, Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
@@ -15,32 +15,39 @@ const CLOSE = '\u0002';
 
 const collapse = (value: string) => value.replace(/\s+/g, ' ');
 
-// The text of `<main>`, or of the element `root` names, in DOM order, with a
-// marker where each `time[datetime]` and `a[href]` starts, and white space
-// collapsed. Empty when there's no such element.
-export function mainSequence(page: Page, root = 'main'): Promise<string> {
-  return page.evaluate(
-    ({ open, close, root }) => {
-      const main = document.querySelector(root);
-      if (main === null) return '';
-      let text = '';
-      const walk = (node: Node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          text += node.textContent ?? '';
-          return;
-        }
-        if (node.nodeType !== Node.ELEMENT_NODE) return;
-        const element = node as Element;
-        if (element.matches('time[datetime]')) text += `${open}time:${element.getAttribute('datetime')}${close}`;
-        if (element.matches('a[href]')) text += `${open}href:${element.getAttribute('href')}${close}`;
-        for (const child of element.childNodes) walk(child);
-      };
-      walk(main);
-      return text.replace(/\s+/g, ' ');
-    },
-    { open: OPEN, close: CLOSE, root },
-  );
+// An element's text in DOM order, with a marker where each `time[datetime]`
+// and `a[href]` starts, and white space collapsed. Run in the page.
+function sequenceIn(root: Element, { open, close }: { open: string; close: string }): string {
+  let text = '';
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent ?? '';
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const element = node as Element;
+    if (element.matches('time[datetime]')) text += `${open}time:${element.getAttribute('datetime')}${close}`;
+    if (element.matches('a[href]')) text += `${open}href:${element.getAttribute('href')}${close}`;
+    for (const child of element.childNodes) walk(child);
+  };
+  walk(root);
+  return text.replace(/\s+/g, ' ');
 }
+
+// The text of `<main>`, or of the element `root` names, as `sequenceIn`
+// gives it. Empty when there's no such element.
+export async function mainSequence(page: Page, root = 'main'): Promise<string> {
+  const element = await page.$(root);
+  if (element === null) return '';
+  try {
+    return await element.evaluate(sequenceIn, { open: OPEN, close: CLOSE });
+  } finally {
+    await element.dispose();
+  }
+}
+
+// The same, for the element a locator finds.
+export const elementSequence = (element: Locator): Promise<string> => element.evaluate(sequenceIn, { open: OPEN, close: CLOSE });
 
 function needle(field: ExpectedField): string {
   if ('datetime' in field) return `${OPEN}time:${field.datetime}${CLOSE}`;
@@ -48,7 +55,7 @@ function needle(field: ExpectedField): string {
   return collapse(field.text);
 }
 
-const shown = (field: ExpectedField) => ('datetime' in field ? field.datetime : 'href' in field ? field.href : field.text);
+const shown = (field: ExpectedField) => ('datetime' in field ? (field.visible ?? field.datetime) : 'href' in field ? field.href : field.text);
 
 export type FieldProblem = { type: 'missing-field' | 'out-of-order'; subject: string; detail: string };
 

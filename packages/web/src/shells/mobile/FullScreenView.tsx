@@ -13,7 +13,7 @@ import { siteText } from '../../site-text.ts';
 
 export const appTitleId = (view: string) => `app-title-${view}`;
 
-export function FullScreenView({ view, state, apps, resume, siteData, mac, viewName, onHome, animate }: ShellProps & { view: ViewId; onHome: () => void; animate: boolean }) {
+export function FullScreenView({ view, state, dispatch, apps, resume, siteData, mac, viewName, onHome, animate }: ShellProps & { view: ViewId; onHome: () => void; animate: boolean }) {
   const content = useRef<HTMLDivElement>(null);
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -37,7 +37,7 @@ export function FullScreenView({ view, state, apps, resume, siteData, mac, viewN
         </div>
       </header>
       <div ref={content} className="view-content" data-req="005-os-shell-FR-034">
-        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="mobile" mac={mac} />
+        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="mobile" mac={mac} dispatch={dispatch} onHome={onHome} />
       </div>
     </section>
   );

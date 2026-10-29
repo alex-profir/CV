@@ -20,20 +20,21 @@ import { expectedFields } from './expected.ts';
 import { axeProblems } from './parts/accessibility.ts';
 import { contentProblems } from './parts/content.ts';
 import { cvAppProblems } from './parts/cv-app.ts';
+import { terminalProblems, terminalVariants } from './parts/terminal.ts';
 import { fontProblems } from './parts/fonts.ts';
-import { desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems } from './parts/keyboard.ts';
+import { desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
 import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
 import { forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
-import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants } from './parts/offline.ts';
+import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
 import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
 import type { CheckResult, Part, Problem, Report } from './report.ts';
 import { startServer } from './server.ts';
 import { CV_APP_ROOT, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, reachState, shellContext, stateVariant, waitForShell } from './shell-states.ts';
-import type { Shell } from './shell-states.ts';
+import type { Shell, ShellState } from './shell-states.ts';
 
 // Where the built site and the CV document are, from the repository root.
 export const SITE_DIR = 'packages/web/dist/site';
@@ -65,6 +66,23 @@ const SHELLS: readonly Shell[] = ['desktop', 'mobile'];
 const NARROW_WINDOW_MAX = 400;
 
 const TEXT_ZOOM = 2;
+
+// The Terminal's layout runs (006 contracts/cli.md `layout`): its states in
+// the shell each size gives, at 320 × 568 and 568 × 320, in a window
+// narrowed to 400 px, at 200% and 400% zoom and with text spacing.
+const TERMINAL_LAYOUT_STATES: Record<Shell, readonly string[]> = { desktop: ['terminal-help', 'terminal-vim'], mobile: ['pocket', 'pocket-vim'] };
+
+const TERMINAL_LAYOUTS: readonly { condition: string; shell: Shell; width: number; height: number; deviceScaleFactor: number; textSpacing: boolean; narrow: boolean }[] = [
+  { condition: '', shell: 'mobile', width: 320, height: 568, deviceScaleFactor: 1, textSpacing: false, narrow: false },
+  { condition: '', shell: 'mobile', width: 568, height: 320, deviceScaleFactor: 1, textSpacing: false, narrow: false },
+  { condition: 'narrow-window', shell: 'desktop', width: 1440, height: 900, deviceScaleFactor: 1, textSpacing: false, narrow: true },
+  { condition: '200%-zoom', shell: 'mobile', width: 640, height: 450, deviceScaleFactor: 2, textSpacing: false, narrow: false },
+  { condition: '400%-zoom', shell: 'mobile', width: 320, height: 225, deviceScaleFactor: 4, textSpacing: false, narrow: false },
+  { condition: 'text-spacing', shell: 'desktop', width: 1440, height: 900, deviceScaleFactor: 1, textSpacing: true, narrow: false },
+  { condition: 'text-spacing', shell: 'mobile', width: 375, height: 812, deviceScaleFactor: 1, textSpacing: true, narrow: false },
+];
+
+const TERMINAL_ROOT = '#os .terminal';
 
 export type CheckOptions = { parts?: readonly Part[] };
 
@@ -188,6 +206,22 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           }));
         }
       },
+      terminal: async () => {
+        // As `cv-app`: with no shell at the root, there's no Terminal.
+        if (!shellRoot) {
+          results.push(result('terminal', '-', '-', []));
+          return;
+        }
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          try {
+            const runs = await withShell(chromium, rootUrl, target, {}, (page) => terminalProblems(page, shell, readResume(), ROOT, target.width));
+            for (const { variant, problems } of runs) results.push(result('terminal', ROOT, variant, problems));
+          } catch (error) {
+            for (const variant of terminalVariants(shell, target.width)) results.push(crashed('terminal', ROOT, variant, error));
+          }
+        }
+      },
       accessibility: async () => {
         for (const pagePath of allPaths) {
           for (const width of ACCESSIBILITY_WIDTHS) {
@@ -264,6 +298,10 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           const flow = shell === 'desktop' ? desktopKeyboardProblems : mobileKeyboardProblems;
           results.push(await run('keyboard', ROOT, variant, () => withShell(chromium, rootUrl, target, {}, (page) => flow(page, ROOT, variant))));
         }
+        // The Terminal's flow (006 FR-039), on the desktop.
+        const desktop = shellAt('desktop');
+        const terminalVariant = stateVariant('desktop', 'terminal-keyboard', desktop.width);
+        results.push(await run('keyboard', ROOT, terminalVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => terminalKeyboardProblems(page, ROOT, terminalVariant))));
       },
       'other-sites': async () => {
         for (const pagePath of allPaths) {
@@ -301,6 +339,26 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             }),
           );
         }
+        // The Terminal opened, and every command `help` lists run (006
+        // FR-038), under the state it opens in.
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          const variant = stateVariant(shell, shell === 'desktop' ? 'terminal-open' : 'pocket', target.width);
+          results.push(
+            await run('other-sites', ROOT, variant, async () => {
+              const context = await chromium.newContext(shellContext(target));
+              try {
+                const foreign = await recordRequests(context, server.url);
+                return await otherSiteProblems(context, foreign, rootUrl, ROOT, variant, async (page) => {
+                  await waitForShell(page);
+                  await terminalRows(page, shell);
+                });
+              } finally {
+                await context.close();
+              }
+            }),
+          );
+        }
       },
       fonts: async () => {
         for (const pagePath of allPaths) {
@@ -310,7 +368,7 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           }
         }
         if (!shellRoot) return;
-        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app')]) {
+        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app'), findState('desktop', 'terminal-help'), findState('mobile', 'pocket-vim')]) {
           const variant = stateVariant(state.shell, state.state, state.width);
           results.push(
             await run('fonts', ROOT, variant, () =>
@@ -364,6 +422,27 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             }),
           ),
         );
+        // The Terminal (006 contracts/cli.md `layout`): no horizontal scroll
+        // in it, in each of its states the size gives, at each condition.
+        for (const { condition, shell, width, height, deviceScaleFactor, textSpacing, narrow } of TERMINAL_LAYOUTS) {
+          for (const state of TERMINAL_LAYOUT_STATES[shell]) {
+            const variant = stateVariant(shell, condition === '' ? state : `${state}-${condition}`, width);
+            results.push(
+              await run('layout', ROOT, variant, () =>
+                withShell(chromium, rootUrl, { shell, width, height }, { deviceScaleFactor }, async (page) => {
+                  await reachState(page, { ...findState(shell, state), width, height } as ShellState);
+                  if (textSpacing) await page.addStyleTag({ content: TEXT_SPACING_CSS });
+                  const found: Problem[] = [];
+                  if (narrow) {
+                    const narrowed = await narrowWindow(page, SHELL.terminalWindow);
+                    if (narrowed > NARROW_WINDOW_MAX) found.push({ part: 'layout', page: ROOT, variant, type: 'too-wide', subject: SHELL.terminalWindow, detail: `narrows only to ${Math.round(narrowed)}px, wider than ${NARROW_WINDOW_MAX}px` });
+                  }
+                  return [...found, ...(await horizontalScroll(page, ROOT, variant)), ...(await boxScroll(page, TERMINAL_ROOT, ROOT, variant))];
+                }),
+              ),
+            );
+          }
+        }
         const zoomVariant = stateVariant('desktop', 'text-zoom', desktop.width);
         results.push(
           await run('layout', ROOT, zoomVariant, () =>

@@ -1,0 +1,226 @@
+/* The pocket terminal (006 research R18, design/wireframes.md Mobile shell):
+   the Terminal in a drawn case on a phone, its screen recessed, with big
+   keys below it in portrait and beside it in landscape (FR-051, FR-052).
+   Every value is a token. */
+
+.full-screen .view-content:has(> .pocket) {
+  display: flex;
+  overflow: hidden;
+}
+
+.pocket {
+  display: grid;
+  flex: 1;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: var(--token-space-2);
+  inline-size: 100%;
+  max-inline-size: var(--token-size-pocket-max-width);
+  min-block-size: 0;
+  margin: var(--token-space-2) auto;
+  padding: var(--token-space-3);
+  border: var(--token-border-thin) solid var(--token-color-terminal-rim);
+  border-radius: var(--token-radius-pocket);
+  background:
+    linear-gradient(var(--token-color-terminal-sheen), transparent),
+    var(--token-color-terminal-glass);
+  color: var(--token-color-terminal-text);
+}
+
+.pocket-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--token-space-2);
+}
+
+.pocket-brand,
+.pocket-name {
+  margin: 0;
+  color: var(--token-color-terminal-dim);
+  font-family: var(--token-typography-terminal-pocket-narrow-font-family);
+  font-size: var(--token-font-size-small);
+}
+
+.pocket-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--token-space-2);
+}
+
+.pocket-light {
+  inline-size: var(--token-space-1-5);
+  block-size: var(--token-space-1-5);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-terminal-approved);
+}
+
+.pocket-grille {
+  inline-size: var(--token-space-22);
+  block-size: var(--token-space-2);
+  background: radial-gradient(circle, var(--token-color-terminal-rim) 30%, transparent 35%) 0 0 / var(--token-space-1-5) var(--token-space-1-5);
+}
+
+.pocket-name {
+  letter-spacing: var(--token-font-letter-spacing-label);
+  text-transform: var(--token-font-case-label);
+}
+
+.pocket-screen {
+  display: flex;
+  min-block-size: 0;
+  overflow: hidden;
+  border: var(--token-border-thin) solid var(--token-color-terminal-rim);
+  border-radius: var(--token-radius-pocket-screen);
+  background: var(--token-color-terminal-glass);
+}
+
+.pocket .terminal {
+  flex: 1;
+  font-family: var(--token-typography-terminal-pocket-narrow-font-family);
+  font-size: var(--token-typography-terminal-pocket-narrow-font-size);
+  font-weight: var(--token-typography-terminal-pocket-narrow-font-weight);
+  letter-spacing: var(--token-typography-terminal-pocket-narrow-letter-spacing);
+  line-height: var(--token-typography-terminal-pocket-narrow-line-height);
+}
+
+.pocket .terminal-screen {
+  padding: var(--token-size-terminal-padding-pocket-narrow);
+}
+
+/* On the narrowest phones `ls` shows one name a line (spec edge cases). */
+.pocket .out-columns {
+  flex-direction: column;
+}
+
+.pocket .vim-status,
+.pocket .vim-message,
+.pocket .vim-help {
+  padding-inline: var(--token-size-terminal-padding-pocket-narrow);
+}
+
+.pocket-keys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--token-space-2);
+}
+
+.pocket-key {
+  min-block-size: var(--token-size-pocket-key-narrow);
+  min-inline-size: var(--token-size-home-target);
+  padding: 0 var(--token-space-1);
+  border: var(--token-border-thin) solid var(--token-color-terminal-rim);
+  border-radius: var(--token-radius-pocket-key);
+  background: var(--token-color-pocket-key-accent);
+  color: var(--token-color-terminal-text);
+  font-family: var(--token-typography-chip-font-family);
+  font-size: var(--token-typography-chip-font-size);
+  overflow-wrap: anywhere;
+  touch-action: manipulation;
+}
+
+.pocket-key:active {
+  background: var(--token-color-terminal-heading);
+  color: var(--token-color-terminal-user-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pocket-key:active {
+    translate: 0 var(--token-border-thin);
+  }
+}
+
+/* The keyboard open: the keys and the case's foot make room (FR-053). */
+.pocket[data-keyboard] :is(.pocket-keys, .pocket-foot) {
+  display: none;
+}
+
+@media (--token-breakpoint-pocket-narrow) {
+  .pocket .terminal {
+    font-family: var(--token-typography-terminal-pocket-font-family);
+    font-size: var(--token-typography-terminal-pocket-font-size);
+    font-weight: var(--token-typography-terminal-pocket-font-weight);
+    letter-spacing: var(--token-typography-terminal-pocket-letter-spacing);
+    line-height: var(--token-typography-terminal-pocket-line-height);
+  }
+
+  .pocket .terminal-screen {
+    padding: var(--token-size-terminal-padding-pocket);
+  }
+
+  .pocket .out-columns {
+    flex-direction: row;
+  }
+
+  .pocket .vim-status,
+  .pocket .vim-message,
+  .pocket .vim-help {
+    padding-inline: var(--token-size-terminal-padding-pocket);
+  }
+
+  .pocket-key {
+    min-block-size: var(--token-size-pocket-key);
+  }
+}
+
+/* Landscape: the keys in 2 columns of 4 beside the screen (FR-052). */
+@media (orientation: landscape) {
+  .pocket {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--token-space-1) var(--token-space-2);
+    max-inline-size: var(--token-size-pocket-max-width-landscape);
+    margin-block: var(--token-space-1);
+    padding: var(--token-space-2);
+  }
+
+  .pocket-case {
+    grid-column: 1 / -1;
+  }
+
+  .pocket-foot,
+  .pocket .greeting-status {
+    display: none;
+  }
+
+  .pocket-keys {
+    grid-template-columns: repeat(2, minmax(var(--token-size-home-target), auto));
+    align-content: start;
+    gap: var(--token-space-1);
+    overflow-y: auto;
+  }
+
+  .pocket-key {
+    min-block-size: var(--token-size-home-target);
+  }
+}
+
+/* ---- Modes (FR-033, research R19) ------------------------------------- */
+
+/* Less transparency, and forced colors: the case and its screen are solid,
+   with no sheen; in forced colors, outlined in system colors. */
+@media (prefers-reduced-transparency: reduce) {
+  .pocket,
+  .pocket-screen {
+    background: var(--token-color-shell-surface);
+  }
+}
+
+@media (forced-colors: active) {
+  .pocket,
+  .pocket-screen {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+  }
+
+  .pocket-key {
+    border: var(--token-border-thin) solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .pocket-light,
+  .pocket-grille {
+    border: var(--token-border-thin) solid CanvasText;
+    background: none;
+  }
+}

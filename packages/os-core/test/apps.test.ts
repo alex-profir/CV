@@ -24,7 +24,21 @@ describe('005-os-shell-FR-003: both shells read one app list, each showing the a
   });
 
   test('the real list holds the CV app on both shells', () => {
-    expect(appsFor(SITE_APPS, 'desktop').map((entry) => entry.id)).toEqual(['cv']);
-    expect(appsFor(SITE_APPS, 'mobile').map((entry) => entry.id)).toEqual(['cv']);
+    expect(appsFor(SITE_APPS, 'desktop')[0]!.id).toBe('cv');
+    expect(appsFor(SITE_APPS, 'mobile')[0]!.id).toBe('cv');
+  });
+});
+
+describe('006-terminal-FR-001: the Terminal is an app of both shells, after the CV', () => {
+  test('appsFor on a [cv, terminal] list gives [cv, terminal] for both shells', () => {
+    const list = [app('cv', ['desktop', 'mobile']), app('terminal', ['desktop', 'mobile'])];
+    expect(appsFor(list, 'desktop').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
+    expect(appsFor(list, 'mobile').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
+  });
+
+  test('the real list is [cv, terminal] on both shells, the Terminal needing no network', () => {
+    expect(appsFor(SITE_APPS, 'desktop').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
+    expect(appsFor(SITE_APPS, 'mobile').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
+    expect(SITE_APPS.find((entry) => entry.id === 'terminal')?.needsNetwork).toBe(false);
   });
 });

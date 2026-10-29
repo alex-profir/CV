@@ -109,6 +109,15 @@ describe('004-cv-page-FR-043: the export holds the approved tokens, and the site
     expect(EXPORT_TOKENS.map((token) => token.name).filter((name) => !read.has(name))).toEqual([]);
   });
 
+  // 006-terminal-FR-031: the Terminal's tokens (006 T005) are each read by
+  // a style sheet or by `metrics.ts`, not only listed in the export.
+  test('006-terminal-FR-031: every token the Terminal added is read by a style sheet or by metrics.ts', () => {
+    const read = readTokens();
+    const terminal = EXPORT_TOKENS.map((token) => token.name).filter((name) => /terminal|pocket|command-line/.test(name));
+    expect(terminal.length).toBeGreaterThan(40);
+    expect(terminal.filter((name) => !read.has(name))).toEqual([]);
+  });
+
   test("the export holds design/review.md's five colors, compared without regard to case", () => {
     const review = fs.readFileSync(path.join(REPO_ROOT, 'specs/004-cv-page/design/review.md'), 'utf8');
     const bullet = /^- \*\*Color\*\*:[\s\S]*?(?=\n- |\n\n)/m.exec(review)?.[0] ?? '';
@@ -146,15 +155,16 @@ function sourceFiles(dir: string): string[] {
 }
 
 // The shell's tokens, as the design proposed them (005 design/mockup), with
-// the desktop height renamed (research R7).
+// the desktop height renamed (research R7): 85, then 7 for the dock's glass
+// in the amendment of 2026-10-28 (FR-068).
 const SHELL_TOKENS_FILE = 'specs/005-os-shell/design/mockup/proposed-tokens.css';
 
 describe('005-os-shell-FR-045: every one of the shell tokens is read by a style sheet or by the metrics', () => {
-  test('the 85 tokens the design added are in the export, and each is read', () => {
+  test('the 92 tokens the design added are in the export, and each is read', () => {
     const css = fs.readFileSync(path.join(REPO_ROOT, SHELL_TOKENS_FILE), 'utf8');
     const names = new Set([...css.matchAll(/^\s*(--token-[a-z0-9-]+)\s*:/gm)].map((match) => match[1]!));
     const shell = EXPORT_TOKENS.filter((token) => names.has(codeName(token.name))).map((token) => token.name);
-    expect(shell).toHaveLength(85);
+    expect(shell).toHaveLength(92);
     const read = readTokens();
     expect(shell.filter((name) => !read.has(name))).toEqual([]);
   });

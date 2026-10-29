@@ -45,7 +45,8 @@ describe('005-os-shell-FR-044: the look is original', () => {
     const foreign = await page.evaluate(() =>
       [...document.querySelectorAll('#os svg, #os img, #os picture, #os [style*="background-image"]')]
         .filter((element) => element.closest('.cv') === null)
-        .filter((element) => !(element.tagName.toLowerCase() === 'svg' && (element.getAttribute('data-req')?.includes('005-os-shell-FR-044') || element.classList.contains('arrow'))))
+        // The dock lens's filter draws nothing of its own (FR-068).
+        .filter((element) => !(element.tagName.toLowerCase() === 'svg' && (element.getAttribute('data-req')?.includes('005-os-shell-FR-044') || element.classList.contains('arrow') || element.classList.contains('dock-lens-filter'))))
         .map((element) => element.outerHTML.slice(0, 80)),
     );
     expect(foreign).toEqual([]);
@@ -75,7 +76,7 @@ describe('005-os-shell-FR-045: the shell keeps the design values', () => {
       edit: (root) => {
         const file = path.join(root, 'packages/web/src/apps/index.ts');
         const source = fs.readFileSync(file, 'utf8');
-        fs.writeFileSync(file, source.replace('Object.freeze([cvApp])', 'Object.freeze([cvApp, ...Array.from({ length: 11 }, (_, index) => ({ ...cvApp, id: `cv${index + 2}` }))])'));
+        fs.writeFileSync(file, source.replace('Object.freeze([cvApp, terminalApp])', 'Object.freeze([cvApp, terminalApp, ...Array.from({ length: 10 }, (_, index) => ({ ...cvApp, id: `cv${index + 2}` }))])'));
       },
     });
     for (const [width, height, expected] of [

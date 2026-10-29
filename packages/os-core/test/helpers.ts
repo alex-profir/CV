@@ -10,6 +10,7 @@ export const METRICS: Metrics = {
   menuBar: 32,
   dockReserve: 104,
   titleBar: 40,
+  grab: 120,
   cvWidth: 1000,
   aboutWidth: 560,
   aboutHeight: 520,
@@ -22,6 +23,10 @@ export const METRICS: Metrics = {
   step: 16,
   bigStep: 64,
   motionMs: 150,
+  terminalWidth: 760,
+  terminalHeight: 536,
+  terminalMargin: 40,
+  terminalOffset: 120,
 };
 
 export const TEXT: OsText = {
@@ -40,6 +45,11 @@ export const APPS: AppDeclaration[] = [{ id: 'cv', name: 'CV', shells: ['desktop
 
 export const CONTEXT: ReducerContext = { apps: APPS, metrics: METRICS, text: TEXT };
 
+// Three views (006): the CV and the Terminal as apps, and About this site.
+export const THREE_APPS: AppDeclaration[] = [...APPS, { id: 'terminal', name: 'Terminal', shells: ['desktop', 'mobile'], needsNetwork: false, Icon: Stub, Content: Stub }];
+
+export const THREE_CONTEXT: ReducerContext = { apps: THREE_APPS, metrics: METRICS, text: TEXT };
+
 // The desktop area at 1440 × 900: the viewport minus the menu bar and the
 // dock's space.
 export const AREA = { width: 1440, height: 764 };
@@ -53,23 +63,23 @@ export function deepFreeze<T>(value: T): T {
 }
 
 // The state after hydrating on a desktop with the given area.
-export function desktop(area = AREA): OsState {
-  return run(initialState(APPS, METRICS), [{ type: 'hydrated', shell: 'desktop', area }]);
+export function desktop(area = AREA, context: ReducerContext = CONTEXT): OsState {
+  return run(initialState(context.apps, METRICS), [{ type: 'hydrated', shell: 'desktop', area }], context);
 }
 
-export function mobile(): OsState {
-  return run(initialState(APPS, METRICS), [{ type: 'hydrated', shell: 'mobile', area: null }]);
+export function mobile(context: ReducerContext = CONTEXT): OsState {
+  return run(initialState(context.apps, METRICS), [{ type: 'hydrated', shell: 'mobile', area: null }], context);
 }
 
 // Applies the actions one by one to frozen states, checking every invariant
 // after each.
 export function run(state: OsState, actions: OsAction[], context: ReducerContext = CONTEXT): OsState {
   let current = deepFreeze(state);
-  assertInvariants(current, context.metrics);
+  assertInvariants(current, context.metrics, context.apps);
   for (const action of actions) {
     current = deepFreeze(osReducer(current, action, context));
     try {
-      assertInvariants(current, context.metrics);
+      assertInvariants(current, context.metrics, context.apps);
     } catch (error) {
       throw new Error(`after ${JSON.stringify(action)}: ${(error as Error).message}`, { cause: error });
     }
@@ -82,7 +92,7 @@ function check(holds: boolean, invariant: string, state: OsState): void {
 }
 
 // Every row of data-model.md's Invariants table, naming the one that fails.
-export function assertInvariants(state: OsState, metrics: Metrics): void {
+export function assertInvariants(state: OsState, metrics: Metrics, apps: readonly AppDeclaration[] = APPS): void {
   const views = state.windows.map((window) => window.view);
   check(new Set(views).size === views.length, 'at most one window per view (FR-012)', state);
   if (state.focused !== null) {
@@ -99,7 +109,8 @@ export function assertInvariants(state: OsState, metrics: Metrics): void {
         check(x === 0 && y === 0 && width === area.width && height === area.height, `${window.view} maximized fills the area (FR-065)`, state);
         continue;
       }
-      check(x >= 0 && x + width <= area.width && y >= 0 && y + metrics.titleBar <= area.height, `${window.view}'s title bar is inside the area (FR-021)`, state);
+      const grab = Math.min(metrics.grab, width);
+      check(x + width >= grab && x <= area.width - grab && y >= 0 && y + metrics.titleBar <= area.height, `${window.view}'s title bar is placed as FR-021 sets`, state);
       check(width <= area.width && height <= area.height, `${window.view} is no larger than the area (FR-061)`, state);
       check(width >= Math.min(metrics.minWidth, area.width) && height >= Math.min(metrics.minHeight, area.height), `${window.view} is at least the minimum size (FR-061)`, state);
     }
@@ -110,6 +121,6 @@ export function assertInvariants(state: OsState, metrics: Metrics): void {
   }
   if (state.mobile.open !== null) {
     const open = state.mobile.open;
-    check(open === 'about' || state.mobile.open === null || APPS.some((app) => app.id === open && app.shells.includes('mobile')), 'the full-screen view supports mobile (FR-003)', state);
+    check(open === 'about' || state.mobile.open === null || apps.some((app) => app.id === open && app.shells.includes('mobile')), 'the full-screen view supports mobile (FR-003)', state);
   }
 }

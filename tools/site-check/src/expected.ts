@@ -12,11 +12,13 @@
 //   it (the website, a profile with no username, an entry's address with no
 //   field to link from), it's the address without its scheme.
 import type { Resume } from '@cv/content';
-import { dateRange } from '../../../packages/web/src/format/dates.ts';
+import { dateRange, dateValue } from '../../../packages/web/src/format/dates.ts';
 import { countryName } from '../../../packages/web/src/format/location.ts';
 import { SHOWN_FIELDS, SUPPORTED_SECTIONS } from '../../../packages/web/src/supported.ts';
 
-export type ExpectedField = { path: string; text: string } | { path: string; datetime: string } | { path: string; href: string };
+// A date's `visible` is the text the Terminal shows for it, for its problem
+// lines.
+export type ExpectedField = { path: string; text: string } | { path: string; datetime: string; visible?: string } | { path: string; href: string };
 
 type Entry = Record<string, unknown>;
 
@@ -125,4 +127,56 @@ export function expectedFields(resume: Resume): ExpectedField[] {
     });
   }
   return fields;
+}
+
+// The Terminal's CV commands (006 contracts/commands.md CV commands).
+export const CV_COMMANDS = ['about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact'] as const;
+
+export type CvCommand = (typeof CV_COMMANDS)[number];
+
+const fieldName = (field: ExpectedField) => /^[\w.]+?(?:\[\d+\])?\.(\w+)/.exec(field.path)?.[1];
+
+// What heads an entry in the Terminal, ahead of its dates.
+const TITLE: Partial<Record<CvCommand, (entry: Entry) => readonly string[]>> = {
+  work: () => ['position', 'url', 'name'],
+  projects: (entry) => ['url', present(entry.name) ? 'name' : 'entity'],
+  education: () => ['studyType', 'area', 'url', 'institution'],
+};
+
+const BASICS: Record<'about' | 'contact', readonly string[]> = {
+  about: ['basics.name', 'basics.label', 'basics.location.city', 'basics.location.region', 'basics.location.countryCode', 'basics.summary'],
+  contact: ['basics.email', 'basics.url'],
+};
+
+// The fields a CV command shows, in its order (006 research R20): /cv's
+// fields, with the Terminal's differences written here once.
+// - `about` and `contact` split the basics: the name before the label, and
+//   the location before the summary; a profile's link before its network,
+//   since the link is named "{network}: {username}".
+// - An entry is headed by its title (its role, organization or name), and
+//   its dates follow, where /cv writes the dates first.
+// - The Terminal has no section labels and no link /cv alone shows, so
+//   nothing is added to /cv's fields.
+export function terminalFields(resume: Resume, command: CvCommand): ExpectedField[] {
+  const document = resume as Record<string, unknown>;
+  if (command === 'about' || command === 'contact') {
+    const fields = expectedFields({ basics: document.basics } as Resume);
+    const order = BASICS[command];
+    const shown = order.flatMap((path) => fields.filter((field) => field.path === path));
+    if (command === 'about') return shown;
+    const profiles = fields.filter((field) => field.path.startsWith('basics.profiles['));
+    const byProfile = Map.groupBy(profiles, (field) => /^basics\.profiles\[\d+\]/.exec(field.path)![0]);
+    return [...shown, ...[...byProfile.values()].flatMap((group) => [...group.filter((field) => 'href' in field), ...group.filter((field) => !('href' in field))])];
+  }
+  const entries = Array.isArray(document[command]) ? (document[command] as unknown[]) : [];
+  const fields = expectedFields({ [command]: entries } as Resume).map((field): ExpectedField => ('datetime' in field ? { ...field, visible: dateValue(field.datetime).visible } : field));
+  const title = TITLE[command];
+  if (title === undefined) return fields;
+  const byEntry = Map.groupBy(fields, (field) => Number(/^\w+\[(\d+)\]/.exec(field.path)![1]));
+  return [...byEntry].flatMap(([index, group]) => {
+    const keys = title(entries[index] as Entry);
+    const head = keys.flatMap((key) => group.filter((field) => fieldName(field) === key));
+    const dates: ExpectedField[] = group.filter((field) => 'datetime' in field);
+    return [...head, ...dates, ...group.filter((field) => !head.includes(field) && !dates.includes(field))];
+  });
 }

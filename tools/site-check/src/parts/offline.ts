@@ -14,14 +14,22 @@
 // to the root and `<shell>/cv-app-after-cv/<width>px` after the visit to the
 // CV page.
 //
+// The Terminal (006 FR-041) is opened in the same offline pages, after both
+// visits, in both shells: every command `help` lists is run, and each
+// output's rows compared with the same run online. Its variants are
+// `<shell>/terminal/<command>/<width>px` after the visit to the root and
+// `<shell>/terminal-after-cv/<command>/<width>px` after the visit to the CV
+// page.
+//
 // The part serves the site on a server of its own, so stopping it leaves the
 // check's other parts alone.
 import type { Browser, BrowserContext, Page } from 'playwright';
+import { COMMANDS } from '../../../../packages/web/src/apps/terminal/engine/commands.ts';
 import type { SiteManifest } from '../../../../packages/web/src/routes.ts';
 import type { ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
 import { startServer } from '../server.ts';
-import { SHELL_SIZES, openCvApp, stateVariant, waitForShell } from '../shell-states.ts';
+import { SHELL, SHELL_SIZES, TERMINAL, openCvApp, openTerminal, shellContext, stateVariant, typeLine, vimEntry, waitForShell } from '../shell-states.ts';
 import type { Shell } from '../shell-states.ts';
 import { cvAppFieldProblems } from './cv-app.ts';
 import { unservedFonts } from './fonts.ts';
@@ -29,10 +37,24 @@ import { fieldProblems, mainSequence, unstyledDetail } from './no-script.ts';
 
 export const OFFLINE_VARIANT = '375px';
 
+// Every command `help` lists, in its order; `exit` last, since it closes
+// the Terminal.
+export const TERMINAL_COMMANDS: readonly string[] = COMMANDS.map((command) => command.name);
+
+const SHELLS = ['mobile', 'desktop'] as const;
+
+// The Terminal's variants after a visit, in the order they're given.
+export const terminalOfflineVariants = (state: 'terminal' | 'terminal-after-cv'): string[] =>
+  SHELLS.flatMap((shell) => TERMINAL_COMMANDS.map((name) => stateVariant(shell, `${state}/${name}`, SHELL_SIZES[shell].width)));
+
 // The shell root's variants, in the order `offlineProblems` gives them:
-// after the visit to the root, then after the visit to the CV page.
-export const rootOfflineVariants = (): string[] =>
-  ['cv-app', 'cv-app-after-cv'].flatMap((state) => (['mobile', 'desktop'] as const).map((shell) => stateVariant(shell, state, SHELL_SIZES[shell].width)));
+// after the visit to the root, then after the visit to the CV page, then
+// the Terminal's after each.
+export const rootOfflineVariants = (): string[] => [
+  ...['cv-app', 'cv-app-after-cv'].flatMap((state) => SHELLS.map((shell) => stateVariant(shell, state, SHELL_SIZES[shell].width))),
+  ...terminalOfflineVariants('terminal'),
+  ...terminalOfflineVariants('terminal-after-cv'),
+];
 
 export type OfflineTargets = {
   // The CV page, the root and the fixed unknown path. The root redirects to
@@ -139,9 +161,106 @@ async function shellOffline(context: BrowserContext, url: string, shell: Shell, 
   }
 }
 
+
+// ---- The Terminal (006 FR-041) ---------------------------------------------
+
+// What a command shows, as rows of text: its output's lines, the vim view's
+// lines for `cv` (left with `:q`), or one row when it closed the Terminal.
+async function commandRows(page: Page, line: string): Promise<string[]> {
+  const before = await page.locator(TERMINAL.run).count();
+  await typeLine(page, line);
+  await page.waitForFunction(
+    ([run, vim, window, count]) =>
+      document.querySelector(vim as string) !== null || document.querySelector(window as string) === null || document.querySelectorAll(run as string).length !== count,
+    [TERMINAL.run, TERMINAL.vimText, `${SHELL.terminalWindow}, ${SHELL.terminalFullScreen}`, before] as const,
+    { timeout: SHELL_START_MS },
+  );
+  if (await page.locator(TERMINAL.vimText).count()) {
+    const rows = await page.locator(`${TERMINAL.vimLine} .vim-code`).allTextContents();
+    await vimEntry(page, ':', 'q');
+    await page.locator(TERMINAL.commandLine).waitFor({ state: 'visible', timeout: SHELL_START_MS });
+    return rows.map((row) => row.trimEnd());
+  }
+  if ((await page.locator(`${SHELL.terminalWindow}, ${SHELL.terminalFullScreen}`).count()) === 0) return ['(the Terminal closed)'];
+  const run = page.locator(TERMINAL.run).last().locator('.run-output');
+  if ((await page.locator(TERMINAL.run).count()) === 0 || (await run.count()) === 0) return [];
+  return (await run.innerText()).split('\n').map((row) => row.trim()).filter((row) => row !== '');
+}
+
+export type TerminalRows = Map<string, string[]>;
+
+// Opens the Terminal on a page showing `shell` and runs every command.
+export async function terminalRows(page: Page, shell: Shell): Promise<TerminalRows> {
+  await openTerminal(page, shell);
+  const rows: TerminalRows = new Map();
+  for (const name of TERMINAL_COMMANDS) rows.set(name, await commandRows(page, name));
+  return rows;
+}
+
+// The rows of every command online, in each shell, as the baseline.
+export async function onlineTerminalRows(browser: Browser, input: OfflineInput): Promise<Record<Shell, TerminalRows>> {
+  const server = await startServer({ siteDir: input.siteDir, manifest: input.manifest });
+  try {
+    const found = {} as Record<Shell, TerminalRows>;
+    for (const shell of SHELLS) {
+      const context = await browser.newContext({ serviceWorkers: 'block', ...shellContext({ shell, ...SHELL_SIZES[shell] }) });
+      try {
+        const page = await context.newPage();
+        await page.goto(`${server.url}/`, { waitUntil: 'load' });
+        await waitForShell(page);
+        found[shell] = await terminalRows(page, shell);
+      } finally {
+        await context.close();
+      }
+    }
+    return found;
+  } finally {
+    await server.close();
+  }
+}
+
+// The root offline in `shell`, its Terminal's commands compared with the
+// online run, each under its own variant.
+async function terminalOffline(context: BrowserContext, url: string, shell: Shell, state: 'terminal' | 'terminal-after-cv', online: TerminalRows, page: string): Promise<OfflineResult[]> {
+  const results = TERMINAL_COMMANDS.map((name) => ({ page, variant: stateVariant(shell, `${state}/${name}`, SHELL_SIZES[shell].width), problems: [] as Problem[] }));
+  const add = (index: number, type: string, detail: string) => results[index]!.problems.push({ part: 'offline', page, variant: results[index]!.variant, type, subject: TERMINAL_COMMANDS[index]!, detail });
+  const tab = await context.newPage();
+  try {
+    await tab.setViewportSize(SHELL_SIZES[shell]);
+    let opened = true;
+    try {
+      await tab.goto(`${url}/`, { waitUntil: 'load' });
+      await waitForShell(tab, SHELL_START_MS);
+      await openTerminal(tab, shell);
+    } catch {
+      opened = false;
+    }
+    for (const [index, name] of TERMINAL_COMMANDS.entries()) {
+      if (!opened) {
+        add(index, 'not-available', `the Terminal did not open ${WHEN}`);
+        continue;
+      }
+      let rows: string[];
+      try {
+        rows = await commandRows(tab, name);
+      } catch {
+        add(index, 'not-available', `${name} showed nothing ${WHEN}`);
+        continue;
+      }
+      const expected = online.get(name) ?? [];
+      const row = [...Array(Math.max(rows.length, expected.length)).keys()].find((at) => rows[at] !== expected[at]);
+      if (row !== undefined) add(index, 'offline-mismatch', `output differs from the online run at row ${row + 1}`);
+    }
+  } finally {
+    await tab.close();
+  }
+  return results;
+}
+
 // One visit to `first` online, in a fresh context, then the root offline in
-// both shells.
-async function rootAfterVisit(browser: Browser, input: OfflineInput, first: string, state: string): Promise<OfflineResult[]> {
+// both shells, its CV app and its Terminal.
+async function rootAfterVisit(browser: Browser, input: OfflineInput, first: string, state: string, online: Record<Shell, TerminalRows>): Promise<OfflineResult[]> {
+  const terminal: OfflineResult[] = [];
   const results = (['mobile', 'desktop'] as const).map((shell) => ({ shell, result: { page: input.rootPath, variant: stateVariant(shell, state, SHELL_SIZES[shell].width), problems: [] as Problem[] } }));
   const server = await startServer({ siteDir: input.siteDir, manifest: input.manifest });
   let serverOpen = true;
@@ -164,17 +283,28 @@ async function rootAfterVisit(browser: Browser, input: OfflineInput, first: stri
       }
       await shellOffline(context, server.url, shell, input.fields, input.families, add);
     }
+    for (const shell of SHELLS) terminal.push(...(controlled ? await terminalOffline(context, server.url, shell, 'terminal', online[shell], input.rootPath) : noWorker(shell, 'terminal', input.rootPath, first)));
   } finally {
     await context.close();
     if (serverOpen) await server.close();
   }
-  return results.map(({ result }) => result);
+  return [...results.map(({ result }) => result), ...terminal];
+}
+
+// The Terminal's results when no worker took control: one line per shell.
+function noWorker(shell: Shell, state: 'terminal' | 'terminal-after-cv', page: string, first: string): OfflineResult[] {
+  return TERMINAL_COMMANDS.map((name, index) => {
+    const variant = stateVariant(shell, `${state}/${name}`, SHELL_SIZES[shell].width);
+    return { page, variant, problems: index === 0 ? [{ part: 'offline', page, variant, type: 'no-service-worker', subject: first, detail: 'no service worker took control after the first visit' }] : [] };
+  });
 }
 
 const mainText = (page: Page) => page.evaluate(() => (document.querySelector('main')?.textContent ?? '').replace(/\s+/g, ' ').trim());
 
 export async function offlineProblems(browser: Browser, input: OfflineInput): Promise<OfflineResult[]> {
   const { cvPath, rootPath, notFoundPath, fields, families, shellRoot = false } = input;
+  const online = shellRoot ? await onlineTerminalRows(browser, input) : null;
+  const terminalAfterCv: OfflineResult[] = [];
   // The root is a target of the visit to the CV page only when it
   // redirects; the shell's page is opened in both shells instead.
   const targets = shellRoot ? [cvPath, notFoundPath] : [cvPath, rootPath, notFoundPath];
@@ -237,6 +367,7 @@ export async function offlineProblems(browser: Browser, input: OfflineInput): Pr
         if (controlled) await shellOffline(context, server.url, shell, fields, families, add);
         else add('no-service-worker', cvPath, 'no service worker took control after the first visit');
       }
+      for (const shell of SHELLS) terminalAfterCv.push(...(controlled ? await terminalOffline(context, server.url, shell, 'terminal-after-cv', online![shell], rootPath) : noWorker(shell, 'terminal-after-cv', rootPath, cvPath)));
     }
   } finally {
     await context.close();
@@ -245,6 +376,7 @@ export async function offlineProblems(browser: Browser, input: OfflineInput): Pr
   const pages = [...results].map(([page, problems]) => ({ page, variant: OFFLINE_VARIANT, problems }));
   if (!shellRoot) return pages;
   // In 004's order: the CV page, the root, the unknown path.
-  const root = [...(await rootAfterVisit(browser, input, rootPath, 'cv-app')), ...afterCv.map(({ result }) => result)];
+  const [mobile, desktop, ...terminal] = await rootAfterVisit(browser, input, rootPath, 'cv-app', online!);
+  const root = [mobile!, desktop!, ...afterCv.map(({ result }) => result), ...terminal, ...terminalAfterCv];
   return [pages[0]!, ...root, ...pages.slice(1)];
 }

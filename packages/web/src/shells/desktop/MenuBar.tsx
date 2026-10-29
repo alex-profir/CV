@@ -33,7 +33,7 @@ export function focusDock(): void {
   moveFocus(document.querySelector<HTMLElement>('#os .dock .dock-item'));
 }
 
-export function MenuBar({ state, dispatch, resume, siteData, mac, viewName }: ShellProps) {
+export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName }: ShellProps) {
   const [open, setOpen] = useState<MenuId | null>(null);
   const [active, setActive] = useState(0);
   const bar = useRef<HTMLDivElement>(null);
@@ -135,10 +135,17 @@ export function MenuBar({ state, dispatch, resume, siteData, mac, viewName }: Sh
 
   const own = siteText.desktop.ownMenu;
   const maximized = focusedWindow?.maximized != null;
+  // The focused app's own items come first, then a separator (006 contracts/shell.md).
+  const appItems = focused === null ? [] : (apps.find((app) => app.id === focused)?.menuItems ?? []);
+  const itemEntries: MenuEntry[] =
+    appItems.length === 0
+      ? []
+      : [...appItems.map((item): MenuEntry => ({ kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, 'data-req': item['data-req'] })), { kind: 'separator', key: 'after-app' }];
   const appEntries: MenuEntry[] =
     focused === null
       ? []
       : [
+          ...itemEntries,
           ...(focused === 'cv' ? [{ kind: 'link' as const, key: 'cv', label: own.cvPage, href: '/cv' }, { kind: 'separator' as const, key: 'after-cv' }] : []),
           { kind: 'action', key: 'move', label: own.move, shortcut: shortcut('move'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'move' }) },
           { kind: 'action', key: 'resize', label: own.resize, shortcut: shortcut('resize'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'resize' }) },
