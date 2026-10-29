@@ -416,4 +416,6 @@ move it, as the spec's Assumptions say of the file system.
 None. Every Constitution Check row is Pass, and no exception is needed. The design gate for the
 amendment's UI tasks is a prerequisite recorded for `tasks.md`, not an exception. The hand-written
 token export is allowed by the constitution's interim provision on local mockups. The redirect
-guard plugin is temporary and listed above with its reason and its end.
+guard plugin is temporary and listed above with its reason and its end. The four differences
+from bash that just-bash's gaps cause (research G3, G5, G11, G12) are allowed by spec FR-068, not
+exceptions here.

@@ -568,16 +568,16 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 |---|--------------|------------|
 | G1 | A write that the file system refuses inside a redirect (`echo hi > about`) rejects `exec` instead of printing `bash: about: Permission denied` with status 1. The line's earlier output is lost | Upstream fix first. Until it is released, the adapter refuses a redirect to a protected path before the line runs (R28) |
 | G2 | A trailing `\|` (`ls \|`) parses as a complete line and runs | The adapter's syntax check (R27) |
-| G3 | stdout and stderr come back as two strings, so their lines can't be interleaved as a terminal shows them, even under `2>&1` in a group | Shown stdout first, then stderr (R30). SC-014 compares each stream on its own (R38) |
+| G3 | stdout and stderr come back as two strings, so their lines can't be interleaved as a terminal shows them, even under `2>&1` in a group | Shown stdout first, then stderr (R30). SC-014 compares each stream on its own (R38) (spec FR-068, SC-014) |
 | G4 | Every `exec` starts from a fresh copy of the shell's state: variables, functions, options and the working folder reset after each line. Files are kept | The adapter carries the state (R27) |
-| G5 | `tee` reports any write error as "No such file or directory" | Upstream fix. Until then, `tee` onto a protected file says the wrong reason, and the file is still unchanged |
+| G5 | `tee` reports any write error as "No such file or directory" | Upstream fix. Until then, `tee` onto a protected file says the wrong reason, and the file is still unchanged (spec FR-068) |
 | G6 | The default file system creates missing parent folders on write (`echo hi > /nope/x` succeeds) | The Terminal's file system refuses it with "No such file or directory" (R28) |
 | G7 | `FsStat` has no owner, so `ls -l` always shows `user user` | The `ls` wrapper writes the owner (R28) |
 | G8 | Functions can't override `exit` | Not needed: R27 detects `exit` |
 | G9 | `$HOME` defaults to `/` | Set to `/home/guest` (R27) |
 | G10 | `compgen -b` prints nothing, and `type` abbreviates a function's body with `...` | R27 takes bodies from the parser, R32 lists builtins in a tested constant |
-| G11 | `env` also lists variables that weren't exported | Upstream fix. Until then, `env` lists them. `export -p` is right |
-| G12 | `jq`'s error messages are worded differently from jq 1.7's (`jq: parse error: Unexpected token EOF at position 2`) | Accepted: they are jq's errors as the shell's jq gives them (FR-056). R38 leaves jq's errors out of the parity list |
+| G11 | `env` also lists variables that weren't exported | Upstream fix. Until then, `env` lists them. `export -p` is right (spec FR-068) |
+| G12 | `jq`'s error messages are worded differently from jq 1.7's (`jq: parse error: Unexpected token EOF at position 2`) | Accepted: they are jq's errors as the shell's jq gives them (FR-056). R38 leaves jq's errors out of the parity list (spec FR-068) |
 | G13 | `yes` ends with status 0 when it reaches the output limit, printing exactly that much, instead of being stopped | The adapter treats a line whose output reached 1,048,576 bytes as stopped by the output limit (R33) |
 | G14 | A command that passes the output limit (`seq 1000000`) prints none of its output, where bash would have printed up to the stop | Accepted: the line shows FR-069's text with what earlier commands printed. Upstream report |
 | G15 | `maxLoopIterations` (100,000 by default) makes `seq 200000` fail with "iteration limit exceeded", which bash never says | Set to 1,000,000,000, so FR-069's three limits are the ones that stop a line (R33) |

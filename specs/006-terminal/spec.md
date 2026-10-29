@@ -123,6 +123,20 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
   the replies of FR-016 and FR-048 and command controls differ from bash by design. What does it
   compare? → A: Only command lines that use the standard commands of FR-068; the site's commands,
   those replies and controls are not compared (SC-014). Approved by the owner 2026-10-29.
+- Q (from `/speckit-analyze`): Should a mistyped standard command, such as `grpe`, get
+  suggestions? → A: No. Suggestions come only from the site's commands and aliases, so `sudo`
+  keeps getting only `help` (FR-016). Approved by the owner 2026-10-29.
+- Q (from `/speckit-analyze`): Where may the shell differ from bash and GNU? → A: Only in the four
+  ways FR-068 lists, each to go once the shell no longer has it (FR-049, FR-056, FR-068), and
+  SC-014 compares each output stream on its own, without bash's `bash: line N: ` prefix (SC-014).
+  Approved by the owner 2026-10-29.
+- Q (from `/speckit-analyze`): FR-060 calls Ctrl+D, Ctrl+F and Ctrl+U reserved, but FR-074 takes
+  Ctrl+F and Ctrl+U on macOS. Which is it? → A: The vim view takes none of the three on any
+  system, and the reserved keys are those of the visitor's system (FR-060). Approved by the owner
+  2026-10-29.
+- Q (from `/speckit-analyze`): Does the 10,000-command limit count commands the shell runs for
+  itself? → A: No. A line runs 10,000 of its own commands before it is stopped (FR-069). Approved
+  by the owner 2026-10-29.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -569,7 +583,7 @@ can't merge.
 - **The Terminal closed, minimized or the shell switched** with the vim view open: closing ends the
   view with the rest of the Terminal (FR-021). Minimizing and switching keep it open, with its
   cursor, folds and search.
-- **Ctrl+D, Ctrl+U or Ctrl+F** in the vim view: they keep the browser's meaning. Page Down and
+- **Ctrl+D, Ctrl+U or Ctrl+F** in the vim view: they keep the browser's meaning on every system. Page Down and
   Page Up move by a page instead (FR-060).
 - **A screen reader and a long output**, such as `projects`: only a one-line summary is announced,
   not every project, and the user reads the output from its start with their screen reader (FR-028).
@@ -694,12 +708,18 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   `seq`, `date`, `env`, `which`, `basename`, `dirname`, `true` and `false`. `ls`, `cd`, `cat`,
   `pwd` and `history` MUST also take bash's common options for them, such as `ls -la` and
   `cat -n`, still naming files as FR-044 and FR-050 set. Each standard command MUST behave as its
-  GNU version does for the options its own `--help` lists, and MUST answer `--help`. No command
+  GNU version does for the options its own `--help` lists, and MUST answer `--help`. Four
+  differences from bash and GNU are allowed, and no other: `tee` refused a write to a protected
+  file may name a reason other than "Permission denied", with the file still unchanged (FR-049);
+  `env` may also list variables that weren't exported, while `export -p` lists only those that
+  were; `jq`'s error messages may be worded otherwise than jq 1.7's, still starting `jq:`, with a
+  non-zero status (FR-056); and a command line's error output is shown after its other output,
+  not interleaved with it. Each goes once the shell no longer has it. No command
   may reach the network, run a real program or run code in another language, so the shell offers
   no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
   is also a command of FR-008, such as `whoami`, FR-008's meaning wins.
 - **FR-069** (added 2026-10-29): A command line MUST be stopped, with a message in site text that says it ran too
-  long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 commands
+  long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 of its own commands
   or printed 1 MB, whichever comes first. While a command line runs, the Terminal's screen, the
   shell's windows and the rest of the page MUST keep responding to input.
 
@@ -742,7 +762,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   FR-055) MUST be protected, and so MUST the root and `/home`. A command that would change, move,
   rename or delete a protected file or folder, or create something inside a protected folder,
   such as `rm`, `mv`, `touch`, `mkdir`, `cp` onto it or a redirect into it, MUST leave it as it
-  was and give bash's "Permission denied", naming the path as typed. `ls -l` MUST show protected
+  was and give bash's "Permission denied", naming the path as typed (FR-068 allows another
+  reason for `tee`). `ls -l` MUST show protected
   files and folders as read only and owned by someone other than the visitor. The home folder
   itself is not protected (FR-073). Amended 2026-10-29: the whole file system was read only, and
   such commands had the reply for an unknown command.
@@ -772,12 +793,15 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   name in `help` ran its own command.
 - **FR-016**: A command the Terminal doesn't know MUST get a reply, in site text, that names what
   was typed, shown exactly as typed, says it is not a command, and mentions `help`. The reply MUST
-  offer, as controls (FR-015), every command or alias whose name is at most 2 single-letter edits
-  from the typed word, or at most 1 when the typed word has 3 letters or fewer (a letter added,
-  removed or changed, or two neighbouring letters swapped), and every command whose name begins with the typed word when it is at least 2 letters long,
-  closest first and at most 3. Capitals don't count as edits. When none qualifies, the reply
-  offers only `help`. The reply MUST start as bash's does, with the word typed and "command not
-  found".
+  offer, as controls (FR-015), every command of FR-008 or alias whose name is at most 2
+  single-letter edits from the typed word, or at most 1 when the typed word has 3 letters or fewer
+  (a letter added, removed or changed, or two neighbouring letters swapped), and every command of
+  FR-008 whose name begins with the typed word when it is at least 2 letters long, closest first
+  and at most 3. Capitals don't count as edits. The standard commands of FR-068 are never
+  offered: a bash user already knows them, and `sudo` would be offered `sed`. When none
+  qualifies, the reply offers only `help`. The reply MUST start as bash's does, with the word
+  typed and "command not found". Amended 2026-10-29: the reply's start wasn't set, and every
+  command was one of FR-008, as there were no standard commands.
 - **FR-017**: A command of FR-008 with an argument it doesn't take, or missing one it needs, MUST
   get a reply that says so and shows how to use the command. A standard command (FR-068) with a
   wrong option or argument MUST give the error bash's version of it gives. The command line MUST accept at least 200
@@ -852,7 +876,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   MUST print what jq prints for them. With no filter, or `.`, it MUST pretty-print the JSON:
   indented by 2 spaces, keys in their order, with syntax colors for keys, strings, numbers,
   booleans and null that carry no meaning on their own. Input that isn't JSON, or a filter jq
-  can't parse, MUST give jq's error. Amended 2026-10-29: `jq` took no filter but `.`.
+  can't parse, MUST give a jq error (FR-068). Amended 2026-10-29: `jq` took no filter but `.`.
 - **FR-057**: A command line MAY join any commands with `|`, with bash's meaning: each command's
   output becomes the next command's input. The output of the commands of FR-008 MUST be piped as
   the text they show, so `work | grep -i rest` works. A command that reads no input MUST run and
@@ -875,8 +899,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   commands that would change the file, such as `i`, `a`, `o`, `x`, `dd`, `p`, `:w` and `:wq`,
   MUST change nothing and show a message, in site text, that the file is read only. An unknown
   `:` command MUST show a message that names it. Escape MUST cancel a `/` or `:` being typed. The
-  view MUST take over no key a current main browser or screen reader reserves, such as Ctrl+D,
-  Ctrl+F or Ctrl+U (FR-026).
+  view MUST NOT take Ctrl+D, Ctrl+F or Ctrl+U on any system, nor any other key a current main
+  browser or screen reader reserves on the visitor's system (FR-026). Amended 2026-10-29: it
+  named Ctrl+D, Ctrl+F and Ctrl+U as keys every browser reserves.
 - **FR-061**: JSON in the vim view MUST open with each top-level object or array closed to one
   fold line that names its key and its number of lines, and everything else open. Each fold line
   MUST be a control that opens or closes the fold when clicked, tapped, or activated with Enter
@@ -1182,10 +1207,13 @@ plain server-rendered page.
   and CPU slowed as Lighthouse's mobile profile slows them.
 - **SC-014**: For a fixed list of at least 30 command lines that use only the standard commands
   of FR-068 over the CV's files, covering every feature of FR-067 and every command of FR-068, the
-  Terminal's output is the same as bash's with GNU tools on the same files, every time the content
-  check runs, except where FR-044, FR-045 or FR-049 sets otherwise. The commands of FR-008, the
-  replies of FR-016 and FR-048, and command controls (FR-015) are this site's and are not
-  compared.
+  Terminal's output and error output, each compared on its own, and its exit status are the same
+  as bash's with GNU tools on the same files, every time the tests run. The exceptions are where
+  FR-044, FR-045 or FR-049, or a difference FR-068 allows, sets otherwise, and the
+  `bash: line N: ` prefix bash adds when it reads commands from a file rather than a prompt. The
+  commands of FR-008, the replies of FR-016 and FR-048, and command controls (FR-015) are this
+  site's and are not compared. Amended 2026-10-29, after its approval that day: it compared the
+  output as one stream, every time the content check runs, with no exception for bash's prefix.
 - **SC-015**: In 100% of the keyboard check's steps with focus in the command line, its cursor is
   filled, and there is no outline or border around the command line; in 100% of the steps with
   focus elsewhere, the cursor is hollow.
