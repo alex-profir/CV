@@ -84,6 +84,8 @@ window of the export's size.
 
 ## Proposed tokens
 
+The table is reconciled with the token export as research R22 sets: where an existing token already holds a value, the design names it instead of adding one, and the new names follow the export's existing forms.
+
 `proposed-tokens.css` writes these new tokens as the token output would write them. Once the
 design is approved, the plan adds them to `packages/tokens/penpot/tokens.json`, in Penpot's form,
 under these names. Under the interim provision that export is written by hand. Every color refers
@@ -119,22 +121,23 @@ and `color.base.rose-wash` (`#fda4af29`).
 | `color.icon-playground.top` | color | `color.base.amber` |
 | `color.icon-playground.bottom` | color | `color.base.rose` |
 | `color.icon-playground.glyph` | color | `color.base.night` |
-| `size.playground.window-width` | dimension | 1040px |
-| `size.playground.window-height` | dimension | 648px |
-| `size.playground.window-offset` | dimension | 64px |
-| `size.playground.toolbar` | dimension | 44px |
-| `size.playground.status` | dimension | 28px |
-| `size.playground.side` | dimension | 400px |
-| `size.playground.gutter` | dimension | 48px |
-| `size.playground.popover` | dimension | 380px |
-| `size.playground.dialog` | dimension | 440px |
-| `size.playground.progress` | dimension | 6px |
-| `size.playground.loading` | dimension | 420px |
-| `size.playground.stack` | dimension | 720px |
-| `size.playground.stacked-side` | dimension | 240px |
-| `size.code-line` | dimension | 20px |
-| `font-size.code` | dimension | 13px |
-| `typography.code` | typography | JetBrains Mono, `font-size.code`, regular |
+| `size.playground-window-width` | sizing | 1040 |
+| `size.playground-window-height` | sizing | 648 |
+| `size.playground-window-offset` | sizing | 64 |
+| The window's right margin | sizing | `size.terminal-window-margin` (40), which already holds it |
+| `size.playground-toolbar` | sizing | 44 |
+| `size.playground-status` | sizing | 28 |
+| `size.playground-side` | sizing | 400 |
+| `size.playground-gutter` | sizing | 48 |
+| `size.playground-popover` | sizing | 380 |
+| `size.playground-dialog` | sizing | 440 |
+| `size.playground-progress` | sizing | 6 |
+| `size.playground-loading` | sizing | 420 |
+| `breakpoint.playground-stack` | dimension | 720, read in a container query |
+| `size.playground-stacked-side` | sizing | 240 |
+| `size.code-line` | sizing | 20 |
+| The code's font size | fontSizes | `font.size.small` (13), which already holds it |
+| The code's typography | typography | `typography.small` (JetBrains Mono, 13, regular), which already holds it |
 
 The token names in the CSS are the token output's (`--token-color-code-keyword` for
 `color.code.keyword`). The plan may fold a few into existing tokens where one already fits.
