@@ -70,6 +70,13 @@
   FR-081 to FR-085). Code formatting moves into scope. Where a VS Code key is already the shell's
   or the browser's, the shell and the browser keep it and the editor command gets another key
   (FR-084).
+- Q: VS Code's Format Document key, `Shift+Alt+F`, is the shell's Maximize shortcut (005 FR-065).
+  Which keeps it? → A: Format Document. The shell drops its Maximize and Minimize shortcuts, which
+  aren't needed: the window controls and the window's menu commands stay. This is an amendment of
+  005, made in its own pull request (Constitution XI) and merged before this feature's code.
+- Q: Constitution XI ships an amendment in pull requests of its own, so how does the Terminal get
+  `open playground`? → A: Through an amendment of 006 in its own pull request, after this feature
+  ships, as it can only be tested once the Playground exists. FR-006 moves there.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -539,8 +546,8 @@ fails with a clear message and that the pull request can't merge.
 
 **Elsewhere in the site**
 
-- **`open playground` in the Terminal**: opens the Playground, or brings it to the front, as the dock
-  does; on mobile it opens the "best on desktop" screen (FR-006).
+- **`open playground` in the Terminal**: until 006 is amended after this feature (Assumptions),
+  `open` lists the names it accepts, as for any unknown name (006 FR-014).
 - **Scripting turned off**: the site root shows 005's page with a link to `/cv` (005 FR-049). The
   Playground isn't there.
 - **Printing the Playground**: not designed, as for the rest of the shell (005).
@@ -581,10 +588,10 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   FR-004), on desktop and on its mobile screen. Going back MUST show the Playground as it was: the
   same code, cursor, selection, scroll position, open pane, settings and logs. A run MUST go on
   while the spec view shows.
-- **FR-006**: The Terminal's `open` (006 FR-014) MUST accept `playground`, opening the Playground or
-  bringing it to the front as its dock item or home-screen icon does. 006's spec MUST be amended in
-  this feature's pull request to say so, as Constitution XI sets. Running code from the Terminal is
-  not part of this feature.
+- ~~**FR-006**~~: Removed 2026-10-29 – moved to an amendment of 006 in its own pull request, after
+  this feature ships (Constitution XI). It said: the Terminal's `open` (006 FR-014) MUST accept
+  `playground`, opening the Playground or bringing it to the front as its dock item or home-screen
+  icon does.
 
 **Loading TypeScript**
 
@@ -666,8 +673,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-084**: The editor MUST NOT take over a key the shell's shortcuts use (005 FR-025 to FR-029),
   so the menu bar, the dock and the other windows are always one shortcut away (005 FR-030), nor a
   key the current main desktop browsers or screen readers reserve. A command whose VS Code key is
-  taken, such as Format Document, whose key is the shell's Maximize, MUST get another key, shown in
-  the command palette and the keyboard list (FR-085).
+  taken MUST get another key, shown in the command palette and the keyboard list (FR-085). Format
+  Document MUST keep VS Code's key, `Shift+Alt+F`, which the amendment of 005 frees (Assumptions).
 - **FR-085**: A command palette MUST list every editor command with its key, and run the one the
   visitor picks. The Playground's menu MUST show each of its commands with its key (005 FR-029),
   and MUST open a list of every key of the Playground and its editor, saying where one differs from
@@ -1048,7 +1055,12 @@ server-rendered page, unchanged by this feature.
 - **The editor works like VS Code**: as the official Playground's editor does, so a VS Code user's
   habits carry over: the same editing features and the same default keys for their system. The
   shell's shortcuts (005) and keys the browser or a screen reader reserve win over the editor, so
-  a few editor commands, such as Format Document, get another key, listed in the Playground.
+  any editor command whose key is taken gets another one, listed in the Playground. Format Document
+  keeps `Shift+Alt+F`, freed by the amendment of 005 below.
+- **The amendment of 005**: the shell drops its Minimize and Maximize shortcuts (005 FR-063 and
+  FR-065), so `Shift+Alt+F` (`Shift+Option+F` on a Mac) is free for Format Document. The minimize
+  and maximize controls and the window's menu commands stay. It is made in its own pull request,
+  spec first with its design and tests (Constitution XI), and merges before this feature's code.
   Editor settings, keymaps, themes chosen by the visitor and extensions are not part of it.
 - **When TypeScript is downloaded**: on the Playground's first open, as the description says, not on
   the site's first visit, so recruiters on phones never pay for it. Constitution VI is met by keeping
@@ -1073,9 +1085,10 @@ server-rendered page, unchanged by this feature.
 - **Phones**: "phones" means the mobile shell, which 005 chooses by space alone, so tablets and
   narrow desktop windows get the "best on desktop" screen too. The Playground declares the mobile
   shell so its icon shows on the home screen, leading to that screen.
-- **The Terminal**: gets `open playground` through an amendment of 006 in this feature's pull request
-  (FR-006), as 006 expects `open` to gain names as apps are added. Running code from the Terminal is
-  out of scope.
+- **The Terminal**: gets `open playground` through an amendment of 006 in its own pull request,
+  after this feature ships, as 006 expects `open` to gain names as apps are added and it can only
+  be tested once the Playground exists (FR-006, removed). Running code from the Terminal is out of
+  scope.
 - **Show specs**: the Playground follows 007's per-app pattern, now merged.
 - **What the Playground remembers**: the visitor's code and compiler options, in their browser, on
   their device, until they reset them or clear the site's data, as the vision allows for what the
@@ -1102,6 +1115,7 @@ server-rendered page, unchanged by this feature.
 - **Depends on**: Constitution II to IX and the interim provisions on local mockups and deferred
   manual checks; the requirement traceability check (001); the CV content source and its rules
   (002); the design tokens source and token check (003); `/cv`, its offline rules and its checks
-  (004); the OS shell, its windows, menus, full-screen apps and checks (005); the Terminal (006),
-  amended for `open playground`; the requirement inspector's "Show specs" (007); and an approved
-  mockup of the Playground in both shells with its review sign-off.
+  (004); the OS shell, its windows, menus, full-screen apps and checks (005), amended to drop its
+  Minimize and Maximize shortcuts before this feature's code; the requirement inspector's "Show
+  specs" (007); and an approved mockup of the Playground in both shells with its review sign-off.
+  The amendment of the Terminal (006) for `open playground` follows this feature.
