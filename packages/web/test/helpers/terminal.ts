@@ -21,12 +21,38 @@ export const SHELL_PAGE: Record<TerminalShell, ShellOptions> = {
 export const COMMAND_LINE = '.terminal input.command-line';
 
 // Opens the Terminal in an open shell: from the dock, or by a tap on its home
-// screen icon, then waits until its command line has focus.
-export async function openTerminal(page: Page, shell: TerminalShell): Promise<void> {
+// screen icon, then waits until its command line is shown.
+async function openTerminalOnly(page: Page, shell: TerminalShell): Promise<void> {
   if (shell === 'desktop') await page.locator('#os .dock-item[data-app="terminal"]').click();
   else await page.locator('#os .home .app-icon[data-view="terminal"]').tap();
   await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+}
+
+// Opens the Terminal, then waits until its shell has loaded (006 FR-070),
+// so a test starts with the shell ready.
+export async function openTerminal(page: Page, shell: TerminalShell): Promise<void> {
+  await openTerminalOnly(page, shell);
+  await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="running"])');
   await settle(page);
+}
+
+// Opens the Terminal with the shell worker's script held back, for the
+// loading state (006 FR-070). The returned function lets it load.
+export async function openTerminalLoading(page: Page, shell: TerminalShell): Promise<() => Promise<void>> {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/assets/shell-*.js', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openTerminalOnly(page, shell);
+  await page.waitForSelector('.terminal p.shell-loading');
+  await settle(page);
+  return async () => {
+    release();
+    await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="running"])');
+    await page.unroute('**/assets/shell-*.js');
+  };
 }
 
 // The shell opened at its size, with the Terminal open in it.
@@ -39,13 +65,18 @@ export async function openTerminalPage(shell: TerminalShell, options: Partial<Sh
 // How many runs the output holds.
 export const runCount = (page: Page) => page.locator('.terminal section.run').count();
 
-// Types a line into the command line and presses Enter.
+// Until no line waits for the shell or runs (006 FR-070).
+export const linesRun = (page: Page) => page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
+
+// Types a line into the command line, presses Enter, and waits for it to
+// have run.
 export async function typeLine(page: Page, line: string): Promise<void> {
   const input = page.locator(COMMAND_LINE);
   await input.focus();
   await input.fill('');
   await page.keyboard.type(line);
   await page.keyboard.press('Enter');
+  await linesRun(page);
 }
 
 // A run's selector, by its place among the runs from 1.
@@ -151,6 +182,7 @@ async function catInFolder(page: Page): Promise<void> {
   const before = await runCount(page);
   await listing.locator('.run-output button[aria-label^="cat "]').first().click();
   await page.waitForFunction((count) => document.querySelectorAll('.terminal section.run').length > count, before);
+  await linesRun(page);
 }
 
 const SHARED_STATES: TerminalState[] = [

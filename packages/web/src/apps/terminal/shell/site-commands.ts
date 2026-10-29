@@ -9,7 +9,7 @@
 import { defineCommand } from 'just-bash/browser';
 import { command } from '../engine/block.ts';
 import type { Block, Effect, Node } from '../engine/block.ts';
-import { COMMANDS, CV_PIPE, usage } from '../engine/commands.ts';
+import { COMMANDS, CV_PIPE, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
 import { printJson } from '../engine/json.ts';
@@ -17,6 +17,7 @@ import { fill } from '../../../site-text.ts';
 import { fileText, HOME } from './fs.ts';
 import type { TerminalFs } from './fs.ts';
 import type { Recorded } from './protocol.ts';
+import { helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
 
 export type ShellCommand = ReturnType<typeof defineCommand>;
 type Context = Parameters<ShellCommand['execute']>[1];
@@ -29,6 +30,9 @@ export const RENAMED: Readonly<Record<string, string>> = { help: '__cv_help' };
 // What one line's run collects, and what it was sent with.
 export type RunRecord = {
   line: string;
+  // The line's first word as typed, when the adapter lower-cased it to run
+  // a site command: replies name the word as typed (FR-017).
+  typed: string | null;
   history: readonly string[];
   shell: 'desktop' | 'mobile';
   recorded: Recorded[];
@@ -77,11 +81,17 @@ function filesOf(context: RunContext): Map<string, File> {
 
 const ok = (stdout = '', stderr = '', exitCode = 0): Output => ({ stdout, stderr, exitCode });
 
+// `help`'s standard group: the standard commands and builtins the table
+// doesn't list, in name order (research R32).
+const SITE = new Set<string>(SITE_WORDS);
+const BUILTINS = new Set<string>(SHELL_BUILTINS);
+export const STANDARD_GROUP: readonly string[] = [...new Set<string>([...STANDARD_COMMANDS, ...SHELL_BUILTINS])].filter((name) => !SITE.has(name)).sort();
+
 export function siteCommands(shell: SiteShell): ShellCommand[] {
   const files = filesOf(shell.context);
   const runContext = (ctx: Context): RunContext => {
     const run = shell.run();
-    return { ...shell.context, cwd: ctx.cwd, history: run.history, shell: run.shell };
+    return { ...shell.context, cwd: ctx.cwd, history: run.history, shell: run.shell, standard: STANDARD_GROUP };
   };
 
   // Prints a site command's run, records its block and keeps its effect.
@@ -98,18 +108,40 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return ok('', result.stderr, result.status);
   };
 
+  // The word a command was run by: as typed, for the line's first.
+  const typedAs = (word: string) => {
+    const run = shell.run();
+    const typed = run.typed?.toLowerCase() === word ? run.typed : word;
+    run.typed = null;
+    return typed;
+  };
+
+  // `help <name>` for a standard command is its `--help`, for a builtin
+  // the shell's own help (research R32).
+  const standardHelp = (args: readonly string[], ctx: Context): Promise<Output> | null => {
+    const name = args.length === 1 ? args[0]! : null;
+    if (name === null || SITE.has(name.toLowerCase()) || !STANDARD_GROUP.includes(name)) return null;
+    return ctx.exec!(BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never) ? `builtin help ${name}` : `${name} --help`, { cwd: ctx.cwd });
+  };
+
   const rows = COMMANDS.filter((row) => row.run !== undefined).flatMap((row) =>
-    [row.name, ...row.aliases].map((word) => defineCommand(RENAMED[word] ?? word, async (args, ctx) => emit(ctx, row.run!(args, runContext(ctx), word)))),
+    [row.name, ...row.aliases].map((word) =>
+      defineCommand(RENAMED[word] ?? word, async (args, ctx) => {
+        const typed = typedAs(word);
+        return (row.name === 'help' ? standardHelp(args, ctx) : null) ?? emit(ctx, row.run!(args, runContext(ctx), typed));
+      }),
+    ),
   );
 
   // `vim <path>` or `vim -` with input (FR-058).
   const vim = defineCommand('vim', async (args, ctx) => {
     const run = shell.run();
     const { replies } = shell.context.text.terminal;
-    if (args.length !== 1) return usageOf('vim', 'vim');
+    const word = typedAs('vim');
+    if (args.length !== 1) return usageOf(word, 'vim');
     if (args[0] === '-') {
       const input = decode(ctx.stdin);
-      if (input === '') return usageOf('vim', 'vim');
+      if (input === '') return usageOf(word, 'vim');
       const name = run.lastFile !== null && run.lastFile.text === input ? run.lastFile.name : '-';
       run.effects.push({ kind: 'vim', name, pipe: run.pipe ?? run.line, text: input.replace(/\n$/, '') });
       return ok();
@@ -126,7 +158,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   // `cv`: `cat cv.json | jq | vim -` from the home folder (FR-059).
   const cv = defineCommand('cv', async (args, ctx) => {
-    if (args.length > 0) return usageOf('cv', 'cv');
+    if (args.length > 0) return usageOf(typedAs('cv'), 'cv');
     const run = shell.run();
     run.pipe = CV_PIPE;
     try {
@@ -136,10 +168,25 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     }
   });
 
+  // just-bash's `cat` on a folder says "No such file or directory"; bash's
+  // says "Is a directory" (research G16).
+  const folderMessage = async (result: Output, ctx: Context): Promise<Output> => {
+    if (result.exitCode === 0 || result.stderr === '') return result;
+    const lines = await Promise.all(
+      result.stderr.split('\n').map(async (entry) => {
+        const typed = /^cat: (.+): No such file or directory$/.exec(entry)?.[1];
+        if (typed === undefined) return entry;
+        const stat = await shell.fs.stat(shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, typed))).catch(() => null);
+        return stat?.isDirectory === true ? `cat: ${typed}: Is a directory` : entry;
+      }),
+    );
+    return { ...result, stderr: lines.join('\n') };
+  };
+
   // `cat`: each protected file it prints whole is recorded as its block
   // (FR-047).
   const cat = defineCommand('cat', async (args, ctx) => {
-    const result = await ctx.origCommand!(args);
+    const result = await folderMessage(await ctx.origCommand!(args), ctx);
     if (result.exitCode !== 0 || args.length === 0 || args.some((arg) => arg.startsWith('-'))) return result;
     const printed = args.map((arg) => {
       const path = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, arg));
@@ -188,5 +235,10 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return result;
   });
 
-  return [...rows, vim, cv, cat, ls, jq];
+  // `--help` for the standard commands just-bash gives none (research G18).
+  const helped = Object.entries(MISSING_HELP).map(([name, help]) =>
+    defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
+  );
+
+  return [...rows, vim, cv, cat, ls, jq, ...helped];
 }

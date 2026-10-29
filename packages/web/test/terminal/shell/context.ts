@@ -11,7 +11,7 @@ import { siteText } from '../../../src/site-text.ts';
 import { engineContext } from '../../../src/apps/terminal/engine/commands.ts';
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
 import { createShell } from '../../../src/apps/terminal/shell/adapter.ts';
-import type { Shell } from '../../../src/apps/terminal/shell/adapter.ts';
+import type { Limits, Shell } from '../../../src/apps/terminal/shell/adapter.ts';
 import { INITIAL_STATE } from '../../../src/apps/terminal/shell/protocol.ts';
 import type { RunResult, ShellState } from '../../../src/apps/terminal/shell/protocol.ts';
 import { readSpecList } from '../../../scripts/spec-list.ts';
@@ -30,9 +30,10 @@ const inputFor = (name?: FixtureName) => {
 // The site commands' context the shell builds, with its file tree.
 export const treeFor = (name?: FixtureName): RunContext => engineContext(inputFor(name));
 
-// The shell on the real CV, or on a fixture's.
-export function shellFor(name?: FixtureName): TestShell {
-  const shell = createShell(inputFor(name));
+// The shell on the real CV, or on a fixture's; `limits` to reach one limit
+// before another.
+export function shellFor(name?: FixtureName, options: { limits?: Partial<Limits> } = {}): TestShell {
+  const shell = createShell(inputFor(name), options);
   return Object.assign(shell, { state: INITIAL_STATE, history: [] as string[], ids: 0 });
 }
 

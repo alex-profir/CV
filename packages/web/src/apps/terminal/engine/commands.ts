@@ -39,6 +39,9 @@ export type RunContext = {
   cwd: string;
   history: readonly string[];
   shell: 'desktop' | 'mobile';
+  // The standard commands and builtins `help` lists after the site's, in
+  // name order: the shell's, given by it (FR-008, research R32).
+  standard: readonly string[];
 };
 
 // What a site command gives the shell (data-model.md Site command run):
@@ -90,25 +93,32 @@ export const commandNamed = (word: string): Command | null => {
 };
 
 // `help`: the lead, then a row per command, its name, arguments and aliases
-// as controls, and its description (FR-008, FR-015).
+// as controls, and its description (FR-008, FR-015); then the standard
+// group, each name a control running `help <name>` (research R32).
 export function helpBlock(context: RunContext): Block {
-  const { commands, helpLead } = context.text.terminal;
+  const { commands, helpLead, standard } = context.text.terminal;
   const rows = COMMANDS.map((row): Block[] => {
     const { args, description } = commands[row.name];
     const names: Node[] = [command(row.name, 'inline'), ...(args === '' ? [] : [text(` ${args}`, 'dim')]), ...row.aliases.flatMap((alias) => [text('  '), command(alias, 'inline')])];
     return [names, [text(description, 'secondary')]];
   });
-  return [line(text(context.shell === 'mobile' ? helpLead.phone : helpLead.desktop, 'secondary')), { kind: 'rows', rows, req: 'help' }];
+  const block: Node[] = [line(text(context.shell === 'mobile' ? helpLead.phone : helpLead.desktop, 'secondary')), { kind: 'rows', rows, req: 'help' }];
+  if (context.standard.length === 0) return block;
+  return [
+    ...block,
+    { kind: 'line', children: [text(standard.heading, 'primary'), text('  '), text(standard.note, 'dim')], req: 'standard' },
+    { kind: 'columns', cells: context.standard.map((name) => command(`help ${name}`, 'inline', { label: name, req: 'standard' })), req: 'standard' },
+  ];
 }
 
-// `help <name>`: a site command's usage, description and own help. A name
-// that is no command gets the shell's "command not found", which the
-// interface turns into the unknown-command reply (FR-016).
+// `help <name>`: a site command's usage, description and own help. The
+// shell answers for its standard commands and builtins; any other name gets
+// the usage reply (FR-017).
 function help(args: readonly string[], context: RunContext, word: string): SiteRun {
   if (args.length > 1) return usage(word, context, 'help');
   if (args.length === 0) return printed(helpBlock(context));
   const named = commandNamed(args[0]!);
-  if (named === null) return { text: '', block: null, stderr: `bash: ${args[0]}: command not found\n`, status: 1 };
+  if (named === null) return usage(word, context, 'help');
   const own = context.text.terminal.commands[named.name];
   return printed([line(text(usageOf(context, named.name), 'primary')), line(text(own.description, 'secondary')), line(text(own.help))]);
 }
@@ -213,11 +223,11 @@ export const COMMANDS: readonly Command[] = [
 // The words a site command or alias can be run by.
 export const SITE_WORDS: readonly string[] = COMMANDS.flatMap((row) => [row.name, ...row.aliases]);
 
-export type SiteInput = Omit<RunContext, 'fs' | 'cwd' | 'history' | 'shell'>;
+export type SiteInput = Omit<RunContext, 'fs' | 'cwd' | 'history' | 'shell' | 'standard'>;
 
 // The context the site's commands run in, the file tree built once (R9).
 export function engineContext(data: SiteInput): RunContext {
-  const context: RunContext = { ...data, fs: { kind: 'folder', name: '~', children: [] }, cwd: '/home/guest', history: [], shell: 'desktop' };
+  const context: RunContext = { ...data, fs: { kind: 'folder', name: '~', children: [] }, cwd: '/home/guest', history: [], shell: 'desktop', standard: [] };
   context.fs = buildFileSystem(cvInput(context), data.specs, { cvJson: data.cvJson, readme: () => siteBlock(context), spec: (entry) => specBlock(entry, context) });
   return context;
 }

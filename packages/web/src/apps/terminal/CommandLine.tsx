@@ -8,9 +8,8 @@ import { useState } from 'react';
 import type { ClipboardEvent, FormEvent, KeyboardEvent, RefObject, SyntheticEvent } from 'react';
 import { siteText } from '../../site-text.ts';
 import { TERMINAL } from '../../os/metrics.ts';
-import { formatPath } from './engine/files.ts';
+import { formatPrompt } from './engine/output-map.ts';
 import { clock } from './session.ts';
-import type { Path } from './engine/block.ts';
 import { Clock } from './glyphs/Clock.tsx';
 import { PromptMark } from './glyphs/PromptMark.tsx';
 
@@ -19,11 +18,11 @@ const BREAKS = /\r\n|\r|\n/g;
 // `guest ~/work ◷ 18:25 ❯`, the time on desktop only. Screen readers skip
 // it: the command line is named, and each run's heading is its line
 // (FR-027).
-export function Prompt({ folder, time }: { folder: Path; time: string | null }) {
+export function Prompt({ cwd, time }: { cwd: string; time: string | null }) {
   return (
     <span className="prompt" aria-hidden="true" data-req="006-terminal-FR-027 006-terminal-FR-046">
       <span className="prompt-user">{siteText.terminal.prompt.user}</span>
-      <span className="prompt-path">{formatPath(folder)}</span>
+      <span className="prompt-path">{formatPrompt(cwd)}</span>
       {time !== null && (
         <span className="prompt-time">
           <Clock />
@@ -46,7 +45,7 @@ export function focusCommandLine(input: HTMLInputElement | null, touch: boolean)
 
 type Props = {
   draft: string;
-  folder: Path;
+  cwd: string;
   showTime: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   onDraft: (draft: string) => void;
@@ -54,7 +53,7 @@ type Props = {
   onStep: (direction: 'up' | 'down') => void;
 };
 
-export function CommandLine({ draft, folder, showTime, inputRef, onDraft, onSubmit, onStep }: Props) {
+export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit, onStep }: Props) {
   const [caret, setCaret] = useState(draft.length);
   const at = Math.min(caret, draft.length);
 
@@ -88,7 +87,7 @@ export function CommandLine({ draft, folder, showTime, inputRef, onDraft, onSubm
 
   return (
     <form className="prompt-line" onSubmit={submit}>
-      <Prompt folder={folder} time={showTime ? clock(new Date()) : null} />
+      <Prompt cwd={cwd} time={showTime ? clock(new Date()) : null} />
       <label className="visually-hidden" htmlFor="terminal-command-line">
         {siteText.terminal.commandLine}
       </label>

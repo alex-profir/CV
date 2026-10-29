@@ -32,8 +32,9 @@ export type Node =
   // `stream`: which of the shell's streams printed it, for text the shell
   // printed as text (research R30).
   | { kind: 'text'; text: string; tone?: Tone; stream?: 'stdout' | 'stderr' }
-  // `stopped`: the line a stopped run ends with (FR-069).
-  | { kind: 'line'; children: Block; req?: 'stopped' }
+  // `stopped`: the line a stopped run ends with (FR-069); `standard`, the
+  // heading of `help`'s standard group (FR-008).
+  | { kind: 'line'; children: Block; req?: 'stopped' | 'standard' }
   // Depth 1 is a section, 2 an entry, relative to the command's heading
   // (FR-029); a command showing one section uses 1 for its entries.
   | { kind: 'heading'; depth: 1 | 2; children: Block }
@@ -42,9 +43,9 @@ export type Node =
   | { kind: 'time'; datetime: string; text: string; spoken?: string }
   // A command control (FR-015): `line` is the exact command line it runs,
   // `label` the shorter text it may show.
-  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone }
-  // `ls`'s names (FR-043).
-  | { kind: 'columns'; cells: readonly Node[]; req?: 'ls' }
+  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls' | 'standard'; tone?: Tone }
+  // `ls`'s names (FR-043), and `help`'s standard commands (FR-008).
+  | { kind: 'columns'; cells: readonly Node[]; req?: 'ls' | 'standard' }
   // `help`'s and `specs`' table rows.
   | { kind: 'rows'; rows: readonly (readonly Block[])[]; req?: 'help' | 'specs' }
   // `jq`'s output (FR-056).
@@ -79,7 +80,7 @@ export const link = (href: string, children: Block, external: boolean): Node => 
 export const time = (datetime: string, value: string, spoken?: string): Node =>
   spoken === undefined ? { kind: 'time', datetime, text: value } : { kind: 'time', datetime, text: value, spoken };
 
-export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone } = {}): Node => ({
+export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls' | 'standard'; tone?: Tone } = {}): Node => ({
   kind: 'command',
   line: commandLine,
   style,

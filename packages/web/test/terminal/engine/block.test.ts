@@ -29,14 +29,14 @@ const shown = (node: Node): string => {
 
 describe('006-terminal-FR-047 and 006-terminal-FR-057: blockText gives a block’s visible lines, as a command prints them', () => {
   for (const name of ['every-field', 'empty-sections'] as const) {
-    test(`on the ${name} fixture, every printing command’s block`, () => {
+    test(`on the ${name} fixture, every printing command’s block`, async () => {
       const context = contextFor(name);
       for (const command of PRINTING) {
-        const block: Block = blockOf(command, context);
+        const block: Block = await blockOf(command, context);
         const lines = blockText(block).split('\n');
         // The same text twice for the same block.
         expect(blockText(block), command).toBe(lines.join('\n'));
-        expect(blockText(blockOf(command, context)), command).toBe(blockText(block));
+        expect(blockText(await blockOf(command, context)), command).toBe(blockText(block));
         // No empty line, no markup, no stray value.
         for (const row of lines) {
           expect(row.trim(), command).not.toBe('');
@@ -56,10 +56,10 @@ describe('006-terminal-FR-047 and 006-terminal-FR-057: blockText gives a block�
     });
   }
 
-  test('on the every-field fixture, about, work and skills read as a visitor sees them', () => {
+  test('on the every-field fixture, about, work and skills read as a visitor sees them', async () => {
     const context = contextFor('every-field');
-    expect(blockText(blockOf('about', context)).split('\n')).toEqual(['Field Fixture Person', 'Fixture Label Role', 'Fixture City, Fixture Region, Germany', 'Fixture basics summary text.']);
-    expect(blockText(blockOf('work', context)).split('\n')).toEqual([
+    expect(blockText(await blockOf('about', context)).split('\n')).toEqual(['Field Fixture Person', 'Fixture Label Role', 'Fixture City, Fixture Region, Germany', 'Fixture basics summary text.']);
+    expect(blockText(await blockOf('work', context)).split('\n')).toEqual([
       'Fixture Work Position · Fixture Work Company',
       'Mar 2019 – Nov 2021',
       'Fixture Work Location',
@@ -68,13 +68,13 @@ describe('006-terminal-FR-047 and 006-terminal-FR-057: blockText gives a block�
       '- Fixture work highlight one.',
       '- Fixture work highlight two.',
     ]);
-    expect(blockText(blockOf('skills', context)).split('\n')).toEqual(['- Fixture Skill Name · Fixture Level', 'FixtureSkillKeywordA, FixtureSkillKeywordB']);
+    expect(blockText(await blockOf('skills', context)).split('\n')).toEqual(['- Fixture Skill Name · Fixture Level', 'FixtureSkillKeywordA, FixtureSkillKeywordB']);
     // Links by their text: the address where /cv shows it.
-    expect(blockText(blockOf('contact', context))).toContain('fixture.person@example.org');
+    expect(blockText(await blockOf('contact', context))).toContain('fixture.person@example.org');
   });
 
-  test('on the empty-sections fixture, an empty section is its one line', () => {
+  test('on the empty-sections fixture, an empty section is its one line', async () => {
     const context = contextFor('empty-sections');
-    expect(blockText(blockOf('interests', context))).toBe(siteText.terminal.replies.emptySection.replace('{section}', siteText.sections.interests.toLowerCase()));
+    expect(blockText(await blockOf('interests', context))).toBe(siteText.terminal.replies.emptySection.replace('{section}', siteText.sections.interests.toLowerCase()));
   });
 });

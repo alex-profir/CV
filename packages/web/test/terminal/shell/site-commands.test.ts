@@ -140,7 +140,7 @@ describe('006-terminal-FR-017 and 006-terminal-FR-020: usage replies and the his
       expect(result.stderr, line).toMatch(/ takes .+\. Usage: /);
       expect(result.status, line).toBe(2);
     }
-    expect((await runLine(shell, 'EXPERIENCE 1')).stderr.startsWith('experience takes')).toBe(true);
+    expect((await runLine(shell, 'EXPERIENCE 1')).stderr.startsWith('EXPERIENCE takes')).toBe(true);
   });
 
   test('history prints the history numbered from 1, history 2 the last two, history -c empties it', async () => {

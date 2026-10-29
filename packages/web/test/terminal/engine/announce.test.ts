@@ -3,13 +3,13 @@
 import { describe, expect, test } from 'vitest';
 import { announce, rows } from '../../../src/apps/terminal/engine/announce.ts';
 import { line, list, text } from '../../../src/apps/terminal/engine/block.ts';
-import type { Result } from '../../../src/apps/terminal/engine/block.ts';
 import { announcementText } from '../../../src/apps/terminal/session.ts';
 import { TERMINAL } from '../../../src/os/metrics.ts';
 import { fixture } from '../../helpers/fixtures.ts';
 import { COLUMNS, contextFor, contextOf, run } from './context.ts';
+import type { Shown } from './context.ts';
 
-const announced = (result: Result) => (result.kind === 'output' || result.kind === 'cd' ? result.announce : null);
+const announced = (result: Shown) => (result.kind === 'output' || result.kind === 'cd' ? result.announce : null);
 
 describe('006-terminal-FR-028: each output is announced once, in full or summarized', () => {
   test("rows are counted at the desktop window's column count", () => {
@@ -21,31 +21,31 @@ describe('006-terminal-FR-028: each output is announced once, in full or summari
     expect(rows([line(text(''))], COLUMNS)).toBe(1);
   });
 
-  test('pwd is announced in full', () => {
-    expect(announced(run('pwd', contextFor('every-field')))).toEqual({ full: '~' });
-    expect(announced(run('cd work', contextFor('every-field')))).toEqual({ full: 'Now in ~/work' });
+  test('pwd is announced in full', async () => {
+    expect(announced(await run('pwd', contextFor('every-field')))).toEqual({ full: '~' });
+    expect(announced(await run('cd work', contextFor('every-field')))).toEqual({ full: 'Now in ~/work' });
   });
 
-  test('work on a 4-entry CV: work: 4 entries', () => {
+  test('work on a 4-entry CV: work: 4 entries', async () => {
     const cv = fixture('every-field');
     cv.work = [cv.work![0]!, cv.work![0]!, cv.work![0]!, cv.work![0]!];
-    expect(announced(run('work', contextOf(cv)))).toEqual({ command: 'work', count: 4, unit: 'entries' });
-    expect(announced(run('experience', contextOf(cv)))).toEqual({ command: 'work', count: 4, unit: 'entries' });
+    expect(announced(await run('work', contextOf(cv)))).toEqual({ command: 'work', count: 4, unit: 'entries' });
+    expect(announced(await run('experience', contextOf(cv)))).toEqual({ command: 'work', count: 4, unit: 'entries' });
   });
 
-  test('a count of 1 is in the singular: work: 1 entry', () => {
+  test('a count of 1 is in the singular: work: 1 entry', async () => {
     const cv = fixture('every-field');
     cv.work = [cv.work![0]!];
-    const result = announced(run('work', contextOf(cv)));
+    const result = announced(await run('work', contextOf(cv)));
     expect(result).toEqual({ command: 'work', count: 1, unit: 'entries' });
     expect(announcementText(result!)).toBe('work: 1 entry');
     expect(announcementText({ command: 'work', count: 4, unit: 'entries' })).toBe('work: 4 entries');
     expect(announcementText({ command: 'history', count: 1, unit: 'lines' })).toBe('history: 1 line');
   });
 
-  test('help: 22 commands, aliases not counted; ls: 11 entries, files and folders together', () => {
-    expect(announced(run('help', contextFor('every-field')))).toEqual({ command: 'help', count: 22, unit: 'commands' });
-    expect(announced(run('ls', contextFor('every-field')))).toEqual({ command: 'ls', count: 11, unit: 'entries' });
+  test('help: 22 commands, aliases not counted; ls: 11 entries, files and folders together', async () => {
+    expect(announced(await run('help', contextFor('every-field')))).toEqual({ command: 'help', count: 22, unit: 'commands' });
+    expect(announced(await run('ls', contextFor('every-field')))).toEqual({ command: 'ls', count: 11, unit: 'entries' });
   });
 
   test('an output of 5 rows is announced in full, one of 6 summarized', () => {

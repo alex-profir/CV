@@ -377,7 +377,13 @@ const QUOTA = 1_048_576;                    // 1 MB (FR-073)
 ## Run request and result (contracts/shell-worker.md)
 
 ```ts
-type RunRequest = { id: number; line: string; state: ShellState; history: readonly string[] };
+type RunRequest = {
+  id: number;
+  line: string;
+  state: ShellState;
+  history: readonly string[];
+  shell?: 'desktop' | 'mobile';   // added 2026-10-29: the words that differ by shell (help's lead)
+};
 
 type RunResult = {
   id: number;
@@ -397,8 +403,14 @@ type Recorded = { text: string; block: Block };   // what a site command printed
 type Effect =
   | { kind: 'clear' }                                       // clear (FR-019)
   | { kind: 'vim'; name: string; pipe: string | null; text: string }  // vim, cv (FR-058, FR-059)
-  | { kind: 'open'; view: 'cv' | 'about' };                // open (FR-014)
+  | { kind: 'open'; view: 'cv' | 'about' }                 // open (FR-014)
+  | { kind: 'clear-history' };                             // history -c (FR-020), added 2026-10-29
 ```
+
+Added while building (2026-10-29): `Effect` is declared in `engine/block.ts` and re-exported by
+`shell/protocol.ts`, so the engine never imports `shell/`. A `line` node may carry
+`req: 'stopped'`, the line a stopped run ends with (FR-069), and a `text` node
+`stream: 'stdout' | 'stderr'` (research R30).
 
 **Rules**: `recorded[i].text` is exactly what the command wrote to its stdout. A `Recorded` is made
 only by the site's own commands and wrappers, never from typed or piped text (FR-018). `exited`

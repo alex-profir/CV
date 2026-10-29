@@ -1,36 +1,48 @@
-// The Terminal's session (006 research R5, data-model.md Terminal session):
-// one store per visit, outside the shells, so minimizing, going home and a
-// shell switch keep it, and only closing the Terminal empties it (FR-021).
-// It lives in memory only; nothing is written to storage (FR-022).
-// Components read it with useSyncExternalStore.
+// The Terminal's session (006 research R5, data-model.md Terminal session
+// and Session additions): one store per visit, outside the shells, so
+// minimizing, going home and a shell switch keep it, and only closing the
+// Terminal empties it (FR-021). Every line runs in the shell worker, one at
+// a time; lines entered before it is ready wait after their prompts, in
+// order (FR-070). It lives in memory only; nothing is written to storage
+// (FR-022). Components read it with useSyncExternalStore.
 import { counted, siteText, fill } from '../../site-text.ts';
-import { dateRange } from '../../format/dates.ts';
-import { locationLine } from '../../format/location.ts';
-import { withoutScheme } from '../../format/url.ts';
 import { TERMINAL } from '../../os/metrics.ts';
-import { cvJson, resume, siteData, specList } from './data.ts';
-import { engineContext, runLine } from './engine/commands.ts';
-import type { RunContext } from './engine/commands.ts';
-import type { Announcement, Block, Path, Result } from './engine/block.ts';
+import { vimSource } from './engine/commands.ts';
+import type { Announcement, Block } from './engine/block.ts';
+import { mapOutput } from './engine/output-map.ts';
 import { openVim, vimReducer } from './engine/vim.ts';
 import type { Message, VimInput, VimState } from './engine/vim.ts';
+import { createShellClient } from './shell-client.ts';
+import type { ShellClient } from './shell-client.ts';
+import { INITIAL_STATE, NO_FILES } from './shell/protocol.ts';
+import type { Effect, RunResult, ShellState, VisitorFiles } from './shell/protocol.ts';
+
+export type Shell = 'desktop' | 'mobile';
 
 export type Entry = {
   id: number;
   // As typed, for the run's heading and the history (FR-006).
   line: string;
   // Where it ran, for its prompt.
-  folder: Path;
+  cwd: string;
   // `hh:mm` when entered (research R17).
   time: string;
-  // Null for an empty line.
+  // Null for an empty line, and for a line not run yet.
   block: Block | null;
 };
+
+export type ShellStatus = 'idle' | 'loading' | 'ready' | 'running' | 'failed';
+
+// What a line asks of the desktop or phone shell around the Terminal
+// (FR-008, FR-014).
+export type OsActions = { open(view: 'cv' | 'about'): void; exit(): void };
+
+// A line waiting for the shell, with what it runs with.
+type Waiting = { entry: Entry; shell: Shell; actions: OsActions | null; history: readonly string[] };
 
 export type Session = {
   entries: readonly Entry[];
   history: readonly string[];
-  folder: Path;
   draft: string;
   stepping: { index: number; saved: string } | null;
   // The output's scroll position, the last one saved and each shell's: a
@@ -46,21 +58,39 @@ export type Session = {
   announcement: { text: string; id: number } | null;
   // The starter chips show until the output is first cleared (FR-019).
   starter: boolean;
+  // The shell worker (FR-070).
+  shell: ShellStatus;
+  // Lines entered while another runs or the shell loads, in order.
+  waiting: readonly Entry[];
+  // The line the worker is running.
+  running: Entry | null;
+  // What the shell keeps between lines (research R27), the visitor's files
+  // (R26), and the working folder for the prompt (FR-046).
+  state: ShellState;
+  files: VisitorFiles;
+  cwd: string;
 };
 
-export type Shell = RunContext['shell'];
-
-const EMPTY: Session = { entries: [], history: [], folder: [], draft: '', stepping: null, scrollTop: 0, shellScroll: {}, vim: null, vimEntry: null, announcement: null, starter: true };
+const EMPTY: Session = {
+  entries: [],
+  history: [],
+  draft: '',
+  stepping: null,
+  scrollTop: 0,
+  shellScroll: {},
+  vim: null,
+  vimEntry: null,
+  announcement: null,
+  starter: true,
+  shell: 'idle',
+  waiting: [],
+  running: null,
+  state: INITIAL_STATE,
+  files: NO_FILES,
+  cwd: INITIAL_STATE.cwd,
+};
 
 export const clock = (date: Date) => [date.getHours(), date.getMinutes()].map((part) => String(part).padStart(2, '0')).join(':');
-
-let built: RunContext | null = null;
-
-// The run context of the real site, built on first use (research R9).
-function siteContext(): RunContext {
-  built ??= engineContext({ text: siteText, format: { dateRange, locationLine, withoutScheme }, resume, siteData, specs: specList, cvJson, columns: TERMINAL.columns });
-  return built;
-}
 
 export function announcementText(announce: Announcement): string {
   if ('full' in announce) return announce.full;
@@ -89,11 +119,16 @@ export function messageText(message: Message, state: VimState, shell: Shell = 'd
   }
 }
 
-export function createSession(context: () => RunContext = siteContext) {
+export function createSession(client: ShellClient = createShellClient()) {
   let state: Session = EMPTY;
   let ids = 0;
   let spoken = 0;
+  // Bumped by reset, so a result from before it is dropped.
+  let generation = 0;
+  let queue: Waiting[] = [];
   const listeners = new Set<() => void>();
+
+  const statusOf = (running: Entry | null): ShellStatus => (running !== null ? 'running' : client.status());
 
   const set = (next: Session) => {
     if (next === state) return;
@@ -101,40 +136,82 @@ export function createSession(context: () => RunContext = siteContext) {
     for (const listener of listeners) listener();
   };
   const say = (text: string) => ({ text, id: (spoken += 1) });
-  const entry = (line: string, block: Block | null): Entry => ({ id: (ids += 1), line, folder: state.folder, time: clock(new Date()), block });
+  const entry = (line: string): Entry => ({ id: (ids += 1), line, cwd: state.cwd, time: clock(new Date()), block: null });
 
-  // Runs a typed line in `shell`, and gives back what it returned, so the
-  // Terminal can act on `open` and `exit`.
-  function run(line: string, shell: Shell): Result | null {
-    const reset = { draft: '', stepping: null };
-    if (line.trim() === '') {
-      set({ ...state, ...reset, entries: [...state.entries, entry(line, null)] });
-      return null;
-    }
-    const history = [...state.history, line];
-    const result = runLine(line, { ...context(), folder: state.folder, history, shell });
-    const next = { ...state, ...reset, history };
-    switch (result.kind) {
-      case 'clear':
-        set({ ...next, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) });
-        break;
-      case 'open-vim': {
-        const opened = openVim(result.file);
-        const announcement = say(fill(siteText.terminal.announce.vim, { file: result.file.name, n: result.file.rows.length }));
-        set({ ...next, vim: opened, vimEntry: entry(line, []), announcement });
-        break;
+  // The output after a line, with its effects applied in order (data-model
+  // Session additions).
+  function finish(waiting: Waiting, result: RunResult) {
+    const { block, announce } = mapOutput(result, waiting.entry.line, { text: siteText, columns: TERMINAL.columns, cwd: waiting.entry.cwd });
+    const done: Entry = { ...waiting.entry, block };
+    let next: Session = {
+      ...state,
+      running: null,
+      entries: [...state.entries, done],
+      state: result.state,
+      cwd: result.state.cwd,
+      ...(result.files === undefined ? {} : { files: result.files }),
+      // A line that prints nothing and stays in its folder says nothing.
+      announcement: 'full' in announce && announce.full === '' ? state.announcement : say(announcementText(announce)),
+    };
+    const acts: (() => void)[] = [];
+    for (const effect of result.effects as Effect[]) {
+      if (effect.kind === 'clear') next = { ...next, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) };
+      else if (effect.kind === 'clear-history') next = { ...next, history: next.history.slice(waiting.history.length) };
+      else if (effect.kind === 'vim') {
+        const source = vimSource(effect.text, effect.name, effect.pipe);
+        next = { ...next, entries: next.entries.filter((shown) => shown !== done), vim: openVim(source), vimEntry: done, announcement: say(fill(siteText.terminal.announce.vim, { file: source.name, n: source.rows.length })) };
+      } else if (waiting.actions !== null) {
+        const { actions } = waiting;
+        acts.push(() => actions.open(effect.view));
       }
-      case 'cd':
-        set({ ...next, entries: [...state.entries, entry(line, result.block)], folder: result.folder, announcement: say(announcementText(result.announce)) });
-        break;
-      case 'os':
-        set({ ...next, entries: [...state.entries, entry(line, result.block)] });
-        break;
-      case 'output':
-        set({ ...next, entries: [...state.entries, entry(line, result.block)], announcement: say(announcementText(result.announce)) });
-        break;
     }
-    return result;
+    if (result.end === 'exited' && waiting.actions !== null) acts.push(waiting.actions.exit);
+    set({ ...next, shell: statusOf(null) });
+    for (const act of acts) act();
+  }
+
+  // Runs the next waiting line, when the shell is ready and none runs.
+  function pump() {
+    if (state.running !== null || queue.length === 0) return;
+    const waiting = queue[0]!;
+    if (waiting.entry.line.trim() === '') {
+      queue = queue.slice(1);
+      set({ ...state, entries: [...state.entries, { ...waiting.entry, cwd: state.cwd }], waiting: queue.map((each) => each.entry) });
+      pump();
+      return;
+    }
+    if (client.status() !== 'ready') return;
+    queue = queue.slice(1);
+    const running: Entry = { ...waiting.entry, cwd: state.cwd };
+    const started = { ...waiting, entry: running };
+    set({ ...state, running, waiting: queue.map((each) => each.entry), shell: 'running' });
+    const at = generation;
+    void client.run({ id: running.id, line: running.line, state: state.state, history: waiting.history, shell: waiting.shell }).then((result) => {
+      if (at !== generation) return;
+      finish(started, result);
+      pump();
+    });
+  }
+
+  // The shell loading, then failing, is announced once each (FR-070).
+  client.subscribe(() => {
+    const shell = statusOf(state.running);
+    const words = siteText.terminal;
+    const announcement = shell === state.shell ? state.announcement : shell === 'loading' && state.shell === 'idle' ? say(words.announce.loading) : shell === 'failed' ? say(words.shellFailed) : state.announcement;
+    set({ ...state, shell, announcement });
+    pump();
+  });
+
+  // Runs a typed line in `shell`: at once when the shell is ready, else
+  // after the lines before it. `actions` does what the line asks of the
+  // desktop or phone shell (FR-014).
+  function run(line: string, shell: Shell, actions: OsActions | null = null) {
+    const reset = { draft: '', stepping: null };
+    const typed = entry(line);
+    const history = line.trim() === '' ? state.history : [...state.history, line];
+    queue = [...queue, { entry: typed, shell, actions, history }];
+    set({ ...state, ...reset, history, waiting: queue.map((each) => each.entry) });
+    pump();
   }
 
   // Up and Down through the history, newest first; Down past the newest
@@ -168,6 +245,9 @@ export function createSession(context: () => RunContext = siteContext) {
 
   return {
     get: () => state,
+    // The Terminal opened: the shell starts loading, once a visit (FR-070).
+    start: () => client.start(),
+    retry: () => client.retry(),
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => void listeners.delete(listener);
@@ -185,8 +265,14 @@ export function createSession(context: () => RunContext = siteContext) {
     },
     // Where a shell's output was scrolled to, or the last place in the other.
     scrollFor: (shell: Shell) => state.shellScroll[shell] ?? state.scrollTop,
-    // On close: as on first open (FR-021).
-    reset: () => set(EMPTY),
+    // On close: as on first open, and the shell's state and the visitor's
+    // files emptied (FR-021).
+    reset: () => {
+      generation += 1;
+      queue = [];
+      client.reset();
+      set({ ...EMPTY, shell: statusOf(null) });
+    },
   };
 }
 

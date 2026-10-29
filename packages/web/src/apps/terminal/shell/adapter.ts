@@ -21,7 +21,11 @@ type AstNode = { type: string; [key: string]: unknown };
 const ENV = { HOME, USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash' };
 
 // FR-069's limits: the spec's numbers, not design values (research R33).
-export const LIMITS = { time: 5000, commands: 10_000, output: QUOTA };
+// `output` is what the line prints; `pipe`, what any one command may pass
+// on inside it, so `seq 200000 | tail -1` runs as in bash.
+export const LIMITS = { time: 5000, commands: 10_000, output: QUOTA, pipe: 4 * QUOTA };
+
+export type Limits = typeof LIMITS;
 
 const OPTIONS: readonly ShellOption[] = ['errexit', 'nounset', 'pipefail', 'noglob', 'noclobber', 'xtrace'];
 
@@ -96,12 +100,13 @@ function syntaxError(ast: Script): string | null {
 const parseMessage = (message: string) => message.replace(/^Parse error at (\d+):\d+: /, 'line $1: ').replace(/^(?!line \d+: )/, 'line 1: ');
 
 // A typed first word that names a site command in another case runs it
-// (FR-007).
-function lowerFirst(line: string): string {
+// (FR-007); `typed` is that word as typed.
+function lowerFirst(line: string): { line: string; typed: string | null } {
   const match = /^(\s*)([^\s;|&<>()]+)/.exec(line);
-  if (match === null) return line;
+  if (match === null) return { line, typed: null };
   const word = match[2]!;
-  return commandNamed(word) !== null && word !== word.toLowerCase() ? `${match[1]}${word.toLowerCase()}${line.slice(match[0].length)}` : line;
+  if (commandNamed(word) === null || word === word.toLowerCase()) return { line, typed: null };
+  return { line: `${match[1]}${word.toLowerCase()}${line.slice(match[0].length)}`, typed: word };
 }
 
 export type Shell = {
@@ -113,10 +118,12 @@ export type Shell = {
   restore(state: ShellState, files: VisitorFiles): Promise<void>;
 };
 
-export function createShell(input: SiteInput): Shell {
+// `limits` only in tests, to reach one limit before another.
+export function createShell(input: SiteInput, options: { limits?: Partial<Limits> } = {}): Shell {
+  const limits: Limits = { ...LIMITS, ...options.limits };
   const context = engineContext(input);
   const fs = new TerminalFs(context.fs);
-  let record: RunRecord = { line: '', history: [], shell: 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
+  let record: RunRecord = { line: '', typed: null, history: [], shell: 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
   let captured: Captured | null = null;
   let baseline = new Map<string, string>();
   let lastFiles = JSON.stringify({ folders: [], files: {}, bytes: 0 });
@@ -144,7 +151,7 @@ export function createShell(input: SiteInput): Shell {
       env: ENV,
       commands: [...STANDARD_COMMANDS],
       customCommands: [...commands, cvState],
-      executionLimits: { maxExecutionTimeMs: LIMITS.time, maxCommandCount: LIMITS.commands + prelude, maxOutputSize: LIMITS.output, maxLoopIterations: 1_000_000_000 },
+      executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + prelude, maxOutputSize: limits.pipe, maxLoopIterations: 1_000_000_000 },
     });
     bash.registerTransformPlugin(sitePlugin);
     return bash;
@@ -232,9 +239,10 @@ export function createShell(input: SiteInput): Shell {
   const limitOf = (stdout: string, stderr: string, status: number): Limit | null => {
     if (status === 124 && /execution exceeded execution deadline/.test(stderr)) return 'time';
     if (status === 126 && /too many commands executed/.test(stderr)) return 'commands';
-    if (status === 126 && /output size limit exceeded/.test(stderr)) return 'output';
-    // `yes` stops at the limit with status 0 (G13).
-    if (new TextEncoder().encode(stdout).length >= LIMITS.output) return 'output';
+    if (status === 126 && /output size limit exceeded|total output size exceeded/.test(stderr)) return 'output';
+    // What the line printed reached 1 MB; `yes` stops at a limit with
+    // status 0 (G13).
+    if (new TextEncoder().encode(stdout + stderr).length >= limits.output) return 'output';
     return null;
   };
 
@@ -256,13 +264,14 @@ export function createShell(input: SiteInput): Shell {
   async function runLine(request: RunRequest): Promise<RunResult> {
     const { id, state } = request;
     const base = { id, recorded: [], effects: [], state };
-    record = { line: request.line, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
+    record = { line: request.line, typed: null, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     if (HIDDEN.test(request.line)) {
       const word = /\S*__cv_\S*/i.exec(request.line)![0];
       return { ...base, stdout: '', stderr: `bash: ${word}: command not found\n`, status: 127, end: 'done', state: { ...state, status: 127 } };
     }
-    const line = lowerFirst(request.line);
+    const lowered = lowerFirst(request.line);
+    const { line } = lowered;
     let ast: Script;
     try {
       ast = parse(line);
@@ -276,6 +285,7 @@ export function createShell(input: SiteInput): Shell {
     const shift = before.split('\n').length;
     const bodies = definitions(ast);
     captured = null;
+    record.typed = lowered.typed;
     let result: { stdout: string; stderr: string; exitCode: number };
     try {
       result = await bashFor(shift + 3).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true });
@@ -288,10 +298,17 @@ export function createShell(input: SiteInput): Shell {
       .replace(/(line |Parse error at )(\d+)(?=:)/g, (_, lead: string, at: string) => `${lead}${Math.max(1, Number(at) - shift)}`)
       .split('\n')
       .filter((entry) => !/^\++ .*(__cv_|declare -F$)|^\+ \(?exit \d+\)?$|^\+ :$/.test(entry))
+      // A command only just-bash's Node build has is unknown, as in bash
+      // (research G17).
+      .map((entry) => entry.replace(/^bash: (\S+): command not available in browser environments\..*$/, 'bash: $1: command not found'))
       .join('\n');
     const limit = limitOf(result.stdout, stderr, result.exitCode);
     const files = await filesChanged();
     const shared = { id, stdout: result.stdout, stderr, recorded: record.recorded, ...(files === undefined ? {} : { files }) };
+    // Stopped by the output limit, the line shows none of what it printed,
+    // only the stopped line (research G14), so a megabyte of text never
+    // reaches the screen.
+    if (limit === 'output') return { ...shared, stdout: '', stderr: '', recorded: [], effects: [], status: result.exitCode, end: 'limit', limit, state };
     if (limit !== null) return { ...shared, effects: [], status: result.exitCode, end: 'limit', limit, state };
     if (taken === null) return { ...shared, effects: record.effects, status: result.exitCode, end: 'exited', state };
     return { ...shared, effects: record.effects, status: taken.status, end: 'done', state: stateFrom(taken, state, bodies) };

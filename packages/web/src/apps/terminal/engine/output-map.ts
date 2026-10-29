@@ -71,7 +71,7 @@ function unknown(word: string, context: MapContext): Node[] {
 }
 
 // A limit's own message, which FR-069's site text replaces.
-const LIMIT_MESSAGE = /^bash: (?:.*: )?(?:execution exceeded execution deadline|too many commands executed|output size limit exceeded)/;
+const LIMIT_MESSAGE = /^bash: (?:.*: )?(?:execution exceeded execution deadline|too many commands executed|output size limit exceeded|total output size exceeded)/;
 
 function stderrNodes(result: ShownResult, context: MapContext): Node[] {
   const { replies } = context.text.terminal;

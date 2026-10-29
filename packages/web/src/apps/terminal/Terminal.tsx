@@ -9,20 +9,37 @@ import { CommandLine, focusCommandLine, Prompt } from './CommandLine.tsx';
 import { Output } from './Output.tsx';
 import type { RunControl } from './Output.tsx';
 import { session } from './session.ts';
+import type { Entry } from './session.ts';
 import type { VimInput } from './engine/vim.ts';
 import { VimView } from './VimView.tsx';
 
 const words = siteText.terminal;
 
-// Runs a line as typed, and does what it asks of the shell (FR-014). Gives
-// back whether focus stays with the Terminal: after `open` and `exit` the
-// shell moves it.
+// Runs a line as typed, in the shell worker, and does what it asks of the
+// desktop or phone shell once it has run (FR-014). Gives back whether focus
+// stays with the Terminal: it does until the line has run, and `open` and
+// `exit` move it then.
 export function runInShell(line: string, os: AppOs): boolean {
-  const result = session.run(line, os.shell);
-  if (result?.kind !== 'os') return true;
-  if ('open' in result.action) os.open(result.action.open);
-  else os.exit();
-  return false;
+  session.run(line, os.shell, { open: (view) => os.open(view), exit: () => os.exit() });
+  return true;
+}
+
+// A line entered, as its heading shows it, and its output once it has run;
+// busy while it waits for the shell or runs (FR-070).
+function Run({ entry, desktop, run, pending = false }: { entry: Entry; desktop: boolean; run: RunControl; pending?: boolean }) {
+  return (
+    <section className="run" aria-labelledby={`run-${entry.id}`} aria-busy={pending ? 'true' : undefined} data-req="006-terminal-FR-006 006-terminal-FR-029">
+      <h2 className="run-command" id={`run-${entry.id}`}>
+        <Prompt cwd={entry.cwd} time={desktop ? entry.time : null} />
+        <span className="run-line">{entry.line}</span>
+      </h2>
+      {entry.block !== null && entry.block.length > 0 && (
+        <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
+          <Output block={entry.block} run={run} />
+        </div>
+      )}
+    </section>
+  );
 }
 
 export function Terminal({ os }: AppProps) {
@@ -45,6 +62,9 @@ export function Terminal({ os }: AppProps) {
   );
 
   const sendVim = useCallback((vimInput: VimInput) => session.vim(vimInput), []);
+
+  // The shell starts loading the first time the Terminal opens (FR-070).
+  useEffect(() => session.start(), []);
 
   // Back from the vim view: the command line takes focus (FR-064).
   const vimOpen = state.vim !== null;
@@ -91,7 +111,7 @@ export function Terminal({ os }: AppProps) {
   }, [vimOpen, os.shell]);
 
   return (
-    <div className="terminal" data-shell-look={desktop ? 'desktop' : 'pocket'} data-req="006-terminal-FR-019 006-terminal-FR-023 006-terminal-FR-031 006-terminal-FR-032 006-terminal-FR-033 006-terminal-FR-035">
+    <div className="terminal" data-shell-look={desktop ? 'desktop' : 'pocket'} data-shell-state={state.shell} data-req="006-terminal-FR-019 006-terminal-FR-023 006-terminal-FR-031 006-terminal-FR-032 006-terminal-FR-033 006-terminal-FR-035">
       <h1 className="visually-hidden" data-req="006-terminal-FR-029">
         {siteText.os.views.terminal}
       </h1>
@@ -106,22 +126,29 @@ export function Terminal({ os }: AppProps) {
               ))}
             </div>
           )}
+          {state.shell === 'loading' && (
+            <p className="shell-loading" data-req="006-terminal-FR-070">
+              {words.shellLoading}
+            </p>
+          )}
+          {state.shell === 'failed' && (
+            <p className="shell-failed" data-req="006-terminal-FR-070">
+              {words.shellFailed}{' '}
+              <button type="button" className="command-chip" onClick={() => session.retry()} data-req="006-terminal-FR-070">
+                {words.tryAgain}
+              </button>
+            </p>
+          )}
           {state.entries.map((entry) => (
-            <section key={entry.id} className="run" aria-labelledby={`run-${entry.id}`} data-req="006-terminal-FR-006 006-terminal-FR-029">
-              <h2 className="run-command" id={`run-${entry.id}`}>
-                <Prompt folder={entry.folder} time={desktop ? entry.time : null} />
-                <span className="run-line">{entry.line}</span>
-              </h2>
-              {entry.block !== null && entry.block.length > 0 && (
-                <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
-                  <Output block={entry.block} run={runControl} />
-                </div>
-              )}
-            </section>
+            <Run key={entry.id} entry={entry} desktop={desktop} run={runControl} />
+          ))}
+          {state.running !== null && <Run key={state.running.id} entry={state.running} desktop={desktop} run={runControl} pending />}
+          {state.waiting.map((entry) => (
+            <Run key={entry.id} entry={entry} desktop={desktop} run={runControl} pending />
           ))}
           <CommandLine
             draft={state.draft}
-            folder={state.folder}
+            cwd={state.cwd}
             showTime={desktop}
             inputRef={input}
             onDraft={session.setDraft}

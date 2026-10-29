@@ -24,6 +24,8 @@ export const SHELL_BUILTINS = [
 export type LeftOutReason = 'network' | 'language' | 'scripts' | 'permissions' | 'zlib' | 'aliases' | 'site' | 'unproved';
 
 // Each command just-bash offers that the Terminal leaves out, and why.
+// `time`, which just-bash also lists, is a reserved word of the language,
+// as in bash (FR-067), not a command.
 export const LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   curl: 'network',
   'html-to-markdown': 'network',
@@ -69,7 +71,6 @@ export const LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   base64: 'unproved',
   sleep: 'unproved',
   timeout: 'unproved',
-  time: 'unproved',
   expr: 'unproved',
   md5sum: 'unproved',
   sha1sum: 'unproved',
@@ -81,3 +82,33 @@ export const LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   yq: 'unproved',
   xan: 'unproved',
 };
+
+// The help of the standard commands that don't answer `--help` in just-bash
+// 3.6.0 (research G18), in the form its other commands print theirs, with
+// the options it implements. GNU's words, not the site's.
+type CommandHelp = { summary: string; usage: string; options: readonly string[] };
+
+export const MISSING_HELP: Readonly<Record<string, CommandHelp>> = {
+  mkdir: {
+    summary: 'make directories',
+    usage: 'mkdir [OPTION]... DIRECTORY...',
+    options: ['-p, --parents     no error if existing, make parent directories as needed', '-v, --verbose     print a message for each created directory', '    --help        display this help and exit'],
+  },
+  rm: {
+    summary: 'remove files or directories',
+    usage: 'rm [OPTION]... [FILE]...',
+    options: ['-f, --force           ignore nonexistent files, never prompt', '-r, -R, --recursive   remove directories and their contents recursively', '-v, --verbose         explain what is being done', '    --help            display this help and exit'],
+  },
+  seq: {
+    summary: 'print a sequence of numbers',
+    usage: 'seq [OPTION]... LAST\n       seq [OPTION]... FIRST LAST\n       seq [OPTION]... FIRST INCREMENT LAST',
+    options: ['-s STRING    use STRING to separate numbers (default: \\n)', '-w           equalize width by padding with leading zeroes', '    --help   display this help and exit'],
+  },
+  touch: {
+    summary: 'change file timestamps',
+    usage: 'touch [OPTION]... FILE...',
+    options: ['-a                 change only the access time', '-c, --no-create    do not create any files', '-d, --date=STRING  parse STRING and use it instead of current time', '-m                 change only the modification time', '    --help         display this help and exit'],
+  },
+};
+
+export const helpText = (name: string, help: CommandHelp): string => `${name} - ${help.summary}\n\nUsage: ${help.usage}\n\nOptions:\n${help.options.map((option) => `  ${option}\n`).join('')}`;

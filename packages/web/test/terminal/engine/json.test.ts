@@ -66,35 +66,35 @@ describe('006-terminal-FR-056: jq pretty-prints JSON with keys and numbers as wr
     for (const text of ['{', '', 'about', '{"a":}', '[1,]', '{"a":1}x', "{'a':1}", '01', '1.', 'tru']) expect(printJson(text), text).toEqual({ error: 'not-json' });
   });
 
-  test('jq takes a path or piped input, and accepts the filter . only', () => {
+  test('jq takes a path or piped input, and accepts the filter . only', async () => {
     const context = contextFor('every-field');
-    expect(output(run('jq cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('jq . cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('cat cv.json | jq .', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(textOf('jq .work cv.json', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
-    expect(textOf('cat cv.json | jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
+    expect(output(await run('jq cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(await run('jq . cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(await run('cat cv.json | jq .', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(await textOf('jq .work cv.json', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
+    expect(await textOf('cat cv.json | jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
   });
 
-  test('006-terminal-FR-045: a path with . or .. is read as a path, not a filter', () => {
+  test('006-terminal-FR-045: a path with . or .. is read as a path, not a filter', async () => {
     const context = contextFor('every-field');
-    const inWork = { ...context, folder: ['work'] };
-    expect(output(run('jq ./cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('jq ../cv.json', inWork)).some((node) => node.kind === 'json')).toBe(true);
-    expect(textOf('jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
-    expect(textOf('jq ./nowhere', context)).toBe('./nowhere: no such file or folder.');
+    const inWork = { ...context, cwd: '/home/guest/work' };
+    expect(output(await run('jq ./cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(await run('jq ../cv.json', inWork)).some((node) => node.kind === 'json')).toBe(true);
+    expect(await textOf('jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
+    expect(await textOf('jq ./nowhere', context)).toBe('./nowhere: no such file or folder.');
   });
 
-  test('cat about | jq and jq on text that is not JSON name | or the path', () => {
+  test('cat about | jq and jq on text that is not JSON name | or the path', async () => {
     const context = contextFor('every-field');
-    expect(textOf('cat about | jq', context)).toBe('jq: | is not JSON.');
-    expect(textOf('pwd | jq', context)).toBe('jq: | is not JSON.');
-    expect(textOf('jq nowhere', context)).toBe('nowhere: no such file or folder.');
-    expect(textOf('jq', context)).toBe('jq takes at most one path, or piped input. Usage: jq [path]');
+    expect(await textOf('cat about | jq', context)).toBe('jq: | is not JSON.');
+    expect(await textOf('pwd | jq', context)).toBe('jq: | is not JSON.');
+    expect(await textOf('jq nowhere', context)).toBe('nowhere: no such file or folder.');
+    expect(await textOf('jq', context)).toBe('jq takes at most one path, or piped input. Usage: jq [path]');
   });
 
-  test("jq's output passes on the printed text", () => {
+  test("jq's output passes on the printed text", async () => {
     const context = contextOf(resume);
-    const result = run('cat cv.json | jq', context);
-    expect(result.kind === 'output' && result.text).toBe(cvJson);
+    const result = await run('cat cv.json | jq', context);
+    expect(result.kind === 'output' && result.result.stdout).toBe(`${cvJson}\n`);
   });
 });

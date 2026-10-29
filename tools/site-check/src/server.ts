@@ -4,10 +4,12 @@
 //
 // Run as a script, it's `npm run serve`: the site in `packages/web/dist/` on
 // `PORT` or 4173.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import { resolveRoute } from '../../../packages/web/src/routes.ts';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
@@ -44,6 +46,25 @@ function chooseEncoding(header: string | undefined): 'br' | 'gzip' | null {
   return null;
 }
 
+// Compressed bodies, by encoding and content, for every server in the
+// process: the shell worker's 1.3 MB script takes Brotli about a second
+// (006 research R34), so it is compressed once, off the event loop, and
+// the tests driving a browser from the same process keep running meanwhile.
+const compressedBodies = new Map<string, Promise<Buffer>>();
+const digests = new WeakMap<Buffer, string>();
+
+function compressed(body: Buffer, encoding: 'br' | 'gzip'): Promise<Buffer> {
+  let digest = digests.get(body);
+  if (digest === undefined) digests.set(body, (digest = crypto.createHash('sha256').update(body).digest('hex')));
+  const key = `${encoding} ${digest}`;
+  let found = compressedBodies.get(key);
+  if (found === undefined) {
+    found = promisify(encoding === 'br' ? zlib.brotliCompress : zlib.gzip)(body);
+    compressedBodies.set(key, found);
+  }
+  return found;
+}
+
 export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; manifest: SiteManifest; port?: number }): Promise<RunningServer> {
   const files = new Map(manifest.files.map((file) => [file.path, file]));
   // The manifest's files don't change while the server runs, so each is
@@ -54,13 +75,7 @@ export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; 
     if (body === undefined) bodies.set(file, (body = fs.readFileSync(path.join(siteDir, file))));
     return body;
   };
-  // By the body `read` returned, which is the same buffer for each file.
-  const compressed = new WeakMap<Buffer, Partial<Record<'br' | 'gzip', Buffer>>>();
-  const compress = (body: Buffer, encoding: 'br' | 'gzip') => {
-    let forBody = compressed.get(body);
-    if (forBody === undefined) compressed.set(body, (forBody = {}));
-    return (forBody[encoding] ??= encoding === 'br' ? zlib.brotliCompressSync(body) : zlib.gzipSync(body));
-  };
+  const compress = (body: Buffer, encoding: 'br' | 'gzip') => compressed(body, encoding);
   const notFound = (): Answer => ({
     status: manifest.routes.notFound.status,
     headers: { 'Content-Type': HTML_TYPE, 'Cache-Control': NO_CACHE },
@@ -85,7 +100,7 @@ export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; 
     return { status: 200, headers: { 'Content-Type': file.type, 'Cache-Control': cache }, body: read(file.path), compressible: isText(file.type) };
   }
 
-  const server = http.createServer((request, response) => {
+  const server = http.createServer(async (request, response) => {
     let result: Answer;
     try {
       result = answer(request.method ?? 'GET', request.url ?? '/');
@@ -100,7 +115,7 @@ export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; 
       headers.Vary = 'Accept-Encoding';
       const encoding = chooseEncoding(request.headers['accept-encoding']);
       if (encoding !== null) {
-        body = compress(body, encoding);
+        body = await compress(body, encoding);
         headers['Content-Encoding'] = encoding;
       }
     }

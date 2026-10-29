@@ -581,6 +581,9 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G13 | `yes` ends with status 0 when it reaches the output limit, printing exactly that much, instead of being stopped | The adapter treats a line whose output reached 1,048,576 bytes as stopped by the output limit (R33) |
 | G14 | A command that passes the output limit (`seq 1000000`) prints none of its output, where bash would have printed up to the stop | Accepted: the line shows FR-069's text with what earlier commands printed. Upstream report |
 | G15 | `maxLoopIterations` (100,000 by default) makes `seq 200000` fail with "iteration limit exceeded", which bash never says | Set to 1,000,000,000, so FR-069's three limits are the ones that stop a line (R33) |
+| G16 | `cat` on a folder says `cat: work: No such file or directory`, where GNU's says `Is a directory` | The `cat` wrapper rewrites the line when the path is a folder (R29) |
+| G17 | A command only the Node build holds (`python`, `python3`, `js-exec`, `sqlite3`…) says `bash: python: command not available in browser environments. Exclude 'python' from your commands or use the Node.js bundle.` | The adapter rewrites it to `bash: python: command not found` (FR-022, R27) |
+| G18 | `rm`, `mkdir`, `touch` and `seq` don't answer `--help` (`rm: unrecognized option '--help'`, `seq: invalid floating point argument: '--help'`) | Wrappers in `site-commands.ts` print their help in the form just-bash's other commands use (`MISSING_HELP` in `standard.ts`), with the options it implements (FR-068). Upstream report |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -865,6 +868,14 @@ FR-069's site text in their place, after what the line printed before it stopped
 for 5 seconds, the longest a command line runs here.`, or the design's line for 10,000 commands or 1
 MB, then a new prompt. As a second guard, the interface terminates a worker that hasn't answered 1 s
 after the deadline (R26).
+
+**Built 2026-10-29**: just-bash's `maxOutputSize` applies to every command's output, a pipe's
+inside included, so with 1 MB `seq 200000 | tail -1` stopped, though the line prints 7 bytes.
+FR-069 limits what the line prints. So just-bash gets 4 MB (`LIMITS.pipe`), what any one command
+may pass on, and the adapter stops a line whose own stdout and stderr reach 1,048,576 bytes
+(`LIMITS.output`). `yes | head -1` then takes about 175 ms (650 ms with 16 MB). A line stopped by
+the output limit shows none of what it printed, only the stopped line, as G14 already had for
+`seq 1000000`: a megabyte of text would freeze the screen, against FR-069's second sentence.
 
 **Ctrl+C** (FR-075): with no text selected, while a line runs, it terminates the worker as above
 and shows `^C` after the line, then `stopped: you pressed Ctrl+C.` With no line running, it shows
