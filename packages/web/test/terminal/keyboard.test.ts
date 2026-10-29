@@ -7,9 +7,11 @@ import { COMMAND_LINE, commandLineFocused, openTerminalPage } from '../helpers/t
 vi.setConfig({ testTimeout: 120_000 });
 
 describe('006-terminal-FR-026: the command line keeps the keyboard the visitor’s', () => {
-  test('Tab moves focus on and leaves the value; Shift+Tab comes back', async () => {
-    const page = await openTerminalPage('desktop');
+  test('Tab moves focus on and leaves the value, with the readline keys in place; Shift+Tab comes back', async () => {
+    const page = await openTerminalPage('desktop', { platform: 'macOS' });
     await page.keyboard.type('wor');
+    // macOS's Ctrl+A goes to the line's start, and Tab still leaves.
+    await page.keyboard.press('Control+A');
     await page.keyboard.press('Tab');
     expect(await commandLineFocused(page)).toBe(false);
     expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
@@ -28,7 +30,8 @@ describe('006-terminal-FR-026: the command line keeps the keyboard the visitor�
     await expect.poll(() => page.evaluate(() => document.activeElement?.closest('#os .menu-bar') !== null)).toBe(true);
   });
 
-  test('Ctrl and Alt key events reaching the page aren’t prevented, and Escape leaves the typed text', async () => {
+  // The keys research R37 adds (Ctrl+A, Ctrl+C…) are line-keys.test.ts's.
+  test('Ctrl and Alt key events the Terminal doesn’t add aren’t prevented, and Escape leaves the typed text', async () => {
     const page = await openTerminalPage('desktop');
     await page.evaluate(() => {
       (window as unknown as { seen: string[] }).seen = [];
@@ -37,7 +40,7 @@ describe('006-terminal-FR-026: the command line keeps the keyboard the visitor�
       });
     });
     await page.keyboard.type('help me');
-    for (const key of ['Control+a', 'Control+c', 'Control+ArrowLeft', 'Alt+ArrowLeft', 'Control+Shift+ArrowRight', 'Alt+b']) await page.keyboard.press(key);
+    for (const key of ['Control+ArrowLeft', 'Alt+ArrowLeft', 'Control+Shift+ArrowRight', 'Alt+b', 'Control+Shift+ArrowLeft', 'Alt+ArrowRight']) await page.keyboard.press(key);
     const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
     expect(seen).toHaveLength(6);
     expect(seen.filter((entry) => entry.endsWith(':true'))).toEqual([]);

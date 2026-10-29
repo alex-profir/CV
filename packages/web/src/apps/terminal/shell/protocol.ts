@@ -53,7 +53,8 @@ export type Recorded = { text: string; block: Block };
 export type { Effect };
 
 export type RunEnd = 'done' | 'exited' | 'limit' | 'syntax';
-export type Limit = 'time' | 'commands' | 'output';
+// `cancelled`: the visitor pressed Ctrl+C (FR-075).
+export type Limit = 'time' | 'commands' | 'output' | 'cancelled';
 
 export type RunResult = {
   id: number;

@@ -5,7 +5,7 @@
 // text. Typed, piped or printed text stays text (FR-018).
 import { fill } from '../../../site-text.ts';
 import type { SiteText } from '../../../site-text.ts';
-import { announce, rows } from './announce.ts';
+import { announce, counted, rows } from './announce.ts';
 import { command, line, plainText, text } from './block.ts';
 import type { Announcement, Block, Node } from './block.ts';
 import { commandNamed, COMMANDS, pattern } from './commands.ts';
@@ -18,7 +18,7 @@ export type ShownResult = {
   stderr: string;
   recorded: readonly { text: string; block: Block }[];
   end: 'done' | 'exited' | 'limit' | 'syntax';
-  limit?: 'time' | 'commands' | 'output';
+  limit?: 'time' | 'commands' | 'output' | 'cancelled';
   state: { cwd: string };
 };
 
@@ -131,8 +131,10 @@ export function mapOutput(result: ShownResult, typed: string, context: MapContex
   if (errors.length > 0) recordedOnly = false;
   block.push(...errors);
   if (result.end === 'limit' && result.limit !== undefined) {
-    block.push(stoppedLine(context.text.terminal.replies.stopped[result.limit]));
-    recordedOnly = false;
+    const stopped = context.text.terminal.replies.stopped[result.limit];
+    block.push(stoppedLine(stopped));
+    // A stopped line is announced by its "stopped" text alone (FR-028).
+    return { block, announce: { full: stopped } };
   }
 
   const word = /^\s*(\S+)/.exec(typed)?.[1] ?? '';
@@ -142,6 +144,7 @@ export function mapOutput(result: ShownResult, typed: string, context: MapContex
     return { block, announce: { full: moved ? fill(context.text.terminal.announce.cd, { path: formatPrompt(result.state.cwd) }) : '' } };
   }
   if (recordedOnly) return { block, announce: announce(name, block, context.columns) };
-  const count = rows(block, context.columns);
-  return { block, announce: count <= 5 ? { full: plainText(block) } : { command: word, count, unit: 'lines' } };
+  // Text: in full when it takes at most 5 rows, else its lines counted.
+  if (rows(block, context.columns) <= 5) return { block, announce: { full: plainText(block) } };
+  return { block, announce: { command: word, ...counted(block, true) } };
 }

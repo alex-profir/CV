@@ -1,11 +1,13 @@
 // The command line (006 research R15, contracts/terminal.md): a real text
 // input named "Command", under the prompt. Enter runs the line, Up and Down
-// step through the history, and every other key, Tab and the modified ones
-// included, is left to the browser, the screen reader and the shell
-// (FR-026). It has no box: its own caret is hidden, and an `aria-hidden`
-// mirror over it draws the text and a terminal's block cursor, filled and
-// blinking with focus, hollow without, so the cursor is its focus indicator
-// (FR-032, FR-072, research R36).
+// step through the history, and the system's editing keys are the field's
+// own. The Terminal adds only what a field doesn't do (research R37): the
+// readline keys on macOS, select all of the Terminal's text, and Ctrl+C.
+// Every other key, Tab and the browser's and screen readers' included, is
+// left to them (FR-026). It has no box: its own caret is hidden, and an
+// `aria-hidden` mirror over it draws the text, its selection and a
+// terminal's block cursor, filled and blinking with focus, hollow without,
+// so the cursor is its focus indicator (FR-032, FR-072, FR-074, R36).
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ClipboardEvent, FormEvent, KeyboardEvent, RefObject, SyntheticEvent } from 'react';
 import { siteText } from '../../site-text.ts';
@@ -16,6 +18,53 @@ import { Clock } from './glyphs/Clock.tsx';
 import { PromptMark } from './glyphs/PromptMark.tsx';
 
 const BREAKS = /\r\n|\r|\n/g;
+
+type Navigator = globalThis.Navigator & { userAgentData?: { platform?: string } };
+
+// macOS, from the platform the browser reports (research R37).
+export const isMac = () => /^mac/i.test((navigator as Navigator).userAgentData?.platform ?? navigator.platform ?? '');
+
+// Whether text outside the command line is selected on the page.
+export const pageSelected = (input: HTMLInputElement) => {
+  const selection = document.getSelection();
+  return selection !== null && !selection.isCollapsed && !input.parentElement!.contains(selection.anchorNode);
+};
+
+// The start of the word before `at`, as readline's Ctrl+W finds it: past
+// any spaces, then to the space before the word.
+const wordStart = (text: string, at: number) => {
+  let start = at;
+  while (start > 0 && /\s/.test(text[start - 1]!)) start -= 1;
+  while (start > 0 && !/\s/.test(text[start - 1]!)) start -= 1;
+  return start;
+};
+
+// Deletes a range of the field so the system's undo can bring it back.
+function deleteRange(input: HTMLInputElement, start: number, end: number) {
+  if (start === end) return;
+  input.setSelectionRange(start, end);
+  if (!document.execCommand('delete')) {
+    input.setRangeText('', start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+// The mirror's text: runs of the line, plain or selected, and the cursor's
+// block, which draws no text past the line's end.
+type Part = { text: string; kind: 'plain' | 'selected' | 'cursor' };
+function parts(text: string, start: number, end: number, cursor: number): Part[] {
+  const out: Part[] = [];
+  const push = (value: string, kind: Part['kind']) => {
+    const last = out.at(-1);
+    if (last !== undefined && last.kind === kind && kind !== 'cursor') last.text += value;
+    else out.push({ text: value, kind });
+  };
+  for (let at = 0; at <= text.length; at += 1) {
+    if (at === cursor) push(text[at] ?? '', 'cursor');
+    else if (at < text.length) push(text[at]!, at >= start && at < end ? 'selected' : 'plain');
+  }
+  return out;
+}
 
 // `guest ~/work ◷ 18:25 ❯`, the time on desktop only. Screen readers skip
 // it: the command line is named, and each run's heading is its line
@@ -53,11 +102,18 @@ type Props = {
   onDraft: (draft: string) => void;
   onSubmit: (line: string) => void;
   onStep: (direction: 'up' | 'down') => void;
+  // Select all, Ctrl+C with nothing selected, and macOS's Ctrl+L.
+  onSelectAll: () => void;
+  onCancel: () => void;
+  onClear: () => void;
 };
 
-export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit, onStep }: Props) {
-  const [caret, setCaret] = useState(draft.length);
-  const at = Math.min(caret, draft.length);
+export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit, onStep, onSelectAll, onCancel, onClear }: Props) {
+  // The field's selection; the cursor is at its moving end.
+  const [range, setRange] = useState({ start: draft.length, end: draft.length, backward: false });
+  const start = Math.min(range.start, draft.length);
+  const end = Math.min(range.end, draft.length);
+  const at = range.backward ? start : end;
   const [focused, setFocused] = useState(false);
   // The cursor blinks from focus or a key press until `cursorIdle` after the
   // last; each press starts the blink again, with the cursor shown.
@@ -87,15 +143,97 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
 
   useEffect(() => () => clearTimeout(idle.current), []);
 
-  const track = (event: SyntheticEvent<HTMLInputElement>) => setCaret(event.currentTarget.selectionStart ?? event.currentTarget.value.length);
+  const read = (input: HTMLInputElement) => {
+    const length = input.value.length;
+    setRange({ start: input.selectionStart ?? length, end: input.selectionEnd ?? length, backward: input.selectionDirection === 'backward' });
+  };
+  const track = (event: SyntheticEvent<HTMLInputElement>) => read(event.currentTarget);
+  const setCaret = (caret: number) => setRange({ start: caret, end: caret, backward: false });
+
+  // The selection as it changes, by keys, the pointer or the system; and
+  // after select all, the next typed text first clears the page's
+  // selection (research R37).
+  useEffect(() => {
+    const input = inputRef.current;
+    if (input === null) return undefined;
+    const changed = () => {
+      if (document.activeElement === input) read(input);
+    };
+    const typing = () => {
+      if (pageSelected(input)) document.getSelection()!.collapse(input.parentElement, 0);
+    };
+    document.addEventListener('selectionchange', changed);
+    input.addEventListener('beforeinput', typing);
+    return () => {
+      document.removeEventListener('selectionchange', changed);
+      input.removeEventListener('beforeinput', typing);
+    };
+  }, [inputRef]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     onSubmit(draft);
   };
 
+  // The keys research R37's table adds; true when one was handled.
+  const added = (event: KeyboardEvent<HTMLInputElement>): boolean => {
+    const input = event.currentTarget;
+    const key = event.key.toLowerCase();
+    const mac = isMac();
+    const only = (modifier: 'ctrlKey' | 'metaKey') => event[modifier] && !event.altKey && !event.shiftKey && !(modifier === 'ctrlKey' ? event.metaKey : event.ctrlKey);
+    if (key === 'a' && only(mac ? 'metaKey' : 'ctrlKey')) {
+      onSelectAll();
+      return true;
+    }
+    if (key === 'c' && only('ctrlKey')) {
+      // With text selected, in the field or the page, it is the browser's.
+      if (input.selectionStart !== input.selectionEnd || pageSelected(input)) return false;
+      onCancel();
+      return true;
+    }
+    if (!mac || !only('ctrlKey')) return false;
+    const length = input.value.length;
+    const caret = input.selectionStart ?? length;
+    const move = (to: number) => {
+      input.setSelectionRange(to, to);
+      setCaret(to);
+    };
+    switch (key) {
+      case 'a':
+        move(0);
+        return true;
+      case 'e':
+        move(length);
+        return true;
+      case 'b':
+        move(Math.max(0, caret - 1));
+        return true;
+      case 'f':
+        move(Math.min(length, (input.selectionEnd ?? caret) + 1));
+        return true;
+      case 'k':
+        deleteRange(input, caret, length);
+        return true;
+      case 'u':
+        deleteRange(input, 0, caret);
+        return true;
+      case 'w':
+        deleteRange(input, wordStart(input.value, caret), caret);
+        return true;
+      case 'l':
+        onClear();
+        return true;
+      default:
+        return false;
+    }
+  };
+
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     wake();
+    if (added(event)) {
+      event.preventDefault();
+      return;
+    }
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
     if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
     event.preventDefault();
@@ -154,14 +292,22 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
             setFocused(false);
             sleep();
           }}
-          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072"
+          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075"
         />
-        <span className="cursor-mirror" aria-hidden="true" data-focused={focused ? '' : undefined} data-blinking={focused && blinking ? '' : undefined} data-req="006-terminal-FR-032 006-terminal-FR-072">
-          {draft.slice(0, at)}
-          <span key={wakes} className="cursor-block">
-            {draft[at] ?? ' '}
-          </span>
-          {draft.slice(at + 1)}
+        <span className="cursor-mirror" aria-hidden="true" data-focused={focused ? '' : undefined} data-blinking={focused && blinking ? '' : undefined} data-req="006-terminal-FR-032 006-terminal-FR-072 006-terminal-FR-074">
+          {parts(draft, start, end, at).map((part, index) =>
+            part.kind === 'cursor' ? (
+              <span key={`cursor-${wakes}`} className="cursor-block" data-end={part.text === '' ? '' : undefined}>
+                {part.text}
+              </span>
+            ) : part.kind === 'selected' ? (
+              <span key={index} className="cursor-selected">
+                {part.text}
+              </span>
+            ) : (
+              part.text
+            ),
+          )}
         </span>
       </span>
     </form>

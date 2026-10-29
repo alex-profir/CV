@@ -78,3 +78,57 @@ describe('006-terminal-FR-069: a line is stopped at 5 s and the page keeps answe
     expect(await kept.locator('.run-output p.out-line').allTextContents()).toEqual(['yes', 'mine']);
   });
 });
+
+describe('006-terminal-FR-075: Ctrl+C', () => {
+  test('on a typed line with nothing selected: the line with ^C, an empty prompt, and not in history', async () => {
+    const page = await openShell(SHELL_PAGE.desktop);
+    await openTerminal(page, 'desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('abc');
+    await page.keyboard.press('Control+C');
+    const run = page.locator('.terminal section.run').last();
+    await expect.poll(() => run.locator('h2.run-command').textContent()).toMatch(/abc\^C$/);
+    expect(await run.locator('.run-output').count()).toBe(0);
+    expect(await page.locator(COMMAND_LINE).inputValue()).toBe('');
+    const history = await runGroup(page, 'history');
+    expect(await history.locator('.run-output').textContent()).not.toContain('abc');
+  });
+
+  test('during a loop: it stops at once with the Ctrl+C line, and a variable set before survives', async () => {
+    const page = await runawayTerminal();
+    await runGroup(page, 'KEPT=yes');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('while true; do :; done');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => busy(page)).toBe(1);
+    const start = Date.now();
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+    expect(Date.now() - start).toBeLessThan(2_000);
+    const run = page.locator('.terminal section.run').last();
+    expect(await run.locator('p.run-stopped').textContent()).toBe(siteText.terminal.replies.stopped.cancelled);
+    expect(await run.locator('h2.run-command').textContent()).toMatch(/\^C$/);
+    await page.waitForSelector('.terminal[data-shell-state="ready"]');
+    const kept = await runGroup(page, 'echo $KEPT');
+    expect(await kept.locator('.run-output p.out-line').allTextContents()).toEqual(['yes']);
+  });
+
+  test('with output text selected, it is the browser’s', async () => {
+    const page = await openShell(SHELL_PAGE.desktop);
+    await openTerminal(page, 'desktop');
+    await runGroup(page, 'about');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('abc');
+    const prevented = await page.evaluate(() => {
+      const range = document.createRange();
+      range.selectNodeContents(document.querySelector('.terminal .run-output')!);
+      document.getSelection()!.removeAllRanges();
+      document.getSelection()!.addRange(range);
+      const event = new KeyboardEvent('keydown', { key: 'c', code: 'KeyC', ctrlKey: true, bubbles: true, cancelable: true });
+      document.querySelector('.terminal input.command-line')!.dispatchEvent(event);
+      return event.defaultPrevented;
+    });
+    expect(prevented).toBe(false);
+    expect(await page.locator(COMMAND_LINE).inputValue()).toBe('abc');
+  });
+});

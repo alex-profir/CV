@@ -96,9 +96,12 @@
   font: inherit;
 }
 
-.terminal ::selection {
-  background: var(--token-color-selection);
-  color: var(--token-color-selection-text);
+/* A selection in the output, and the line's in the mirror, in the
+   terminal's selection colors (research R36). */
+.terminal ::selection,
+.cursor-selected {
+  background: var(--token-color-terminal-selection);
+  color: var(--token-color-terminal-selection-text);
 }
 
 /* A link is a target of a control row's height, and still wraps inside
@@ -374,7 +377,9 @@
   outline: none;
 }
 
+/* The mirror draws the line's selection; the field's own stays unseen. */
 .command-line::selection {
+  background: transparent;
   color: transparent;
 }
 
@@ -389,6 +394,12 @@
 .cursor-block {
   background: var(--token-color-terminal-cursor);
   color: var(--token-color-terminal-cursor-text);
+}
+
+/* Past the line's end the block holds no text, so a copy of the Terminal's
+   text has none (FR-075); generated content is never copied. */
+.cursor-block[data-end]::before {
+  content: '\a0';
 }
 
 /* Without focus: hollow, an outline inside the block, steady. */

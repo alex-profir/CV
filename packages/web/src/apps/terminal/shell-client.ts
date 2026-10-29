@@ -5,7 +5,7 @@
 // last state and files, when a line outruns the watchdog or the visitor
 // presses Ctrl+C (FR-069, FR-075).
 import { NO_FILES } from './shell/protocol.ts';
-import type { FromWorker, RunRequest, RunResult, ShellState, ToWorker, VisitorFiles } from './shell/protocol.ts';
+import type { FromWorker, Limit, RunRequest, RunResult, ShellState, ToWorker, VisitorFiles } from './shell/protocol.ts';
 
 // The contract's numbers, not design values.
 export const TIMING = {
@@ -43,7 +43,7 @@ type Pending = { request: RunRequest; resolve: (result: RunResult) => void; time
 const newWorker = (): WorkerLike => new Worker(new URL('./shell/worker.ts', import.meta.url), { type: 'module' }) as unknown as WorkerLike;
 
 // A stopped line: nothing it printed, the state as it was (FR-069).
-const stopped = (request: RunRequest, limit: 'time' | null): RunResult => ({
+const stopped = (request: RunRequest, limit: Limit | null): RunResult => ({
   id: request.id,
   stdout: '',
   stderr: '',
@@ -120,7 +120,7 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
   };
 
   // Ends the running line as stopped and starts over from the last result.
-  const restart = (limit: 'time' | null) => {
+  const restart = (limit: Limit | null) => {
     if (pending === null) return;
     const { request, resolve, timer } = pending;
     clearTimeout(timer);
@@ -157,7 +157,7 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
       });
     },
     cancel() {
-      restart(null);
+      restart('cancelled');
     },
     reset() {
       state = null;

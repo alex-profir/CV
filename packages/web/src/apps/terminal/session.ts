@@ -29,6 +29,8 @@ export type Entry = {
   time: string;
   // Null for an empty line, and for a line not run yet.
   block: Block | null;
+  // Ended with Ctrl+C: shown with `^C` after the line (FR-075).
+  cancelled?: true;
 };
 
 export type ShellStatus = 'idle' | 'loading' | 'ready' | 'running' | 'failed';
@@ -142,7 +144,8 @@ export function createSession(client: ShellClient = createShellClient()) {
   // Session additions).
   function finish(waiting: Waiting, result: RunResult) {
     const { block, announce } = mapOutput(result, waiting.entry.line, { text: siteText, columns: TERMINAL.columns, cwd: waiting.entry.cwd });
-    const done: Entry = { ...waiting.entry, block };
+    const cancelled = state.running?.id === waiting.entry.id && state.running.cancelled === true;
+    const done: Entry = { ...waiting.entry, block, ...(cancelled ? { cancelled } : {}) };
     let next: Session = {
       ...state,
       running: null,
@@ -230,6 +233,21 @@ export function createSession(client: ShellClient = createShellClient()) {
     else set({ ...state, draft: history[index]!, stepping: { ...stepping, index } });
   }
 
+  // Ctrl+C with nothing selected (FR-075, research R33): stops the running
+  // line, which ends with the "stopped" Ctrl+C line; else ends the typed
+  // line with `^C`, not added to the history, and empties the draft.
+  function cancel() {
+    if (state.vim !== null) return;
+    if (state.running !== null) {
+      if (state.running.cancelled === true) return;
+      set({ ...state, running: { ...state.running, cancelled: true } });
+      client.cancel();
+      return;
+    }
+    const typed: Entry = { ...entry(state.draft), block: [], cancelled: true };
+    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement: say(siteText.terminal.announce.cancelled) });
+  }
+
   function vim(input: VimInput) {
     if (state.vim === null) return;
     const next = vimReducer(state.vim, input);
@@ -253,6 +271,7 @@ export function createSession(client: ShellClient = createShellClient()) {
       return () => void listeners.delete(listener);
     },
     run,
+    cancel,
     step,
     setDraft: (draft: string) => {
       if (draft !== state.draft) set({ ...state, draft });

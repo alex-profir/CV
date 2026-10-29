@@ -6,7 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore }
 import type { MouseEvent as ScreenMouseEvent, PointerEvent as ScreenPointerEvent } from 'react';
 import type { AppOs, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
-import { CommandLine, focusCommandLine, Prompt } from './CommandLine.tsx';
+import { CommandLine, focusCommandLine, isMac, Prompt } from './CommandLine.tsx';
 import { Output } from './Output.tsx';
 import type { RunControl } from './Output.tsx';
 import { session } from './session.ts';
@@ -49,6 +49,7 @@ function Run({ entry, desktop, run, pending = false }: { entry: Entry; desktop: 
       <h2 className="run-command" id={`run-${entry.id}`}>
         <Prompt cwd={entry.cwd} time={desktop ? entry.time : null} />
         <span className="run-line">{entry.line}</span>
+        {entry.cancelled === true && <span className="run-cancel">{words.replies.cancelMark}</span>}
       </h2>
       {entry.block !== null && entry.block.length > 0 && (
         <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
@@ -105,6 +106,27 @@ export function Terminal({ os }: AppProps) {
   );
 
   const sendVim = useCallback((vimInput: VimInput) => session.vim(vimInput), []);
+
+  // Select all: the Terminal's text and nothing else, with focus kept in
+  // the command line (FR-075, research R37).
+  const selectAll = useCallback(() => {
+    if (screen.current !== null) document.getSelection()?.selectAllChildren(screen.current);
+  }, []);
+
+  // Cmd+A or Ctrl+A from the output, focus being on the page or a control
+  // in it, does the same.
+  useEffect(() => {
+    const view = screen.current;
+    if (view === null) return undefined;
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.target === input.current || event.key.toLowerCase() !== 'a' || event.altKey || event.shiftKey) return;
+      if (isMac() ? !event.metaKey || event.ctrlKey : !event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      selectAll();
+    };
+    view.addEventListener('keydown', keyDown);
+    return () => view.removeEventListener('keydown', keyDown);
+  }, [selectAll, state.vim === null]);
 
   // The shell starts loading the first time the Terminal opens (FR-070).
   useEffect(() => session.start(), []);
@@ -197,6 +219,9 @@ export function Terminal({ os }: AppProps) {
             onDraft={session.setDraft}
             onSubmit={run}
             onStep={session.step}
+            onSelectAll={selectAll}
+            onCancel={session.cancel}
+            onClear={session.clear}
           />
         </div>
       ) : (
