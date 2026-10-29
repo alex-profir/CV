@@ -75,6 +75,15 @@ describe('006-terminal-FR-056: jq pretty-prints JSON with keys and numbers as wr
     expect(textOf('cat cv.json | jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
   });
 
+  test('006-terminal-FR-045: a path with . or .. is read as a path, not a filter', () => {
+    const context = contextFor('every-field');
+    const inWork = { ...context, folder: ['work'] };
+    expect(output(run('jq ./cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(run('jq ../cv.json', inWork)).some((node) => node.kind === 'json')).toBe(true);
+    expect(textOf('jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
+    expect(textOf('jq ./nowhere', context)).toBe('./nowhere: no such file or folder.');
+  });
+
   test('cat about | jq and jq on text that is not JSON name | or the path', () => {
     const context = contextFor('every-field');
     expect(textOf('cat about | jq', context)).toBe('jq: | is not JSON.');

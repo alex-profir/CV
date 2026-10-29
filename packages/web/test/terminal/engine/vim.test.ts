@@ -80,6 +80,20 @@ describe('006-terminal-FR-061: folds', () => {
     expect(state.closed.has(WORK)).toBe(true);
     invariants(state);
   });
+
+  test('Enter and Space toggle the fold line the cursor is on, and do nothing on any other line', () => {
+    let state = apply(open(), 'j');
+    expect(state.cursor.line).toBe(WORK);
+    state = apply(state, 'Enter');
+    expect(state.closed.has(WORK)).toBe(false);
+    state = apply(state, ' ');
+    expect(state.closed.has(WORK)).toBe(true);
+    expect(state.cursor.line).toBe(WORK);
+    state = apply(state, ' ', 'j');
+    expect(state.cursor.line).toBe(WORK + 1);
+    for (const key of ['Enter', ' ']) expect(apply(state, key), key).toEqual(state);
+    invariants(state);
+  });
 });
 
 describe('006-terminal-FR-060: the keys move as vim does, and nothing changes the file', () => {

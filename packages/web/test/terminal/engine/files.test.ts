@@ -110,6 +110,19 @@ describe('006-terminal-FR-043: the home folder in the design order, folders endi
     expect(names).toEqual(expect.arrayContaining(['cv.json', 'readme', 'specs/']));
   });
 
+  test('about and contact are left out when their commands would say the CV lists nothing', () => {
+    const empty = contextOf({ ...fixture('every-field'), basics: { location: {}, profiles: [{}] } });
+    const names = textOf('ls', empty).split('  ');
+    expect(names).not.toContain('about');
+    expect(names).not.toContain('contact');
+    expect(textOf('about', empty)).toBe('The CV lists no basics.');
+    expect(textOf('contact', empty)).toBe('The CV lists no contact details.');
+    const city = contextOf({ ...fixture('every-field'), basics: { location: { city: 'Brașov' } } });
+    expect(textOf('ls', city).split('  ')).toContain('about');
+    expect(textOf('ls', city).split('  ')).not.toContain('contact');
+    expect(textOf('cat about', city)).toBe(textOf('about', city));
+  });
+
   test("entries keep the CV's order, and specs their numbered order", () => {
     const context = contextFor('three-projects');
     const cv = fixture('three-projects');
@@ -135,6 +148,27 @@ describe("006-terminal-FR-044: file names are made from the CV's own names", () 
     expect(fileName('C++/C#', 'project')).toBe('c-c');
     expect(fileName('', 'project')).toBe('project');
     expect(fileName('!!!', 'role')).toBe('role');
+  });
+
+  test('letters and digits of any script are kept, accents still removed', () => {
+    expect(fileName('Łódź Tech', 'role')).toBe('łodz-tech');
+    expect(fileName('Straße GmbH', 'role')).toBe('straße-gmbh');
+    expect(fileName('Øresund AB', 'role')).toBe('øresund-ab');
+    expect(fileName('Яндекс Технологии', 'role')).toBe('яндекс-технологии');
+    expect(fileName('東京 Labs ２', 'project')).toBe('東京-labs-２');
+    expect(fileName('Café Ünïcode', 'role')).toBe('cafe-unicode');
+    expect(fileName('İstanbul', 'school')).toBe('istanbul');
+  });
+
+  test('a file named from such a CV is found as typed, without regard to capitals or accents', () => {
+    const cv = { ...fixture('every-field'), work: [{ name: 'Łódź Tech', position: 'Engineer' }, { name: 'Яндекс', position: 'Engineer' }] };
+    const context = contextOf(cv);
+    expect(textOf('ls work', context).split('  ')).toEqual(['łodz-tech', 'яндекс']);
+    const shown = textOf('cat ~/work/łodz-tech', context);
+    expect(shown).toContain('Łódź Tech');
+    for (const typed of ['łódź-tech', 'ŁÓDŹ-TECH', 'Łodz-Tech']) expect(textOf(`cat ~/work/${typed}`, context), typed).toBe(shown);
+    expect(textOf('cat ~/work/ЯНДЕКС', context)).toContain('Яндекс');
+    expect(textOf('cat ~/work/lodz-tech', context)).toBe('~/work/lodz-tech: no such file or folder.');
   });
 
   test('non-ascii: every name is plain lower-case letters, digits and hyphens', () => {

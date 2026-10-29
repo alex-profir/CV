@@ -5,7 +5,7 @@
 // (FR-049).
 import type { SpecEntry, SpecList } from '../../../../scripts/spec-list.ts';
 import type { Block, Path } from './block.ts';
-import { aboutBlock, contactBlock, entryBlock, listBlock, shownEntries } from './cv.ts';
+import { aboutBlock, aboutLines, contactBlock, contactLines, entryBlock, listBlock, shownEntries } from './cv.ts';
 import type { CvInput, EntrySection, ListSection } from './cv.ts';
 
 export type { Path };
@@ -20,14 +20,15 @@ export type FileBuilders = { cvJson: string; readme: () => Block; spec: (entry: 
 
 const HOME = '~';
 
-// A file's name from a CV value (FR-044): no accents, lower case, every run
-// of other characters one hyphen, trimmed; `fallback` when nothing is left.
+// A value with no accents, in lower case: how names are made and matched.
+const folded = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+// A file's name from a CV value (FR-044): no accents, lower case, every
+// letter and digit of any script kept, every run of other characters one
+// hyphen, trimmed; `fallback` when nothing is left.
 export function fileName(value: string, fallback: string): string {
-  const name = value
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
+  const name = folded(value)
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
     .replace(/^-+|-+$/g, '');
   return name === '' ? fallback : name;
 }
@@ -69,19 +70,12 @@ function listFile(input: CvInput, section: ListSection): File | null {
   return shownEntries(input.resume, section).length === 0 ? null : { kind: 'file', name: section, show: () => listBlock(input, section) };
 }
 
-const has = (value: object | undefined, fields: readonly string[]) =>
-  value !== undefined && fields.some((field) => {
-    const shown = (value as Record<string, unknown>)[field];
-    return (typeof shown === 'string' && shown !== '') || (Array.isArray(shown) && shown.length > 0) || (typeof shown === 'object' && shown !== null && !Array.isArray(shown));
-  });
-
 // The home folder, in the design's order (FR-043), empty sections left out.
 export function buildFileSystem(input: CvInput, specs: SpecList, builders: FileBuilders): Folder {
-  const basics = input.resume.basics;
   const children: (FsNode | null)[] = [
     { kind: 'file', name: 'cv.json', text: builders.cvJson, show: () => [{ kind: 'text', text: builders.cvJson }] },
-    has(basics, ['name', 'label', 'summary', 'location']) ? { kind: 'file', name: 'about', show: () => aboutBlock(input) } : null,
-    has(basics, ['email', 'url', 'profiles']) ? { kind: 'file', name: 'contact', show: () => contactBlock(input) } : null,
+    aboutLines(input).length === 0 ? null : { kind: 'file', name: 'about', show: () => aboutBlock(input) },
+    contactLines(input).length === 0 ? null : { kind: 'file', name: 'contact', show: () => contactBlock(input) },
     entryFolder(input, 'work'),
     entryFolder(input, 'projects'),
     listFile(input, 'skills'),
@@ -94,7 +88,9 @@ export function buildFileSystem(input: CvInput, specs: SpecList, builders: FileB
   return { kind: 'folder', name: HOME, children: children.filter((child): child is FsNode => child !== null) };
 }
 
-const childNamed = (folder: Folder, name: string) => folder.children.find((child) => child.name === name.toLowerCase()) ?? null;
+// Matched without regard to capitals or accents (FR-045), so a name typed as
+// the CV writes it finds its file.
+const childNamed = (folder: Folder, name: string) => folder.children.find((child) => folded(child.name) === folded(name)) ?? null;
 
 // The node at a path, or null.
 export function nodeAt(root: Folder, path: Path): FsNode | null {

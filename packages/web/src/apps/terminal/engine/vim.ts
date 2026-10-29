@@ -253,6 +253,10 @@ function key(state: VimState, input: { key: string; page?: number }): VimState {
       return nextMatch(state, 1);
     case 'N':
       return nextMatch(state, -1);
+    // Enter and Space activate the fold line the cursor is on (FR-061).
+    case 'Enter':
+    case ' ':
+      return state.source.folds.some((fold) => fold.start === state.cursor.line) ? toggleFold(state, state.cursor.line) : state;
     case 'g':
     case 'z':
     case 'd':

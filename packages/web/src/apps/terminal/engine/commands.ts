@@ -5,7 +5,7 @@
 // site text or CV text, given in the run context, never imported here.
 import type { Resume, SiteData } from '@cv/content';
 import type { SpecEntry, SpecList } from '../../../../scripts/spec-list.ts';
-import { fill } from '../../../site-text.ts';
+import { counted, fill } from '../../../site-text.ts';
 import type { SiteText } from '../../../site-text.ts';
 import { command, line, link, plainText, text } from './block.ts';
 import type { Block, Node, Path, Result, Tone, VimSource } from './block.ts';
@@ -152,7 +152,7 @@ export function specRow(entry: SpecEntry, context: RunContext): Block[] {
   const { specs } = context.text.terminal;
   const href = fill(specs.link, { repository: context.siteData.repository ?? '', folder: entry.folder });
   const tone: Tone = entry.status === 'Approved' ? 'approved' : entry.status === 'Draft' ? 'draft' : 'error';
-  return [[text(entry.number, 'dim')], [link(href, [text(entry.name)], true)], [text(specs.statuses[entry.status], tone)], [text(fill(specs.requirements, { n: entry.requirements }), 'dim')]];
+  return [[text(entry.number, 'dim')], [link(href, [text(entry.name)], true)], [text(specs.statuses[entry.status], tone)], [text(fill(counted(specs.requirements, entry.requirements), { n: entry.requirements }), 'dim')]];
 }
 
 export const specBlock = (entry: SpecEntry, context: RunContext): Block => [{ kind: 'rows', rows: [specRow(entry, context)], req: 'specs' }];
@@ -160,7 +160,7 @@ export const specBlock = (entry: SpecEntry, context: RunContext): Block => [{ ki
 function specsBlock(context: RunContext): Block {
   const { specs } = context.text.terminal;
   return [
-    line(text(fill(specs.lead, { n: context.specs.length }), 'secondary')),
+    line(text(fill(counted(specs.lead, context.specs.length), { n: context.specs.length }), 'secondary')),
     { kind: 'rows', rows: context.specs.map((entry) => specRow(entry, context)), req: 'specs' },
     repositoryLine(specs.tail, context),
   ];
@@ -202,14 +202,14 @@ function cat(call: Call, context: RunContext): Result {
 }
 
 // `jq`: pretty-prints a file or what is piped in, with the filter `.` only
-// (FR-056).
+// (FR-056). An argument starting with `./` or `../`, or naming something in
+// the tree, is a path (FR-045); any other starting with `.` is a filter.
 function jq(call: Call, context: RunContext): Result {
   const { replies } = context.text.terminal;
   let args = call.args;
-  if (args[0]?.startsWith('.')) {
-    if (args[0] !== '.') return output([text(replies.jqFilter)]);
-    args = args.slice(1);
-  }
+  const first = args[0];
+  if (first === '.') args = args.slice(1);
+  else if (first?.startsWith('.') && !/^\.\.?\//.test(first) && resolve(context.fs, first, context.folder) === null) return output([text(replies.jqFilter)]);
   if (args.length > 1 || (args.length === 0 && call.input === null)) return usage(call, context, 'jq');
   let source: { text: string; name: string | null; from: string };
   if (args.length === 1) {
@@ -234,12 +234,14 @@ function vimSource(textValue: string, name: string, pipe: string | null): VimSou
   return { name, pipe, rows, folds: [], type: 'text' };
 }
 
+// `vim <path>` or `vim -`; only `vim -` reads what is piped in (FR-057).
 function vim(call: Call, context: RunContext): Result {
   if (call.args.length !== 1 || (call.args[0] === '-' && call.input === null)) return usage(call, context, 'vim');
   if (call.args[0] === '-') return { kind: 'open-vim', file: vimSource(call.input!.text, call.input!.name ?? '-', call.line) };
+  if (call.input !== null) return noInput(call.word, context);
   const found = fileAt(call.args[0]!, context);
   if ('reply' in found) return found.reply;
-  return { kind: 'open-vim', file: vimSource(fileText(found.file), found.file.name, call.input === null ? null : call.line) };
+  return { kind: 'open-vim', file: vimSource(fileText(found.file), found.file.name, null) };
 }
 
 const CV_PIPE = 'cat cv.json | jq | vim -';
@@ -251,8 +253,9 @@ function open(call: Call, context: RunContext): Result {
   return reply(context.text.terminal.replies.open, {}, { cv: command('open cv', 'inline', { label: 'cv' }), about: command('open about', 'inline', { label: 'about' }) });
 }
 
+// `history`: a numbered line per command run, as a list (FR-020, FR-029).
 function history(context: RunContext): Result {
-  return output(context.history.map((entry, index) => line(text(`${index + 1}`, 'dim'), text(`  ${entry}`))));
+  return output([{ kind: 'list', items: context.history.map((entry, index) => [text(`${index + 1}`, 'dim'), text(`  ${entry}`)]), req: 'history' }]);
 }
 
 const SECTION = (name: 'work' | 'projects' | 'education') => plain(name, (context) => output(entriesBlock(cvInput(context), name)));
@@ -285,6 +288,9 @@ export const COMMANDS: readonly Command[] = [
   { name: 'exit', aliases: [], args: 'none', readsInput: false, run: plain('exit', () => ({ kind: 'os', action: { exit: true }, block: [] })) },
 ];
 
+// `{command} doesn't read piped input.`, naming the command as typed.
+const noInput = (word: string, context: RunContext): Result => output([text(fill(context.text.terminal.replies.noInput, { command: word }))]);
+
 // What a stage passes on to the next one.
 function piped(result: Result): Piped {
   if (result.kind === 'output') return { text: result.text ?? plainText(result.block), name: result.name ?? null };
@@ -305,7 +311,7 @@ export function runLine(typed: string, context: RunContext): Result {
   let result: Result = output([]);
   for (const [index, stage] of parsed.stages.entries()) {
     if (stage.command === null) return unknown(stage.word, context);
-    if (index > 0 && !stage.command.readsInput) return output([text(fill(context.text.terminal.replies.noInput, { command: stage.word }))]);
+    if (index > 0 && !stage.command.readsInput) return noInput(stage.word, context);
     result = stage.command.run({ word: stage.word, args: stage.args, input, line: typed }, context);
     input = piped(result);
     // Announced as FR-028 sets, by the command's own name.

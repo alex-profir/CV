@@ -403,6 +403,19 @@ describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', ()
     expect((await keys(page)).map((each) => each.text)).toEqual(COMMAND_KEYS);
   });
 
+  test('with a / search open, the :q key still quits, and the command keys are back', async () => {
+    const page = await openPocket();
+    await key(page, 'cv').tap();
+    await vimView(page).waitFor();
+    await settle(page);
+    await page.locator(`${KEY}[aria-label$=", Search"]`).tap();
+    await page.locator('.terminal input.vim-entry').waitFor();
+    await page.locator(`${KEY}[aria-label$=", Quit"]`).tap();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    expect(await vimView(page).count()).toBe(0);
+    expect((await keys(page)).map((each) => each.text)).toEqual(COMMAND_KEYS);
+  });
+
   test('a tap on a fold line opens and closes its fold', async () => {
     const page = await openPocket();
     await key(page, 'cv').tap();

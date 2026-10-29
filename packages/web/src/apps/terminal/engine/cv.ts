@@ -222,8 +222,9 @@ export function listBlock(input: CvInput, section: ListSection): Block {
   return [list(items)];
 }
 
-// `about`: the name, the label, the location and the summary.
-export function aboutBlock(input: CvInput): Block {
+// `about`'s lines: the name, the label, the location and the summary; none
+// when the CV shows none of them.
+export function aboutLines(input: CvInput): Node[] {
   const basics: ResumeBasics = input.resume.basics ?? {};
   const block: Node[] = [];
   if (present(basics.name)) block.push(line(text(basics.name!, 'primary')));
@@ -231,12 +232,18 @@ export function aboutBlock(input: CvInput): Block {
   const location = basics.location === undefined ? null : input.format.locationLine(basics.location);
   if (location !== null) block.push(line(text(location, 'dim')));
   if (present(basics.summary)) block.push(line(text(basics.summary!, 'secondary')));
+  return block;
+}
+
+// `about`, or the empty-section line.
+export function aboutBlock(input: CvInput): Block {
+  const block = aboutLines(input);
   return block.length === 0 ? emptySection(input, 'basics') : block;
 }
 
-// `contact`: the email, the website and every profile, as links named as
-// /cv names them.
-export function contactBlock(input: CvInput): Block {
+// `contact`'s lines: the email, the website and every profile, as links
+// named as /cv names them; none when the CV shows none of them.
+export function contactLines(input: CvInput): Node[] {
   const { email, url, profiles } = input.resume.basics ?? {};
   const { text: siteText, format } = input;
   const block: Node[] = [];
@@ -250,5 +257,11 @@ export function contactBlock(input: CvInput): Block {
     const named = present(network) && (present(username) || present(address)) ? siteText.profileLabel.replace('{network}', network!).replace('{username}', shown) : shown;
     block.push(line(present(address) ? cvLink(address!, [text(named)]) : text(named)));
   }
+  return block;
+}
+
+// `contact`, or the empty-section line.
+export function contactBlock(input: CvInput): Block {
+  const block = contactLines(input);
   return block.length === 0 ? emptySection(input, 'contact') : block;
 }

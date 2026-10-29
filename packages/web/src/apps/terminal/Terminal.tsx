@@ -89,11 +89,15 @@ export function Terminal({ resume, os }: AppProps) {
 
   // Coming back to a kept session: the scroll position it had, when the
   // screen is drawn again, and when a minimized window is shown again, as a
-  // hidden element loses its scroll position (FR-021).
+  // hidden element loses its scroll position (FR-021). Not when the vim view
+  // closes: its run was just added and is scrolled to (FR-064).
+  const vimShown = useRef(vimOpen);
   useLayoutEffect(() => {
+    const fromVim = vimShown.current && !vimOpen;
+    vimShown.current = vimOpen;
     const view = screen.current;
     if (view === null) return undefined;
-    view.scrollTop = session.scrollFor(os.shell);
+    if (!fromVim) view.scrollTop = session.scrollFor(os.shell);
     let hidden = view.clientHeight === 0;
     const observer = new ResizeObserver(() => {
       const now = view.clientHeight === 0;
@@ -114,7 +118,7 @@ export function Terminal({ resume, os }: AppProps) {
           {state.greeting && (
             <div className="greeting" data-req="006-terminal-FR-005 006-terminal-FR-030">
               <p className="greeting-status">{desktop ? words.greeting.desktop.status : words.greeting.phone.status}</p>
-              <p className="greeting-name">{name !== undefined && name !== '' ? fill(words.greeting.name, { name, label: label ?? '' }).replace(/ — $/, '') : siteText.siteHeading}</p>
+              <p className="greeting-name">{name === undefined || name === '' ? siteText.siteHeading : label === undefined || label === '' ? fill(words.greeting.nameAlone, { name }) : fill(words.greeting.name, { name, label })}</p>
               <Intro pattern={desktop ? words.greeting.desktop.intro : words.greeting.phone.intro} run={runControl} />
               <div className="chips">
                 {words.greeting.commands.map((line) => (

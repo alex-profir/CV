@@ -57,6 +57,17 @@ describe('006-terminal-FR-005: the greeting says what the Terminal is, with the 
     expect((await typedLines(page)).at(-1)).toBe('cv');
   });
 
+  test('006-terminal-FR-030: with a fixture CV that has a name and no label, the name line is the name alone, by its own site text', async () => {
+    const { url } = await fixtureBuild('three-projects');
+    const { basics } = fixture('three-projects');
+    expect(basics!.label).toBeUndefined();
+    const page = await openShell({ ...SHELL_PAGE.desktop, url });
+    await openTerminal(page, 'desktop');
+    const [, name] = await greetingLines(page);
+    expect(name).toBe(fill(siteText.terminal.greeting.nameAlone, { name: basics!.name! }));
+    expect(name).toBe(basics!.name);
+  });
+
   test('with the no-name fixture, the name line shows the site heading', async () => {
     const { url } = await fixtureBuild('no-name');
     const { basics } = fixture('no-name');

@@ -86,6 +86,8 @@ export const siteText = deepFreeze({
         intro: 'My CV as a terminal. Tap a key below, or type a command. New? Try {help}.',
       },
       name: '{name} — {label}',
+      // A CV with a name and no label.
+      nameAlone: '{name}',
       commands: ['help', 'about', 'work', 'projects', 'cv'],
     },
     // By command name, in `help`'s order: the arguments `help` shows after
@@ -155,16 +157,23 @@ export const siteText = deepFreeze({
       source: 'Source code, specs and history:',
     },
     specs: {
-      lead: 'Every feature is specified before it is built. {n} specs:',
+      // Each counted phrase has its form for 1 and for any other count.
+      lead: { one: 'Every feature is specified before it is built. {n} spec:', other: 'Every feature is specified before it is built. {n} specs:' },
       tail: 'All specs, plans and history:',
       link: '{repository}/blob/main/specs/{folder}/spec.md',
-      requirements: '{n} requirements',
+      requirements: { one: '{n} requirement', other: '{n} requirements' },
       statuses: { Approved: 'Approved', Draft: 'Draft', Invalid: 'Invalid' },
     },
     // The status region (FR-028, FR-065).
     announce: {
       summary: '{command}: {count} {unit}',
-      units: { entries: 'entries', commands: 'commands', files: 'files', lines: 'lines', specs: 'specs' },
+      units: {
+        entries: { one: 'entry', other: 'entries' },
+        commands: { one: 'command', other: 'commands' },
+        files: { one: 'file', other: 'files' },
+        lines: { one: 'line', other: 'lines' },
+        specs: { one: 'spec', other: 'specs' },
+      },
       cd: 'Now in {path}',
       cleared: 'Cleared',
       vim: '{file}, read only, {n} lines. Type :q to leave.',
@@ -304,5 +313,8 @@ export const siteText = deepFreeze({
 export function fill(pattern: string, values: Record<string, string | number>): string {
   return pattern.replace(/\{(\w+)\}/g, (match, key: string) => (Object.hasOwn(values, key) ? String(values[key]) : match));
 }
+
+// A counted phrase's form for `n`: English says 1 in the singular (FR-028).
+export const counted = (forms: { one: string; other: string }, n: number): string => (n === 1 ? forms.one : forms.other);
 
 export type SiteText = typeof siteText;

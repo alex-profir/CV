@@ -26,7 +26,7 @@ function counted(block: Block): Pick<Extract<Announcement, { count: number }>, '
   const entries = block.filter((node) => node.kind === 'heading' && node.depth === 1).length;
   if (entries > 0) return { count: entries, unit: 'entries' };
   const items = find('list');
-  if (items !== undefined) return { count: items.items.length, unit: 'entries' };
+  if (items !== undefined) return { count: items.items.length, unit: items.req === 'history' ? 'lines' : 'entries' };
   return { count: plainText(block).split('\n').length, unit: 'lines' };
 }
 
