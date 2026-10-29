@@ -17,7 +17,9 @@ before merge. The pull-request side is in [ci.md](./ci.md).
 | `signoff` | `node tools/local-verify/src/main.js signoff` | Signing off the head commit (FR-033 to FR-036) |
 
 `main.js` is plain JavaScript and checks the Node version first, like the other tools'
-entry points. Any argument after the subcommand is a usage error (exit 2).
+entry points: below Node 26 it prints `npm run <verify|signoff> needs Node 26 or later (see
+.nvmrc), but this is Node <version>: run nvm use` (`local full run` for any other subcommand)
+and exits 2. Any argument after the subcommand is a usage error (exit 2).
 
 ## `npm run verify`
 
