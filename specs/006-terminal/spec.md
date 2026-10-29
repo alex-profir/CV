@@ -4,11 +4,11 @@
 
 **Created**: 2026-10-27
 
-**Status**: Draft
+**Status**: Approved
 
 **Amended**: 2026-10-29, after the owner's review of the built Terminal: a real bash-like shell
-and a terminal's cursor and focus (see Clarifications, Session 2026-10-29). Approved 2026-10-27;
-back to Draft until the owner approves the amendment.
+and a terminal's cursor, focus and keys (see Clarifications, Session 2026-10-29). Approved
+2026-10-27; the amendment approved by the owner 2026-10-29.
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
