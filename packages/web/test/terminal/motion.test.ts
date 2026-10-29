@@ -57,13 +57,16 @@ describe('006-terminal-FR-032: nothing blinks, types out or moves', () => {
     await page.locator(COMMAND_LINE).focus();
     await page.keyboard.type('work');
     // The watch counts the runs before Enter is pressed, or a fast render
-    // would already be counted and the watch would wait for ever.
+    // would already be counted and the watch would wait for ever. A run
+    // waits for the shell busy and empty; its first frame is the one it has
+    // run in (FR-070).
     await page.evaluate(() => {
       const before = document.querySelectorAll('.terminal section.run').length;
       (window as unknown as { firstFrame: Promise<string> }).firstFrame = new Promise<string>((resolve) => {
         const check = () => {
           const runs = document.querySelectorAll('.terminal section.run');
-          if (runs.length > before) resolve(runs[runs.length - 1]!.querySelector('.run-output')?.textContent ?? '');
+          const last = runs[runs.length - 1];
+          if (runs.length > before && last !== undefined && !last.hasAttribute('aria-busy')) resolve(last.querySelector('.run-output')?.textContent ?? '');
           else requestAnimationFrame(check);
         };
         requestAnimationFrame(check);

@@ -108,6 +108,8 @@ export const SHELL = Object.freeze({
 export const TERMINAL = Object.freeze({
   commandLine: '#os .terminal input.command-line',
   run: '#os .terminal section.run',
+  busyRun: '#os .terminal section.run[aria-busy="true"]',
+  shellSettled: '#os .terminal:is([data-shell-state="ready"], [data-shell-state="running"], [data-shell-state="failed"])',
   output: '.run-output',
   vim: '#os .terminal section.vim',
   vimText: '#os .terminal section.vim .vim-text',
@@ -127,6 +129,8 @@ export const control = (view: 'cv' | 'about' | 'terminal', name: 'close' | 'mini
 
 // How long an element the driver waits for may take to appear.
 const WAIT_MS = 5_000;
+// How long the shell may take to load or run a line.
+const SHELL_LOAD_MS = 10_000;
 
 // A context's options for a shell at a size: a phone has touch.
 export function shellContext({ shell, width, height }: { shell: Shell; width: number; height: number }): BrowserContextOptions {
@@ -192,8 +196,15 @@ export async function openTerminal(page: Page, shell: Shell): Promise<void> {
   if (shell === 'desktop') await page.click(SHELL.terminalDockItem);
   else await page.tap(SHELL.terminalIcon);
   await shown(page, TERMINAL.commandLine);
+  // The shell loads in a worker on first open (006 FR-070): until it is
+  // ready, or has failed, lines wait.
+  await page.waitForSelector(TERMINAL.shellSettled, { timeout: SHELL_LOAD_MS });
   await settle(page);
 }
+
+// Until no line waits for the shell or runs (006 FR-070), or the Terminal
+// has closed.
+const linesRun = (page: Page) => page.waitForFunction((busy) => document.querySelector(busy) === null, TERMINAL.busyRun, { timeout: SHELL_LOAD_MS });
 
 const runs = (page: Page) => page.locator(TERMINAL.run).count();
 
@@ -204,6 +215,7 @@ export async function typeLine(page: Page, line: string): Promise<void> {
   await input.fill('');
   await page.keyboard.type(line);
   await page.keyboard.press('Enter');
+  await linesRun(page);
 }
 
 // Waits for the run a line, a key or a control adds, and gives it back.
@@ -211,6 +223,7 @@ export async function newRun(page: Page, act: () => Promise<void>): Promise<Loca
   const before = await runs(page);
   await act();
   await page.waitForFunction(([selector, count]) => document.querySelectorAll(selector as string).length > (count as number), [TERMINAL.run, before] as const, { timeout: WAIT_MS });
+  await linesRun(page);
   return page.locator(TERMINAL.run).last();
 }
 

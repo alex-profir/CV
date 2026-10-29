@@ -9,6 +9,7 @@ import {
   commandLineFocused,
   groupText,
   historyRows,
+  linesRun,
   openTerminal,
   openTerminalPage,
   quitVim,
@@ -172,6 +173,7 @@ describe('006-terminal-FR-015: every CV section is within 2 clicks of the starte
         clicks += 1;
       }
       await expect.poll(async () => (await typedLines(page)).at(-1)).toBe(section);
+      await linesRun(page);
       const group = page.locator('.terminal section.run').last();
       expect((await groupText(page, group)).length, section).toBeGreaterThan(0);
       expect(clicks, section).toBeLessThanOrEqual(2);

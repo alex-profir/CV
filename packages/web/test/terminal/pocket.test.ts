@@ -19,6 +19,7 @@ import {
   typedLine,
   typedLines,
   vimView,
+  linesRun,
 } from '../helpers/terminal.ts';
 import type { TerminalShell } from '../helpers/terminal.ts';
 import { siteFiles } from './engine/context.ts';
@@ -60,6 +61,7 @@ async function tapRun(page: Page, control: Locator, line: string): Promise<void>
   const before = await runCount(page);
   await control.tap();
   await expect.poll(() => runCount(page), { message: line }).toBe(before + 1);
+  await linesRun(page);
   expect((await typedLines(page)).at(-1), line).toBe(line);
 }
 
