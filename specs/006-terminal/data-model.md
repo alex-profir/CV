@@ -4,7 +4,16 @@ Phase 1 of [plan.md](./plan.md). Types are TypeScript, as the code will declare 
 Terminal's engine (`packages/web/src/apps/terminal/engine/`) holds every type here except the
 session store and the shell's additions. The spec's Key Entities map to them as noted.
 
+**Amendment, 2026-10-29**: the sections from [Shell state](#shell-state-fr-067) on are the
+amendment's (research R25 to R37). Where an earlier section changes, a note under its heading
+says how. `Parsed`, `Stage`, `Call` and `Piped` are gone with the Terminal's own parser.
+
 ## Command (Key Entities: Command, Alias)
+
+> **Amended 2026-10-29.** `run` now takes the shell's arguments and context and returns a
+> `SiteRun` (below). `readsInput` is gone: every command can be piped into, and those that read
+> no input ignore it (FR-057). The table is the site's commands only; the standard commands are
+> `STANDARD_COMMANDS` (research R32).
 
 One row of `COMMANDS`, the only list of commands (research R7). `help`, the parser and the
 suggestions all read it.
@@ -33,6 +42,8 @@ A test checks that the table and `help`'s output name the same words (FR-008).
 
 ## Command line and call
 
+> **Removed 2026-10-29.** The shell parses lines (research R25, R27).
+
 ```ts
 type Parsed =
   | { kind: 'empty' }                                      // FR-007
@@ -52,6 +63,9 @@ typed in. `input` is set only for a stage after a `|`. A stage whose command doe
 and gets some returns the "doesn't read piped input" reply (FR-057).
 
 ## Result and output block (Key Entities: Output)
+
+> **Amended 2026-10-29.** `Result` is replaced by `RunResult` and `Effect` (below). `Block` and
+> `Node` stay, and gain `stream` text nodes for what the shell prints as text.
 
 ```ts
 type Result =
@@ -110,6 +124,10 @@ the rules with 004's `expectedFields` on the `every-field` fixture, so the two c
 (research R4).
 
 ## File system (Key Entities: File system, Folder, File, Path, Working folder)
+
+> **Amended 2026-10-29.** This tree is the protected part of the shell's file system, written
+> into `/home/guest` (research R28). `Path` is now a string path from the root, shown with `~`
+> for `/home/guest`. See [Terminal file system](#terminal-file-system-fr-045-fr-049-fr-073).
 
 ```ts
 type FsNode = Folder | File;
@@ -219,6 +237,9 @@ indexes `matches` when they aren't empty. The text never changes.
 
 ## Terminal session (Key Entities: Terminal, Command history, Working folder)
 
+> **Amended 2026-10-29.** The session gains the shell's status, its waiting lines, the state and
+> the visitor's files. See [Session additions](#session-additions-fr-021-fr-069-fr-070).
+
 ```ts
 type Entry = {
   id: number;
@@ -248,7 +269,7 @@ type Session = {
 
 | Event | Session after |
 |-------|---------------|
-| First open in the visit | `entries` empty, the greeting shown above them (not an entry), `folder` `[]` |
+| First open in the visit | `entries` empty, the starter chips shown above them (not an entry; the greeting until 2026-10-29), `folder` `[]` |
 | `run(line)` | An entry is appended (`clear` empties `entries` instead), `line` goes on `history` unless empty, `stepping` reset, `draft` empty |
 | `cd` | `folder` changes |
 | `cv`, `vim` | `vim` set. The entry is appended when the view closes, so its output sits after its prompt (FR-064) |
@@ -290,3 +311,166 @@ type AppOs = { shell: ShellName; open: (view: 'cv' | 'about') => void; exit: () 
 
 Variants are 005's `<shell>/<state>/<width>px`, with the Terminal's states and a command where one
 applies: `desktop/terminal/work/1440px` ([contracts/cli.md](./contracts/cli.md)).
+
+## Shell state (FR-067)
+
+What the shell adapter carries from one line to the next, since just-bash resets it after each
+run (research R27).
+
+```ts
+type ShellState = {
+  cwd: string;                                  // '/home/guest' on opening (FR-046)
+  variables: Readonly<Record<string, string>>;  // shell variables, without the shell's own (PWD, IFS…)
+  exported: readonly string[];                  // which of them are exported
+  functions: Readonly<Record<string, string>>;  // name → its definition, serialized (research R27)
+  options: readonly ShellOption[];              // set -o options that are on
+  status: number;                               // $? after the last line
+};
+type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace';
+```
+
+**Rules**: a variable name matches `[A-Za-z_][A-Za-z0-9_]*`. A function is kept only while
+`declare -F` lists it after a line. `HOME`, `USER`, `LOGNAME` and `SHELL` are set by the adapter,
+not carried. The initial state is `{ cwd: '/home/guest', variables: {}, exported: [],
+functions: {}, options: [], status: 0 }`.
+
+## Terminal file system (FR-045, FR-049, FR-073)
+
+```ts
+type Owner = 'root' | 'guest';
+type FsEntryInfo = { path: string; kind: 'file' | 'folder'; owner: Owner; protected: boolean };
+
+type VisitorFiles = {                       // the snapshot the interface keeps (research R26)
+  folders: readonly string[];               // absolute paths, parents first
+  files: Readonly<Record<string, string>>;  // absolute path → text
+  bytes: number;                            // their total, ≤ QUOTA
+};
+const QUOTA = 1_048_576;                    // 1 MB (FR-073)
+```
+
+| Path | Kind | Owner | Protected | Holds |
+|------|------|-------|-----------|-------|
+| `/` | folder | `root` | yes | `bin`, `dev`, `home`, `tmp`, `usr` (FR-045) |
+| `/bin`, `/usr/bin` | folder | `root` | yes | one stub per registered command (research R28) |
+| `/dev` | folder | `root` | yes | `null` (writable, discards), `stdin`, `stdout`, `stderr` |
+| `/home` | folder | `root` | yes | `guest` |
+| `/home/guest` | folder | `guest` | no | the built entries of the tree above, then the visitor's |
+| `/home/guest/<built entry>` and everything under it | file or folder | `root` | yes | the tree of [File system](#file-system-key-entities-file-system-folder-file-path-working-folder), each file the text of its block |
+| `/tmp` | folder | `guest` | no | the visitor's files, empty on opening |
+| anything the visitor creates | file or folder | `guest` | no | counted in `bytes` |
+
+**Rules**:
+
+- A writing operation on a protected path, or one that would create, move or copy something into a
+  protected folder, rejects with `Permission denied` and changes nothing (FR-049).
+- Protected files report mode `0444`, protected folders `0555`, the visitor's files `0644` and
+  folders `0755`.
+- A path part that doesn't exist as typed matches a protected name in its folder without regard to
+  capitals (FR-045). The visitor's names are case-sensitive.
+- A write that would take `bytes` past `QUOTA` rejects with `No space left on device` and changes
+  nothing. A write into a folder that doesn't exist rejects with `No such file or directory`.
+- `readdir('/home/guest')` lists the built entries in the design's order, then the visitor's in
+  name order (FR-043, FR-073).
+- Opening the Terminal, and closing it, give the table with no visitor file (FR-021). A restarted
+  worker restores `VisitorFiles` (research R26).
+
+## Run request and result (contracts/shell-worker.md)
+
+```ts
+type RunRequest = { id: number; line: string; state: ShellState; history: readonly string[] };
+
+type RunResult = {
+  id: number;
+  stdout: string;
+  stderr: string;
+  status: number;
+  recorded: readonly Recorded[];            // research R29, in the order they were printed
+  effects: readonly Effect[];               // applied by the interface after the line
+  end: 'done' | 'exited' | 'limit' | 'syntax';
+  limit?: 'time' | 'commands' | 'output';   // when end is 'limit' (FR-069)
+  state: ShellState;                        // unchanged when end is 'syntax' or 'limit'
+  files?: VisitorFiles;                     // only when the visitor's files changed
+};
+
+type Recorded = { text: string; block: Block };   // what a site command printed, and its block
+
+type Effect =
+  | { kind: 'clear' }                                       // clear (FR-019)
+  | { kind: 'vim'; name: string; pipe: string | null; text: string }  // vim, cv (FR-058, FR-059)
+  | { kind: 'open'; view: 'cv' | 'about' };                // open (FR-014)
+```
+
+**Rules**: `recorded[i].text` is exactly what the command wrote to its stdout. A `Recorded` is made
+only by the site's own commands and wrappers, never from typed or piped text (FR-018). `exited`
+means the epilogue didn't run and no limit stopped the line: the interface does what `exit` does
+(FR-008).
+
+## Site command run
+
+```ts
+type SiteRun = { text: string; block: Block | null; stderr?: string; status: number; effect?: Effect };
+// text = blockText(block) when block isn't null (research R29)
+```
+
+`blockText(block)` is the block's visible text, in reading order: one line per `line`, heading and
+list item, list items prefixed `- `, links by their text, `time` nodes by their text, controls by
+their visible label, `json` rows as their tokens' text. A test renders each block and checks its
+`textContent`, line by line, equals `blockText` (FR-047, FR-057).
+
+## Shown run (research R30)
+
+`mapOutput(result: RunResult, line: string): { block: Block; announce: Announcement }`, in
+`engine/output-map.ts`, pure.
+
+| Part of the result | Becomes |
+|--------------------|---------|
+| A recorded text found whole in stdout, in order | Its block |
+| Other stdout | `{ kind: 'text', text, stream: 'stdout' }` lines, as printed |
+| stderr | `{ kind: 'text', text, stream: 'stderr', tone: 'error' }` lines, after stdout (G3) |
+| `bash: {word}: command not found` | FR-016's reply, starting `{word}: command not found.`, with up to 3 suggestions over FR-008's names |
+| `bash: cd: {path}: Not a directory`, `cat: {path}: Is a directory` | That line, then FR-048's control |
+| `end: 'limit'` | FR-069's site text, in place of the limit's own message |
+| `end: 'syntax'` | The parser's message, without `bash: ` and its line number |
+
+`Node` gains `stream?: 'stdout' | 'stderr'` on `text` nodes. Announcements count recorded blocks as
+before, and text in rows (`{command}: {n} lines`) (FR-028).
+
+## Session additions (FR-021, FR-069, FR-070)
+
+```ts
+type ShellStatus = 'idle' | 'loading' | 'ready' | 'running' | 'failed';
+
+type Session = Session006 & {
+  shell: ShellStatus;
+  waiting: readonly Entry[];        // lines entered before the shell was ready, in order (FR-070)
+  running: Entry | null;            // the line the worker is running
+  state: ShellState;                // research R27
+  files: VisitorFiles;              // research R26
+  cwd: string;                      // replaces `folder`, for the prompt (FR-046)
+};
+```
+
+| Event | Session after |
+|-------|---------------|
+| First open in the visit | `shell` `loading`; the worker starts (research R34) |
+| A line entered while `loading` | Appended to `waiting`, shown with its prompt; the loading line stays under the starter chips |
+| Worker `ready` | `shell` `ready`; the loading line goes; `waiting` runs in order |
+| Worker fails, or no `ready` within 10 s | `shell` `failed`; the loading line becomes the failure line with `try again`; `waiting` is kept |
+| A line run | `running` set, `shell` `running`; on its result, the entry's block from `mapOutput`, `state`, `cwd` and `files` updated, effects applied |
+| `end: 'exited'` | As `exit` (FR-008): close on desktop, home on mobile |
+| Ctrl+C with a line running, or the worker 1 s past the deadline | Worker terminated and restarted from `state` and `files`; the entry shows `^C` or the "stopped" text (FR-069, FR-075) |
+| Ctrl+C with no line running | An entry with the typed text and `^C`, not added to `history`; `draft` empty |
+| Close (`onClose`) | As before, and `state` and `files` back to their initial values; the worker gets `reset` (FR-021) |
+
+## Cursor and selection (FR-072, FR-074, FR-075)
+
+```ts
+type CursorView = {
+  focused: boolean;                 // filled when true, hollow when false (FR-072)
+  blinking: boolean;                // true from a key press or focus until 5 s after the last key, never under reduced motion (FR-032)
+  selection: { start: number; end: number; direction: 'forward' | 'backward' | 'none' };
+};
+```
+
+The cursor sits at `end` when the direction is `forward`, else at `start`. A non-empty selection
+is drawn in the mirror with the selection token (research R36).

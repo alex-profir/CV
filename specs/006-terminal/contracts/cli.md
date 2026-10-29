@@ -24,7 +24,16 @@ fonts, layout, print, modes
 | `other-sites` | Records requests while the Terminal opens and every command `help` lists runs, in both shells (FR-038, SC-007) |
 | `fonts` | Every text node drawn by a served face in `desktop/terminal-help` and `mobile/pocket-vim` |
 | `layout` | No horizontal scroll in the Terminal at 320 × 568, at 568 × 320, in a 400 px wide window, at 200% and 400% zoom and with text spacing, in `terminal-help`, `terminal-vim`, `pocket` and `pocket-vim` (FR-023, FR-035, FR-052, FR-063, SC-012) |
-| `modes` | Reduced motion: opening the Terminal, running commands and pressing pocket keys move or scale nothing, and the cursor never blinks (FR-032, SC-008). Forced colors: the prompt, the command line, the cursor, chips, keys, fold lines and focus indicators are visible, with no background image or color alone (FR-033) |
+| `modes` | Reduced motion: opening the Terminal, running commands and pressing pocket keys move or scale nothing, and the cursor never blinks (FR-032, SC-008). Without it: the focused cursor blinks after a key press and has stopped, filled, 5 s after the last one (FR-032). Forced colors: the prompt, the command line, the cursor filled and hollow, chips, keys, fold lines and focus indicators are visible, with no background image or color alone (FR-033) |
+
+### Added 2026-10-29 (FR-039, FR-040, research R41)
+
+| Part | What it adds |
+|------|--------------|
+| `terminal` | In each shell, by typing: `work \| grep -i {a word of the first role}` shows only the matching lines of `work`'s text; `grep -ril {that word} ~/work` lists exactly the work files holding it; `jq '.work[0].name' cv.json` prints the first role's name as JSON; `mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b` prints `hi`, `ls` lists `notes/` after the built names, and `rm -r notes` removes it; `echo hi > about` and `rm about` print `Permission denied` and `cat about` is unchanged; `while true; do :; done` is stopped with FR-069's text, and the window answers a click meanwhile. Failures name the shell, the line and what differed (FR-040) |
+| `keyboard` | After FR-039's existing steps: the cursor is filled in the command line and hollow once Tab leaves it, with no outline or border on the line (SC-015); in the command line, Home and End and Ctrl+Left and Ctrl+Right move the cursor as FR-074 sets for Linux, Ctrl+Backspace deletes a word, Ctrl+A selects the Terminal's text and nothing outside it, and Ctrl+C on a typed line shows `^C` and an empty prompt (FR-039) |
+| `accessibility` | The new states below |
+| `other-sites` | Also runs the `terminal` part's added lines (FR-038) |
 
 ## States
 
@@ -60,6 +69,13 @@ page by real input: clicks, taps and typed keys.
 | mobile | `pocket-long-command` | From `pocket`, tap the command line, type 500 characters |
 | mobile | `pocket-vim-search` | From `pocket-vim`, tap the work fold, then the `/` key, a word from the CV's first work summary, Enter |
 | mobile | `pocket-vim-help` | From `pocket-vim`, tap the `:help` chip |
+| desktop | `terminal-unfocused` | From `terminal-help`, Tab out of the command line: the hollow cursor (added 2026-10-29) |
+| desktop | `terminal-help-standard` | From `terminal-help`, scrolled to its standard commands (FR-008) |
+| desktop | `terminal-loading` | The Terminal opened with the worker's file held back by the check's server, and `help` typed: the waiting line (FR-070) |
+| desktop | `terminal-load-failed` | The Terminal opened with the worker's file answered 503: the failure text and `Try again` (FR-070) |
+| desktop | `terminal-stopped` | From `terminal-open`, `while true; do :; done` and its stop (FR-069) |
+| desktop | `terminal-selected-all` | From `terminal-help`, Ctrl+A in the command line (FR-075) |
+| mobile | `pocket-stopped` | From `pocket`, tap the command line, the same loop, Enter (FR-069) |
 
 ## Variants
 
@@ -99,3 +115,6 @@ fail with the line above that names it (US8):
 - The command line with no name.
 - The owner's email typed into the Terminal's site text. Here the content check (002) fails,
   naming the file and line (US8 scenario 3).
+- (2026-10-29) `rm about` succeeding: the `terminal` part fails, naming the line and `about`.
+- (2026-10-29) An outline on the focused command line, or a cursor that stays filled after Tab:
+  the `keyboard` part fails, naming the step (SC-015).

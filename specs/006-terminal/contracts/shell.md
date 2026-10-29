@@ -5,6 +5,9 @@ change is general, so a later app can use it, and none changes what the CV app o
 site do. 005's [contracts/shell.md](../../005-os-shell/contracts/shell.md) and
 [contracts/os-core.md](../../005-os-shell/contracts/os-core.md) hold for everything not listed.
 
+**Amendment, 2026-10-29**: no change here. The shell, its worker and its keys are the Terminal's
+own (research R25 to R37), and `onClose` also resets the shell worker (contracts/shell-worker.md).
+
 ## `@cv/os-core`
 
 | Change | Contract |
@@ -56,7 +59,7 @@ screen (FR-001).
 | `src/os/metrics.ts` | `METRICS` gains the four placement values. A new `TERMINAL` export holds the values the Terminal's scripts need: the command line's limit and the column count's inputs (research R13, R22) |
 | `src/shells/desktop/MenuBar.tsx` | Lists `menuItems` first in the focused window's menu |
 | `src/shells/desktop/TitleBar.tsx` | Renders `WindowTitle` when the app gives one |
-| `src/site-text.ts` | `os.views.terminal: 'Terminal'`, and the `terminal` group: the greeting, the prompt label, the menu item, every command's usage, description and help, every reply, the announcements, the vim view's messages and key help, the pocket keys' names (design Site text) |
+| `src/site-text.ts` | `os.views.terminal: 'Terminal'`, and the `terminal` group: the starter chips (`terminal.starter`, no greeting since 2026-10-29), the prompt label, the menu item, every command's usage, description and help, every reply, the announcements, the vim view's messages and key help, the pocket keys' names (design Site text) |
 
 ## Unchanged
 
