@@ -294,11 +294,12 @@ everything the shell's own elements carry.
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T049 [P] [US3] Write `packages/web/test/inspector/about.test.ts`, covers 007-requirement-inspector-FR-011: in both shells About this site has `Show specs for About this site`; its view is the region `the shell specs`, headed `Specs for the shell`, with `ledeShell`, lists exactly `views.shell`, including 005's menu bar, dock, window frame and home screen requirements and 007-requirement-inspector-FR-001, and no 004 requirement; its title reads `About this site · Specs`; `Back to About this site` returns to About; About's menu has `Show specs` first.
+- [X] T049 [P] [US3] Write `packages/web/test/inspector/about.test.ts`, covers 007-requirement-inspector-FR-011: in both shells About this site has `Show specs for About this site`; its view is the region `the shell specs`, headed `Specs for the shell`, with `ledeShell`, lists exactly `views.shell`, including 005's menu bar, dock, window frame and home screen requirements and 007-requirement-inspector-FR-001, and no 004 requirement; its title reads `About this site · Specs`; `Back to About this site` returns to About; About's menu has `Show specs` first.
+  - Deviation (2026-10-29): About's view also lists `004-cv-page-FR-012`, `FR-013` and `FR-029`. `CvLink.tsx` carries them, and the Terminal's `apps/terminal/session.ts` imports `withoutScheme` from it, so research R5's module reader counts that `data-req` for the shell (and the Terminal). Moving `withoutScheme` to `src/format/` fixes it, but means editing the Terminal's session store, which this plan's rules forbid; left for the owner. The test asserts FR-011 instead: the view equals `views.shell`, holds every ID the shell's parts carry in the page, and none that only the CV's content carries.
 
 ### Implementation for User Story 3
 
-- [ ] T050 [US3] Make About this site's view the shell's after T041: `SpecView.tsx` uses `shellName` for its heading and region and `ledeShell` when the view is `about`, and carries `data-req="007-requirement-inspector-FR-011 007-requirement-inspector-FR-012"` on that `section.spec-view` (contracts/inspector.md's About row), keeping the other IDs; the title, `Back to About this site` and the menu order come from T035 to T039 with no `about` special case beyond the name. T049 passes.
+- [X] T050 [US3] Make About this site's view the shell's after T041: `SpecView.tsx` uses `shellName` for its heading and region and `ledeShell` when the view is `about`, and carries `data-req="007-requirement-inspector-FR-011 007-requirement-inspector-FR-012"` on that `section.spec-view` (contracts/inspector.md's About row), keeping the other IDs; the title, `Back to About this site` and the menu order come from T035 to T039 with no `about` special case beyond the name. T049 passes.
 
 **Checkpoint**: All three views (CV, Terminal, About this site) work.
 
