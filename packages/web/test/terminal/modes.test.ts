@@ -45,12 +45,13 @@ async function forcedPage(shell: TerminalShell): Promise<Page> {
 
 describe('006-terminal-FR-033: with forced colors every part of the Terminal shows', () => {
   for (const shell of ['desktop', 'mobile'] as const) {
-    test(`in the ${shell} shell: the frame, chips, keys, fold lines and command line have borders, and the cursor is Highlight`, async () => {
+    test(`in the ${shell} shell: the frame, chips, keys and fold lines have borders, the command line none, and the cursor is Highlight`, async () => {
       const page = await forcedPage(shell);
       await runGroup(page, 'help');
       await expectBorders(page, shell === 'desktop' ? WINDOW : '#os .pocket-screen', 'frame');
       await expectBorders(page, '.terminal button.command-chip', 'chips');
-      await expectBorders(page, '.terminal .command-field', 'command line');
+      // The cursor is the command line's indicator: no box (FR-072).
+      for (const each of await borders(page, '.terminal :is(.command-field, input.command-line)')) expect(each.style, each.name).toBe('none');
       if (shell === 'mobile') await expectBorders(page, '#os .pocket-key', 'keys');
       const highlight = await systemColor(page, 'Highlight');
       expect(await page.locator('.terminal .cursor-block').evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(highlight);
@@ -63,13 +64,15 @@ describe('006-terminal-FR-033: with forced colors every part of the Terminal sho
     });
   }
 
-  test('focus outlines show on the command line, a chip and a fold line', async () => {
+  test('focus outlines show on a chip and a fold line; the command line has none, its cursor showing focus', async () => {
     const page = await forcedPage('desktop');
     const outline = () => page.evaluate(() => {
       const style = getComputedStyle(document.activeElement!);
       return { style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth), what: document.activeElement!.className };
     });
-    for (const target of [COMMAND_LINE, '.terminal .starter button.command-chip']) {
+    await page.locator(COMMAND_LINE).evaluate((element) => (element as HTMLElement).focus({ focusVisible: true } as FocusOptions));
+    expect((await outline()).style).toBe('none');
+    for (const target of ['.terminal .starter button.command-chip']) {
       await page.locator(target).first().evaluate((element) => (element as HTMLElement).focus({ focusVisible: true } as FocusOptions));
       const shown = await outline();
       expect(shown.style, shown.what).not.toBe('none');
@@ -80,6 +83,51 @@ describe('006-terminal-FR-033: with forced colors every part of the Terminal sho
     const fold = await outline();
     expect(fold.style).not.toBe('none');
     expect(fold.width).toBeGreaterThan(0);
+  });
+});
+
+describe('006-terminal-FR-033: the amendment’s parts in forced colors', () => {
+  // An element's colors and edges, or its ::selection's.
+  const look = (page: Page, selector: string, pseudo?: string) =>
+    page.locator(selector).first().evaluate((element, which) => {
+      const style = getComputedStyle(element, which ?? null);
+      return { background: style.backgroundColor, color: style.color, bottom: `${style.borderBottomStyle} ${style.borderBottomWidth} ${style.borderBottomColor}`, outline: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}` };
+    }, pseudo);
+
+  test('the filled and hollow cursor, a selection in the line and in the output, in the system’s colors', async () => {
+    const page = await forcedPage('desktop');
+    const highlight = await systemColor(page, 'Highlight');
+    const text = await systemColor(page, 'HighlightText');
+    await runGroup(page, 'about');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('abc');
+    // The field's own selection, as a key on any system sets it.
+    await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 0));
+    const filled = await look(page, '.terminal .cursor-block');
+    expect(filled.background).toBe(highlight);
+    expect(filled.color).toBe(text);
+    expect(filled.bottom).toBe(`solid 1px ${highlight}`);
+    await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 3));
+    const selected = await look(page, '.terminal .cursor-selected');
+    expect([selected.background, selected.color]).toEqual([highlight, text]);
+    const output = await look(page, '.terminal .run-output p.out-line', '::selection');
+    expect([output.background, output.color]).toEqual([highlight, text]);
+    await page.keyboard.press('Tab');
+    const hollow = await look(page, '.terminal .cursor-block');
+    expect(hollow.outline).toBe(`solid 2px ${highlight}`);
+    expect(hollow.background).toMatch(/, 0\)$/);
+  });
+
+  test('the failed line’s try again chip and a stopped line show', async () => {
+    const page = await openShell({ ...SHELL_PAGE.desktop, forcedColors: 'active', beforeGoto: async (opened) => void (await opened.route('**/assets/shell-*.js', (route) => route.fulfill({ status: 503, body: '' }))) });
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await page.waitForSelector('.terminal p.shell-failed');
+    await expectBorders(page, '.terminal p.shell-failed button.command-chip', 'try again');
+    expect(await forcedColorsProblems(page, '/')).toEqual([]);
+    const stopped = await forcedPage('desktop');
+    await runGroup(stopped, 'while true; do :; done');
+    expect(await stopped.locator('.terminal p.run-stopped').isVisible()).toBe(true);
+    expect(await forcedColorsProblems(stopped, '/')).toEqual([]);
   });
 });
 

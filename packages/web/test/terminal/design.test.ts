@@ -28,6 +28,17 @@ const computedColor = (page: Page, value: string) =>
 
 const colorToken = (name: CssVarTokenName) => String(tokenValue(name));
 
+// A token's color as a background, as the browser computes it.
+const backgroundOf = (page: Page, value: string) =>
+  page.evaluate((color) => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = color;
+    document.body.append(probe);
+    const computed = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return computed;
+  }, value);
+
 // Fonts that belong to an operating system's UI rather than the site.
 const SYSTEM_FONTS = /-apple-system|BlinkMacSystemFont|system-ui|ui-monospace|ui-sans-serif|SF Pro|SF Mono|San Francisco|Menlo|Monaco|Segoe UI|Helvetica Neue|Roboto/i;
 
@@ -88,6 +99,29 @@ describe('006-terminal-FR-031: the Terminal matches the approved design', () => 
     expect(drawn.cursorBackground).toBe(await computedColor(page, colorToken('color.terminal-cursor')));
     expect(drawn.typedGlyphs).toEqual([]);
     expect(await page.locator(COMMAND_LINE).evaluate((element) => getComputedStyle(element).caretColor)).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  test('the filled and hollow cursor, the selection and the blink come from the amendment’s tokens', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('abc');
+    await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(1, 1));
+    const cursor = () => page.locator('.terminal .cursor-block').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { fill: style.backgroundColor, letter: style.color, outline: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`, duration: style.animationDuration };
+    });
+    // Read once the blink has stopped, filled.
+    await page.waitForTimeout(Number.parseFloat(String(tokenValue('motion.duration.cursor-idle'))) + 300);
+    const filled = await cursor();
+    expect(filled.fill).toBe(await backgroundOf(page, colorToken('color.terminal-cursor')));
+    expect(filled.letter).toBe(await computedColor(page, colorToken('color.terminal-cursor-text')));
+    await page.keyboard.press('ArrowLeft');
+    expect((await cursor()).duration).toBe(`${Number.parseFloat(String(tokenValue('motion.duration.cursor-blink'))) / 1000}s`);
+    await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 2));
+    const selected = await page.locator('.terminal .cursor-selected').evaluate((element) => ({ fill: getComputedStyle(element).backgroundColor, letter: getComputedStyle(element).color }));
+    expect(selected).toEqual({ fill: await backgroundOf(page, colorToken('color.terminal-selection')), letter: await computedColor(page, colorToken('color.terminal-selection-text')) });
+    await page.keyboard.press('Tab');
+    expect((await cursor()).outline).toBe(`solid ${tokenValue('border.thick')} ${await computedColor(page, colorToken('color.terminal-cursor'))}`);
   });
 
   test('no Apple or system UI font is named, in the Terminal’s style sheets or on its elements', async () => {

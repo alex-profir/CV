@@ -962,7 +962,9 @@ worker, and the message protocol could differ); a "reload" control when the file
   while the input has focus, the letter under it in `color.terminal-cursor-text`, and **hollow**, a
   2 px haze outline, when it doesn't: 7.4:1 against the worst-case glass, both (design). In forced
   colors the filled cursor is `Highlight` with a 1 px `Highlight` bottom edge and its letter
-  `HighlightText`, and the hollow one a 2 px `Highlight` outline (FR-033).
+  `HighlightText`, and the hollow one a 2 px `Highlight` outline (FR-033). There it doesn't
+  blink: an animation's colors are computed values, which forced colors paints over as `Canvas`,
+  so a blinking cursor would vanish half the time; a steady `Highlight` block keeps it shown.
 - **Blinking** (FR-032): a CSS animation on the filled cursor, `steps(1)` over
   `motion.duration.cursor-blink` (1000 ms: 500 ms on, 500 ms off, the off half showing no cursor,
   as the design sets). It runs from focus and each key press, and a timer of

@@ -118,6 +118,16 @@ describe('004-cv-page-FR-043: the export holds the approved tokens, and the site
     expect(terminal.filter((name) => !read.has(name))).toEqual([]);
   });
 
+  // The amendment's tokens (006 T131): the cursor's letter, the selection
+  // and the blink, each read by a style sheet or by `metrics.ts`.
+  test('006-terminal-FR-031: every token the 2026-10-29 amendment added is read', () => {
+    const read = readTokens();
+    expect(['color.terminal-cursor-text', 'color.terminal-selection', 'color.terminal-selection-text'].filter((name) => !read.has(name))).toEqual([]);
+    // The motion tokens aren't in the Penpot export: read by name.
+    expect(builtCss()).toContain('var(--token-motion-duration-cursor-blink');
+    expect(fs.readFileSync(path.join(REPO_ROOT, METRICS_FILE), 'utf8')).toContain("ms('motion.duration.cursor-idle')");
+  });
+
   test("the export holds design/review.md's five colors, compared without regard to case", () => {
     const review = fs.readFileSync(path.join(REPO_ROOT, 'specs/004-cv-page/design/review.md'), 'utf8');
     const bullet = /^- \*\*Color\*\*:[\s\S]*?(?=\n- |\n\n)/m.exec(review)?.[0] ?? '';
@@ -127,11 +137,13 @@ describe('004-cv-page-FR-043: the export holds the approved tokens, and the site
     for (const color of reviewColors) expect(exported, color).toContain(color);
   });
 
-  test('the motion token source is unchanged from 003', () => {
+  test('the motion token source is 003’s, with the cursor’s two durations 006 added', () => {
     expect(tokensOf(readJson(MOTION_FILE)).map(({ name, value }) => [name, value])).toEqual([
       ['motion.duration.fast', '150ms'],
       ['motion.duration.base', '250ms'],
       ['motion.duration.slow', '{motion.duration.base} * 2'],
+      ['motion.duration.cursor-blink', '1000ms'],
+      ['motion.duration.cursor-idle', '5000ms'],
       ['motion.easing.standard', [0.2, 0, 0, 1]],
     ]);
   });

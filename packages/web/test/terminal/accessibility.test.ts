@@ -83,6 +83,7 @@ describe('006-terminal-FR-035: zoomed, text-zoomed and spaced, every part stays 
     test(zoom.name, async () => {
       const page = await openTerminalPage(zoom.shell, { ...zoom.options, hasTouch: zoom.shell === 'mobile' });
       await runGroup(page, 'help');
+      await runGroup(page, 'touch mine; ls -l');
       await expectEveryPartVisible(page, zoom.name);
       expect(await axeProblems(page, '/', zoom.name)).toEqual([]);
     });
@@ -92,6 +93,7 @@ describe('006-terminal-FR-035: zoomed, text-zoomed and spaced, every part stays 
     test(`${shell}: text-only 200%`, async () => {
       const page = await openTerminalPage(shell);
       await runGroup(page, 'help');
+      await runGroup(page, 'touch mine; ls -l');
       await zoomText(page, 2);
       await expectEveryPartVisible(page, `${shell}, text 200%`);
     });
@@ -100,6 +102,7 @@ describe('006-terminal-FR-035: zoomed, text-zoomed and spaced, every part stays 
       const page = await openTerminalPage(shell);
       await page.addStyleTag({ content: TEXT_SPACING_CSS });
       await runGroup(page, 'help');
+      await runGroup(page, 'touch mine; ls -l');
       await expectEveryPartVisible(page, `${shell}, text spacing`);
     });
   }

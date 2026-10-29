@@ -633,8 +633,13 @@
     backdrop-filter: none;
   }
 
-  .command-field {
-    border: var(--token-border-thin) solid CanvasText;
+  /* The command line has no box here either: the cursor is its focus
+     indicator (FR-072, research R36). */
+  .command-field,
+  .command-line {
+    border: none;
+    outline: none;
+    background: none;
   }
 
   .terminal,
@@ -669,8 +674,25 @@
     color: HighlightText;
   }
 
+  /* Steady: a blink's colors are computed values, which the mode paints
+     over as Canvas, so the cursor would vanish half the time. */
+  .cursor-mirror[data-blinking] .cursor-block {
+    animation: none;
+  }
+
+  /* Without focus: a 2 px Highlight outline and nothing else. */
   .cursor-mirror:not([data-focused]) .cursor-block {
+    border-block-end: none;
     outline-color: Highlight;
+    background: none;
+    color: CanvasText;
+  }
+
+  /* A selection, in the line and in the output, in the system's colors. */
+  .terminal ::selection,
+  .cursor-selected {
+    background: Highlight;
+    color: HighlightText;
   }
 
   .vim-match {

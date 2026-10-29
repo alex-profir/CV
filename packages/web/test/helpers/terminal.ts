@@ -5,6 +5,7 @@
 import type { Locator, Page } from 'playwright';
 import type { RunningServer } from '../../../../tools/site-check/src/server.ts';
 import { axText } from './ax.ts';
+import { resume } from '@cv/content';
 import { fixture } from './fixtures.ts';
 import type { FixtureName } from './fixtures.ts';
 import { openShell, PHONE_USER_AGENT, serveShellFixture, settle } from './shell.ts';
@@ -165,7 +166,9 @@ export async function quitVim(page: Page): Promise<void> {
 // FR-035's states, each reached from a just-opened Terminal by real input.
 // `desktop` and `mobile` list the states of each shell (contracts/cli.md
 // States); a state's `size` is the page it needs, when not the shell's.
-export type TerminalState = { name: string; size?: { width: number; height: number }; reach: (page: Page) => Promise<void> };
+// `shell`: the shell worker held back (`loading`) or answered 503
+// (`failed`) when the Terminal opens.
+export type TerminalState = { name: string; size?: { width: number; height: number }; shell?: 'loading' | 'failed'; reach: (page: Page) => Promise<void> };
 
 const ok = async () => {};
 
@@ -184,6 +187,83 @@ async function catInFolder(page: Page): Promise<void> {
   await page.waitForFunction((count) => document.querySelectorAll('.terminal section.run').length > count, before);
   await linesRun(page);
 }
+
+// Select all, with the key the page's platform uses (research R37).
+async function selectAll(page: Page): Promise<void> {
+  const mac = await page.evaluate(() => /^mac/i.test((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform));
+  await page.keyboard.press(mac ? 'Meta+A' : 'Control+A');
+}
+
+// A word of the first role's summary, read from the CV.
+const summaryWord = () => (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+
+// The amendment's states (006, 2026-10-29), in both shells.
+const SHELL_STATES: TerminalState[] = [
+  {
+    name: 'focus elsewhere',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.press('Tab');
+    },
+  },
+  {
+    name: 'help scrolled to its standard group',
+    reach: async (page) => {
+      const help = await runGroup(page, 'help');
+      await help.locator('ul.out-standard').scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: 'a selection in the line',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('help work');
+      await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 4));
+    },
+  },
+  {
+    name: 'selected all',
+    reach: async (page) => {
+      await runGroup(page, 'help');
+      await page.locator(COMMAND_LINE).focus();
+      await selectAll(page);
+    },
+  },
+  {
+    name: 'after Ctrl+C',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('abc');
+      await page.keyboard.press('Control+C');
+      await page.waitForSelector('.terminal .run-cancel');
+    },
+  },
+  { name: 'loading', shell: 'loading', reach: ok },
+  { name: 'failed to load', shell: 'failed', reach: ok },
+  { name: 'stopped by its limit', reach: async (page) => void (await runGroup(page, 'while true; do :; done')) },
+  {
+    name: 'ls with the visitor’s files',
+    reach: async (page) => {
+      await runGroup(page, 'touch zz; mkdir notes');
+      await runGroup(page, 'ls');
+    },
+  },
+  {
+    name: 'rm and ls -l',
+    reach: async (page) => {
+      await runGroup(page, 'touch mine; rm about');
+      await runGroup(page, 'ls -l');
+    },
+  },
+  { name: 'a pipe and a filter', reach: async (page) => void (await runGroup(page, `work | grep -i ${summaryWord()}`)) },
+  {
+    name: 'a syntax error after command not found',
+    reach: async (page) => {
+      await runGroup(page, 'nosuch');
+      await runGroup(page, 'ls |');
+    },
+  },
+];
 
 const SHARED_STATES: TerminalState[] = [
   { name: 'just opened', reach: ok },
@@ -221,6 +301,7 @@ const SHARED_STATES: TerminalState[] = [
       await page.keyboard.insertText('help '.repeat(100));
     },
   },
+  ...SHELL_STATES,
 ];
 
 export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
@@ -274,7 +355,16 @@ export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
 // A fresh page in a state: the shell at its size, the Terminal open, and
 // the state reached.
 export async function terminalInState(shell: TerminalShell, state: TerminalState, options: Partial<ShellOptions> = {}): Promise<Page> {
-  const page = await openTerminalPage(shell, { ...(state.size ?? {}), ...options });
+  const size = { ...(state.size ?? {}), ...options };
+  let page: Page;
+  if (state.shell === 'loading') {
+    page = await openShell({ ...SHELL_PAGE[shell], ...size });
+    await openTerminalLoading(page, shell);
+  } else if (state.shell === 'failed') {
+    page = await openShell({ ...SHELL_PAGE[shell], ...size, beforeGoto: async (opened) => void (await opened.route('**/assets/shell-*.js', (route) => route.fulfill({ status: 503, body: '' }))) });
+    await openTerminalOnly(page, shell);
+    await page.waitForSelector('.terminal p.shell-failed');
+  } else page = await openTerminalPage(shell, size);
   await state.reach(page);
   await settle(page);
   return page;
