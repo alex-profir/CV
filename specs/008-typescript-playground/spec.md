@@ -64,6 +64,12 @@
   needed. The Playground itself still loads everything from the site (FR-010).
 - Q: Should a shared link opened on a phone show its code, read-only? → A: No. The "best on
   desktop" screen only says that the link holds code to open on a desktop (FR-060).
+- Q: How close to VS Code should the editor be? → A: As close as the official TypeScript
+  Playground's editor, which works like VS Code in the browser: its editing features, code
+  navigation, rename, quick fixes, formatting, command palette and VS Code's keys (FR-015,
+  FR-081 to FR-085). Code formatting moves into scope. Where a VS Code key is already the shell's
+  or the browser's, the shell and the browser keep it and the editor command gets another key
+  (FR-084).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -103,19 +109,23 @@ panes match what TypeScript produces for that code.
    and asks with the keyboard, **Then** its type shows.
 6. **Given** the visitor types an object's name and a dot, **When** suggestions appear, **Then**
    each shows its name and type, and choosing one inserts it.
-7. **Given** code in the editor, **When** the visitor opens the JavaScript pane or the Declarations
+7. **Given** a VS Code user, **When** they press F12 on a name, F2 to rename it, `Ctrl+.` on an
+   error, or F1, **Then** the editor goes to its definition, renames it everywhere in the code,
+   offers TypeScript's quick fixes, or opens the command palette, as VS Code does (`Cmd` in place
+   of `Ctrl` on a Mac).
+8. **Given** code in the editor, **When** the visitor opens the JavaScript pane or the Declarations
    pane, **Then** it shows the JavaScript or the type declarations TypeScript produces for that code
    with the current compiler options, updated as the code changes.
-8. **Given** the visitor opens the settings panel, **When** they turn off strict checks, **Then**
+9. **Given** the visitor opens the settings panel, **When** they turn off strict checks, **Then**
    errors that only strict checks report disappear from the editor and the Errors pane, and the
    JavaScript and Declarations panes update, without a reload.
-9. **Given** the Playground was opened once before, online, **When** the visitor opens it again,
+10. **Given** the Playground was opened once before, online, **When** the visitor opens it again,
    in the same visit or a later one, online or offline, **Then** the editor is usable without any
    download.
-10. **Given** the visitor wrote code and changed an option, **When** they close the window, reload
+11. **Given** the visitor wrote code and changed an option, **When** they close the window, reload
     the page or come back another day in the same browser, and open the Playground, **Then** it
     holds their code and options as they left them.
-11. **Given** the visitor's kept code, **When** they choose Reset and confirm, **Then** the editor
+12. **Given** the visitor's kept code, **When** they choose Reset and confirm, **Then** the editor
     holds the starting example with the default options, and their code is no longer kept.
 
 ---
@@ -308,8 +318,8 @@ announced at each step.
    screen reader announces the Playground's name, the editor's name, and how to leave the editor
    with the keyboard.
 2. **Given** focus in the editor, **When** the user presses Tab, **Then** the line is indented, and
-   **When** the user presses the key the Playground announces for leaving, **Then** the next Tab
-   moves focus out of the editor.
+   **When** the user presses VS Code's key for making Tab move focus, which the Playground
+   announces, **Then** the next Tab moves focus out of the editor.
 3. **Given** code with errors, **When** the user presses the key for the next error, **Then** the
    cursor moves to it and a screen reader reads its message.
 4. **Given** the cursor on a name, **When** the user asks for its type with the keyboard, **Then**
@@ -610,9 +620,13 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 
 **Editing**
 
-- **FR-015**: The editor MUST hold one piece of TypeScript code, with line numbers, syntax colors and
-  the editing a code editor offers: undo and redo, indenting, commenting out lines, matching
-  brackets, and finding and replacing text.
+- **FR-015**: The editor MUST hold one piece of TypeScript code and work as VS Code does, as the
+  official TypeScript Playground's editor does. It MUST offer at least: line numbers and syntax
+  colors; undo and redo; indenting; commenting out lines; matching, closing and surrounding with
+  brackets and quotes; folding; several cursors and selections; moving, copying and deleting lines;
+  expanding and shrinking a selection; finding and replacing text; going to a line and to a named
+  part of the code; highlighting the other uses of the name under the cursor; and formatting the
+  code or a selection as TypeScript formats it.
 - **FR-016**: The editor MUST mark every error and warning TypeScript reports for the code with the
   current options, at its place in the code, with its message on hover and at the cursor. The marks
   MUST update within 1 second of the visitor pausing their typing. While checking takes longer, the
@@ -633,6 +647,31 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-080**: The Playground's menu MUST hold Reset. After the visitor confirms, it MUST end any run,
   put the starting example and the default options back, and stop keeping the visitor's code and
   options. Until the visitor edits again, undo MUST bring their code back.
+- **FR-081**: The editor MUST let the visitor go to where a name is defined, look at its definition
+  in place without leaving where they are, list every use of it, and rename it everywhere in the
+  code at once, as TypeScript works them out.
+- **FR-082**: Where TypeScript offers quick fixes or refactorings, such as declaring a missing
+  property, adding a missing `await`, or moving code into a function, the editor MUST show that
+  they are there at the line and offer them from the keyboard and a pointer. Choosing one MUST
+  change the code as TypeScript sets, and undo MUST take it back. A fix that would add a package
+  import MUST NOT be offered (FR-042).
+- **FR-083**: The editor's commands MUST use VS Code's default keys for the visitor's system, with
+  `Cmd` on a Mac where VS Code uses it, such as `Ctrl+Space` for suggestions, F12 to go to a
+  definition, `Shift+F12` for every use, F2 to rename, `Ctrl+.` for quick fixes, F8 and `Shift+F8`
+  for the next and previous error, `Ctrl+/` to comment out lines, `Ctrl+F` and `Ctrl+H` to find and
+  replace, `Ctrl+G` to go to a line, `Ctrl+D` to add the next match to the selection, `Alt+Up` and
+  `Alt+Down` to move lines, F1 for the command palette, `Ctrl+M` to make Tab move focus, and
+  `Alt+F1` for the editor's accessibility help, except as FR-084 sets. Run MUST be `Ctrl+Enter`, as
+  in the official Playground. These keys work only while focus is in the editor (005 FR-029).
+- **FR-084**: The editor MUST NOT take over a key the shell's shortcuts use (005 FR-025 to FR-029),
+  so the menu bar, the dock and the other windows are always one shortcut away (005 FR-030), nor a
+  key the current main desktop browsers or screen readers reserve. A command whose VS Code key is
+  taken, such as Format Document, whose key is the shell's Maximize, MUST get another key, shown in
+  the command palette and the keyboard list (FR-085).
+- **FR-085**: A command palette MUST list every editor command with its key, and run the one the
+  visitor picks. The Playground's menu MUST show each of its commands with its key (005 FR-029),
+  and MUST open a list of every key of the Playground and its editor, saying where one differs from
+  VS Code and why (FR-084).
 
 **Panes**
 
@@ -793,17 +832,18 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-060**: Opening a shared link at a phone width MUST open the mobile shell with the Playground's
   "best on desktop" screen full screen, saying in site text that the link holds code to open on a
   desktop. It MUST NOT show the shared code, run anything or download TypeScript.
-- **FR-061**: When the shell switches (005 FR-002) while the Playground is open, nothing MUST be lost:
-  the code, the options, the open pane and the logs MUST be kept, a run MUST go on, and switching
-  back MUST show the Playground as it was.
+- **FR-061**: When the shell switches (005 FR-002) while the Playground is open, nothing MUST be
+  lost: the code, the options, the open pane and the logs MUST be kept, a run MUST go on, and
+  switching back MUST show the Playground as it was.
 
 **Keyboard and screen readers**
 
 - **FR-062**: Every action of the Playground MUST be possible with the keyboard alone: editing,
   reading errors and types, choosing suggestions, switching panes, the settings, the examples, Run,
   Stop, Share, the popup and Show specs, with focus always visible (005 FR-024). Tab in the editor
-  indents, so a key the approved design sets MUST move focus out of the editor, and the editor's
-  description MUST say which, so focus is never trapped (005 FR-030).
+  indents, so VS Code's key for making Tab move focus (FR-083) MUST let it move focus out of the
+  editor, and the editor's description MUST say which key, so focus is never trapped (005 FR-030).
+  The shell's shortcuts MUST also work from inside the editor (FR-084).
 - **FR-063**: The editor MUST be named for screen readers, and its code MUST be readable line by
   line. A screen reader MUST be able to hear the errors on the current line, move to the next and
   previous error with a key, hear the type under the cursor (FR-017), and hear each suggestion as the
@@ -820,22 +860,23 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 
 **Look, motion and accessibility**
 
-- **FR-068**: The Playground's look MUST be the site's own and MUST match the approved mockup for each
-  shell (Constitution II, IX), including the editor's syntax colors. It MUST NOT copy the look of the
-  official TypeScript Playground. Every design value MUST come from tokens, and motion values from the
-  motion token source. The token check (003) MUST pass over the Playground with no exception added
-  for it.
+- **FR-068**: The Playground's look MUST be the site's own and MUST match the approved mockup for
+  each shell (Constitution II, IX), including the editor's syntax colors. It MUST NOT copy the look
+  of the official TypeScript Playground. Every design value MUST come from tokens, and motion values
+  from the motion token source. The token check (003) MUST pass over the Playground with no
+  exception added for it.
 - **FR-069**: When the visitor asks for reduced motion, the download progress, the running state, the
   popup and switching panes MUST change with no movement, spinning or scaling (Constitution VIII).
 - **FR-070**: With forced colors active, every error mark, log level, cursor, selection, focus
   indicator, control and the popup MUST stay visible and distinguishable, and MUST NOT rely on color,
   a background color or a background image alone.
 - **FR-071**: The Playground MUST conform to WCAG 2.2 Level AA in every state: downloading, the
-  offline state, the editor with errors, a type shown, suggestions open, each pane, the settings, the
-  examples, a run with timers pending, the popup, the share message, the too-long and broken-link
-  messages, and the "best on desktop" screen. It MUST keep all content and function at 200% browser
-  zoom and text-only zoom, at 400% zoom on a window 1280 px wide, and with text spacing overridden as
-  WCAG 2.2 success criterion 1.4.12 describes.
+  offline state, the editor with errors, a type shown, suggestions open, a definition shown in
+  place, a rename under way, quick fixes open, the command palette, the list of keys, each pane, the
+  settings, the examples, a run with timers pending, the popup, the share message, the too-long and
+  broken-link messages, and the "best on desktop" screen. It MUST keep all content and function at
+  200% browser zoom and text-only zoom, at 400% zoom on a window 1280 px wide, and with text spacing
+  overridden as WCAG 2.2 success criterion 1.4.12 describes.
 - **FR-072**: At every window size the shell allows, the Playground MUST read without horizontal
   scrolling, rearranging its editor and panes as the approved design sets. Only lines of code, in
   the editor and the JavaScript and Declarations panes, MAY scroll sideways.
@@ -853,25 +894,29 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   `data-req="008-typescript-playground-FR-###"`, listing every requirement it implements, and the
   requirement traceability check (001) MUST pass.
 - **FR-075**: A Playground check MUST build the site and, at a desktop width, open the Playground,
-  wait for the download and confirm: the version shown; errors, types and suggestions; the panes and
-  an option change; every example against FR-030, with the CV examples' output matching the CV
-  document; a run with logs, a timer count and its end; an interval running until Stop; Stop ending a
-  blocking loop; the popup after 5 seconds of blocking and asking again after Keep waiting, inside
-  the window only; no popup for a 60-second timer; `alert`, `prompt` and `confirm`; the sandbox of
-  FR-039; a request from the code to another site carrying nothing of the site; the output limits of
-  FR-044; the code and options kept across a reload, and Reset; a shared link opening without
-  running; broken and too-long links; and Show specs keeping the Playground's state. At a phone width, it MUST confirm the "best
-  on desktop" screen, from its icon and from a shared link. It MUST read what it expects from the
-  built site, the CV document and TypeScript, not from a hand-written copy.
+  wait for the download and confirm: the version shown; errors, types and suggestions; going to a
+  definition, every use, renaming, a quick fix, formatting and the command palette, each with its VS
+  Code key, and the keys of FR-084 left to the shell; the panes and an option change; every example
+  against FR-030, with the CV examples' output matching the CV document; a run with logs, a timer
+  count and its end; an interval running until Stop; Stop ending a blocking loop; the popup after 5
+  seconds of blocking and asking again after Keep waiting, inside the window only; no popup for a
+  60-second timer; `alert`, `prompt` and `confirm`; the sandbox of FR-039; a request from the code
+  to another site carrying nothing of the site; the output limits of FR-044; the code and options
+  kept across a reload, and Reset; a shared link opening without running; broken and too-long links;
+  and Show specs keeping the Playground's state. At a phone width, it MUST confirm the "best on
+  desktop" screen, from its icon and from a shared link. It MUST read what it expects from the built
+  site, the CV document and TypeScript, not from a hand-written copy.
 - **FR-076**: The accessibility check (004, 005 FR-056) MUST cover every state FR-071 lists. The
   other-site check MUST cover the download, a run of code that makes no request, sharing and the
   "best on desktop" screen, and MUST confirm the Playground makes no request to another site of its
   own (FR-010).
 - **FR-077**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
   open the Playground from the dock, type, move to an error and read it, read a type, choose a
-  suggestion, leave the editor, switch panes, change an option, choose an example, run, handle the
-  popup with Keep waiting and then Stop, share and close the window, confirming a visible focus
-  indicator and where focus lands at each step.
+  suggestion, go to a definition and back, rename, apply a quick fix, open the command palette,
+  reach the menu bar with the shell's shortcut from inside the editor, leave the editor, switch
+  panes, change an option, choose an example, run, handle the popup with Keep waiting and then Stop,
+  share and close the window, confirming a visible focus indicator and where focus lands at each
+  step.
 - **FR-078**: The offline check (005 FR-059) MUST open the Playground with no network before it was
   ever opened and confirm the offline state of FR-011, then with the network back confirm the
   download, then with no network again confirm FR-073 at a desktop width.
@@ -885,6 +930,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   options between visits until the visitor resets it.
 - **Compiler options**: the settings that decide how TypeScript checks the code and what it produces,
   each with a default.
+- **Editor command**: something the editor does, such as renaming or formatting, with its key,
+  VS Code's unless the shell or the browser holds it (FR-084).
 - **Diagnostic**: an error or warning TypeScript reports: its line, column, message, number and
   whether it is an error or a warning.
 - **TypeScript copy**: the downloaded TypeScript the Playground runs, with its version, kept in the
@@ -943,7 +990,8 @@ server-rendered page, unchanged by this feature.
 **UI change**: design artifacts live in `specs/008-typescript-playground/design/`:
 
 - [ ] ASCII wireframes of every state: on desktop, the window downloading TypeScript, the offline
-  first open, the editor with errors, a type on hover, suggestions open, each pane, the settings
+  first open, the editor with errors, a type on hover, suggestions open, a definition shown in
+  place, a rename, quick fixes, the command palette, the list of keys, each pane, the settings
   panel, the examples list, a run with timers pending, the stuck popup inside the window beside the
   CV window, the share message, the too-long and broken-link messages, a shared link opened, the
   Playground's spec view, and a narrow window; on mobile, the "best on desktop" screen from its icon
@@ -997,6 +1045,11 @@ server-rendered page, unchanged by this feature.
 - **Modeled on the official Playground, in features only**: the editing, panes, settings, examples,
   running and sharing follow what the official TypeScript Playground offers, as the vision asks. The
   look is the site's own (Constitution IX), and the name and icon are set by the design.
+- **The editor works like VS Code**: as the official Playground's editor does, so a VS Code user's
+  habits carry over: the same editing features and the same default keys for their system. The
+  shell's shortcuts (005) and keys the browser or a screen reader reserve win over the editor, so
+  a few editor commands, such as Format Document, get another key, listed in the Playground.
+  Editor settings, keymaps, themes chosen by the visitor and extensions are not part of it.
 - **When TypeScript is downloaded**: on the Playground's first open, as the description says, not on
   the site's first visit, so recruiters on phones never pay for it. Constitution VI is met by keeping
   it after that first open; the first download is the one part that needs the network, and the
@@ -1042,7 +1095,9 @@ server-rendered page, unchanged by this feature.
   - Showing a shared link's code on a phone.
   - Importing packages, and type definitions for packages.
   - Choosing between TypeScript versions.
-  - JSX, plugins, code formatting, and exporting code to other sites.
+  - JSX, plugins, and exporting code to other sites.
+  - VS Code features beyond the official Playground's editor: extensions, editor settings and
+    keymaps, a debugger with breakpoints, and a terminal.
   - Games, easter eggs and translations, non-goals in the vision.
 - **Depends on**: Constitution II to IX and the interim provisions on local mockups and deferred
   manual checks; the requirement traceability check (001); the CV content source and its rules
