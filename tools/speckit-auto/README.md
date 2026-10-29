@@ -38,6 +38,39 @@ names none; after an API error they back off from one minute to 15. Any other
 failure stops the run as before. `SPECKIT_AUTO_RESUME_MAX` caps the resumes per
 command (default 30; 0 turns it off).
 
+## Several features at once
+
+Each feature can build in its own worktree, with its own loop, while you keep
+working in the main checkout. Create the feature's branch first, numbered and
+with its approved spec; it can be local or only on origin.
+
+```bash
+tools/speckit-auto/run.sh worktree start 008-example [--review | --implement-only]
+tools/speckit-auto/run.sh worktree resume 008-example <run_id> [-i key=value ...]
+tools/speckit-auto/run.sh worktree list
+tools/speckit-auto/run.sh worktree clean [--dry-run]
+```
+
+`start` checks the branch out in `<repo>-worktrees/008-example` next to the main
+checkout (`SPECKIT_WORKTREES` moves it), runs `npm ci` there the first time and
+runs `run.sh build specs/008-example` in it, using that branch's copy of the
+loop. Run each in its own `tmux` window; `caffeinate -i` is added for you. While
+the loop runs the worktree is locked (`git worktree lock`) with the loop's pid
+and a `PORT` no other loop holds, from 4174 up, for `npm run serve`. The output
+also goes to `<repo>-worktrees/.logs/008-example.log`. A lock whose loop died is
+stale and cleared. A branch checked out in another checkout is refused: switch
+that checkout away first.
+
+`clean` runs before every `start` and `resume`. Merges are squash merges, so it
+asks GitHub (`gh`) which pull requests are merged rather than asking git. It
+removes a worktree, its branch and its log when the branch's last pull request is
+merged, none is open, the tip is part of what was merged, nothing is uncommitted
+and no loop is running there. It deletes other local branches on the same terms,
+except `main` and branches checked out anywhere. Everything else is kept, and
+worktrees are listed with the reason. If GitHub can't be reached, nothing is
+cleaned. Conflicts between features are resolved when each branch merges `main`
+before its pull request, not by the loop.
+
 ## How the build works
 
 `workflows/speckit-build.yml`:
@@ -70,6 +103,8 @@ command (default 30; 0 turns it off).
 | `expect.sh` | Checks that plan and tasks were really written |
 | `tasks-status.sh` | Counts open and ticked tasks; detects a stalled session |
 | `checks.sh` | The repository's checks after the build |
+| `worktree.sh` | Builds features side by side in worktrees and removes merged ones (`run.sh worktree`) |
+| `test/worktree.test.ts` | `worktree.sh` against a throwaway repository, with `gh`, `npm` and the loop stubbed |
 
 Settings: `CONTEXT_BUDGET_PCT` (default 40), `CONTEXT_WINDOW_TOKENS` (default
 1000000) and `CONTEXT_BUDGET_COMMANDS`, the commands whose sessions the budget
