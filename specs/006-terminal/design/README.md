@@ -226,14 +226,19 @@ enough for the selection, not for text. They take snow and haze instead.
 
 ### The new states
 
+- **No greeting** (owner's decision in design review, FR-005): the Terminal opens with the
+  starter chips, then the prompt. Every board that showed the greeting is redrawn and
+  re-exported without it.
+
 - **`help`** lists the site's commands with their descriptions as before, then a group headed
   `Standard commands` (snow, bold) with `as in bash. help <command> shows its options.` (fog), then
   every command of FR-068 by name, in alphabetical order, two spaces apart, wrapping within the
-  window. Each name is a command control, underlined periwinkle as in the list above. Rows are
+  window. Each name is a control that runs `help <name>` (FR-015), underlined periwinkle as in
+  the list above. Rows are
   24 px tall; names as short as `rm` are narrower than 24 px but are spaced so a 24 px circle on
   each touches no other (WCAG 2.2 success criterion 2.5.8's spacing exception), as `?` and `cv`
   already are.
-- **Loading**: a fog line under the greeting's chips, `loading the shell · type away, commands run
+- **Loading**: a fog line under the starter chips, `loading the shell · type away, commands run
   once it is ready`. No spinner, nothing moves. Typed and run command lines wait and run in order
   once the shell is ready (FR-070).
 - **Failed to load**: the loading line becomes `The shell couldn't load.` (rose) `Check the

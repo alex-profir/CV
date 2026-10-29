@@ -2,7 +2,7 @@
 
 **Status**: Approved
 
-**Amendment of 2026-10-29**: Awaiting approval (see [below](#2026-10-29-amendment))
+**Amendment of 2026-10-29**: Approved 2026-10-29 (see [below](#2026-10-29-amendment))
 
 **Design**: the Penpot page **006 Terminal — Glass** (file id
 `eaccfa4c-8a01-81ad-8008-d441a46da254`). The Terminal is a frosted-glass window on 005's Graphite
@@ -43,7 +43,8 @@ On a phone it is a pocket terminal in the same glass.
 - **Type**: JetBrains Mono, 14 px on 21 px lines with 20 px padding on desktop, 12.5 px on 19 px
   lines with 14 px padding on the pocket terminal, 12 on 18 below 375 px wide. The title bar and
   menu use Schibsted Grotesk, as in 005.
-- **Command controls** (FR-015, FR-034): commands offered in the greeting and in replies are
+- **Command controls** (FR-015, FR-034): the starter commands above the first prompt and those
+  offered in replies are
   outlined chips, 26 px tall. Command names in `help`, names in `ls` and spec links are
   underlined, in rows 24 px tall so each has a 24 × 24 px target. Folders are periwinkle with a
   trailing slash, files are snow (FR-043).
@@ -116,7 +117,7 @@ On a phone it is a pocket terminal in the same glass.
 
 ## 2026-10-29 amendment
 
-**Status**: Awaiting approval
+**Status**: Approved
 
 The spec's amendment of 2026-10-29 (Clarifications, Session 2026-10-29; FR-008, FR-032, FR-049,
 FR-067 to FR-075) changes the command line and adds the shell's states. They are drawn on the same
@@ -143,6 +144,7 @@ was reachable, so the interim provision on local mockups was not used and there 
 | `desktop-8-maximized-1440.png` | `help` now ends with the standard commands; the new prompt is just below the view |
 | `desktop-4-after-unknown-command-1440.png` | The reply reads `wrok: command not found. …` (FR-016) |
 | `desktop-9-menu-open-1440.png` | The cursor is hollow, as focus is in the menu (FR-072) |
+| Every export that showed the greeting: `desktop-1`, `-4`, `-5`, `-9` to `-17`, `-19`, `-20`; `phone-1`, `-3`, `-5`, `-6`, `-8`, `-9`, `-11` to `-15`, `-17`, `-18` | The greeting's text is gone (FR-005): the starter chips sit at the top, then the prompt |
 | `glass-recipe-1440.png` | The cursor token is haze, not haze at 90%, and the cursor note reads "filled with focus, hollow without; blinks until 5 s after a key, never under reduced motion" |
 | `desktop-1`, `-5`, `-6`, `-7`, `phone-1`, `-3`, `-4`, `-5`, `-6` | Re-exported with the cursor at full haze, its token, instead of 90%. Otherwise unchanged |
 
@@ -165,19 +167,26 @@ exports (`desktop-3a` to `-3c`, `phone-7`) show no command line and came out unc
 
 ### Decisions for the owner
 
+The owner's answers, given on approval, follow each item.
+
 1. **New tokens**: `color.terminal-cursor-text`, `color.terminal-selection` and
    `color.terminal-selection-text`, all referring to existing base colors, and the motion tokens
    `motion.duration.cursor-blink` (1000ms) and `motion.duration.cursor-idle` (5000ms). See
-   README.md.
+   README.md. *Approved.*
 2. **The greeting still says "read only"**, which FR-073 makes untrue: visitors can now make and
    change their own files. The exports keep the approved text. A proposal: desktop
    `cv-os terminal · a real shell · nothing you type leaves your browser`, phone
    `a real shell · stays in your browser` (`a real shell · in your browser` at 320 px).
+   *Decided: remove the greeting altogether, keeping the starter chips above the first prompt so
+   every CV section is still reachable without typing (SC-001). FR-005 and the spec's other
+   mentions of the greeting are amended.*
 3. **`bash: ` prefix**: bash starts both its syntax errors and "command not found" with `bash: `.
    FR-016 asks the reply to start with the typed word, so the design drops the prefix from both.
+   *Approved as designed.*
 4. **Clicking a standard command in `help`** runs it, as FR-015 says of every name there, which for
    most of them prints a usage error. Running `help <name>` instead would be more useful but goes
-   beyond FR-015.
+   beyond FR-015. *Decided: a standard command's name in `help` runs `help <name>`. FR-008 and
+   FR-015 are amended.*
 5. **Which commands the standard group lists**: the 30 of FR-068. Shell builtins of FR-067, such as
    `export`, aren't commands of FR-068; FR-008 says no command may be missing from `help`, so the
    plan should say whether they are listed too.
@@ -194,13 +203,15 @@ exports (`desktop-3a` to `-3c`, `phone-7`) show no command line and came out unc
     standard commands; FR-019 still opens the output at its start. The maximized export no longer
     shows the new prompt.
 
+Items 5 to 10 are *approved as designed*; 5 is left for the plan.
+
 11. **Found while checking, not changed**: lilac used as text, as the approved section headings
     and the vim view's key help heading use it, is 4.0:1 on the worst-case glass, under 4.5:1.
     The new states don't use lilac for text; the existing ones are left as approved.
 
 ### Original look (FR-031, SC-010)
 
-- [ ] The cursor, the selection and the new states are drawn in the site's own tokens. No color,
+- [x] The cursor, the selection and the new states are drawn in the site's own tokens. No color,
   shape or behaviour is taken from macOS Terminal, iTerm, Ghostty or another terminal's look: the
   selection is the site's lilac, not a terminal's grey or light-blue band or swapped colors, and
   the cursor keeps the approved haze block.
@@ -208,7 +219,10 @@ exports (`desktop-3a` to `-3c`, `phone-7`) show no command line and came out unc
 ### Sign-off
 
 - Reviewed mockup version: Penpot page **006 Terminal — Glass**, as exported to `exports/` on
-  2026-10-29
-- Date:
-- Approved by:
-- Notes:
+  2026-10-29 (commit `cbfffca`, then with the greeting removed in the commit that records this
+  sign-off)
+- Date: 2026-10-29
+- Approved by: Alex Profir (project owner)
+- Notes: Approved on review of the exports in `cbfffca`, with two changes: the greeting is removed
+  (item 2) and the standard commands' names in `help` run `help <name>` (item 4). Everything else
+  is approved as designed, and the owner confirms the look is original as recorded above.

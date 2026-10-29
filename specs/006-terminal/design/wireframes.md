@@ -37,14 +37,14 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | Terminal window when opened | 760 × 536 px. Its right edge 40 px inside the desktop area's right edge, its top 120 px below the top of the window in front, so that window's title bar stays visible. Fitted to the area, at least 24 px above its bottom and never below 400 × 300. With no window open, centered in the area. At 1440 × 900 with the CV window open: x 640, y 176 | FR-003, 005 FR-018 |
 | Padding | 20 px on desktop (24 px maximized), 14 px on the pocket terminal's screen (12 px below 375 px wide) | FR-031 |
 | Rows holding command controls | 24 px tall, so every control in `help`, `ls` and `specs` has a 24 × 24 px target (FR-034). Chips are 26 px tall | FR-034 |
-| Greeting and prompt | See [Site text](#site-text). The greeting's name and label come from the CV document | FR-005, FR-030 |
+| Opening and prompt | No greeting text. The Terminal opens with a row of starter command chips, `help`, `about`, `work`, `projects`, `cv`, then the prompt. See [Site text](#site-text). Amended 2026-10-29: a three-line greeting, with the owner's name and label from the CV document, came first | FR-005, FR-030 |
 | Order of the home folder in `ls` | `cv.json`, `about`, `contact`, `work/`, `projects/`, `skills`, `education/`, `languages`, `interests`, `readme`, `specs/`: the whole CV, its parts in `/cv`'s order, then the site | FR-043 |
 | Command line limit | 500 characters. Typing or pasting past it adds nothing more | FR-017 |
 | Command line | No box, border, outline, background or underline, focused or not. The prompt's `❯` and the cursor mark it. Amended 2026-10-29: it had the site's focus outline | FR-072 |
 | Cursor | A block one character wide, in `color.terminal-cursor` (haze). With focus: filled, the letter under it in night; it blinks, half of `motion.duration.cursor-blink` (1000 ms) on and half off, with no fade, from focus or a key press until `motion.duration.cursor-idle` (5000 ms) after the last, then stays filled. Without focus: hollow, a 2 px (`border.thick`) haze outline inside the block, steady. Reduced motion: never blinks. It is the command line's focus indicator. Amended 2026-10-29: it was a steady block at 90% that never blinked | FR-032, FR-072 |
 | Selection | `color.terminal-selection` (lilac) behind, `color.terminal-selection-text` (night) for everything selected, links, prompt and chip names included. Square bands, one per line. In the command line the cursor sits at the end the keys move, beside the selection, never on it | FR-074, FR-075 |
-| `help`'s standard commands | After the site's commands: `Standard commands` (snow, bold) and a fog note, then every command of FR-068 by name in alphabetical order, two spaces apart, wrapping within the window, each name a command control in 24 px rows | FR-008, FR-034 |
-| The shell loading and failing | A quiet fog line under the greeting's chips while it loads; a rose sentence, a haze one and a `try again` chip if it fails. The prompt and the command line stay in both | FR-070 |
+| `help`'s standard commands | After the site's commands: `Standard commands` (snow, bold) and a fog note, then every command of FR-068 by name in alphabetical order, two spaces apart, wrapping within the window, each name a control that runs `help <name>`, in 24 px rows | FR-008, FR-015, FR-034 |
+| The shell loading and failing | A quiet fog line under the starter chips while it loads; a rose sentence, a haze one and a `try again` chip if it fails. The prompt and the command line stay in both | FR-070 |
 | The visitor's files in `ls` | After the built files, in name order, marked as they are | FR-073 |
 | Owner in `ls -l` | Protected files and folders are owned by `root`, read only (`-r--r--r--`, `dr-xr-xr-x`); the visitor's by `guest`, in haze, writable. Folder names keep their trailing slash | FR-049 |
 | Terminal menu | Titled `Terminal`. It holds `Clear output` (no shortcut), then 005's window commands with their shortcuts | FR-003, FR-019 |
@@ -81,16 +81,16 @@ a filled open mark. Export: `exports/desktop-1-just-opened-1440.png`.
 |              |                            #==================================================#  |
 |              | ---------------------------# [x] [-] [^]       Terminal — ~                    #  |
 |              | Location                   #                                                  #  |
-|              | Email                      # cv-os terminal · read only · nothing you type    #  |
-|              | GitHub                     #   leaves your browser                            #  |
-|              |                            # [Name] — [label]                                 #  |
-|              | [summary ...........]      # This is my CV as a terminal. Type a command and  #  |
-|              | [...................]      # press Enter, or pick one to start. New here?     #  |
-|              |                            # Try _help_.                                      #  |
-|              | EXPERIENCE                 # ‹help› ‹about› ‹work› ‹projects› ‹cv›            #  |
+|              | Email                      # ‹help› ‹about› ‹work› ‹projects› ‹cv›            #  |
+|              | GitHub                     #                                                  #  |
+|              |                            # (guest)(~) ◷ 18:25                               #  |
+|              | [summary ...........]      # ❯ █                                              #  |
+|              | [...................]      #                                                  #  |
+|              |                            #                                                  #  |
+|              | EXPERIENCE                 #                                                  #  |
 |              | ---------------------------#                                                  #  |
-|              | [position] · [company]     # (guest)(~) ◷ 18:25                               #  |
-|              |                            # ❯ █                                              #  |
+|              | [position] · [company]     #                                                  #  |
+|              |                            #                                                  #  |
 |              |                            #                                                  #  |
 |              +----------------------------#                                                  #  |
 |                                           #==================================================#  |
@@ -102,6 +102,8 @@ a filled open mark. Export: `exports/desktop-1-just-opened-1440.png`.
 +--------------------------------------------------------------------------------------------------+
 ```
 
+- No greeting: the starter chips, then the prompt (FR-005). Amended 2026-10-29: a three-line
+  greeting came first.
 - The window is glass: the CV window and the wallpaper show through it, blurred.
 - Page title: `Terminal – [Site name]` (005 FR-042).
 - The frames below show the Terminal window alone. The desktop around it is as in this frame.
@@ -170,9 +172,8 @@ Scrolled to its end, as exported:
 ```
 
 - The standard commands' names wrap where the window ends, never inside a name.
-- Each name runs its command, as every name in `help` does (FR-015). Most standard commands need
-  an argument, so a click on `grep` gives grep's usage error. Whether these names should run
-  `help <name>` instead is left to the owner (review.md).
+- Each standard command's name runs `help <name>`, so a click on `grep` shows grep's help rather
+  than its usage error (FR-015). The site's commands above them still run themselves.
 
 - Descriptions start at the 25th column. In a narrow window they wrap under themselves.
 
@@ -283,7 +284,7 @@ Export: `exports/desktop-4-after-unknown-command-1440.png`.
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
 #                                                                  #
-#   ... the greeting, as when just opened ...                      #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ wrok                                                           #
 # wrok: command not found. Run _help_ to see them all, or try:    #
@@ -302,7 +303,7 @@ Folders end in `/`. Every name is a control. Export: `exports/desktop-5-after-ls
 ```
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
-#   ... the greeting ...                                           #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ ls                                                             #
 # _cv.json_   _about_     _contact_   _work/_   _projects/_ _skills_
@@ -417,7 +418,7 @@ window is maximized, `Maximize` reads `Restore` and `Move…` and `Resize…` ar
 ### Just opened (FR-024, FR-051)
 
 Full screen below 005's header. The case is decoration only: screen readers skip it and it never
-takes focus (FR-054). The screen holds the greeting, the prompt and the command line. Tapping the
+takes focus (FR-054). The screen holds the starter chips, the prompt and the command line. Tapping the
 command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-375.png`.
 
 ```
@@ -427,16 +428,12 @@ command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-37
 |  +-------------------------------+  |
 |  | • cv-os pocket                |  |
 |  | +---------------------------+ |  |
-|  | | read only · stays in your | |  |
-|  | |   browser                 | |  |
-|  | | [Name] — [label]          | |  |
-|  | | My CV as a terminal. Tap a| |  |
-|  | | key below, or type a      | |  |
-|  | | command. New? Try _help_. | |  |
 |  | | ‹help› ‹about› ‹work›     | |  |
-|  | | ‹projects› ‹cv›           | |  |
+|  | |   ‹projects› ‹cv›         | |  |
 |  | | (guest)(~)                | |  |
 |  | | ❯ █                       | |  |
+|  | |                           | |  |
+|  | |                           | |  |
 |  | |                           | |  |
 |  | +---------------------------+ |  |
 |  | [ help ][about][ work ][proj.]|  |
@@ -579,13 +576,6 @@ scrolls sideways. Export: `exports/phone-5-just-opened-320.png`.
 | +----------------------------+ |
 | | • cv-os pocket             | |
 | | +------------------------+ | |
-| | | read only · in your    | | |
-| | |   browser              | | |
-| | | [Name]                 | | |
-| | | [label]                | | |
-| | | My CV as a terminal.   | | |
-| | | Tap a key below, or    | | |
-| | | type. New? Try _help_. | | |
 | | | ‹help› ‹about› ‹work›  | | |
 | | | ‹projects› ‹cv›        | | |
 | | | (guest)(~)             | | |
@@ -599,8 +589,7 @@ scrolls sideways. Export: `exports/phone-5-just-opened-320.png`.
 
 ### In landscape, 568 × 320 (FR-052, SC-012)
 
-The screen on the left, the keys on the right in 2 columns of 4, each at least 44 px tall. The
-greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
+The screen on the left, the keys on the right in 2 columns of 4, each at least 44 px tall. Export: `exports/phone-6-landscape-568.png`.
 
 ```
 +--------------------------------------------------------+
@@ -609,11 +598,9 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | +----------------------------------------------------+ |
 | | • cv-os pocket                                     | |
 | | +----------------------------------+ [help][about] | |
-| | | [Name] — [label]                 | [work][proj.] | |
-| | | My CV as a terminal. Tap a key,  | [skls][ cv  ] | |
-| | | or type a command. New? _help_.  | [ ls ][clear] | |
-| | | ‹help› ‹about› ‹work› ‹projects› |               | |
-| | | (guest)(~)                       |               | |
+| | | ‹help› ‹about› ‹work› ‹projects› | [work][proj.] | |
+| | | ‹cv›                             | [skls][ cv  ] | |
+| | | (guest)(~)                       | [ ls ][clear] | |
 | | | ❯ █                              |               | |
 | | +----------------------------------+               | |
 | +----------------------------------------------------+ |
@@ -637,7 +624,7 @@ phone, focus is on the Home control. Exports: `exports/desktop-10-cursor-unfocus
 ```
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
-#   ... the greeting ...                                           #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # (guest)(~) ◷ 18:25                                               #
 # ❯ skills▯                                                        #
 #==================================================================#
@@ -670,15 +657,11 @@ included. Nothing outside the window is: not the CV window behind the glass, the
 dock. The cursor stays filled at the end of the line. Copying gives the text as shown, with no
 cursor and no control's name added. Exports: `exports/desktop-12-select-all-1440.png`,
 `exports/phone-10-select-all-375.png` (on a phone with a keyboard attached; the phone frame
-starts at `about`, the greeting scrolled above).
+starts at `about`, the chips scrolled above).
 
 ```
 #==================================================================#
 # [x] [-] [^]               Terminal — ~                           #
-# ▓cv-os terminal · read only · nothing you type leaves your browser▓
-# ▓[Name] — [label]▓                                               #
-# ▓This is my CV as a terminal. Type a command and press▓          #
-# ▓Enter, or pick one to start. New here? Try help.▓               #
 # ‹▓help▓› ‹▓about▓› ‹▓work▓› ‹▓projects▓› ‹▓cv▓›                  #
 # ▓(guest)(~) ◷ 18:25▓                                             #
 # ▓❯ about▓                                                        #
@@ -713,13 +696,13 @@ Ctrl+C copies. Exports: `exports/desktop-13-ctrl-c-1440.png`, `exports/phone-11-
 
 ### The shell loading, on first open (FR-070)
 
-The greeting, the prompt and the command line show at once and take typing. A quiet line in fog
-under the greeting says the shell is loading. Nothing spins or moves. A command line run now
+The starter chips, the prompt and the command line show at once and take typing. A quiet line in
+fog under the chips says the shell is loading. Nothing spins or moves. A command line run now
 waits, after its prompt, and runs as soon as the shell is ready; the line then goes. Exports:
 `exports/desktop-14-loading-1440.png`, `exports/phone-12-loading-375.png`.
 
 ```
-#   ... the greeting and its chips ...                             #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # loading the shell · type away, commands run once it is ready     #
 #                                                                  #
 # (guest)(~) ◷ 18:25                                               #
@@ -737,7 +720,7 @@ once a try succeeds. Exports: `exports/desktop-15-load-failed-1440.png`,
 `exports/phone-13-load-failed-375.png`.
 
 ```
-#   ... the greeting and its chips ...                             #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
 # The shell couldn't load. Check the connection, then try again.   #
 # ‹try again›                                                      #
 #                                                                  #
@@ -913,9 +896,8 @@ know gets the reply of FR-016. Both are followed by a new prompt. Exports:
 | Window title | `Terminal — [path]`, such as `Terminal — ~/work` |
 | Menu title and dock name | `Terminal` |
 | Menu item | `Clear output` |
-| Greeting, desktop | (unchanged by the amendment, but `read only` no longer holds since FR-073; see review.md) `cv-os terminal · read only · nothing you type leaves your browser` / `[name] — [label]` / `This is my CV as a terminal. Type a command and press Enter, or pick one to start. New here? Try help.` |
-| Greeting, phone | `read only · stays in your browser` / `[name] — [label]` / `My CV as a terminal. Tap a key below, or type a command. New? Try help.` In landscape the first line is left out. At 320 px the first line reads `read only · in your browser` |
-| Greeting's controls | `help`, `about`, `work`, `projects`, `cv` |
+| Greeting | None (FR-005). Amended 2026-10-29: the greeting's text is gone, in both shells |
+| Starter controls | `help`, `about`, `work`, `projects`, `cv` |
 | Prompt | `guest`, the path, and on desktop `◷ [hh:mm]`; then `❯` |
 | Command line's name | `Command` |
 | `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then each command and its description as listed in the desktop `help` frame, plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal`; then `Standard commands` and `as in bash. help <command> shows its options.`, then the standard commands' names |
