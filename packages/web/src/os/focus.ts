@@ -22,15 +22,26 @@ function selector(target: FocusTarget): string {
   }
 }
 
-// Whether the visitor's last input was a key. A browser shows the focus
-// indicator after a focus move made by a script only if a key came last,
-// and Chrome doesn't count a key pressed with Alt, as every shortcut is, so
-// the shell asks for the indicator itself after a key (FR-024).
-let byKey = false;
+// The element a focus target names, if it is in the page.
+export function elementOf(target: FocusTarget): HTMLElement | null {
+  return document.querySelector<HTMLElement>(selector(target));
+}
+
+// The visitor's last input, if any yet. A browser shows the focus indicator
+// after a focus move made by a script only if a key came last, and Chrome
+// doesn't count a key pressed with Alt, as every shortcut is, so the shell
+// asks for the indicator itself after a key (FR-024).
+let last: 'key' | 'pointer' | null = null;
+
+// Whether a pointer, a mouse, a pen or touch, came last: focus that follows
+// it, given by the browser or by a script, leaves the window where the
+// visitor put it (FR-067). Focus a screen reader moves comes with no
+// pointer down.
+export const byPointer = () => last === 'pointer';
 
 export function watchInput(): () => void {
-  const onKey = () => (byKey = true);
-  const onPointer = () => (byKey = false);
+  const onKey = () => (last = 'key');
+  const onPointer = () => (last = 'pointer');
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('pointerdown', onPointer, true);
   return () => {
@@ -41,9 +52,9 @@ export function watchInput(): () => void {
 
 // Moves focus as the shell does, with the indicator after a key.
 export function moveFocus(element: HTMLElement | null | undefined): void {
-  element?.focus(byKey ? { focusVisible: true } : undefined);
+  element?.focus(last === 'key' ? { focusVisible: true } : undefined);
 }
 
 export function focusTarget(target: FocusTarget): void {
-  moveFocus(document.querySelector<HTMLElement>(selector(target)));
+  moveFocus(elementOf(target));
 }

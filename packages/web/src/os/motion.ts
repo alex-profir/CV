@@ -94,6 +94,8 @@ export function animateInto(element: Element, target: Element | null, direction:
     play(element, leaving ? fade : fade.reverse(), METRICS.motionMs, end, leaving);
     return;
   }
+  // The box where the window rests, not where a running animation has it.
+  finishMotion(element);
   const from = element.getBoundingClientRect();
   const to = target.getBoundingClientRect();
   const scale = Math.min(to.width / from.width, to.height / from.height);

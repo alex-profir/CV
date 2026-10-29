@@ -190,6 +190,26 @@ describe('005-os-shell-FR-026: Alt+Shift+N goes to the next window and brings it
   });
 });
 
+describe('005-os-shell-FR-021 005-os-shell-FR-067: a keyboard move past the edge stays where the visitor put it', () => {
+  test('confirming leaves the window past the edge, and a new move starts from there', async () => {
+    const page = await desktop();
+    await page.locator(CV_TITLE).focus();
+    await press(page, 'Alt+Shift+P', ...Array.from({ length: 20 }, () => 'Shift+ArrowRight'));
+    const moved = (await box(page, CV))!;
+    expect(moved.x).toBe(1440 - 120);
+    await press(page, 'Enter');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
+    await expectFocus(page, CV_TITLE);
+    expect(await box(page, CV)).toEqual(moved);
+    await press(page, 'Alt+Shift+P');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(1);
+    expect(await box(page, CV)).toEqual(moved);
+    await press(page, 'Escape');
+    await expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(0);
+    expect(await box(page, CV)).toEqual(moved);
+  });
+});
+
 describe('005-os-shell-FR-027: a keyboard move steps the window, announces it, and Escape puts it back', () => {
   test('Alt+Shift+P, arrows and Enter move and announce; Escape returns to the start', async () => {
     const page = await desktop();

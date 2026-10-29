@@ -479,9 +479,14 @@ first load too, and closing still needs a script.
   element with its focus outline (`border.thick` plus `space.0-5`) against the desktop area and
   dispatches `reveal { view, box }`. The reducer moves the window by `revealMove`, the least
   distance that brings the box inside the area (its start when it is larger), clamped as a move.
-  Focus a pointer gives doesn't count: a `pointerdown` on the window marks the focus that
-  follows it, so a click on a link half behind the dock leaves the window where the visitor put
-  it (spec edge cases).
+  Focus that follows a pointer doesn't count: the shell keeps the visitor's last input (a
+  `keydown` or a `pointerdown`, caught on the document), and while a pointer came last, focus
+  the browser gives and focus a script gives (opening from the dock, the Window menu) both
+  leave the window where the visitor put it, so a click or a tap on a link half behind the dock
+  leaves it there (spec edge cases). Touch focuses on the compatibility `mousedown` after
+  `touchend`, after the `pointerdown`, so it counts as a pointer too. Nor does the focus a
+  keyboard move or resize gives, to its pad and, when it ends, back to the window's title: the
+  visitor has just put the window where it is (FR-021).
 - **The dock's glass** (FR-068): the dock gets `color.dock-glass` (70%), a backdrop blur of
   `size.chrome-blur` with `saturate(scale.dock-saturate)`, a rim and a hairline as inset shadows,
   and a sheen as a `::before` behind its items. The lens is a separate `.dock-lens` element just

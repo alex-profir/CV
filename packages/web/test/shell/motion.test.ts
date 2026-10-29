@@ -209,6 +209,26 @@ describe('005-os-shell-FR-069: a window minimizes into its dock item and restore
     expect(await page.locator(CV).isVisible()).toBe(true);
   });
 
+  test('restored while it is still shrinking, it grows from the icon to where it rests', async () => {
+    const page = await desktop('no-preference');
+    const icon = await centreOf(page, '#os .dock-item[data-app="cv"] .dock-icon');
+    const rest = await centreOf(page, CV);
+    await page.getByRole('button', { name: 'Minimize CV' }).click();
+    // Halfway into the dock.
+    await page.evaluate((selector) => {
+      for (const animation of document.querySelector(selector)!.getAnimations()) {
+        animation.pause();
+        animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+      }
+    }, CV);
+    await page.locator('#os .dock-item[data-app="cv"]').click();
+    const start = await drawnAt(page, CV, 0.001);
+    expect(Math.abs(start.x - icon.x)).toBeLessThan(4);
+    expect(Math.abs(start.y - icon.y)).toBeLessThan(4);
+    expect(Math.max(start.width, start.height)).toBeLessThanOrEqual(icon.width + 2);
+    expect(await centreOf(page, CV)).toEqual(rest);
+  });
+
   test("About this site goes into and comes out of the site menu's title", async () => {
     const page = await desktop('no-preference');
     await page.click('#menu-title-site');

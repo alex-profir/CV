@@ -2,14 +2,15 @@
 // a section named by its title, its title bar, its content, which scrolls
 // on its own, the resize handles, and the pad during a keyboard move or
 // resize. A pointer down or focus reaching it brings it to the front
-// (FR-017, FR-030), and focus given by a key or a script on an element
-// behind the dock or past the screen's edge brings it into view (FR-067).
+// (FR-017, FR-030), and focus that doesn't follow a pointer, on an element
+// behind the dock or past the screen's edge, brings it into view (FR-067).
 // A minimized window stays mounted, hidden, so its content and scroll
 // position survive (FR-063); it stays drawn, inert, while it shrinks into
 // the dock (FR-069).
 import { useLayoutEffect, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import type { WindowState } from '@cv/os-core';
+import { byPointer, elementOf } from '../../os/focus.ts';
 import { FOCUS_REACH } from '../../os/metrics.ts';
 import type { ShellProps } from '../../os/shell-props.ts';
 import { animateBox, animateIn, animateInto, finishMotion } from '../../os/motion.ts';
@@ -40,7 +41,7 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
     if (opening) {
       if (!minimized && canAnimate()) animateIn(element);
     } else if (minimized !== was.minimized) {
-      const target = document.querySelector(view === 'about' ? '#os .menu-title[data-menu="site"]' : `#os .dock-item[data-app="${view}"] .dock-icon`);
+      const target = view === 'about' ? elementOf({ kind: 'site-menu' }) : (elementOf({ kind: 'dock-item', app: view })?.querySelector('.dock-icon') ?? null);
       if (minimized) {
         element.setAttribute('data-leaving', '');
         element.inert = true;
@@ -56,21 +57,33 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
     before.current = { minimized, isMaximized, geometry };
   });
 
-  // Focus a pointer gives doesn't move the window: the visitor points at
-  // what they see, and their window stays where they put it (FR-067).
-  const pointing = useRef(false);
   const onPointerDown = () => {
     // Acting on the window ends its animation at once (FR-071).
     finishMotion(section.current);
-    pointing.current = true;
-    setTimeout(() => (pointing.current = false));
     dispatch({ type: 'focus', view });
   };
+
+  const focused = state.focused === view;
+  const session = state.session !== null && state.session.view === view ? state.session : null;
+  // A keyboard move or resize puts the window where the visitor chose: the
+  // focus it gives, to its pad and, when it ends, back to the title, leaves
+  // the window there (FR-021, FR-067).
+  const placed = useRef(false);
+  const hadSession = useRef(false);
+  useLayoutEffect(() => {
+    if (hadSession.current && session === null) placed.current = true;
+    hadSession.current = session !== null;
+  }, [session !== null]);
+
   // One frame after focus, once the browser has scrolled the content to
   // the element, and once the window's own animation has ended, so its box
   // is where it rests: the element and its indicator, relative to the area.
+  // Focus that follows a pointer doesn't move the window: the visitor
+  // points at what they see, and their window stays where they put it.
   const reveal = (target: Element) => {
-    if (pointing.current) return;
+    const afterSession = placed.current && target.classList.contains('window-title');
+    placed.current = false;
+    if (byPointer() || session !== null || afterSession) return;
     requestAnimationFrame(async () => {
       await Promise.all((section.current?.getAnimations() ?? []).map((animation) => animation.finished.catch(() => undefined)));
       const area = section.current?.parentElement;
@@ -87,8 +100,6 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
     });
   };
 
-  const focused = state.focused === view;
-  const session = state.session !== null && state.session.view === view ? state.session : null;
   // Geometry from state is state, not a design value (research R3). Until
   // measured, the style sheet places the pre-rendered window.
   const style: CSSProperties = placement === 'set' ? { left: geometry.x, top: geometry.y, width: geometry.width, height: geometry.height, zIndex: depth } : { zIndex: depth };

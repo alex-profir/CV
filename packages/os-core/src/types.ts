@@ -22,8 +22,10 @@ export type WindowState = {
   placement: 'initial' | 'set';
 };
 
-// A keyboard move or resize in progress.
-export type Session = { kind: 'move' | 'resize'; view: ViewId; start: Geometry } | null;
+// A keyboard move or resize in progress. `start`: the box when the session
+// began, which a cancel goes back to; `from`: the box when its kind last
+// changed, where a resize's edges already past the screen stop.
+export type Session = { kind: 'move' | 'resize'; view: ViewId; start: Geometry; from: Geometry } | null;
 
 export type OsState = {
   // 'both' only before hydration finishes (R2).
@@ -130,7 +132,8 @@ export type OsAction =
   | { type: 'dragMove'; view: ViewId; x: number; y: number }
   // `box`: the focused element with its outline, relative to the area (FR-067).
   | { type: 'reveal'; view: ViewId; box: Geometry }
-  | { type: 'dragResize'; view: ViewId; edge: Edge; geometry: Geometry }
+  // `from`: the box when the drag began.
+  | { type: 'dragResize'; view: ViewId; edge: Edge; geometry: Geometry; from: Geometry }
   | { type: 'sessionStart'; kind: 'move' | 'resize' }
   | { type: 'sessionStep'; dx: number; dy: number }
   | { type: 'sessionEnd'; confirm: boolean }

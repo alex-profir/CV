@@ -120,6 +120,11 @@ describe('005-os-shell-FR-018: About opens clear of the window in front', () => 
     }
   });
 
+  test('with the front window moved past the left edge, About still opens inside the area', () => {
+    const cv: WindowState = { view: 'cv', geometry: { x: -800, y: 24, width: 1000, height: 716 }, minimized: false, maximized: null, placement: 'set' };
+    expect(placeWindow('about', [cv], AREA, METRICS)).toEqual({ x: 96, y: 96, width: 560, height: 520 });
+  });
+
   test('after five open and close cycles, no title bar is on another', () => {
     let state = desktop();
     for (let cycle = 0; cycle < 5; cycle += 1) {
@@ -201,6 +206,18 @@ describe('005-os-shell-FR-061: resizing stops at 400 × 300, at the size of the 
     expect(clampResize({ ...past, width: 984, height: 684 }, 'se', AREA, METRICS, past)).toEqual({ ...past, width: 984, height: 684 });
     const left = { x: -400, y: 24, width: 1000, height: 716 };
     expect(clampResize({ ...left, x: -416, width: 1016 }, 'w', AREA, METRICS, left)).toEqual(left);
+  });
+
+  test("an edge stops where the title bar would leave its place, so the opposite edge stays", () => {
+    // Past the left edge, the right edge stops 120 px into the screen.
+    const left = { x: -500, y: 24, width: 700, height: 600 };
+    expect(clampResize({ ...left, width: 550 }, 'e', AREA, METRICS, left)).toEqual({ ...left, width: 620 });
+    // Past the right edge, the left edge stops 120 px from the screen's right.
+    const right = { x: 1300, y: 24, width: 700, height: 600 };
+    expect(clampResize({ ...right, x: 1400, width: 600 }, 'w', AREA, METRICS, right)).toEqual({ ...right, x: 1320, width: 680 });
+    // Low on the screen, the top edge stops at the dock.
+    const low = { x: 220, y: 600, width: 1000, height: 700 };
+    expect(clampResize({ ...low, y: 740, height: 560 }, 'n', AREA, METRICS, low)).toEqual({ ...low, y: AREA.height - METRICS.titleBar, height: 576 });
   });
 });
 

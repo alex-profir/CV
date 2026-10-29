@@ -35,7 +35,8 @@ export function clampMove(geometry: Geometry, area: Area, metrics: Metrics): Geo
 // stops at the area's top and sides and at the screen's bottom, below the
 // dock; one already past its limit, on a window moved past the edge
 // (`from`, the box before the drag), stops where it was instead, so it can
-// come back but never jumps.
+// come back but never jumps. It also stops where the title bar would leave
+// the place FR-021 keeps it, so the window never has to move.
 export function clampResize(geometry: Geometry, edge: Edge, area: Area, metrics: Metrics, from: Geometry = geometry): Geometry {
   const minimum = minimumOf(area, metrics);
   let left = Math.round(geometry.x);
@@ -46,9 +47,13 @@ export function clampResize(geometry: Geometry, edge: Edge, area: Area, metrics:
   const rightLimit = Math.max(area.width, Math.round(from.x + from.width));
   const bottomLimit = Math.max(area.height + metrics.dockReserve, Math.round(from.y + from.height));
   // Either way the size stays between the minimum and the area.
-  if (edge.includes('w')) left = clamp(left, Math.max(leftLimit, right - area.width), right - minimum.width);
-  else right = clamp(right, left + minimum.width, edge.includes('e') ? Math.min(rightLimit, left + area.width) : left + area.width);
-  if (edge.includes('n')) top = clamp(top, Math.max(0, bottom - area.height), bottom - minimum.height);
+  if (edge.includes('w')) left = clamp(left, Math.max(leftLimit, right - area.width), Math.min(right - minimum.width, area.width - metrics.grab));
+  else {
+    // A window past the left edge keeps `grab` of its title bar on screen.
+    const least = left < 0 ? Math.max(left + minimum.width, metrics.grab) : left + minimum.width;
+    right = clamp(right, least, edge.includes('e') ? Math.min(rightLimit, left + area.width) : left + area.width);
+  }
+  if (edge.includes('n')) top = clamp(top, Math.max(0, bottom - area.height), Math.min(bottom - minimum.height, area.height - metrics.titleBar));
   else bottom = clamp(bottom, top + minimum.height, edge.includes('s') ? Math.min(bottomLimit, top + area.height) : top + area.height);
   // A fixed edge too near the area's edge for the minimum gives way.
   const size = fitSize(right - left, bottom - top, area, metrics);
@@ -128,7 +133,7 @@ export function placeWindow(view: ViewId, windows: readonly WindowState[], area:
   if (front === undefined) return clampMove(centred, area, metrics);
 
   let box = { ...size, x: front.geometry.x + metrics.cascade, y: front.geometry.y + metrics.cascade };
-  const fits = (candidate: Geometry) => candidate.x + candidate.width <= area.width && candidate.y + candidate.height <= area.height;
+  const fits = (candidate: Geometry) => candidate.x >= 0 && candidate.y >= 0 && candidate.x + candidate.width <= area.width && candidate.y + candidate.height <= area.height;
   let clearTitleBar: Geometry | undefined;
   // Enough steps to cross the area twice; then the best box found stands.
   const tries = 2 * Math.ceil((area.width + area.height) / Math.max(1, metrics.cascade));

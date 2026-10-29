@@ -284,6 +284,35 @@ describe('005-os-shell-FR-067: focus by key on a hidden element brings its windo
     await settle(page);
     expect(await box(page, CV)).toEqual(before);
   });
+
+  test('a tap never moves it either', async () => {
+    const page = await desktop({ hasTouch: true });
+    const from = await grip(page, CV);
+    await drag(page, from, { x: from.x + 700, y: 4000 });
+    const before = (await box(page, CV))!;
+    await page.evaluate(() => document.addEventListener('click', (event) => event.preventDefault(), true));
+    const link = (await page.locator(CV).getByRole('link', { name: /Open as a page/ }).boundingBox())!;
+    expect(link.y).toBeGreaterThan(796);
+    await page.touchscreen.tap(link.x + 2, link.y + 2);
+    await settle(page);
+    expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('A');
+    expect(await box(page, CV)).toEqual(before);
+  });
+
+  test('focus the shell gives after a click elsewhere, as on restoring from the dock, never moves it', async () => {
+    const page = await desktop();
+    // Right until 120 px of the title bar is left, the window's name off screen.
+    const from = await grip(page, CV);
+    await drag(page, from, { x: from.x + 2000, y: from.y });
+    const before = (await box(page, CV))!;
+    expect(before.x).toBe(1440 - 120);
+    await page.getByRole('button', { name: 'Minimize CV' }).click();
+    await settle(page);
+    await page.locator('#os .dock-item[data-app="cv"]').click();
+    await expect.poll(() => page.evaluate(() => document.activeElement?.matches('#os .window[data-view="cv"] .window-title') ?? false)).toBe(true);
+    await settle(page);
+    expect(await box(page, CV)).toEqual(before);
+  });
 });
 
 describe('005-os-shell-FR-022: a window scrolls its own content, the desktop never scrolls', () => {

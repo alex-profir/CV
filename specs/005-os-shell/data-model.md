@@ -90,7 +90,9 @@ type WindowState = {
   placement: 'initial' | 'set';          // 'initial' only for the pre-rendered CV window, until measured (R3)
 };
 
-type Session = { kind: 'move' | 'resize'; view: ViewId; start: Geometry } | null;
+// start: where a cancel goes back to; from: the box when the kind last changed, where a resize's
+// edges already past the screen stop (FR-061)
+type Session = { kind: 'move' | 'resize'; view: ViewId; start: Geometry; from: Geometry } | null;
 
 type OsState = {
   shell: ShellName | 'both';             // 'both' only before hydration finishes (R2)
@@ -158,8 +160,8 @@ Checked by `os-core` tests after every action, on random action sequences as wel
 | `toggleMaximize { view }` | Save `restore` and fill `area`, or restore it (FR-065) | announce `{window} maximized.` or `{window} restored.` |
 | `dragMove { view, x, y }` | Clamp to `area` (FR-021); ignored while maximized | none |
 | `reveal { view, box }` | Move by `revealMove()` so `box`, relative to the area, is inside it (FR-067); ignored while maximized or minimized | none |
-| `dragResize { view, edge, geometry }` | Clamp to min size and `area` (FR-061); ignored while maximized | none |
-| `sessionStart { kind }` | `session` with the focused window's geometry; ignored while maximized | focus `pad` |
+| `dragResize { view, edge, geometry, from }` | Clamp to min size and `area` (FR-061), with `from`, the box when the drag began, for edges already past the screen; ignored while maximized | none |
+| `sessionStart { kind }` | `session` with the focused window's geometry as `from`, and as `start` unless switching kind; ignored while maximized | focus `pad` |
 | `sessionStep { dx, dy }` | Move by, or resize from the top-left corner by, `dx`, `dy` (step or big step), clamped | none |
 | `sessionEnd { confirm }` | Confirm keeps the geometry; cancel restores `session.start` | announce `{window} moved.` / `{window} resized to W by H.` / `Move cancelled.` / `Resize cancelled.` (FR-041); focus `window-title` |
 | `mobileOpen { view }` | `mobile.open`, `historyEntry: true` | focus `mobile-title` (FR-040) |
