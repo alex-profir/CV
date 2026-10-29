@@ -15,7 +15,11 @@ export function crossFade(scroller: Element | null, swap: () => void): void {
   // The style sheet names the scroller for the transition while it runs.
   scroller.setAttribute('data-spec-swap', '');
   const transition = document.startViewTransition(() => flushSync(swap));
-  transition.finished.finally(() => scroller.removeAttribute('data-spec-swap'));
+  // `finished` rejects if the swap throws; React reports that error itself.
+  transition.finished.then(
+    () => scroller.removeAttribute('data-spec-swap'),
+    () => scroller.removeAttribute('data-spec-swap'),
+  );
 }
 
 // A view's scroller, in its window or full-screen view.

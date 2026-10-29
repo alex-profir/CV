@@ -39,8 +39,9 @@ describe('007-requirement-inspector-FR-006 007-requirement-inspector-FR-011: eac
     // A re-export is followed; a type-only import, a computed value and a
     // package import aren't.
     expect(ids(carried.views.get('alpha'))).toEqual([id('001'), id('002'), id('005')]);
-    // A Content written inline reaches each component it names; `export *`
-    // is followed.
+    // A Content written inline reaches each component it renders, not a
+    // helper it calls; `export *` is followed; a nested object's `id` isn't
+    // the app's.
     expect(ids(carried.views.get('beta'))).toEqual([id('003'), id('004'), id('005')]);
     expect(carried.roots).toEqual(
       new Map([

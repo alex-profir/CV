@@ -153,7 +153,8 @@
 }
 
 .spec-back,
-.whats-this {
+.whats-this,
+.spec-retry {
   display: inline-flex;
   align-items: center;
   gap: var(--token-space-1-5);
@@ -435,6 +436,11 @@
   color: var(--token-color-shell-text-soft);
 }
 
+.note-failed {
+  align-items: center;
+  justify-content: space-between;
+}
+
 .spec-note svg {
   margin-block-start: var(--token-space-1);
 }
@@ -470,7 +476,8 @@
 @media (forced-colors: active) {
   .show-specs,
   .spec-back,
-  .whats-this {
+  .whats-this,
+  .spec-retry {
     border: var(--token-border-thin) solid ButtonText;
     color: ButtonText;
   }

@@ -13,7 +13,7 @@ import path from 'node:path';
 import type { Page } from 'playwright';
 import { buildRequirementData } from '../../../../packages/web/scripts/requirements/index.ts';
 import type { Inline, RequirementData } from '../../../../packages/web/scripts/requirements/index.ts';
-import { commitUrl, fileUrl } from '../../../../packages/web/src/format/repository.ts';
+import { commitUrl, fileUrl, specFile } from '../../../../packages/web/src/format/repository.ts';
 import { deriveView } from '../../../../packages/web/src/inspector/derive.ts';
 import { counted, fill, siteText } from '../../../../packages/web/src/site-text.ts';
 import type { Problem } from '../report.ts';
@@ -133,7 +133,7 @@ function textHrefs(nodes: readonly Inline[], repository: string | undefined, com
       case 'file':
         return [...(repository === undefined ? [] : [fileUrl(repository, commit, node.path)]), ...textHrefs(node.children, repository, commit)];
       case 'ref':
-        return repository === undefined ? [] : [fileUrl(repository, commit, `specs/${node.feature}/spec.md`, node.line)];
+        return repository === undefined ? [] : [fileUrl(repository, commit, specFile(node.feature), node.line)];
       case 'strong':
       case 'em':
       case 's':

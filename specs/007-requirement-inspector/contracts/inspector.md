@@ -106,7 +106,9 @@ classes named here.
   middle-click and long-press behave as for any link (spec Edge Cases). They are rendered only when
   `siteData.repository` is set (research R8).
 - **While the data loads** (research R9): the bar, heading, lede and an empty build line show; the
-  groups follow when it arrives. **If it fails**: the offline note shows, with no groups.
+  groups follow when it arrives. **If it fails**: no groups show. Offline, the offline note shows;
+  online, `p.note-failed` says the requirements couldn't be loaded, with a "Try again" button
+  that fetches it again and moves focus to the heading.
 
 ## Layout and scrolling
 

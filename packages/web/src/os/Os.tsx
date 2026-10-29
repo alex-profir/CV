@@ -223,13 +223,14 @@ export function Os({ resume, siteData, apps }: OsProps) {
       leaving.current.get(action.view)?.stop();
       leaving.current.delete(action.view);
     }
-    // Showing and leaving a spec view cross-fade the view's content (007 research R11).
-    if (action.type === 'showSpecs' || action.type === 'showApp') {
+    // Showing and leaving a spec view cross-fade the view's content (007
+    // research R11), when the action changes anything.
+    if ((action.type === 'showSpecs' || action.type === 'showApp') && osReducer(current.current, action, context) !== current.current) {
       crossFade(viewScroller(action.view), () => dispatch(action));
       return;
     }
     dispatch(action);
-  }, [finish]);
+  }, [finish, context]);
 
   const shellProps: ShellProps = { state, dispatch: act, apps, resume, siteData, mac, viewName, viewTitle };
   return (

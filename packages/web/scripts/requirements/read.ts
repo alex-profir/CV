@@ -10,6 +10,7 @@ import { compare } from '../../../../tools/traceability/src/report.ts';
 import { parseSpec, requirementText, requirementsOf, specTitle } from '../../../../tools/traceability/src/specs.ts';
 import type { Requirement } from '../../../../tools/traceability/src/specs.ts';
 import { coveringTests, readTestFile } from '../../../../tools/traceability/src/test-files.ts';
+import { specFile } from '../../src/format/repository.ts';
 import { readSpecList } from '../spec-list.ts';
 import type { Carried } from './carried.ts';
 import { parseInline } from './inline.ts';
@@ -63,7 +64,7 @@ function readSpecs(root: string): Map<string, ReadSpec> {
     if (other !== undefined) throw new Error(`specs ${other} and ${entry.folder} share the number ${entry.number}`);
     byNumber.set(entry.number, entry.folder);
     if (entry.status === 'Invalid') continue;
-    const file = `specs/${entry.folder}/spec.md`;
+    const file = specFile(entry.folder);
     const text = readText(root, file);
     const active = new Map(requirementsOf(parseSpec(entry.folder, file, text)).filter((requirement) => requirement.state === 'active').map((requirement) => [requirement.id, requirement]));
     const title = specTitle(text) ?? entry.folder;

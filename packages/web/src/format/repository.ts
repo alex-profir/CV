@@ -11,6 +11,9 @@ export function fileUrl(repository: string, commit: string, path: string, line?:
   return `${url}${query}#${lineAnchor(line)}`;
 }
 
+// A spec's file in the repository, from its feature.
+export const specFile = (feature: string) => `specs/${feature}/spec.md`;
+
 // GitHub's anchor for a line. Kept apart from the `#`, so no string reads as
 // a hex color to the token check.
 const lineAnchor = (line: number) => `L${line}`;

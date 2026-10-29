@@ -3,14 +3,14 @@
 // [view]" and "What's this?", the heading, the lede, the build line, then
 // one group per spec once the requirement data is here. About this site's
 // view is the shell's own.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Dispatch } from 'react';
 import type { SiteData } from '@cv/content';
 import type { OsAction, ViewId } from '@cv/os-core';
 import { fill, siteText } from '../site-text.ts';
-import { useRequirements } from './data.ts';
+import { retry, useRequirements } from './data.ts';
 import { deriveView } from './derive.ts';
-import { BuildLine, OfflineNote, UncommittedNote, useOffline } from './Notes.tsx';
+import { BuildLine, FailedNote, OfflineNote, UncommittedNote, useOffline } from './Notes.tsx';
 import { SpecGroup } from './SpecGroup.tsx';
 import { WhatsThisButton, WhatsThisPanel } from './WhatsThis.tsx';
 
@@ -19,6 +19,12 @@ export function SpecView({ view, name, siteData, dispatch }: { view: ViewId; nam
   const requirements = useRequirements();
   const [whatsThis, setWhatsThis] = useState(false);
   const offline = useOffline();
+  const heading = useRef<HTMLHeadingElement>(null);
+  // "Try again" leaves with its note, so focus goes to the heading first.
+  const onRetry = () => {
+    heading.current?.focus();
+    retry();
+  };
   // About this site lists the shell's own requirements (FR-011).
   const title = view === 'about' ? text.shellName : name;
   const model = requirements.status === 'ready' ? deriveView(requirements.data, view, title) : null;
@@ -32,7 +38,7 @@ export function SpecView({ view, name, siteData, dispatch }: { view: ViewId; nam
       </div>
       <div className="spec-page">
         <WhatsThisPanel view={view} open={whatsThis} siteData={siteData} />
-        <h1 className="spec-heading" tabIndex={-1} data-req="007-requirement-inspector-FR-017 007-requirement-inspector-FR-018">
+        <h1 ref={heading} className="spec-heading" tabIndex={-1} data-req="007-requirement-inspector-FR-017 007-requirement-inspector-FR-018">
           {fill(text.heading, { view: title })}
         </h1>
         <p className="spec-lede">{view === 'about' ? text.ledeShell : fill(text.ledeApp, { view: name })}</p>
@@ -40,7 +46,8 @@ export function SpecView({ view, name, siteData, dispatch }: { view: ViewId; nam
           {model !== null && <BuildLine model={model} siteData={siteData} />}
         </p>
         {model !== null && <UncommittedNote model={model} />}
-        {(offline || requirements.status === 'failed') && <OfflineNote />}
+        {offline && <OfflineNote />}
+        {!offline && requirements.status === 'failed' && <FailedNote onRetry={onRetry} />}
         {model?.groups.map((group) => (
           <SpecGroup key={group.spec.feature} view={view} group={group} commit={model.version.commit} siteData={siteData} />
         ))}

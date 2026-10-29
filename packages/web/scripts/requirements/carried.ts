@@ -33,7 +33,14 @@ const MODULE = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
 const toPosix = (file: string) => file.split(path.sep).join('/');
 
-function readModule(root: string, file: string): { text: string; program: Program } {
+// A module's text, its tree, and, once read, its data-req references.
+type Module = { text: string; program: Program; references?: readonly string[] };
+// Each module read so far, by file, so one reading parses each once.
+type Modules = Map<string, Module>;
+
+function readModule(root: string, file: string, cache: Modules): Module {
+  const cached = cache.get(file);
+  if (cached !== undefined) return cached;
   let text: string;
   try {
     text = fs.readFileSync(path.join(root, file), 'utf8');
@@ -42,7 +49,9 @@ function readModule(root: string, file: string): { text: string; program: Progra
   }
   const parsed = parseSource(file, text);
   if ('problem' in parsed) throw new Error(`${file}: ${parsed.problem.detail}`);
-  return { text, program: parsed.program };
+  const module = { text, program: parsed.program };
+  cache.set(file, module);
+  return module;
 }
 
 // A relative specifier resolved from the importing file, as written: the
@@ -79,44 +88,66 @@ function importsOf(file: string, program: Program): string[] {
 
 // Every module reached from `entries` by value imports, entries included,
 // without entering `stops`.
-export function reachable(root: string, entries: readonly string[], stops: ReadonlySet<string> = new Set()): Set<string> {
+export function reachable(root: string, entries: readonly string[], stops: ReadonlySet<string> = new Set(), cache: Modules = new Map()): Set<string> {
   const seen = new Set<string>();
   const queue = entries.filter((entry) => !stops.has(entry));
   while (queue.length > 0) {
     const file = queue.shift()!;
     if (seen.has(file) || !MODULE.test(file)) continue;
     seen.add(file);
-    const { program } = readModule(root, file);
+    const { program } = readModule(root, file, cache);
     for (const next of importsOf(file, program)) if (!seen.has(next) && !stops.has(next)) queue.push(next);
   }
   return seen;
 }
 
-// The module each imported name comes from, in one module.
-function importBindings(file: string, program: Program): Map<string, string> {
-  const bindings = new Map<string, string>();
+// The module each imported name comes from, in one module, with the name
+// it is exported under there.
+function importBindings(file: string, program: Program): Map<string, { module: string; imported: string | null }> {
+  const bindings = new Map<string, { module: string; imported: string | null }>();
   for (const statement of program.body) {
     if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type' || !relative(statement.source.value)) continue;
-    for (const specifier of statement.specifiers) bindings.set(specifier.local.name, resolve(file, statement.source.value));
+    for (const specifier of statement.specifiers) {
+      const imported =
+        specifier.type === 'ImportSpecifier' ? (specifier.imported.type === 'Identifier' ? specifier.imported.name : String(specifier.imported.value)) : null;
+      bindings.set(specifier.local.name, { module: resolve(file, statement.source.value), imported });
+    }
   }
   return bindings;
 }
 
-// The value of the last non-computed property with this name in any object
-// literal of the module.
-function propertyValue(program: Program, name: string): Node | null {
-  let value: Node | null = null;
-  visitAll(program, (node) => {
-    if (node.type !== 'Property' || node.computed) return;
-    const key = node.key.type === 'Identifier' ? node.key.name : node.key.type === 'Literal' ? node.key.value : null;
-    if (key === name) value = node.value;
-  });
-  return value;
+// The object literal a module exports under this name, as
+// `export const name = { … }`, through any type annotation, `as` or
+// `satisfies`.
+function exportedObject(program: Program, name: string): Node | null {
+  for (const statement of program.body) {
+    if (statement.type !== 'ExportNamedDeclaration' || statement.declaration?.type !== 'VariableDeclaration') continue;
+    for (const declarator of statement.declaration.declarations) {
+      if (declarator.id.type !== 'Identifier' || declarator.id.name !== name) continue;
+      let init: Node | null = declarator.init;
+      while (init?.type === 'TSAsExpression' || init?.type === 'TSSatisfiesExpression' || init?.type === 'ParenthesizedExpression') init = init.expression;
+      return init?.type === 'ObjectExpression' ? init : null;
+    }
+  }
+  return null;
 }
 
-// The apps' declaration files, in `APPS` order.
-function appFiles(root: string): string[] {
-  const { program } = readModule(root, APPS_FILE);
+// The value of the object literal's own non-computed property with this
+// name, not one in an object nested in it.
+function propertyValue(object: Node, name: string): Node | null {
+  if (object.type !== 'ObjectExpression') return null;
+  for (const property of object.properties) {
+    if (property.type !== 'Property' || property.computed) continue;
+    const key = property.key.type === 'Identifier' ? property.key.name : property.key.type === 'Literal' ? property.key.value : null;
+    if (key === name) return property.value;
+  }
+  return null;
+}
+
+// The apps' declarations, in `APPS` order: each one's file and the name it
+// is exported under.
+function appFiles(root: string, cache: Modules): { file: string; name: string }[] {
+  const { program } = readModule(root, APPS_FILE, cache);
   const bindings = importBindings(APPS_FILE, program);
   let elements: string[] | null = null;
   visitAll(program, (node) => {
@@ -129,29 +160,34 @@ function appFiles(root: string): string[] {
   });
   if (elements === null) throw new Error(`${APPS_FILE}: can't find the APPS list`);
   return (elements as string[]).map((name) => {
-    const file = bindings.get(name);
-    if (file === undefined) throw new Error(`${APPS_FILE}: can't find the module ${name} comes from`);
-    return file;
+    const binding = bindings.get(name);
+    if (binding?.imported == null) throw new Error(`${APPS_FILE}: can't find the module ${name} comes from`);
+    return { file: binding.module, name: binding.imported };
   });
 }
 
-// An app's id and content roots, from its declaration: the module `Content`
-// is imported from, or, for a `Content` written inline, each imported
-// component it names.
-function appOf(root: string, file: string): { id: string; roots: string[] } {
-  const { program } = readModule(root, file);
-  const idValue = propertyValue(program, 'id');
+// An app's id and content roots, from its declaration, the object its file
+// exports under `name`: the module `Content` is imported from, or, for a
+// `Content` written inline, each imported component it renders as an
+// element.
+function appOf(root: string, file: string, name: string, cache: Modules): { id: string; roots: string[] } {
+  const { program } = readModule(root, file, cache);
+  const declaration = exportedObject(program, name);
+  if (declaration === null) throw new Error(`${file}: can't find the app's declaration, ${name}`);
+  const idValue = propertyValue(declaration, 'id');
   if (idValue?.type !== 'Literal' || typeof idValue.value !== 'string') throw new Error(`${file}: can't find the app's id`);
   const bindings = importBindings(file, program);
-  const content = propertyValue(program, 'Content');
+  const content = propertyValue(declaration, 'Content');
   const roots: string[] = [];
   if (content?.type === 'Identifier') {
-    const module = bindings.get(content.name);
-    if (module !== undefined) roots.push(module);
+    const binding = bindings.get(content.name);
+    if (binding !== undefined) roots.push(binding.module);
   } else if (content?.type === 'ArrowFunctionExpression' || content?.type === 'FunctionExpression') {
+    // Only elements' names: a helper or text the function also uses isn't
+    // content.
     visitAll(content, (node) => {
-      const name = node.type === 'JSXIdentifier' || node.type === 'Identifier' ? node.name : null;
-      const module = name === null ? undefined : bindings.get(name);
+      if (node.type !== 'JSXOpeningElement' || node.name.type !== 'JSXIdentifier') return;
+      const module = bindings.get(node.name.name)?.module;
       if (module !== undefined && !roots.includes(module)) roots.push(module);
     });
   }
@@ -160,22 +196,26 @@ function appOf(root: string, file: string): { id: string; roots: string[] } {
 }
 
 // The data-req references written in the modules.
-function referencesOf(root: string, modules: Iterable<string>): Set<string> {
+function referencesOf(root: string, modules: Iterable<string>, cache: Modules): Set<string> {
   const references = new Set<string>();
   for (const file of modules) {
-    const { text } = readModule(root, file);
-    const { references: found, problem } = readUiFile(file, text);
-    if (problem !== null) throw new Error(`${file}: ${problem.detail}`);
-    for (const token of found) references.add(token.text);
+    const module = readModule(root, file, cache);
+    if (module.references === undefined) {
+      const { references: found, problem } = readUiFile(file, module.text);
+      if (problem !== null) throw new Error(`${file}: ${problem.detail}`);
+      module.references = found.map((token) => token.text);
+    }
+    for (const reference of module.references) references.add(reference);
   }
   return references;
 }
 
 export function readCarried(root: string): Carried {
-  const apps = appFiles(root).map((file) => appOf(root, toPosix(file)));
+  const cache: Modules = new Map();
+  const apps = appFiles(root, cache).map(({ file, name }) => appOf(root, toPosix(file), name, cache));
   const stops = new Set(apps.flatMap((app) => app.roots));
-  const modules = new Map<string, Set<string>>([['shell', reachable(root, SHELL_ROOTS, stops)]]);
-  for (const app of apps) modules.set(app.id, reachable(root, app.roots));
-  const views = new Map([...modules].map(([view, files]) => [view, referencesOf(root, files)] as const));
+  const modules = new Map<string, Set<string>>([['shell', reachable(root, SHELL_ROOTS, stops, cache)]]);
+  for (const app of apps) modules.set(app.id, reachable(root, app.roots, new Set(), cache));
+  const views = new Map([...modules].map(([view, files]) => [view, referencesOf(root, files, cache)] as const));
   return { views, modules, roots: new Map(apps.map((app) => [app.id, app.roots])) };
 }
