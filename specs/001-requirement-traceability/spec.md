@@ -6,6 +6,11 @@
 
 **Status**: Approved
 
+**Amended**: 2026-10-29: the full test run moves to the owner's machine, proven before merge by a
+sign-off on the pull request's head commit, and pull requests run only the fast checks (see
+Clarifications, Session 2026-10-29, and Constitution 1.4.0, Merge requirements). Approved
+2026-10-21; the amendment approved by the owner 2026-10-29.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -69,6 +74,19 @@
   each requirement? → A: Not now. The check reports only problems and the summary.
 - Q: If the check can't read a file it needs, such as a test file with a syntax error, should
   the check fail? → A: Yes. The file is reported as a problem with its path (FR-029).
+
+### Session 2026-10-29 (the local run and its sign-off)
+
+- Q: Every pull request takes about 19 minutes to test, most of it the site check's own tests,
+  which build the site again and again. Where should the full test run happen? → A: On the
+  owner's machine, before merge. Pull requests run only the fast checks and the site's checks.
+  A sign-off recorded on the exact commit proves the full run passed there, and a pull request
+  can't merge without it (FR-030 to FR-037).
+- Q: Who can sign off? → A: Only the owner's local full run, with the owner's own credentials.
+  The pull requests' checks never record it, and every new commit needs a new run (FR-034).
+- Q: Does this change the traceability check itself? → A: No. FR-001 to FR-029 are unchanged.
+  The amendment adds the run around the tests and the sign-off; the check still reads every
+  test, wherever it runs (FR-030).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -168,6 +186,44 @@ each is reported with its file and line.
 
 ---
 
+### User Story 4 - Prove the full test run before merge (Priority: P4) *(added 2026-10-29)*
+
+The owner finishes a change and pushes it. The pull request's checks finish in a few minutes:
+type checking, the fast tests, this check, the content and token checks, and the site's checks.
+On their own machine, on a clean checkout of that commit, they run the full test run with one
+command: every test, every browser test included. It passes, and they sign the commit off. The
+pull request now shows a passing `local-verify` check naming what ran, and it can merge. They
+push one more fix, and the pull request is blocked again until they run it on the new commit.
+
+**Why this priority**: the full suite is what proves every requirement's test passes, but run
+on every pull request it takes about 19 minutes and times out on slow runners. A sign-off tied
+to the exact commit keeps the proof without the wait, and stories 1 to 3 don't depend on it.
+
+**Independent Test**: on a pull request, run the local full run with an uncommitted change and
+confirm it refuses. Commit, run it, sign off and confirm the pull request shows the sign-off
+and can merge. Push another commit and confirm it can't merge until that commit is signed off.
+Break one browser test and confirm the run fails and records no passing sign-off.
+
+**Acceptance Scenarios**:
+
+1. **Given** a clean checkout of a pushed commit, **When** the owner runs the local full run and
+   every check passes, and signs off, **Then** the commit has a passing `local-verify` check that
+   names the number of tests passed, the site check's result, the runtime's version and the
+   operating system, and the pull request shows it.
+2. **Given** a working copy with a changed or untracked file, **When** the owner starts the local
+   full run, **Then** it refuses before running anything and names the files.
+3. **Given** one failing test, **When** the local full run ends, **Then** it names the failure and
+   no passing sign-off can be recorded for that commit.
+4. **Given** a signed-off pull request, **When** a new commit is pushed to it, a merge of the main
+   branch included, **Then** it can't be merged until the new commit is signed off.
+5. **Given** any pull request, **When** its checks run, **Then** they run type checking, the fast
+   tests, this check, the content and token checks and the site's checks, run no other test,
+   and never record a sign-off.
+6. **Given** a local full run that passed on a commit not yet pushed, **When** the owner signs
+   off, **Then** its branch is pushed first, then the sign-off recorded, with no test run again.
+
+---
+
 ### Edge Cases
 
 - **No approved specs yet**, or no `specs/` folder at all: there is nothing to cover, so the
@@ -205,6 +261,17 @@ each is reported with its file and line.
 - **A skipped, disabled or placeholder test that references a requirement**, either marked
   itself or inside a group that is marked: does not count as coverage. Its references are still
   checked for unknown, removed and malformed IDs.
+- **A sign-off and a rewritten commit** (amended or rebased): the new commit has no sign-off, as
+  any new commit (FR-034).
+- **The local full run without the browser it needs installed**: it says what is missing and how
+  to install it, and records nothing (FR-032).
+- **Signing off with no connection** to the repository's host: it says so and records nothing.
+  The local full run itself needs no connection (FR-027 and FR-036).
+- **Signing off a commit whose last local full run failed, or that never ran**: refused, naming
+  the commit (FR-033, FR-036).
+- **A pull request that changes only the project's documents outside `specs/`**, such as the
+  constitution: its checks still run, and it still needs a sign-off. Its local full run passes as
+  the default branch's does.
 - **Sample specs, tests and markup that exist only to test the check itself**: not treated as
   the project's own specs, tests or UI source, so their deliberately broken IDs don't fail the
   real check.
@@ -310,6 +377,36 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
 - **FR-028**: The check MUST apply to this spec like any other. Once this spec is approved, its
   own requirements need covering tests.
 
+**The pull-request run, the local run and the sign-off** (added 2026-10-29)
+
+- **FR-030**: The project's tests MUST be divided by what they need: the fast set, the tests that
+  need neither a browser nor a build of the site, and the full set, every test. Every test MUST
+  be in the full set. This check MUST read every test, in either set (FR-010).
+- **FR-031**: Every pull request MUST run type checking, the fast set, this check, the content
+  check (002), the token check (003) and the site's checks on the built site (004 FR-048), and
+  no test outside the fast set.
+- **FR-032**: The owner MUST be able to run the full set and every check of FR-031 on their own
+  machine with one command, the local full run. It MUST refuse to start, naming the files, when
+  the working copy holds any change or untracked file that isn't in the current commit, so it
+  runs exactly that commit. When something it needs isn't installed, it MUST say what and how to
+  install it, and run nothing.
+- **FR-033**: When every check of a local full run passes, the owner MUST be able to sign off its
+  commit: a passing check named `local-verify`, recorded on that commit where the pull requests'
+  checks are shown, naming the number of tests passed, the site check's result, the runtime's
+  version and the operating system. When any check fails, the run MUST name every failure, and
+  no passing sign-off may be recorded for that commit.
+- **FR-034**: A sign-off MUST be recorded only by signing off after a passing local full run, with
+  the owner's own credentials, and never by the pull requests' checks. It MUST belong to one
+  commit: a new commit, a merge of the main branch or a rewritten commit included, has none
+  until a local full run passes on it.
+- **FR-035**: A pull request MUST NOT be mergeable by anyone, the owner included, until its head
+  commit has a passing sign-off and every check of FR-031 passes, as FR-025 sets for this check.
+- **FR-036**: Signing off MUST NOT run the tests again when a local full run already passed on that
+  commit. When the commit isn't on the repository's host yet, signing off MUST push its branch
+  first. When it can't reach the host or push, it MUST say so and record nothing.
+- **FR-037**: A local full run's result MUST stay on the owner's machine, outside the project's
+  tracked files, until it is signed off. Nothing of it may be committed.
+
 ### Key Entities
 
 - **Spec**: one feature's specification. It is identified by its directory name (the
@@ -324,6 +421,11 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
   ID, missing or unrecognized Status, approved spec with no requirements, or unreadable file. It
   carries the ID or text involved and its location.
 - **Report**: the list of problems in a stable order, followed by the summary.
+- **Fast set** and **full set**: the tests a pull request runs, and every test (FR-030).
+- **Local full run**: the full set and every pull-request check, run on the owner's machine on a
+  clean checkout of one commit, with a pass or fail result kept on that machine (FR-032, FR-037).
+- **Sign-off**: the passing `local-verify` check a local full run's pass records on its commit,
+  naming what ran. A pull request needs one on its head commit to merge (FR-033 to FR-035).
 
 ## Shell Scope *(mandatory)*
 
@@ -338,9 +440,11 @@ and `/cv` remains a plain server-rendered page.
 ## Offline Behavior *(mandatory)*
 
 - **Works offline**: Fully. The check makes no network requests, locally or on a pull request.
-- **Available offline**: nothing visitor-facing. The owner can run the full check without a
-  connection.
-- **Needs the network**: Nothing.
+  The local full run needs no connection either.
+- **Available offline**: nothing visitor-facing. The owner can run the full check, and the local
+  full run, without a connection.
+- **Needs the network**: only signing off, which records the sign-off on the repository's host
+  (FR-036).
 - **Offline state shown**: Not applicable. The feature has no visitor-facing state.
 
 ## Design *(mandatory)*
@@ -364,6 +468,13 @@ and `/cv` remains a plain server-rendered page.
   requirement in this spec is covered by at least one test.
 - **SC-007**: For every reported problem, a reviewer can go straight to the file and line
   involved using only the report, without reading the check's code.
+- **SC-008** *(added 2026-10-29)*: Every pull request's checks finish within 6 minutes of
+  starting, on the hosting service's standard runners. Before the amendment the slowest took
+  about 19 minutes.
+- **SC-009** *(added 2026-10-29)*: No pull request merges without a passing sign-off on its head
+  commit, whoever merges it, the owner included.
+- **SC-010** *(added 2026-10-29)*: The local full run runs 100% of the project's test files, and
+  gives the same pass or fail as running every test, every time.
 
 ## Assumptions
 
@@ -382,9 +493,14 @@ and `/cv` remains a plain server-rendered page.
 - **Blocking merge** depends on repository settings that require this check to pass before a
   pull request can be merged, block direct pushes to the main branch, and allow no bypass, not
   even for admins. Turning these on is part of delivering this feature. The repository already
-  allows squash merges only.
+  allows squash merges only. Amended 2026-10-29: the same settings also require the
+  `local-verify` sign-off of FR-035, and turning that on is part of delivering the amendment.
+- **The owner's credentials** (2026-10-29): signing off uses the owner's own login to the
+  repository's host, already on their machine. The plan says which tool records it.
 - **Out of scope**:
-  - Checking that tests pass. The normal test run does that.
+  - Checking that tests pass, inside the check itself. The normal test run does that. Amended
+    2026-10-29: the full run's pass is now a merge requirement through the local full run and
+    its sign-off (FR-030 to FR-037), which stay outside the check.
   - Tests skipped only by a condition checked while the tests run, such as "skip on this
     platform". The code doesn't mark them as skipped, so they count as coverage. The normal test
     run reports those skips.

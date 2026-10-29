@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import config from '../../../vitest.config.ts';
-import { EXCLUDED_DIR_NAMES, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, isTestFile, listFiles } from '../src/files.ts';
+import { EXCLUDED_DIR_NAMES, FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, isTestFile, listFiles } from '../src/files.ts';
 import { makeProject } from './helpers/project.ts';
 
 describe('001-requirement-traceability-FR-014: only the project own files are examined', () => {
@@ -74,10 +74,24 @@ describe('001-requirement-traceability-FR-014: only the project own files are ex
     expect(listFiles(makeProject({ 'a.test.ts': '' })).specs).toEqual([]);
   });
 
-  test('the test runner selects files from the same constants', () => {
-    expect(config.test?.include).toEqual(TEST_INCLUDE_GLOBS);
-    expect(config.test?.exclude).toEqual(TEST_EXCLUDE_GLOBS);
+  test('the test runner selects files from the same constants, in both its projects', () => {
+    const projects = config.test?.projects as { test: { name: string; include?: string[]; exclude?: string[] } }[];
+    expect(projects.map((project) => [project.test.name, project.test.include, project.test.exclude])).toEqual([
+      ['fast', FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS],
+      ['slow', TEST_INCLUDE_GLOBS, [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]],
+    ]);
+    expect(config.test).not.toHaveProperty('include');
+    expect(config.test).not.toHaveProperty('exclude');
     expect(TEST_EXCLUDE_GLOBS).toEqual([...EXCLUDED_DIR_NAMES.map((name) => `**/${name}/**`), '**/.*/**']);
     expect(EXCLUDED_DIR_NAMES).toEqual(['node_modules', 'dist', 'build', 'out', 'coverage', '__fixtures__']);
+  });
+});
+
+describe('001-requirement-traceability-FR-030: the check reads every test, in either set', () => {
+  test('a test in a fast directory and one in a slow directory are both listed', () => {
+    const files = { 'tools/traceability/test/a.test.ts': '', 'tools/site-check/test/b.test.ts': '', 'packages/web/test/terminal/engine/c.test.ts': '', 'packages/web/test/d.test.tsx': '' };
+    const fast = Object.keys(files).filter((file) => FAST_TEST_GLOBS.some((glob) => path.posix.matchesGlob(file, glob)));
+    expect(fast).toEqual(['tools/traceability/test/a.test.ts', 'packages/web/test/terminal/engine/c.test.ts']);
+    expect(listFiles(makeProject(files)).testFiles).toEqual(['packages/web/test/d.test.tsx', 'packages/web/test/terminal/engine/c.test.ts', 'tools/site-check/test/b.test.ts', 'tools/traceability/test/a.test.ts']);
   });
 });
