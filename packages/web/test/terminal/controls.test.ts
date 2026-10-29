@@ -62,17 +62,17 @@ async function expectRuns(page: Page, control: Locator, how: How, ran: string[])
 }
 
 describe('006-terminal-FR-015: every command control is a button named by its full line', () => {
-  test('in the greeting, help, the unknown reply and open’s reply', async () => {
+  test('in the starter chips, help, the unknown reply and open’s reply', async () => {
     const page = await openTerminalPage('desktop');
-    const greeting = await controlsIn(page.locator('.terminal .greeting'));
-    expect(greeting.map((control) => control.name)).toEqual(['help', 'help', 'about', 'work', 'projects', 'cv']);
+    const starter = await controlsIn(page.locator('.terminal .starter'));
+    expect(starter.map((control) => control.name)).toEqual(['help', 'about', 'work', 'projects', 'cv']);
     const help = await controlsIn((await runGroup(page, 'help')).locator('.run-output'));
     expect(help.map((control) => control.name)).toEqual(HELP_LINES);
     const unknown = await controlsIn((await runGroup(page, 'wrok')).locator('.run-output'));
     expect(unknown.map((control) => control.name)).toEqual(['help', 'work']);
     const open = await controlsIn((await runGroup(page, 'open settings')).locator('.run-output'));
     expect(open.map((control) => control.name)).toEqual(['open cv', 'open about']);
-    for (const control of [...greeting, ...help, ...unknown, ...open]) {
+    for (const control of [...starter, ...help, ...unknown, ...open]) {
       expect(control.tag, control.name ?? '').toBe('button');
       expect(control.type, control.name ?? '').toBe('button');
     }
@@ -80,14 +80,14 @@ describe('006-terminal-FR-015: every command control is a button named by its fu
 });
 
 describe('006-terminal-FR-015: a control runs its line as typed, by click, Enter and Space', () => {
-  test('the greeting’s controls', async () => {
+  test('the starter chips', async () => {
     const page = await openTerminalPage('desktop');
     const ran: string[] = [];
-    const count = await page.locator(`.terminal .greeting ${CONTROLS}`).count();
+    const count = await page.locator(`.terminal .starter ${CONTROLS}`).count();
     for (let index = 0; index < count; index += 1) {
-      for (const how of WAYS) await expectRuns(page, page.locator(`.terminal .greeting ${CONTROLS}`).nth(index), how, ran);
+      for (const how of WAYS) await expectRuns(page, page.locator(`.terminal .starter ${CONTROLS}`).nth(index), how, ran);
     }
-    expect(ran).toHaveLength(18);
+    expect(ran).toHaveLength(15);
     expect((await historyRows(page)).map((row) => row.line)).toEqual([...ran, 'history']);
   });
 
@@ -154,18 +154,18 @@ describe('006-terminal-FR-015: a control runs its line as typed, by click, Enter
   });
 });
 
-describe('006-terminal-FR-015: every CV section is within 2 clicks of the greeting (SC-001)', () => {
-  test('a greeting chip, or help then the section’s control', async () => {
+describe('006-terminal-FR-015: every CV section is within 2 clicks of the starter chips (SC-001)', () => {
+  test('a starter chip, or help then the section’s control', async () => {
     const page = await openTerminalPage('desktop');
     for (const section of ['about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact']) {
       let clicks = 0;
-      const chip = page.locator(`.terminal .greeting button.command-chip[aria-label="${section}"]`);
+      const chip = page.locator(`.terminal .starter button.command-chip[aria-label="${section}"]`);
       if ((await chip.count()) === 1) {
         await chip.click();
         clicks += 1;
       } else {
         const before = await runCount(page);
-        await page.locator('.terminal .greeting button.command-chip[aria-label="help"]').click();
+        await page.locator('.terminal .starter button.command-chip[aria-label="help"]').click();
         clicks += 1;
         await expect.poll(() => runCount(page)).toBe(before + 1);
         await page.locator('.terminal section.run').last().locator(`.run-output button[aria-label="${section}"]`).click();
@@ -184,7 +184,7 @@ describe('006-terminal-FR-015: on a phone, a tapped control leaves the keyboard 
     const page = await openTerminalPage('mobile');
     const inputMode = () => page.locator(COMMAND_LINE).getAttribute('inputmode');
     for (const control of [
-      page.locator('.terminal .greeting button.command-chip[aria-label="about"]'),
+      page.locator('.terminal .starter button.command-chip[aria-label="about"]'),
       page.locator('#os .pocket-keys button.pocket-key[aria-label="work"]'),
     ]) {
       const before = await runCount(page);

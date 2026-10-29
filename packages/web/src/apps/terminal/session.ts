@@ -44,13 +44,13 @@ export type Session = {
   // What the status region says, with a counter so the same words are
   // spoken again (FR-028).
   announcement: { text: string; id: number } | null;
-  // The greeting shows until the output is first cleared (FR-019).
-  greeting: boolean;
+  // The starter chips show until the output is first cleared (FR-019).
+  starter: boolean;
 };
 
 export type Shell = RunContext['shell'];
 
-const EMPTY: Session = { entries: [], history: [], folder: [], draft: '', stepping: null, scrollTop: 0, shellScroll: {}, vim: null, vimEntry: null, announcement: null, greeting: true };
+const EMPTY: Session = { entries: [], history: [], folder: [], draft: '', stepping: null, scrollTop: 0, shellScroll: {}, vim: null, vimEntry: null, announcement: null, starter: true };
 
 export const clock = (date: Date) => [date.getHours(), date.getMinutes()].map((part) => String(part).padStart(2, '0')).join(':');
 
@@ -116,7 +116,7 @@ export function createSession(context: () => RunContext = siteContext) {
     const next = { ...state, ...reset, history };
     switch (result.kind) {
       case 'clear':
-        set({ ...next, entries: [], greeting: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) });
+        set({ ...next, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) });
         break;
       case 'open-vim': {
         const opened = openVim(result.file);
@@ -178,7 +178,7 @@ export function createSession(context: () => RunContext = siteContext) {
       if (draft !== state.draft) set({ ...state, draft });
     },
     // The menu's `Clear output` (FR-019): the history stays.
-    clear: () => set({ ...state, entries: [], greeting: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) }),
+    clear: () => set({ ...state, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) }),
     vim,
     saveScroll: (scrollTop: number, shell: Shell = 'desktop') => {
       if (scrollTop !== state.scrollTop || scrollTop !== state.shellScroll[shell]) set({ ...state, scrollTop, shellScroll: { ...state.shellScroll, [shell]: scrollTop } });

@@ -75,21 +75,8 @@ export const siteText = deepFreeze({
     clearOutput: 'Clear output',
     commandLine: 'Command',
     prompt: { user: 'guest' },
-    greeting: {
-      desktop: {
-        status: 'cv-os terminal · read only · nothing you type leaves your browser',
-        intro: 'This is my CV as a terminal. Type a command and press Enter, or pick one to start. New here? Try {help}.',
-      },
-      phone: {
-        status: 'read only · stays in your browser',
-        statusNarrow: 'read only · in your browser',
-        intro: 'My CV as a terminal. Tap a key below, or type a command. New? Try {help}.',
-      },
-      name: '{name} — {label}',
-      // A CV with a name and no label.
-      nameAlone: '{name}',
-      commands: ['help', 'about', 'work', 'projects', 'cv'],
-    },
+    // The command chips the Terminal opens on, before the first prompt.
+    starter: ['help', 'about', 'work', 'projects', 'cv'],
     // By command name, in `help`'s order: the arguments `help` shows after
     // the name, the one-line description and the command's own help.
     commands: {

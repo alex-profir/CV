@@ -36,7 +36,7 @@ describe('006-terminal-FR-031: the Terminal matches the approved design', () => 
     const page = await openTerminalPage('desktop');
     await runGroup(page, 'help');
     const mono = tokenValue('font.family.mono');
-    for (const selector of ['.terminal .greeting', '.terminal section.run .run-output', '.terminal h2.run-command', COMMAND_LINE]) {
+    for (const selector of ['.terminal .starter', '.terminal section.run .run-output', '.terminal h2.run-command', COMMAND_LINE]) {
       expect(await page.locator(selector).first().evaluate((element) => getComputedStyle(element).fontFamily), selector).toBe(mono);
     }
   });

@@ -1,10 +1,10 @@
-// The Terminal's content (006 contracts/terminal.md Structure): the greeting,
-// a run per command, and the prompt line, or the vim view in their place.
+// The Terminal's content (006 contracts/terminal.md Structure): the starter
+// chips, a run per command, and the prompt line, or the vim view in their place.
 // The session lives outside the component (research R5), so unmounting on
 // mobile Home or a shell switch keeps it (FR-021).
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import type { AppOs, AppProps } from '../index.ts';
-import { fill, siteText } from '../../site-text.ts';
+import { siteText } from '../../site-text.ts';
 import { CommandLine, focusCommandLine, Prompt } from './CommandLine.tsx';
 import { Output } from './Output.tsx';
 import type { RunControl } from './Output.tsx';
@@ -13,23 +13,6 @@ import type { VimInput } from './engine/vim.ts';
 import { VimView } from './VimView.tsx';
 
 const words = siteText.terminal;
-
-// The greeting's intro, its `{help}` an inline control.
-function Intro({ pattern, run }: { pattern: string; run: RunControl }) {
-  return (
-    <p className="greeting-intro">
-      {pattern.split(/(\{help\})/).map((part, index) =>
-        part === '{help}' ? (
-          <button key={index} type="button" className="command-inline" aria-label="help" onClick={(event) => run('help', event.nativeEvent instanceof PointerEvent && event.nativeEvent.pointerType === 'touch')} data-req="006-terminal-FR-015 006-terminal-FR-034">
-            help
-          </button>
-        ) : (
-          <Fragment key={index}>{part}</Fragment>
-        ),
-      )}
-    </p>
-  );
-}
 
 // Runs a line as typed, and does what it asks of the shell (FR-014). Gives
 // back whether focus stays with the Terminal: after `open` and `exit` the
@@ -42,12 +25,11 @@ export function runInShell(line: string, os: AppOs): boolean {
   return false;
 }
 
-export function Terminal({ resume, os }: AppProps) {
+export function Terminal({ os }: AppProps) {
   const state = useSyncExternalStore(session.subscribe, session.get, session.get);
   const screen = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const desktop = os.shell === 'desktop';
-  const { name, label } = resume.basics ?? {};
 
   const focusLine = useCallback(() => input.current?.focus({ preventScroll: true }), []);
 
@@ -115,18 +97,13 @@ export function Terminal({ resume, os }: AppProps) {
       </h1>
       {state.vim === null ? (
         <div ref={screen} className="terminal-screen" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
-          {state.greeting && (
-            <div className="greeting" data-req="006-terminal-FR-005 006-terminal-FR-030">
-              <p className="greeting-status">{desktop ? words.greeting.desktop.status : words.greeting.phone.status}</p>
-              <p className="greeting-name">{name === undefined || name === '' ? siteText.siteHeading : label === undefined || label === '' ? fill(words.greeting.nameAlone, { name }) : fill(words.greeting.name, { name, label })}</p>
-              <Intro pattern={desktop ? words.greeting.desktop.intro : words.greeting.phone.intro} run={runControl} />
-              <div className="chips">
-                {words.greeting.commands.map((line) => (
-                  <button key={line} type="button" className="command-chip" aria-label={line} onClick={(event) => runControl(line, (event.nativeEvent as PointerEvent).pointerType === 'touch')} data-req="006-terminal-FR-015 006-terminal-FR-034">
-                    {line}
-                  </button>
-                ))}
-              </div>
+          {state.starter && (
+            <div className="starter" data-req="006-terminal-FR-005 006-terminal-FR-030">
+              {words.starter.map((line) => (
+                <button key={line} type="button" className="command-chip" aria-label={line} onClick={(event) => runControl(line, (event.nativeEvent as PointerEvent).pointerType === 'touch')} data-req="006-terminal-FR-015 006-terminal-FR-034">
+                  {line}
+                </button>
+              ))}
             </div>
           )}
           {state.entries.map((entry) => (

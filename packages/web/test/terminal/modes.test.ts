@@ -69,7 +69,7 @@ describe('006-terminal-FR-033: with forced colors every part of the Terminal sho
       const style = getComputedStyle(document.activeElement!);
       return { style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth), what: document.activeElement!.className };
     });
-    for (const target of [COMMAND_LINE, '.terminal .greeting button.command-chip']) {
+    for (const target of [COMMAND_LINE, '.terminal .starter button.command-chip']) {
       await page.locator(target).first().evaluate((element) => (element as HTMLElement).focus({ focusVisible: true } as FocusOptions));
       const shown = await outline();
       expect(shown.style, shown.what).not.toBe('none');

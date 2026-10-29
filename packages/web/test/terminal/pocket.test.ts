@@ -101,9 +101,9 @@ describe('006-terminal-FR-024: on a phone, the Terminal is the pocket terminal',
       expect(await page.locator(COMMAND_LINE).getAttribute('maxlength')).toBe('500');
     });
 
-    test('the output: the greeting’s 5 chips, and the output scrolls inside the Terminal, never the document', async () => {
+    test('the output: the 5 starter chips, and the output scrolls inside the Terminal, never the document', async () => {
       const page = await openTerminalPage(shell);
-      expect(await page.locator('.terminal .greeting .chips button.command-chip').evaluateAll((list) => list.map((chip) => chip.getAttribute('aria-label')))).toEqual(['help', 'about', 'work', 'projects', 'cv']);
+      expect(await page.locator('.terminal .starter button.command-chip').evaluateAll((list) => list.map((chip) => chip.getAttribute('aria-label')))).toEqual(['help', 'about', 'work', 'projects', 'cv']);
       await runGroup(page, 'help');
       await runGroup(page, 'work');
       expect(await page.locator(SCREEN).evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
@@ -114,7 +114,7 @@ describe('006-terminal-FR-024: on a phone, the Terminal is the pocket terminal',
       const page = await openTerminalPage(shell);
       for (const line of ['about', 'work']) {
         const before = await runCount(page);
-        await activate(page.locator(`.terminal .greeting button.command-chip[aria-label="${line}"]`));
+        await activate(page.locator(`.terminal .starter button.command-chip[aria-label="${line}"]`));
         await expect.poll(() => runCount(page)).toBe(before + 1);
         expect((await typedLines(page)).at(-1)).toBe(line);
         await expect.poll(() => commandLineFocused(page)).toBe(true);
@@ -129,9 +129,9 @@ describe('006-terminal-FR-024: on a phone, the Terminal is the pocket terminal',
 });
 
 describe('006-terminal-FR-025: the pocket terminal is usable by taps alone (SC-001)', () => {
-  test('from the greeting and the keys, every CV section, site, specs and every file is reached by taps', async () => {
+  test('from the starter chips and the keys, every CV section, site, specs and every file is reached by taps', async () => {
     const page = await openPocket();
-    const queue = [...(await page.locator(`.terminal .greeting :is(${CONTROLS})`).evaluateAll((list) => list.map((control) => control.getAttribute('aria-label')!))), ...COMMAND_KEYS];
+    const queue = [...(await page.locator(`.terminal .starter :is(${CONTROLS})`).evaluateAll((list) => list.map((control) => control.getAttribute('aria-label')!))), ...COMMAND_KEYS];
     const ran = new Set<string>();
     // Lines that leave the output: they are checked elsewhere.
     const skip = (line: string) => line === 'clear' || line === 'exit' || line === 'cv' || line.startsWith('open') || line === 'vim' || line === 'jq';

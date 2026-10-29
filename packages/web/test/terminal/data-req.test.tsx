@@ -29,8 +29,8 @@ const DESKTOP: [string, string][] = [
   ['#os .window[data-view="terminal"] .window-title span[data-req]', ids(46)],
   ['#os .terminal .out-help', ids(8)],
   ['#os .terminal .out-help button', ids(15, 34)],
-  ['#os .terminal .greeting', ids(5, 30)],
-  ['#os .terminal .greeting button', ids(15, 34)],
+  ['#os .terminal .starter', ids(5, 30)],
+  ['#os .terminal .starter button', ids(15, 34)],
   ['#os .terminal .out-columns', ids(43, 50)],
   ['#os .terminal .out-columns button', ids(15, 34, 50)],
   ['#os .terminal .out-specs', ids(13)],
@@ -119,7 +119,7 @@ describe('006-terminal-FR-037: every Terminal target carries its requirement IDs
   });
 
   test('every 006 ID in a data-req, in the source and the rendered root, names a requirement of the spec', async () => {
-    expect(REQUIREMENTS.size).toBe(66);
+    expect(REQUIREMENTS.size).toBe(75);
     const source: string[] = [];
     const walk = (dir: string) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

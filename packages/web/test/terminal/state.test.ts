@@ -186,7 +186,7 @@ const CLOSE: Record<string, (page: Page) => Promise<void>> = {
 
 describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
   for (const [way, close] of Object.entries(CLOSE)) {
-    test(`closed by ${way} and opened again, it shows the greeting, no output, no history and no draft`, async () => {
+    test(`closed by ${way} and opened again, it shows the starter chips, no output, no history and no draft`, async () => {
       const page = await openTerminalPage('desktop');
       await runGroup(page, 'work');
       await runGroup(page, 'pwd');
@@ -202,7 +202,7 @@ describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
       await openTerminal(page, 'desktop');
       expect(await vimView(page).count()).toBe(0);
       expect(await runCount(page)).toBe(0);
-      expect(await page.locator('.terminal .greeting').isVisible()).toBe(true);
+      expect(await page.locator('.terminal .starter').isVisible()).toBe(true);
       expect(await page.locator(COMMAND_LINE).inputValue()).toBe('');
       expect((await page.locator('#os .window[data-view="terminal"] .window-title').textContent())?.trim()).toBe('Terminal — ~');
       await page.keyboard.press('ArrowUp');

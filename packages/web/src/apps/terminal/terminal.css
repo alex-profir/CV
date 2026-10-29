@@ -119,32 +119,13 @@
   stroke-width: var(--token-border-thick);
 }
 
-/* ---- The greeting ----------------------------------------------------- */
+/* ---- The starter chips ------------------------------------------------ */
 
-.greeting {
-  display: grid;
-  gap: var(--token-space-1);
-  margin-block-end: var(--token-space-4);
-}
-
-.greeting-status {
-  color: var(--token-color-terminal-dim);
-}
-
-.greeting-name {
-  color: var(--token-color-terminal-heading);
-  font-weight: var(--token-font-weight-semibold);
-}
-
-.greeting-intro {
-  color: var(--token-color-terminal-text-secondary);
-}
-
-.chips {
+.starter {
   display: flex;
   flex-wrap: wrap;
   gap: var(--token-space-2);
-  margin-block-start: var(--token-space-2);
+  margin-block-end: var(--token-space-4);
 }
 
 /* ---- Command controls (FR-015, FR-034) -------------------------------- */
