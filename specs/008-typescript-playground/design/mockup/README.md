@@ -1,0 +1,140 @@
+# Local Mockup: The TypeScript Playground
+
+The interim local mockup of the Playground in both shells, under the constitution's interim
+provision on local mockups. Once the provision ends, this design is rebuilt in Penpot to match, and
+Penpot's exports replace these PNGs (the provision's step 2).
+
+Each HTML page is one state from [the wireframes](../wireframes.md). The pages have no scripts.
+Each PNG is a page rendered at the width named in its file name, at 1× scale.
+
+The shell around the Playground is the site's own: the pages use the shell's markup and link the
+site's style sheets, so the menu bar, windows, dock, mobile header and spec view look as they do
+today. Only `playground.css` and `proposed-tokens.css` are new. The CV window frames the built
+`/cv`, as 005's mockup does.
+
+## What's here
+
+| File | What it is |
+|------|------------|
+| `*.html` | One page per state, written by `build.mjs` |
+| `*.png` | The exports, one per state and width, rendered by `render.mjs` |
+| `playground.css` | The Playground's styles. Every value is a `var(--token-…)` |
+| `proposed-tokens.css` | Tokens the Playground needs that the export doesn't hold yet (see below) |
+| `fonts.css` | The site's three fonts, read from `packages/web/src/fonts/`, as in 005's mockup |
+| `build.mjs` | Writes the pages: the shell's markup around each state, and the code with its colors |
+| `render.mjs` | Renders the PNGs from the pages |
+
+## Sample data
+
+- The CV example's logs, the phone's home-screen name and the starting example's last log are read
+  from `packages/content/resume.json` when `build.mjs` runs, as the Playground reads the CV when
+  the site is built (FR-029).
+- The TypeScript version in the status bar is the repository's own TypeScript, a stand-in. The
+  Playground shows the version it runs, read from TypeScript itself (FR-012).
+- The download's sizes, 2.4 MB of 6.3 MB, and the too-long link's 11,240 characters are stand-ins.
+- In the spec view, the requirement texts are 008's; the counts, the commit and the test names are
+  stand-ins until the tests exist.
+
+## Exports
+
+| State | Export |
+|-------|--------|
+| Desktop, downloading TypeScript | `desktop-01-downloading-1440.png` |
+| Desktop, the offline first open | `desktop-02-offline-1440.png` |
+| Desktop, ready, with the starting example and the JavaScript pane | `desktop-03-ready-1440.png` |
+| Desktop, the editor with errors and the Errors pane | `desktop-04-errors-1440.png` |
+| Desktop, a type on hover and the Declarations pane | `desktop-05-hover-1440.png` |
+| Desktop, suggestions open | `desktop-06-suggestions-1440.png` |
+| Desktop, a definition shown in place | `desktop-07-peek-1440.png` |
+| Desktop, a rename | `desktop-08-rename-1440.png` |
+| Desktop, quick fixes | `desktop-09-quick-fixes-1440.png` |
+| Desktop, the command palette | `desktop-10-command-palette-1440.png` |
+| Desktop, the list of keys | `desktop-11-keys-1440.png` |
+| Desktop, the Playground menu | `desktop-12-menu-1440.png` |
+| Desktop, compiler options | `desktop-13-options-1440.png` |
+| Desktop, the examples | `desktop-14-examples-1440.png` |
+| Desktop, a run with timers pending and the Logs pane | `desktop-15-running-1440.png` |
+| Desktop, a CV example run, with a CV type on hover | `desktop-16-cv-example-1440.png` |
+| Desktop, the stuck popup, beside the CV window | `desktop-17-stuck-1440.png` |
+| Desktop, Share: the link copied | `desktop-18-shared-1440.png` |
+| Desktop, Share: too long for a link | `desktop-19-too-long-1440.png` |
+| Desktop, a broken shared link | `desktop-20-broken-link-1440.png` |
+| Desktop, a shared link opened | `desktop-21-shared-opened-1440.png` |
+| Desktop, Reset, to confirm | `desktop-22-reset-1440.png` |
+| Desktop, the Playground's spec view | `desktop-23-spec-view-1440.png` |
+| Desktop, a narrow window | `desktop-24-narrow-1440.png` |
+| Phone, the home screen | `phone-1-home-375.png` |
+| Phone, best on a desktop | `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568), `-landscape-812.png` (812 × 375) |
+| Phone, a shared link | `phone-3-shared-link-375.png`, `-320.png` (320 × 568) |
+
+## Rendering the mockup
+
+Use Node 26 (`nvm use`), from the repository root:
+
+1. `npm run build`, then `npm run serve`. It serves the built site on `http://127.0.0.1:4173`,
+   which the CV window frames.
+2. `node specs/008-typescript-playground/design/mockup/build.mjs` writes the pages.
+3. `node specs/008-typescript-playground/design/mockup/render.mjs` renders every PNG. Give it part
+   of a page name, such as `phone`, to render only those pages.
+
+To look at a page in a browser, serve the repository root with any static file server, such as
+`python3 -m http.server 8008 --bind 127.0.0.1`, and open
+`http://127.0.0.1:8008/specs/008-typescript-playground/design/mockup/desktop-03-ready.html` in a
+window of the export's size.
+
+## Proposed tokens
+
+`proposed-tokens.css` writes these new tokens as the token output would write them. Once the
+design is approved, the plan adds them to `packages/tokens/penpot/tokens.json`, in Penpot's form,
+under these names. Under the interim provision that export is written by hand. Every color refers
+to a base color; two base colors are new, both translucent: `color.base.lilac-wash` (`#818cf840`)
+and `color.base.rose-wash` (`#fda4af29`).
+
+| Token | Type | Refers to |
+|-------|------|-----------|
+| `color.code.surface` | color | `color.base.carbon` |
+| `color.code.text` | color | `color.base.snow` |
+| `color.code.keyword` | color | `color.base.lilac` |
+| `color.code.type` | color | `color.base.mint` |
+| `color.code.function` | color | `color.base.periwinkle` |
+| `color.code.property` | color | `color.base.haze` |
+| `color.code.string` | color | `color.base.rose` |
+| `color.code.number` | color | `color.base.amber` |
+| `color.code.comment`, `color.code.punctuation`, `color.code.line-number` | color | `color.base.fog` |
+| `color.code.line-number-current` | color | `color.base.snow` |
+| `color.code.current-line` | color | `color.base.speck` |
+| `color.code.selection` | color | `color.base.lilac-wash` |
+| `color.code.occurrence` | color | `color.base.amber-wash` |
+| `color.code.caret` | color | `color.base.mint` |
+| `color.code.error` | color | `color.base.rose` |
+| `color.code.error-band` | color | `color.base.rose-wash` |
+| `color.code.warning` | color | `color.base.amber` |
+| `color.code.info` | color | `color.base.periwinkle` |
+| `color.playground.panel` | color | `color.base.soot` |
+| `color.playground.raised` | color | `color.base.smoke` |
+| `color.playground.primary` | color | `color.base.periwinkle` |
+| `color.playground.primary-text`, `color.playground.danger-text` | color | `color.base.night` |
+| `color.playground.danger` | color | `color.base.rose` |
+| `color.playground.scrim` | color | `color.base.shade` |
+| `color.icon-playground.top` | color | `color.base.amber` |
+| `color.icon-playground.bottom` | color | `color.base.rose` |
+| `color.icon-playground.glyph` | color | `color.base.night` |
+| `size.playground.window-width` | dimension | 1040px |
+| `size.playground.window-height` | dimension | 648px |
+| `size.playground.window-offset` | dimension | 64px |
+| `size.playground.toolbar` | dimension | 44px |
+| `size.playground.status` | dimension | 28px |
+| `size.playground.side` | dimension | 400px |
+| `size.playground.gutter` | dimension | 48px |
+| `size.playground.popover` | dimension | 380px |
+| `size.playground.dialog` | dimension | 440px |
+| `size.playground.progress` | dimension | 6px |
+| `size.playground.loading` | dimension | 420px |
+| `size.playground.stack` | dimension | 720px |
+| `size.playground.stacked-side` | dimension | 240px |
+| `size.code-line` | dimension | 20px |
+| `font-size.code` | dimension | 13px |
+| `typography.code` | typography | JetBrains Mono, `font-size.code`, regular |
+
+The token names in the CSS are the token output's (`--token-color-code-keyword` for
+`color.code.keyword`). The plan may fold a few into existing tokens where one already fits.
