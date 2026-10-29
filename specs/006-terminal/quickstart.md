@@ -135,9 +135,10 @@ Automated by `packages/web/test/terminal/shell/` and `shell.test.ts`, and by the
 6. `mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b`: `hi`. `ls`: `notes/`
    after the built names. Close the Terminal and open it again: `ls` has no `notes` (FR-021,
    FR-073).
-7. `while true; do :; done`: while it runs, drag the CV window; it moves. Within 5 s: the
-   "stopped" text and a new prompt. Again, then Ctrl+C at once: `^C` and a new prompt (FR-069,
-   FR-075).
+7. `while true; do :; done`: within 5 s (in practice about 0.1 s, at 10,000 commands), the
+   "stopped" text and a new prompt. `seq 500000 | sed 's/1/2/g' | sort -rn | wc -l` runs about
+   1 s: while it runs, drag the CV window; it moves, and the line then prints `500000`. The loop
+   again, then Ctrl+C at once: `^C` and a new prompt (FR-069, FR-075).
 8. `help`: the site's commands, then "Standard commands" with every name. `help grep` shows
    `grep --help` (FR-008, FR-068).
 9. `sudo`, `curl x`, `python`: `command not found`, with only `help` offered for `sudo`
