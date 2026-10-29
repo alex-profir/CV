@@ -56,20 +56,21 @@ describe('006-terminal-FR-032: nothing blinks, types out or moves', () => {
     const page = await openTerminalPage('desktop');
     await page.locator(COMMAND_LINE).focus();
     await page.keyboard.type('work');
-    const first = page.evaluate(
-      () =>
-        new Promise<string>((resolve) => {
-          const before = document.querySelectorAll('.terminal section.run').length;
-          const check = () => {
-            const runs = document.querySelectorAll('.terminal section.run');
-            if (runs.length > before) resolve(runs[runs.length - 1]!.querySelector('.run-output')?.textContent ?? '');
-            else requestAnimationFrame(check);
-          };
-          requestAnimationFrame(check);
-        }),
-    );
+    // The watch counts the runs before Enter is pressed, or a fast render
+    // would already be counted and the watch would wait for ever.
+    await page.evaluate(() => {
+      const before = document.querySelectorAll('.terminal section.run').length;
+      (window as unknown as { firstFrame: Promise<string> }).firstFrame = new Promise<string>((resolve) => {
+        const check = () => {
+          const runs = document.querySelectorAll('.terminal section.run');
+          if (runs.length > before) resolve(runs[runs.length - 1]!.querySelector('.run-output')?.textContent ?? '');
+          else requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      });
+    });
     await page.keyboard.press('Enter');
-    const atFirstFrame = await first;
+    const atFirstFrame = await page.evaluate(() => (window as unknown as { firstFrame: Promise<string> }).firstFrame);
     await page.waitForTimeout(1_000);
     const later = await page.locator('.terminal section.run').last().locator('.run-output').textContent();
     expect(atFirstFrame.length).toBeGreaterThan(100);
