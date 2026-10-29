@@ -828,6 +828,28 @@ the sign-off it introduces.
   prerequisites }`, where `exec` defaults to `spawnSync` and `prerequisites` to the real probes.
   Tests pass a prerequisites probe that reports Chromium present (or missing), so they run the
   same way on a runner with no browser.
+  - **As built (2026-10-29)**: `spawnSync` can't stream a check's output while it runs, so
+    `verify` runs the checks through a third seam, `runCommand`, whose default is an async
+    `spawn` that writes each chunk to the terminal and to `<sha>.log`. `exec` (`spawnSync`)
+    stays for git and the probes. `verify` and `signoff` also take `stdout` and `stderr`
+    writers, so tests read the output without a subprocess.
+  - The Chromium probe has no default in `verify.ts`: `browser.ts` imports `playwright`, which
+    no fast test may reach (R14, rule 3). `main.js` passes a probe that imports `browser.ts`
+    only when it runs, after the clean-tree check, so a refused run never loads Playwright.
+    `main.js` has its own Node-version message, as the site check does: 001's
+    `nodeVersionProblem` names blocking network access, which isn't this tool's reason.
+  - `origin`'s URL is read with `git config --get remote.origin.url`, not
+    `git remote get-url origin`: `get-url` expands `url.<base>.insteadOf` rewrites, which would
+    hide the github.com URL from the parser (in the tests, and for an owner who rewrites
+    GitHub URLs to SSH).
+  - The installed-dependencies probe skips lockfile entries marked `optional` that aren't in
+    `node_modules/.package-lock.json`: npm leaves out optional packages built for other
+    platforms (71 on the owner's Mac), so a strict comparison would always refuse.
+  - Messages the contract doesn't list: a check that leaves the working copy changed prints
+    `local full run: the checks left the working copy different from commit <sha>:` with the
+    paths, and the run ends `FAIL: the working copy changed during the run on <sha>. Nothing
+    can be signed off for this commit.`; `signoff` outside a work tree prints
+    `sign-off refused: not a git work tree`.
 - A few tests run `main.js` itself as a subprocess, for the exit codes and the refusal messages.
 
 FR-027 is unaffected: the traceability check's own permission flags and its positive control
