@@ -47,18 +47,19 @@ describe('003-design-tokens-FR-039: every pull request runs the token check, and
     expect(job('tokens').lines.filter((line) => /^\s*(?:-\s+)?(if|strategy|matrix|continue-on-error):/.test(line))).toEqual([]);
   });
 
-  test('the ruleset requires traceability, test, content, tokens and site', () => {
+  test('the ruleset requires traceability, test, content, tokens, site and local-verify', () => {
     expect(REQUIRED).toEqual([
       { context: 'traceability', integration_id: 15368 },
       { context: 'test', integration_id: 15368 },
       { context: 'content', integration_id: 15368 },
       { context: 'tokens', integration_id: 15368 },
       { context: 'site', integration_id: 15368 },
+      { context: 'local-verify' },
     ]);
   });
 
-  test('every required check is a workflow job, and tokens runs the local command', () => {
-    for (const check of REQUIRED) expect(JOB_IDS).toContain(check.context);
+  test('every required check bound to GitHub Actions is a workflow job, and tokens runs the local command', () => {
+    for (const check of REQUIRED.filter((entry: { integration_id?: number }) => entry.integration_id === 15368)) expect(JOB_IDS).toContain(check.context);
     expect(PACKAGE.scripts['token-check']).toBe('node --permission --allow-fs-read=. --allow-addons tools/token-check/src/main.js');
     expect(job('tokens').steps).toContain('npm run token-check');
   });
