@@ -12,6 +12,7 @@ export function initialState(apps: readonly AppDeclaration[], _metrics: Metrics)
     focused: cv === undefined ? null : 'cv',
     session: null,
     mobile: { open: null, scroll: {}, historyEntry: false },
+    specs: {},
     effects: [],
   };
 }

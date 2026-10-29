@@ -26,22 +26,67 @@ const SKIPPED_DIRS = new Set(['node_modules', 'dist']);
 
 const BUILD_SCRIPT = 'packages/web/scripts/build-site.ts';
 
-// A copy of `packages/`, the root files and the tools the build reads. Its
-// `node_modules` links every dependency to the repository's, except the
-// workspace packages, which link to the copy's own, so a build of the copy
-// reads the copy's CV, tokens and fonts. Call it inside a test.
+// The ignore file a copy's repository gets: the copy's links and its builds
+// never make it dirty.
+const GITIGNORE = 'node_modules/\ndist/\n';
+
+// Git, run in a copy with a fixed identity and date and none of the user's
+// configuration, so every copy's commit is made the same way (007 research
+// R8).
+const GIT_ENV = {
+  GIT_CONFIG_GLOBAL: os.devNull,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_AUTHOR_NAME: 'Test Copy',
+  GIT_AUTHOR_EMAIL: 'copy@example.invalid',
+  GIT_AUTHOR_DATE: '2026-01-01T00:00:00Z',
+  GIT_COMMITTER_NAME: 'Test Copy',
+  GIT_COMMITTER_EMAIL: 'copy@example.invalid',
+  GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
+};
+
+export function git(root: string, args: string[]): string {
+  const result = spawnSync('git', args, { cwd: root, encoding: 'utf8', env: { ...process.env, ...GIT_ENV } });
+  if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed in a copy (exit ${result.status}):\n${result.stderr}`);
+  return result.stdout;
+}
+
+// Commits every change in a copy, so it builds clean.
+export function commitAll(root: string, message = 'A test copy'): void {
+  git(root, ['add', '-A']);
+  git(root, ['commit', '--quiet', '--allow-empty', '--no-verify', '-m', message]);
+}
+
+// Makes a copy dirty, as an untracked file does (007 FR-010).
+export function dirty(root: string): void {
+  fs.writeFileSync(path.join(root, 'untracked-note.txt'), 'Not committed.\n');
+}
+
+// A copy of `packages/`, the root files, the tools the build reads, every
+// spec and the tools' tests, which the requirement data reads (007 research
+// R8). Its `node_modules` links every dependency to the repository's, except
+// the workspace packages, which link to the copy's own, so a build of the
+// copy reads the copy's CV, tokens and fonts. The copy is a Git repository
+// with one commit of its files, so it builds clean; a test that edits it
+// commits again with `commitAll`, or leaves it dirty. Call it inside a test.
 export function repoCopy(): string {
   const root = makeProject({});
   const filter = (source: string) => !SKIPPED_DIRS.has(path.basename(source));
   fs.cpSync(path.join(REPO_ROOT, 'packages'), path.join(root, 'packages'), { recursive: true, filter });
   for (const file of ROOT_FILES) fs.copyFileSync(path.join(REPO_ROOT, file), path.join(root, file));
   for (const tool of TOOL_PATHS) fs.cpSync(path.join(REPO_ROOT, tool), path.join(root, tool), { recursive: true });
+  for (const tool of fs.readdirSync(path.join(REPO_ROOT, 'tools'))) {
+    const tests = path.join(REPO_ROOT, 'tools', tool, 'test');
+    if (fs.existsSync(tests)) fs.cpSync(tests, path.join(root, 'tools', tool, 'test'), { recursive: true, filter });
+  }
   for (const folder of fs.readdirSync(path.join(REPO_ROOT, 'specs'))) {
     const spec = path.join(REPO_ROOT, 'specs', folder, 'spec.md');
     if (!fs.existsSync(spec)) continue;
     fs.mkdirSync(path.join(root, 'specs', folder), { recursive: true });
     fs.copyFileSync(spec, path.join(root, 'specs', folder, 'spec.md'));
   }
+  fs.writeFileSync(path.join(root, '.gitignore'), GITIGNORE);
+  git(root, ['init', '--quiet', '--initial-branch=main']);
+  commitAll(root);
 
   const modules = path.join(root, 'node_modules');
   fs.mkdirSync(path.join(modules, '@cv'), { recursive: true });
@@ -56,13 +101,13 @@ export function repoCopy(): string {
 }
 
 // Every file of a copy, by its path relative to the copy, with its bytes as
-// hex. `node_modules` is left out.
+// hex. `node_modules` and the copy's `.git` are left out.
 export function snapshot(root: string): Map<string, string> {
   const files = new Map<string, string>();
   const visit = (dir: string) => {
     for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
       const file = dir === '' ? entry.name : `${dir}/${entry.name}`;
-      if (entry.isDirectory() && entry.name !== 'node_modules') visit(file);
+      if (entry.isDirectory() && entry.name !== 'node_modules' && entry.name !== '.git') visit(file);
       else if (entry.isFile()) files.set(file, fs.readFileSync(path.join(root, file)).toString('hex'));
     }
   };

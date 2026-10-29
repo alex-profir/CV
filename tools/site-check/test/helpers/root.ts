@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { inject, onTestFinished } from 'vitest';
-import { repoCopy } from '../../../../packages/web/test/helpers/copy.ts';
+import { commitAll, repoCopy } from '../../../../packages/web/test/helpers/copy.ts';
 import { REPO_ROOT } from './sites.ts';
 
 const DIST = 'packages/web/dist';
@@ -39,11 +39,13 @@ export function replaceIn(root: string, file: string, from: string, to: string):
   fs.writeFileSync(target, text.replace(from, to));
 }
 
-// A copy of the repository changed by `edit`, built into its own
-// `packages/web/dist/`, for `runCheck`. Removed when the test finishes.
+// A copy of the repository changed by `edit` and committed, built into its
+// own `packages/web/dist/`, for `runCheck`. Removed when the test finishes.
 export function seededCopy(edit: (root: string) => void): string {
   const root = repoCopy();
   edit(root);
+  // Committed, so the build is a clean one, as a pull request's is.
+  commitAll(root, 'A seeded change');
   const result = spawnSync(process.execPath, [path.join(root, BUILD_SCRIPT), '--out', path.join(root, DIST)], { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) throw new Error(`the seeded copy's build failed (exit ${result.status}):\n${result.stderr}`);
   return root;

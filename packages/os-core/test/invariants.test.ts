@@ -22,10 +22,15 @@ const VIEWS: ViewId[] = ['cv', 'about'];
 const THREE_VIEWS: ViewId[] = ['cv', 'terminal', 'about'];
 const EDGES: Edge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
-function randomAction(random: () => number, state: OsState, views: readonly ViewId[] = VIEWS): OsAction {
+function randomAction(random: () => number, state: OsState, views: readonly ViewId[] = VIEWS, withSpecs = false): OsAction {
   const pick = <T,>(list: readonly T[]): T => list[Math.floor(random() * list.length)]!;
   const view = pick(views);
   const number = (low: number, high: number) => Math.round(low + random() * (high - low));
+  // 007's two actions join the pool only when asked, so 005's and 006's runs
+  // stay the sequences they were.
+  if (withSpecs && random() < 0.2) {
+    return random() < 0.5 ? { type: 'showSpecs', view, appScroll: number(0, 5000) } : { type: 'showApp', view };
+  }
   const area = state.area ?? { width: 1440, height: 764 };
   switch (number(0, 15)) {
     case 0:
@@ -150,5 +155,30 @@ describe('006-terminal-FR-003: the invariants hold with three views, as with two
     );
     expect(state.windows.map((window) => window.view).sort()).toEqual(['about', 'cv', 'terminal']);
     expect(state.focused).toBe('terminal');
+  });
+});
+
+describe('007-requirement-inspector-FR-004: the invariants hold with showSpecs and showApp in the pool', () => {
+  test('500 generated sequences of 40 actions over three views, with the two actions added, keep every invariant', () => {
+    const random = generator(20261029);
+    // How many steps ended with a view showing its specs, so the runs are
+    // known to reach that state.
+    let shown = 0;
+    for (let sequence = 0; sequence < 500; sequence += 1) {
+      const area: Area = { width: Math.round(400 + random() * 2160), height: Math.round(300 + random() * 1036) };
+      let state = run(initialState(THREE_APPS, METRICS), [{ type: 'hydrated', shell: random() < 0.8 ? 'desktop' : 'mobile', area }], THREE_CONTEXT);
+      const actions: OsAction[] = [];
+      for (let step = 0; step < 40; step += 1) {
+        const action = randomAction(random, state, THREE_VIEWS, true);
+        actions.push(action);
+        try {
+          state = run(state, [action], THREE_CONTEXT);
+        } catch (error) {
+          throw new Error(`sequence ${sequence}, step ${step}: ${(error as Error).message}\nactions: ${JSON.stringify(actions)}`, { cause: error });
+        }
+        if (Object.keys(state.specs).length > 0) shown += 1;
+      }
+    }
+    expect(shown).toBeGreaterThan(1000);
   });
 });

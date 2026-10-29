@@ -421,3 +421,124 @@ describe('005-os-shell-FR-067: reveal moves a window to show a hidden focused el
     expect(run(minimized, [{ type: 'reveal', view: 'cv', box }])).toBe(minimized);
   });
 });
+
+describe('007-requirement-inspector-FR-002 007-requirement-inspector-FR-017: showSpecs swaps the view in place and moves focus to its heading', () => {
+  const three = (actions: Parameters<typeof run>[1]) => run(desktop(AREA, THREE_CONTEXT), actions, THREE_CONTEXT);
+
+  test('initialState shows no specs', () => {
+    expect(initialState(APPS, METRICS).specs).toEqual({});
+    expect(desktop().specs).toEqual({});
+    expect(mobile().specs).toEqual({});
+  });
+
+  test('on an open window it adds the entry, keeps every geometry, brings it to the front focused and focuses the heading', () => {
+    const before = three([{ type: 'open', view: 'terminal' }, { type: 'effectsDone' }]);
+    const state = run(before, [{ type: 'showSpecs', view: 'cv', appScroll: 1200 }], THREE_CONTEXT);
+    expect(state.specs).toEqual({ cv: { appScroll: 1200 } });
+    expect(state.windows.map((window) => window.view)).toEqual(['cv', 'terminal']);
+    expect(state.focused).toBe('cv');
+    for (const window of before.windows) expect(state.windows.find((other) => other.view === window.view)).toEqual(window);
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'spec-heading', view: 'cv' } }]);
+  });
+
+  test('a minimized window is restored', () => {
+    const state = three([{ type: 'open', view: 'terminal' }, { type: 'minimize', view: 'cv' }, { type: 'effectsDone' }, { type: 'showSpecs', view: 'cv', appScroll: 0 }]);
+    expect(state.windows[0]).toMatchObject({ view: 'cv', minimized: false });
+    expect(state.focused).toBe('cv');
+    expect(state.specs.cv).toEqual({ appScroll: 0 });
+  });
+
+  test('on a closed view, or one already showing specs, it changes nothing', () => {
+    const before = three([]);
+    expect(run(before, [{ type: 'showSpecs', view: 'terminal', appScroll: 0 }], THREE_CONTEXT)).toBe(before);
+    const showing = run(before, [{ type: 'showSpecs', view: 'cv', appScroll: 5 }, { type: 'effectsDone' }], THREE_CONTEXT);
+    expect(run(showing, [{ type: 'showSpecs', view: 'cv', appScroll: 99 }], THREE_CONTEXT)).toBe(showing);
+    const unhydrated = initialState(APPS, METRICS);
+    expect(run(unhydrated, [{ type: 'showSpecs', view: 'cv', appScroll: 0 }])).toBe(unhydrated);
+  });
+});
+
+describe('007-requirement-inspector-FR-003 007-requirement-inspector-FR-017: showApp brings the app back and moves focus to Show specs', () => {
+  const three = (actions: Parameters<typeof run>[1]) => run(desktop(AREA, THREE_CONTEXT), actions, THREE_CONTEXT);
+
+  test('it removes the entry, brings the window to the front and focuses its Show specs', () => {
+    const state = three([
+      { type: 'showSpecs', view: 'cv', appScroll: 1200 },
+      { type: 'open', view: 'terminal' },
+      { type: 'effectsDone' },
+      { type: 'showApp', view: 'cv' },
+    ]);
+    expect(state.specs).toEqual({});
+    expect(state.windows.map((window) => window.view)).toEqual(['cv', 'terminal']);
+    expect(state.focused).toBe('cv');
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'show-specs', view: 'cv' } }]);
+  });
+
+  test('on a view without an entry it does nothing', () => {
+    const before = three([]);
+    expect(run(before, [{ type: 'showApp', view: 'cv' }], THREE_CONTEXT)).toBe(before);
+  });
+});
+
+describe('007-requirement-inspector-FR-004: which views show their specs lasts the visit, apart from closing', () => {
+  const three = (actions: Parameters<typeof run>[1]) => run(desktop(AREA, THREE_CONTEXT), actions, THREE_CONTEXT);
+
+  test("one view's showSpecs leaves another's entry, geometry and order equal", () => {
+    const before = three([{ type: 'open', view: 'terminal' }, { type: 'showSpecs', view: 'terminal', appScroll: 7 }, { type: 'open', view: 'cv' }, { type: 'effectsDone' }]);
+    const terminal = before.windows.find((window) => window.view === 'terminal');
+    const state = run(before, [{ type: 'showSpecs', view: 'cv', appScroll: 3 }], THREE_CONTEXT);
+    expect(state.specs).toEqual({ terminal: { appScroll: 7 }, cv: { appScroll: 3 } });
+    expect(state.windows.find((window) => window.view === 'terminal')).toEqual(terminal);
+    expect(state.windows.map((window) => window.view)).toEqual(before.windows.map((window) => window.view));
+  });
+
+  test('close removes the entry, so open shows the app', () => {
+    const state = three([{ type: 'showSpecs', view: 'cv', appScroll: 3 }, { type: 'close', view: 'cv' }]);
+    expect(state.specs).toEqual({});
+    expect(run(state, [{ type: 'open', view: 'cv' }], THREE_CONTEXT).specs).toEqual({});
+  });
+
+  test('desktop open of a new window removes a stale entry; open of an open or minimized window keeps it', () => {
+    const phone = run(mobile(THREE_CONTEXT), [{ type: 'mobileOpen', view: 'cv' }, { type: 'showSpecs', view: 'cv', appScroll: 4 }, { type: 'mobileHome', scrollTop: 0 }], THREE_CONTEXT);
+    expect(phone.specs).toEqual({ cv: { appScroll: 4 } });
+    const empty = run(phone, [{ type: 'shellChanged', shell: 'desktop', area: AREA }, { type: 'open', view: 'cv' }], THREE_CONTEXT);
+    expect(empty.specs).toEqual({});
+
+    const open = three([{ type: 'showSpecs', view: 'cv', appScroll: 2 }, { type: 'open', view: 'terminal' }, { type: 'open', view: 'cv' }]);
+    expect(open.specs).toEqual({ cv: { appScroll: 2 } });
+    const minimized = three([{ type: 'showSpecs', view: 'cv', appScroll: 2 }, { type: 'open', view: 'terminal' }, { type: 'minimize', view: 'cv' }, { type: 'open', view: 'cv' }]);
+    expect(minimized.specs).toEqual({ cv: { appScroll: 2 } });
+  });
+
+  test('minimize, maximize, drags, focus, next and both shell changes keep it', () => {
+    const state = three([
+      { type: 'showSpecs', view: 'cv', appScroll: 9 },
+      { type: 'open', view: 'terminal' },
+      { type: 'focus', view: 'cv' },
+      { type: 'toggleMaximize', view: 'cv' },
+      { type: 'toggleMaximize', view: 'cv' },
+      { type: 'dragMove', view: 'cv', x: 100, y: 100 },
+      { type: 'dragResize', view: 'cv', edge: 'se', geometry: { x: 100, y: 100, width: 700, height: 500 }, from: { x: 100, y: 100, width: 1000, height: 716 } },
+      { type: 'next' },
+      { type: 'minimize', view: 'cv' },
+      { type: 'open', view: 'cv' },
+      { type: 'shellChanged', shell: 'mobile' },
+      { type: 'mobileHome', scrollTop: 0 },
+      { type: 'mobileOpen', view: 'cv' },
+      { type: 'shellChanged', shell: 'desktop', area: AREA },
+    ]);
+    expect(state.specs).toEqual({ cv: { appScroll: 9 } });
+  });
+
+  test('on mobile, showSpecs on the open view works and the entry survives Home and reopening', () => {
+    const phone = run(mobile(THREE_CONTEXT), [{ type: 'mobileOpen', view: 'terminal' }, { type: 'effectsDone' }, { type: 'showSpecs', view: 'terminal', appScroll: 30 }], THREE_CONTEXT);
+    expect(phone.specs).toEqual({ terminal: { appScroll: 30 } });
+    expect(phone.effects).toEqual([{ kind: 'focus', target: { kind: 'spec-heading', view: 'terminal' } }]);
+    expect(run(phone, [{ type: 'showSpecs', view: 'cv', appScroll: 0 }], THREE_CONTEXT).specs).toEqual({ terminal: { appScroll: 30 } });
+    const back = run(phone, [{ type: 'mobileHome', scrollTop: 50 }, { type: 'mobileOpen', view: 'terminal' }], THREE_CONTEXT);
+    expect(back.specs).toEqual({ terminal: { appScroll: 30 } });
+    const app = run(back, [{ type: 'effectsDone' }, { type: 'showApp', view: 'terminal' }], THREE_CONTEXT);
+    expect(app.specs).toEqual({});
+    expect(app.effects).toEqual([{ kind: 'focus', target: { kind: 'show-specs', view: 'terminal' } }]);
+  });
+});
