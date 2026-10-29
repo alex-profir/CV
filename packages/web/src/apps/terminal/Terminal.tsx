@@ -3,7 +3,7 @@
 // The session lives outside the component (research R5), so unmounting on
 // mobile Home or a shell switch keeps it (FR-021).
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
-import type { PointerEvent as ScreenPointerEvent } from 'react';
+import type { MouseEvent as ScreenMouseEvent, PointerEvent as ScreenPointerEvent } from 'react';
 import type { AppOs, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
 import { CommandLine, focusCommandLine, Prompt } from './CommandLine.tsx';
@@ -75,15 +75,23 @@ export function Terminal({ os }: AppProps) {
   const pointerDown = useCallback(() => {
     downSelection.current = selected();
   }, []);
-  const pointerUp = useCallback((event: ScreenPointerEvent<HTMLDivElement>) => {
-    if (event.target instanceof Element && event.target.closest(OWN_TARGETS) !== null) return;
+  const focusFrom = useCallback((target: EventTarget) => {
+    if (target instanceof Element && target.closest(OWN_TARGETS) !== null) return;
     const now = selected();
     if (now !== null && !same(now, downSelection.current)) return;
     const line = input.current;
-    if (line === null || document.activeElement === line) return;
+    if (line === null) return;
+    // After a control or key the line has focus with no keyboard asked
+    // for: focused again without `inputmode="none"`, it opens.
+    const quiet = line.hasAttribute('inputmode');
     line.removeAttribute('inputmode');
-    line.focus({ preventScroll: true });
+    if (document.activeElement === line && quiet) line.blur();
+    if (document.activeElement !== line) line.focus({ preventScroll: true });
   }, []);
+  // A tap's compatibility mousedown comes after its pointerup and moves
+  // focus to the page, so a tap focuses on its click.
+  const pointerUp = useCallback((event: ScreenPointerEvent<HTMLDivElement>) => event.pointerType !== 'touch' && focusFrom(event.target), [focusFrom]);
+  const click = useCallback((event: ScreenMouseEvent<HTMLDivElement>) => (event.nativeEvent as PointerEvent).pointerType === 'touch' && focusFrom(event.target), [focusFrom]);
 
   const run = useCallback((line: string) => runInShell(line, os), [os]);
 
@@ -151,7 +159,7 @@ export function Terminal({ os }: AppProps) {
         {siteText.os.views.terminal}
       </h1>
       {state.vim === null ? (
-        <div ref={screen} className="terminal-screen" onPointerDown={pointerDown} onPointerUp={pointerUp} data-req="006-terminal-FR-071 006-terminal-FR-075" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
+        <div ref={screen} className="terminal-screen" onPointerDown={pointerDown} onPointerUp={pointerUp} onClick={click} data-req="006-terminal-FR-071 006-terminal-FR-075" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
           {state.starter && (
             <div className="starter" data-req="006-terminal-FR-005 006-terminal-FR-030">
               {words.starter.map((line) => (

@@ -23,6 +23,8 @@ import {
 } from '../helpers/terminal.ts';
 import type { TerminalShell } from '../helpers/terminal.ts';
 import { siteFiles } from './engine/context.ts';
+import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
+import { resume } from '@cv/content';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -147,6 +149,8 @@ describe('006-terminal-FR-025: the pocket terminal is usable by taps alone (SC-0
       queue.push(...(await added.locator(`.run-output :is(${CONTROLS})`).evaluateAll((list) => list.map((control) => control.getAttribute('aria-label')!))));
     }
     for (const line of ['about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact', 'site', 'specs', ...siteFiles()]) expect(ran.has(line), line).toBe(true);
+    // A standard group name, reached the same way, runs `help <name>` (FR-015).
+    for (const name of STANDARD_GROUP) expect(ran.has(`help ${name}`), `help ${name}`).toBe(true);
   });
 
   test('help, about, work, projects and cv are 1 key tap; every CV section is within 2 taps', async () => {
@@ -248,6 +252,92 @@ describe('006-terminal-FR-052: the pocket terminal fits every phone size (SC-012
       list.filter((each) => each.scrollWidth > each.clientWidth + 1 || each.scrollHeight > each.clientHeight + 1 || each.getBoundingClientRect().right > window.innerWidth + 1).map((each) => each.textContent),
     );
     expect(cut).toEqual([]);
+  });
+});
+
+describe('006-terminal-FR-052 and 006-terminal-FR-023: the amendment’s output fits the pocket', () => {
+  // A word of the first role's summary, read from the CV.
+  const word = (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+
+  // How far anything in the screen's output reaches past its right edge.
+  const overflow = (page: Page) =>
+    page.locator(SCREEN).evaluate((screen) => {
+      const right = screen.getBoundingClientRect().right;
+      const parts = [...screen.querySelectorAll('.run-output p.out-line, .run-output li, .run-output button')];
+      return Math.max(screen.scrollWidth - screen.clientWidth, ...parts.map((part) => part.getBoundingClientRect().right - right));
+    });
+
+  // The states of phone-19-after-help-320.png to phone-21-pipe-and-filter-320.png.
+  for (const [width, height] of [
+    [320, 568],
+    [375, 812],
+    [568, 320],
+  ] as const) {
+    test(`at ${width} × ${height}, help scrolled to its standard group, ls -l and a pipe and filter scroll nothing sideways`, async () => {
+      const size = `${width} × ${height}`;
+      const page = await openPocket(width, height);
+      const help = await runGroup(page, 'help');
+      const standard = help.locator('ul.out-standard');
+      await standard.scrollIntoViewIfNeeded();
+      expect(await standard.locator('li').count(), size).toBe(STANDARD_GROUP.length);
+      expect(await overflow(page), `${size} help`).toBeLessThanOrEqual(1);
+      // The names wrap onto several rows inside the screen.
+      const tops = await standard.locator('li').evaluateAll((items) => new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size);
+      expect(tops, size).toBeGreaterThan(1);
+      await runGroup(page, 'touch mine');
+      const long = await runGroup(page, 'ls -l');
+      expect(await long.locator('.run-output p.out-line').count(), size).toBeGreaterThan(1);
+      expect(await overflow(page), `${size} ls -l`).toBeLessThanOrEqual(1);
+      const filtered = await runGroup(page, `work | grep -i ${word}`);
+      expect(await filtered.locator('.run-output p.out-line').count(), size).toBeGreaterThan(0);
+      expect(await overflow(page), `${size} pipe`).toBeLessThanOrEqual(1);
+      expect(await noSideScroll(page), size).toBeLessThanOrEqual(0);
+    });
+  }
+});
+
+describe('006-terminal-FR-071 and 006-terminal-FR-053: a tap on the screen opens the keyboard', () => {
+  // A point of the screen with nothing under it a tap would act on.
+  const emptyPoint = (page: Page) =>
+    page.locator(SCREEN).evaluate((screen) => {
+      const rect = screen.getBoundingClientRect();
+      for (let y = rect.bottom - 4; y > rect.top; y -= 6) {
+        for (let x = rect.left + 4; x < rect.right; x += 12) {
+          const under = document.elementFromPoint(x, y);
+          if (under !== null && screen.contains(under) && under.closest('a, button, input, form') === null) return { x, y };
+        }
+      }
+      return null;
+    });
+
+  const inputMode = (page: Page) => page.locator(COMMAND_LINE).getAttribute('inputmode');
+
+  test('after a key, the line has inputmode="none"; a tap on empty space keeps focus there without it, and a shorter page is the keyboard', async () => {
+    const page = await openPocket();
+    await tapRun(page, key(page, 'about'), 'about');
+    await expect.poll(() => commandLineFocused(page)).toBe(true);
+    expect(await inputMode(page)).toBe('none');
+    const point = (await emptyPoint(page))!;
+    expect(point).not.toBeNull();
+    await page.touchscreen.tap(point.x, point.y);
+    await expect.poll(() => inputMode(page)).toBeNull();
+    expect(await commandLineFocused(page)).toBe(true);
+    await page.setViewportSize({ width: 375, height: 512 });
+    await expect.poll(() => page.locator(POCKET).getAttribute('data-keyboard')).toBe('');
+  });
+
+  test('with focus elsewhere, a tap on empty space focuses the line without inputmode="none"; a chip or key still sets it', async () => {
+    const page = await openPocket();
+    await page.locator(KEY).first().focus();
+    const point = (await emptyPoint(page))!;
+    await page.touchscreen.tap(point.x, point.y);
+    await expect.poll(() => commandLineFocused(page)).toBe(true);
+    expect(await inputMode(page)).toBeNull();
+    await tapRun(page, page.locator('.terminal .starter button.command-chip[aria-label="about"]'), 'about');
+    await expect.poll(() => inputMode(page)).toBe('none');
+    await tapRun(page, key(page, 'work'), 'work');
+    await expect.poll(() => inputMode(page)).toBe('none');
+    expect(await page.locator(POCKET).getAttribute('data-keyboard')).toBeNull();
   });
 });
 

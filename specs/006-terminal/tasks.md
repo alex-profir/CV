@@ -1145,14 +1145,16 @@ screen: the command line takes focus and the keyboard opens.
 
 ### Tests for User Story 4 (REQUIRED) ⚠️
 
-- [ ] T180 [P] [US4] Extend `packages/web/test/terminal/pocket.test.ts`:
+- [X] T180 [P] [US4] Extend `packages/web/test/terminal/pocket.test.ts`:
   - covers 006-terminal-FR-052 and 006-terminal-FR-023: at 320 × 568, 375 × 812 and 568 × 320, after `help` (scrolled to the standard group), `ls -l` and `work | grep -i {word}`, the screen has no horizontal scroll and every standard name wraps inside it (exports `phone-19-after-help-320.png` to `phone-21-pipe-and-filter-320.png`);
   - covers 006-terminal-FR-071 and 006-terminal-FR-053: a tap on the screen's empty space focuses the command line without `inputmode="none"`, and with the page made 300 px shorter `data-keyboard` is set; a tap on a chip or key still leaves `inputmode="none"`;
   - covers 006-terminal-FR-025: the tap search from the starter chips and the keys still reaches every CV section, `site`, `specs` and every file, and a standard group name reached that way runs `help <name>`.
+  - Done 2026-10-29: at 320 × 568, 375 × 812 and 568 × 320 nothing in the screen reaches past its edge after `help` (its standard names on several rows), `ls -l` and `work | grep -i {word}`; the tap search also runs `help <name>` for every standard name; the two tap cases found T181's fix.
 
 ### Implementation for User Story 4
 
-- [ ] T181 [US4] Fix what T180 finds in `packages/web/src/apps/terminal/Pocket.tsx`, `pocket.css` and `terminal.css`, with tokens only: the standard group and `ls -l` rows at `typography.terminal-pocket` and `-pocket-narrow`, the hollow and filled cursor in the pocket's type size, and the screen's tap path through T172's handler without `inputmode="none"`. Record each fix here. T180 passes.
+- [X] T181 [US4] Fix what T180 finds in `packages/web/src/apps/terminal/Pocket.tsx`, `pocket.css` and `terminal.css`, with tokens only: the standard group and `ls -l` rows at `typography.terminal-pocket` and `-pocket-narrow`, the hollow and filled cursor in the pocket's type size, and the screen's tap path through T172's handler without `inputmode="none"`. Record each fix here. T180 passes.
+  - Done 2026-10-29. One fix, in `Terminal.tsx`: a tap's compatibility `mousedown` comes after its `pointerup`, so the screen's handler focused the line and the `mousedown` then moved focus to the page. A tap now focuses on its `click` (a mouse still on `pointerup`), and a line that already has focus with `inputmode="none"` (after a key or chip) is focused again without it, so the keyboard opens. No CSS change: the standard group, `ls -l`'s rows, the line and the cursor all measure 12.5/19 px at 375 and 12/18 px at 320, the `terminal-pocket` and `-pocket-narrow` tokens.
 
 **Checkpoint**: the amendment works on phones.
 
