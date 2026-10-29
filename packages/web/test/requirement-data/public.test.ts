@@ -80,9 +80,12 @@ describe('007-requirement-inspector-FR-014: the data file holds only what the re
     expect(text).not.toContain(os.homedir());
     expect(text).not.toContain(os.tmpdir());
     expect(text.toLowerCase()).not.toContain(os.userInfo().username.toLowerCase());
-    // The commit and the spec folders are the repository's own, as CI's
-    // variables may name them too.
-    const own = new Set<string>([data.version.commit, ...data.specs.map((spec: { feature: string }) => spec.feature)]);
+    // The commit, the spec folders and the repository's owner and name are
+    // the repository's own, as CI's variables may name them too: a test's
+    // title names the owner's profile.
+    const site = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/content/site.json'), 'utf8'));
+    const [owner, name] = new URL(site.repository).pathname.split('/').filter(Boolean);
+    const own = new Set<string>([data.version.commit, ...data.specs.map((spec: { feature: string }) => spec.feature), owner!, name!, `${owner}/${name}`]);
     const values = Object.values(process.env).filter((value): value is string => value !== undefined && value.trim().length > 8 && !own.has(value.trim()));
     expect(values.length).toBeGreaterThan(5);
     for (const value of values) expect(text.includes(value), 'an environment value').toBe(false);
