@@ -9,7 +9,7 @@
 **Amended**: 2026-10-29: the full test run moves to the owner's machine, proven before merge by a
 sign-off on the pull request's head commit, and pull requests run only the fast checks (see
 Clarifications, Session 2026-10-29, and Constitution 1.4.0, Merge requirements). Approved
-2026-10-21; the amendment awaits the owner's approval.
+2026-10-21; the amendment approved by the owner 2026-10-29.
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
