@@ -1,6 +1,6 @@
 // The read-only vim view (006 research R12, contracts/terminal.md The vim
 // view): the model in engine/vim.ts, drawn. The text takes only unmodified
-// printable keys, Escape, Page Up and Down, Home, End and the arrows; Tab and
+// printable keys, Enter, Escape, Page Up and Down, Home, End and the arrows; Tab and
 // every Ctrl, Alt or Meta key stay the browser's (FR-060, FR-065).
 import { useEffect, useId, useLayoutEffect, useRef } from 'react';
 import type { CSSProperties, FormEvent, KeyboardEvent, ReactNode } from 'react';
@@ -13,7 +13,7 @@ import { messageText } from './session.ts';
 
 type Props = { state: VimState; shell: 'desktop' | 'mobile'; send: (input: VimInput) => void };
 
-const KEYS = new Set(['Escape', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const KEYS = new Set(['Enter', 'Escape', 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
 const words = siteText.terminal.vim;
 

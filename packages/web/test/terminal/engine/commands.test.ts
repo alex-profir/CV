@@ -86,6 +86,13 @@ describe('006-terminal-FR-013: specs lists every spec from the build, and site e
     expect(block.some((node) => node.kind === 'rows' && node.req === 'specs')).toBe(true);
   });
 
+  test('a list of 1 spec, and a spec of 1 requirement, read in the singular', () => {
+    const context = contextFor('every-field', { specs: [{ number: '001', folder: '001-first-thing', name: 'First Thing', status: 'Approved', requirements: 1 }] });
+    const lines = textOf('specs', context).split('\n');
+    expect(lines[0]).toBe('Every feature is specified before it is built. 1 spec:');
+    expect(lines[1]).toBe('001  First Thing  Approved  1 requirement');
+  });
+
   test("site ends with Source code, specs and history: and the repository's link", () => {
     const context = contextFor('every-field');
     const block = output(run('site', context));

@@ -109,7 +109,7 @@ describe('006-terminal-FR-060: the vim view takes no browser key', () => {
 });
 
 describe('006-terminal-FR-061: a fold line is a button that opens and closes its fold', () => {
-  test('aria-expanded, toggled by click, Enter and Space, at least 24 × 24 px', async () => {
+  test('aria-expanded, toggled by click, at least 24 × 24 px', async () => {
     const page = await openTerminalPage('desktop');
     await openVimView(page);
     const folds = page.locator(`${VIM} button.vim-fold`);
@@ -122,12 +122,23 @@ describe('006-terminal-FR-061: a fold line is a button that opens and closes its
     await work.click();
     await expect.poll(() => work.getAttribute('aria-expanded')).toBe('true');
     expect(await page.locator(`${VIM} .vim-line`).count()).toBeGreaterThan(11);
-    await work.focus();
+  });
+
+  test('by keyboard alone: j to the "work" fold line, then Enter and Space each toggle it, focus staying on the text', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
+    const work = page.locator(`${VIM} button.vim-fold`).filter({ hasText: '"work"' });
+    const workLine = await work.evaluate((fold) => Number(fold.closest('.vim-line')!.getAttribute('data-line')));
+    const at = async () => words(await page.locator(`${VIM} .vim-position`).textContent());
+    for (let step = 0; step < 20 && (await at()) !== `${workLine + 1},1`; step += 1) await page.keyboard.press('j');
+    expect(await at()).toBe(`${workLine + 1},1`);
+    expect(await work.getAttribute('aria-expanded')).toBe('false');
     await page.keyboard.press('Enter');
-    await expect.poll(() => work.getAttribute('aria-expanded')).toBe('false');
-    await work.focus();
-    await page.keyboard.press(' ');
     await expect.poll(() => work.getAttribute('aria-expanded')).toBe('true');
+    await page.keyboard.press(' ');
+    await expect.poll(() => work.getAttribute('aria-expanded')).toBe('false');
+    expect(await page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
   });
 });
 
@@ -223,6 +234,24 @@ describe('006-terminal-FR-064: :q and the :q chip go back to the output; :help o
     expect(await page.locator(COMMAND_LINE).inputValue()).toBe('');
     await expect.poll(() => commandLineFocused(page)).toBe(true);
     expect((await page.locator(`${WINDOW} .window-title`).textContent())?.trim()).toBe('Terminal — ~');
+  });
+
+  test('006-terminal-FR-019: after a long output, :q shows the cv run and the whole command line in the screen, focus in it', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, 'help');
+    await runGroup(page, 'work');
+    await openVimView(page);
+    await quitVim(page);
+    await settle(page);
+    const screen = (await box(page, '.terminal .terminal-screen'))!;
+    const heading = (await box(page, '.terminal section.run:last-of-type .run-command'))!;
+    const line = (await box(page, '.terminal form.prompt-line'))!;
+    for (const [name, part] of [['cv run heading', heading], ['command line', line]] as const) {
+      expect(part.y, name).toBeGreaterThanOrEqual(screen.y - 1);
+      expect(part.y + part.height, name).toBeLessThanOrEqual(screen.y + screen.height + 1);
+    }
+    expect(await typedLines(page)).toEqual(['help', 'work', 'cv']);
+    await expect.poll(() => commandLineFocused(page)).toBe(true);
   });
 
   test('the :q chip does the same', async () => {

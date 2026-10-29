@@ -3,7 +3,7 @@
 // shell switch keep it, and only closing the Terminal empties it (FR-021).
 // It lives in memory only; nothing is written to storage (FR-022).
 // Components read it with useSyncExternalStore.
-import { siteText, fill } from '../../site-text.ts';
+import { counted, siteText, fill } from '../../site-text.ts';
 import { dateRange } from '../../format/dates.ts';
 import { locationLine } from '../../format/location.ts';
 import { withoutScheme } from '../../cv/CvLink.tsx';
@@ -65,7 +65,7 @@ function siteContext(): RunContext {
 export function announcementText(announce: Announcement): string {
   if ('full' in announce) return announce.full;
   const { summary, units } = siteText.terminal.announce;
-  return fill(summary, { command: announce.command, count: announce.count, unit: units[announce.unit] });
+  return fill(summary, { command: announce.command, count: announce.count, unit: counted(units[announce.unit], announce.count) });
 }
 
 // The vim view's message line in words (contracts/commands.md The vim

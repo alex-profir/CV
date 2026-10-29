@@ -44,7 +44,7 @@ describe('006-terminal-FR-028: each output is announced once', () => {
     expect(await status(page)).toEqual({ text: '~', children: 1 });
     expect(await commandLineFocused(page)).toBe(true);
     await runGroup(page, 'work');
-    expect(await status(page)).toEqual({ text: `work: ${resume.work!.length} entries`, children: 1 });
+    expect(await status(page)).toEqual({ text: `work: ${resume.work!.length} ${resume.work!.length === 1 ? 'entry' : 'entries'}`, children: 1 });
     const before = await page.locator(STATUS).innerHTML();
     await page.locator(SCREEN).evaluate((element) => {
       element.scrollTop = 0;
