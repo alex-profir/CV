@@ -64,6 +64,13 @@ run's nonce; a message without it is ignored.
 | worker → host | `{ end, nonce, uncaught }` | Nothing is left to do (R18) |
 | host → bootstrap | `{ stop, nonce }` | `worker.terminate()` (R24) |
 
+Nothing the worker sends is trusted, nonce or not (T182). `runner/messages.ts` checks each field
+on the page: an entry that isn't one the runtime could make, by shape, depth or item count, is
+dropped, and the page's own notes and an entry's `line` can't come from the worker. The runtime
+holds `MessagePort.prototype.postMessage` and `MessageEvent.prototype`'s `data` getter from before
+the code runs, so patching them shows the code neither the nonce nor the port. A failure while
+rendering stays in the Playground's window, with a Try again that clears the logs.
+
 ## What the runtime gives the code
 
 | Name | Behavior |

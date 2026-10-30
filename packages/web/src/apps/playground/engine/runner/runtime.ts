@@ -3,8 +3,9 @@
 // one classic script text. The visitor's code follows it in the same script,
 // as `self.__playgroundMain = async () => { … }`, and runs when the page asks.
 //
-// Before the code runs it takes the port and the nonce into this closure, so
-// the code can't forge messages; replaces `console`, `alert`, `prompt` and
+// Before the code runs it takes the port, the nonce and the browser's own
+// ways to reach them into this closure, so the code can't forge messages; the
+// page checks what it receives anyway (`messages.ts`). It also replaces `console`, `alert`, `prompt` and
 // `confirm`; counts pending timers and requests; reports uncaught errors with
 // their place in this script; answers the page's heartbeat at once; and
 // reports the end when nothing is left to do.
@@ -29,24 +30,29 @@ const realClearInterval = scope['clearInterval'].bind(scope) as (id: number) => 
 const realFetch = typeof scope['fetch'] === 'function' ? (scope['fetch'].bind(scope) as typeof fetch) : null;
 const RealChannel = MessageChannel;
 const postToFrame = scope.postMessage.bind(scope);
+// Called bound, so patching `MessagePort.prototype.postMessage` or the `data`
+// getter of `MessageEvent.prototype` never sees the nonce or the port.
+const realPost = MessagePort.prototype.postMessage;
+const dataOf = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(MessageEvent.prototype, 'data')!.get!) as (event: MessageEvent) => unknown;
 
 // Entries kept between two sends (R18): the latest 1,000; the rest dropped.
 const BATCH_LIMIT = LOG_LIMITS.entries;
 // A batch goes at once when this long has passed since the last.
 const BATCH_MS = 50;
 
-let port: MessagePort | null = null;
+let toPage: ((message: unknown) => void) | null = null;
 let nonce = '';
 let ended = false;
 let started = false;
 
 const send = (message: Record<string, unknown>) => {
-  if (port !== null && !ended) port.postMessage({ ...message, nonce });
+  if (toPage !== null && !ended) toPage({ ...message, nonce });
 };
 
 // ---- Tasks: the private channel's messages run after the microtasks -----
 
 const tasks = new RealChannel();
+const postTask = realPost.bind(tasks.port2) as (message: unknown) => void;
 let taskQueued = false;
 let flushWanted = false;
 let pendingChanged = false;
@@ -55,7 +61,7 @@ let endCheckWanted = false;
 function queueTask(): void {
   if (taskQueued) return;
   taskQueued = true;
-  tasks.port2.postMessage(0);
+  postTask(0);
 }
 
 tasks.port1.onmessage = () => {
@@ -422,10 +428,10 @@ function checkEnd(): void {
 type FromPage = { nonce?: unknown; ping?: number; run?: boolean; cv?: unknown };
 
 function onPage(event: MessageEvent<FromPage>): void {
-  const data = event.data;
+  const data = dataOf(event) as FromPage | null;
   if (data === null || typeof data !== 'object' || data.nonce !== nonce) return;
   if (typeof data.ping === 'number') {
-    port?.postMessage({ pong: true, n: data.ping, nonce });
+    toPage?.({ pong: true, n: data.ping, nonce });
     return;
   }
   if (data.run === true && !started) {
@@ -443,13 +449,13 @@ function onPage(event: MessageEvent<FromPage>): void {
 // The bootstrap's first message gives the port and the nonce; the frame is
 // told the worker started, so it can revoke the script's URL (R17).
 function onFirst(event: MessageEvent<{ port?: unknown; nonce?: unknown }>): void {
-  if (port !== null) return;
+  if (toPage !== null) return;
   const data = event.data;
   if (data === null || typeof data !== 'object' || !(data.port instanceof MessagePort) || typeof data.nonce !== 'string') return;
-  port = data.port;
+  toPage = realPost.bind(data.port) as (message: unknown) => void;
   nonce = data.nonce;
   scope['removeEventListener']('message', onFirst);
-  port.onmessage = onPage;
+  data.port.onmessage = onPage;
   postToFrame('started');
 }
 
