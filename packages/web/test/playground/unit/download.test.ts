@@ -233,6 +233,16 @@ describe('008-typescript-playground-FR-011: the download restarts by itself when
     expect(states.at(-1)).toMatchObject({ kind: 'ready' });
   });
 
+  test('a first file that keeps failing shows the download once: later tries show only when a file answers', async () => {
+    const current = manifestFor('aaaa');
+    let failing = 3;
+    const net: Net = { online: true, requests: [], fail: (url) => url === current.files[0]!.path && failing-- > 0 };
+    const { states, events } = record();
+    await loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, netEnv(new FakeCaches(), current, net, new EventTarget()));
+    const kinds = states.map((state) => state.kind).filter((kind, index, all) => kind !== all[index - 1]);
+    expect(kinds).toEqual(['checking', 'downloading', 'offline', 'downloading', 'ready']);
+  });
+
   test('the wait grows to a limit, and Retry and an abort end it', async () => {
     expect([0, 1, 2, 3, 4, 5, 20].map(retryDelay)).toEqual([5_000, 10_000, 20_000, 40_000, 60_000, 60_000, 60_000]);
     const waiting = waitForNetwork(new AbortController().signal, null, new EventTarget());

@@ -222,11 +222,15 @@ class DownloadFailed extends Error {}
 class OpenFailed extends Error {}
 
 // Downloads every file of the manifest, into the cache when there is one.
-async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache | null, events: LoaderEvents, signal: AbortSignal): Promise<void> {
+async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache | null, events: LoaderEvents, signal: AbortSignal, quiet: boolean): Promise<void> {
   let received = 0;
   const total = manifest.total;
   let step = stepOf(0, total);
-  let shown = false;
+  // The first try shows at once, so its start and failure are told (FR-065).
+  // Later tries show only once a file answers, so they don't flicker or
+  // announce a download that isn't happening.
+  let shown = !quiet;
+  if (shown) events.onState({ kind: 'downloading', received, total, announcedStep: step });
   for (const file of manifest.files) {
     let response: Response;
     try {
@@ -236,8 +240,6 @@ async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache |
       throw new DownloadFailed(String(error));
     }
     if (!response.ok) throw new DownloadFailed(`${file.path} answered ${response.status}`);
-    // Only once something answers, so the offline state's tries don't flicker
-    // or announce a download that isn't happening.
     if (!shown) {
       shown = true;
       events.onState({ kind: 'downloading', received, total, announcedStep: step });
@@ -301,14 +303,14 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
       try {
         let kept = cache !== null;
         try {
-          await download(env, manifest, cache, events, signal);
+          await download(env, manifest, cache, events, signal, attempts > 0);
         } catch (error) {
           if (!(error instanceof DownloadFailed) && cache !== null && !signal.aborted) {
             // Storage refused part way (a full quota): the files come from the
             // network instead, and nothing is kept (FR-014).
             cache = null;
             kept = false;
-            await download(env, manifest, null, events, signal);
+            await download(env, manifest, null, events, signal, attempts > 0);
           } else throw error;
         }
         if (cache !== null) {
