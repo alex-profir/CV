@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Runner probe</title>
+<!--
+  The runner's frame as contracts/runner.md sets it (research R17, R24), on a
+  page standing for the site: a sandboxed srcdoc frame with its policy and one
+  bootstrap script, which makes a classic worker from a Blob and hands it a
+  MessagePort. The worker's prelude answers the heartbeat; the code under test
+  is an async function `main(send)` appended to it. probe.test.ts drives it.
+-->
+<button id="answer" type="button">Answer</button>
+<script>
+  // The bootstrap, exactly as the frame's script holds it: its hash is the
+  // frame policy's only script source.
+  const BOOTSTRAP = `
+onmessage = (event) => {
+  const data = event.data;
+  if (data === null || typeof data !== 'object') return;
+  if (data.start === true) {
+    let worker;
+    try {
+      const url = URL.createObjectURL(new Blob([data.source], { type: 'text/javascript' }));
+      worker = new Worker(url);
+      worker.addEventListener('message', () => URL.revokeObjectURL(url), { once: true });
+      worker.addEventListener('error', (error) => parent.postMessage({ nonce: data.nonce, error: String(error.message ?? '') }, '*'));
+      worker.postMessage({ port: data.port, nonce: data.nonce }, [data.port]);
+      self.worker = worker;
+      parent.postMessage({ nonce: data.nonce, worker: 'started' }, '*');
+    } catch (error) {
+      parent.postMessage({ nonce: data.nonce, worker: 'failed', error: String(error) }, '*');
+    }
+  } else if (data.stop === true) {
+    self.worker?.terminate();
+  } else if (data.cookie === true) {
+    let cookie;
+    try { cookie = 'read: ' + document.cookie; } catch (error) { cookie = 'throws: ' + error.name; }
+    parent.postMessage({ nonce: data.nonce, cookie }, '*');
+  }
+};`;
+
+  // The worker's prelude: takes the port, answers pings, then runs `main`.
+  const PRELUDE = `
+let port;
+let nonce;
+self.onmessage = (event) => {
+  if (port !== undefined) return;
+  port = event.data.port;
+  nonce = event.data.nonce;
+  self.postMessage('started');
+  port.onmessage = (message) => {
+    if (message.data?.nonce !== nonce) return;
+    if (message.data.ping !== undefined) port.postMessage({ nonce, pong: message.data.ping });
+  };
+  const send = (value) => port.postMessage({ nonce, value });
+  Promise.resolve().then(() => main(send)).catch((error) => send({ uncaught: String(error) }));
+};
+`;
+
+  // Input delay of each click on the button, in milliseconds.
+  window.delays = [];
+  document.getElementById('answer').addEventListener('click', (event) => window.delays.push(performance.now() - event.timeStamp));
+
+  async function sha256(text) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return btoa(String.fromCharCode(...new Uint8Array(digest)));
+  }
+
+  window.runs = [];
+
+  // Makes a frame, starts the worker with `code` (the body of `main`'s
+  // module: a function `async function main(send) { … }`), and returns the
+  // run's index in `runs`.
+  window.startRun = async (code) => {
+    const nonce = crypto.randomUUID();
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.hidden = true;
+    frame.title = '';
+    frame.className = 'playground-runner';
+    const policy = `default-src 'none'; script-src 'sha256-${await sha256(BOOTSTRAP)}'; worker-src blob:; connect-src *`;
+    frame.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><script>${BOOTSTRAP}<\/script>`;
+    const loaded = new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }));
+    document.body.append(frame);
+    await loaded;
+    const channel = new MessageChannel();
+    const run = { nonce, frame, port: channel.port1, status: null, values: [], errors: [], cookie: null, lastMessage: performance.now(), lastPong: performance.now(), loads: 0, ping: 0 };
+    frame.addEventListener('load', () => (run.loads += 1));
+    channel.port1.onmessage = (event) => {
+      if (event.data?.nonce !== nonce) return;
+      run.lastMessage = performance.now();
+      if (event.data.pong !== undefined) run.lastPong = performance.now();
+      else run.values.push(event.data.value);
+    };
+    window.addEventListener('message', (event) => {
+      if (event.source !== frame.contentWindow || event.data?.nonce !== nonce) return;
+      if (event.data.worker !== undefined) run.status = event.data.worker;
+      if (event.data.error !== undefined) run.errors.push(event.data.error);
+      if (event.data.cookie !== undefined) run.cookie = event.data.cookie;
+    });
+    frame.contentWindow.postMessage({ start: true, nonce, source: `${PRELUDE}\n${code}`, port: channel.port2 }, '*', [channel.port2]);
+    run.timer = setInterval(() => channel.port1.postMessage({ nonce, ping: ++run.ping }), 250);
+    window.runs.push(run);
+    return window.runs.length - 1;
+  };
+
+  // What a run has given so far.
+  window.runState = (index) => {
+    const run = window.runs[index];
+    const now = performance.now();
+    return { status: run.status, values: run.values, errors: run.errors, cookie: run.cookie, sinceMessage: now - run.lastMessage, sincePong: now - run.lastPong, loads: run.loads };
+  };
+
+  window.askCookie = (index) => {
+    const run = window.runs[index];
+    run.frame.contentWindow.postMessage({ cookie: true, nonce: run.nonce }, '*');
+  };
+
+  window.stopRun = (index) => {
+    const run = window.runs[index];
+    clearInterval(run.timer);
+    run.frame.contentWindow?.postMessage({ stop: true, nonce: run.nonce }, '*');
+    run.frame.remove();
+  };
+</script>
+</html>

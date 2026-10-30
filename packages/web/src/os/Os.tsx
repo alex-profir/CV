@@ -16,6 +16,8 @@ import { fill, siteText } from '../site-text.ts';
 import { Desktop } from '../shells/desktop/Desktop.tsx';
 import { Mobile } from '../shells/mobile/Mobile.tsx';
 import { Announcer } from './Announcer.tsx';
+import { onAnnounce } from './announce.ts';
+import { publishOsState } from './os-state.ts';
 import type { Announcement } from './Announcer.tsx';
 import { focusTarget, watchInput } from './focus.ts';
 import { METRICS } from './metrics.ts';
@@ -33,7 +35,7 @@ export type OsProps = { resume: Resume; siteData: SiteData; apps: readonly App[]
 
 const TEXT: OsText = { aboutName: siteText.os.views.about, ...siteText.os.announce };
 
-const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'about';
+const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'playground' || value === 'about';
 
 // The desktop area: the viewport between the menu bar and the dock's space,
 // measured when the desktop is in the page.
@@ -185,6 +187,12 @@ export function Os({ resume, siteData, apps }: OsProps) {
       history.back();
     }
   }, []);
+
+  // Apps' own announcements, through the same region (008 research R23).
+  useEffect(() => onAnnounce((message) => setAnnouncement((previous) => ({ message, id: (previous?.id ?? 0) + 1 }))), []);
+
+  // The state as rendered, for apps that read where their window is (008 FR-050).
+  useEffect(() => publishOsState(state), [state]);
 
   // The reducer's focus moves and announcements, once their elements exist.
   useEffect(() => {

@@ -42,6 +42,10 @@ export type ShellOptions = {
   // Run before the page is opened, such as an init script that records
   // what the page does.
   beforeGoto?: (page: Page) => Promise<void>;
+  // Permissions for the site, such as the clipboard's.
+  permissions?: string[];
+  // Chromium by default (008 research R25).
+  engine?: OpenPageOptions['engine'];
 };
 
 export const PHONE_USER_AGENT =
@@ -51,7 +55,7 @@ export const PHONE_USER_AGENT =
 const OS_SCRIPT = /\/assets\/os-[\w-]{8}\.js$/;
 
 function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}): OpenPageOptions {
-  const { width, height, deviceScaleFactor, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform } = options;
+  const { width, height, deviceScaleFactor, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform, permissions, engine } = options;
   return {
     width,
     height,
@@ -62,6 +66,8 @@ function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}
     ...(serviceWorkers === undefined ? {} : { serviceWorkers }),
     ...(hasTouch === undefined ? {} : { hasTouch }),
     ...(userAgent === undefined ? {} : { userAgent }),
+    ...(permissions === undefined ? {} : { permissions }),
+    ...(engine === undefined ? {} : { engine }),
     ...extra,
     beforeGoto: async (page) => {
       if (cpuThrottling !== undefined) {
