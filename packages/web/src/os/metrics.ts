@@ -6,7 +6,7 @@
 import { durationMs, tokenValue } from '@cv/tokens';
 import type { CssVarTokenName, DurationTokenName } from '@cv/tokens';
 import type { Metrics } from '@cv/os-core';
-import fonts from '../fonts/fonts.json' with { type: 'json' };
+import mono from '../fonts/mono-advance.json' with { type: 'json' };
 
 function px(name: CssVarTokenName): number {
   const value = tokenValue(name);
@@ -74,17 +74,12 @@ export const MOTION_EASING: string = tokenValue('motion.easing.standard');
 export const MOTION_START_SCALE: number = plain('scale.open-start');
 
 // The advance width of the family `font.family.mono` names, in em: a fact of
-// the font file, recorded beside it in fonts.json (006 research R13).
-function monoAdvance(): number {
-  const family = fonts.families.find((entry) => entry.token === 'font.family.mono') as { advance?: number } | undefined;
-  if (typeof family?.advance !== 'number') throw new Error('fonts.json gives no advance for the font.family.mono family');
-  return family.advance;
-}
-
+// the font file, recorded beside it (006 research R13), in a file of its own so
+// the page's script doesn't carry fonts.json for one number (SC-013).
 const windowWidth = px('size.terminal-window-width');
 const padding = px('size.terminal-padding');
 const fontSize = px('font.size.terminal');
-const advance = monoAdvance();
+const { advance } = mono;
 
 // The design values the Terminal's scripts need (006 research R13, R22): the
 // command line's limit, and the desktop window's column count, which the

@@ -925,6 +925,7 @@ async function tabAndVimSteps(page: Page, step: Flow['step'], inLine: (label: st
     await page.locator(T.commandLine).focus();
     await page.locator(T.commandLine).fill('');
   };
+  await clear();
   if (
     !(await inLine('Tab completes', {
       act: async () => {
@@ -954,7 +955,8 @@ async function tabAndVimSteps(page: Page, step: Flow['step'], inLine: (label: st
     },
     also: async () => {
       const added = await until(async () => (await count(page, T.run)) > before && (await count(page, T.busyRun)) === 0);
-      const output = added ? await page.locator(T.run).last().locator('.run-output').textContent() : null;
+      const shownOutput = page.locator(T.run).last().locator('.run-output');
+      const output = added && (await shownOutput.count()) > 0 ? await shownOutput.textContent() : null;
       return output?.trim() === TYPED ? [] : [{ type: 'not-written', detail: `cat todo prints ${JSON.stringify(output?.trim() ?? '')} after :wq, where it should print "${TYPED}"` }];
     },
   });

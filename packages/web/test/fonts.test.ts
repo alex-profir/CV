@@ -2,6 +2,7 @@
 // the page is drawn by one of them, using the site check's fonts part
 // (research R16); they are licensed and declared only in the build output;
 // and the build refuses fonts that don't match the font tokens.
+import monoAdvance from '../src/fonts/mono-advance.json' with { type: 'json' };
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
@@ -166,9 +167,9 @@ describe('004-cv-page-FR-046: the fonts are declared without a literal the token
 });
 
 describe('006-terminal-FR-028: the Terminal’s column count rests on the served mono font’s advance', () => {
-  test("in Chromium, the served JetBrains Mono's advance width equals fonts.json's advance within 0.001 em", async () => {
+  test("in Chromium, the served JetBrains Mono's advance width equals mono-advance.json's advance within 0.001 em", async () => {
     const mono = fonts.families.find((entry) => entry.token === 'font.family.mono')!;
-    const advance = (mono as { advance?: number }).advance;
+    const { advance } = monoAdvance;
     expect(advance).toBe(0.6);
     const { url } = await serveBuilt();
     const page = await openPage(`${url}/cv`, { width: 1440 });
@@ -184,6 +185,6 @@ describe('006-terminal-FR-028: the Terminal’s column count rests on the served
       return { em: width / 100 / size, loaded: document.fonts.check(`${size}px "${family}"`, 'M') };
     }, mono.family);
     expect(measured.loaded).toBe(true);
-    expect(Math.abs(measured.em - advance!)).toBeLessThanOrEqual(0.001);
+    expect(Math.abs(measured.em - advance)).toBeLessThanOrEqual(0.001);
   });
 });

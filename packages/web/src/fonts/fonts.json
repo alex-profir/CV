@@ -52,7 +52,6 @@
     {
       "family": "JetBrains Mono",
       "token": "font.family.mono",
-      "advance": 0.6,
       "license": "jetbrains-mono/OFL.txt",
       "files": [
         {

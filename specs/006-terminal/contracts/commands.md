@@ -31,7 +31,7 @@ take, or missing one it needs, replies `{command} takes {what}. Usage: {usage}` 
 
 | Command | Aliases | Arguments | Shows |
 |---------|---------|-----------|-------|
-| `help` | `?` | `[command]` | Its lead adds `Tab completes a command or path; Escape then Tab leaves the command line.` (phone: `Tab ⇥ completes a command or path.`) (FR-077, added 2026-10-30). `help`'s table: every command and alias as a control, with its usage and description (FR-008, FR-015). With a command or alias: that command's usage, description and own help. An unknown name gets the unknown-command reply |
+| `help` | `?` | `[command]` | Its lead adds `Tab completes a command or path; Escape then Tab leaves the command line.` (phone: `Tab completes a command or path.`) (FR-077, added 2026-10-30). `help`'s table: every command and alias as a control, with its usage and description (FR-008, FR-015). With a command or alias: that command's usage, description and own help. An unknown name gets the unknown-command reply |
 | `about` | `whoami` | none | `basics`: name, label, location as `/cv` writes it, summary (FR-009) |
 | `work` | `experience` | none | Every work entry in order: position · organization, the date range, location, summary, highlights as a list, URL as a link |
 | `projects` | | none | Every project: name, dates, description, highlights, keywords, URL |

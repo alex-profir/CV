@@ -237,8 +237,12 @@ type VimState = {
   modified: boolean;                    // `[+]`: lines differ from what was opened or last written
   warned: boolean;                      // W10 shown for this buffer (FR-081)
   last: readonly VimInput[];            // the last change's inputs, for `.`
+  saved: readonly string[];             // the lines as last written, for `modified`
+  entered: Step | null;                 // the buffer on entering insert mode: Escape makes one undo step
+  typing: readonly VimInput[];          // what insert mode has been given, for `.`
+  writing: { name: string; own: boolean; then: 'stay' | 'quit' } | null;  // a write on its way, for its `{ wrote }` answer
 };
-type Pending = { count: number | null; operator: 'd' | 'c' | 'y' | null; prefix: 'g' | 'z' | 'Z' | 'r' | null };
+type Pending = { count: number | null; operator: 'd' | 'c' | 'y' | null; prefix: 'g' | 'z' | 'Z' | 'r' | null; before: number | null };  // `before`: the count typed before the operator, as `2d3w` is 6 words
 type Step = { lines: readonly string[]; cursor: { line: number; column: number } };
 type Match = { line: number; start: number; end: number };
 type Tone = 'info' | 'warning' | 'error';     // haze, color.vim-warning, color.terminal-error
@@ -256,7 +260,7 @@ type VimInput =
   | { submit: string } | { cancel: true } | { fold: number } | { point: { line: number; column: number } }
   | { wrote: WriteOutcome };                  // the worker's answer to a write (research R49)
 
-type VimOutput = VimState | 'quit' | { write: WriteRequest; then: 'stay' | 'quit' };
+type VimOutput = VimState | 'quit' | { write: { path: string; text: string; force: boolean }; then: 'stay' | 'quit'; state: VimState };  // the session adds the WriteRequest's `id` and `cwd`
 function vimReducer(state: VimState, input: VimInput): VimOutput;
 ```
 
@@ -496,7 +500,7 @@ type Recorded = { text: string; block: Block };   // what a site command printed
 
 type Effect =
   | { kind: 'clear' }                                       // clear (FR-019)
-  | { kind: 'vim'; file: VimFile; pipe: string | null; text: string }  // vim, cv (FR-058, FR-059); file amended 2026-10-30
+  | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }  // vim, cv (FR-058, FR-059); file amended 2026-10-30. `type`: the worker decides, so the page has no JSON parser
   | { kind: 'open'; view: 'cv' | 'about' }                 // open (FR-014)
   | { kind: 'clear-history' };                             // history -c (FR-020), added 2026-10-29
 ```

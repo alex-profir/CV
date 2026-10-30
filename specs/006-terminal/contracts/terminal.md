@@ -71,7 +71,7 @@ div.pocket                            data-keyboard while the on-screen keyboard
 ├── div.pocket-case[aria-hidden=true] the drawn case's top: power light, "cv-os pocket"   FR-054
 ├── div.terminal …                    as above, in the recessed screen
 ├── div[role=toolbar].pocket-keys     aria-label "Command keys" | "Vim keys"; hidden while data-keyboard   FR-025 FR-051 FR-053 FR-066
-│   └── button.pocket-key × 8         help, about, work, projects, cv, ls, clear, Tab ⇥ (named "Tab, complete")
+│   └── button.pocket-key × 8         help, about, work, projects, cv, ls, clear, Tab ⇥ (named "Tab, complete"; ⇥ is a drawn, aria-hidden mark, R16)
 │                                     (amended 2026-10-30: Tab ⇥ in skills' place, FR-078)
 │                                     — or, with the vim view open, × 11 in three rows —
 │                                     j, k, za, /, n, gg, G, i, u, :w, :q (twice as wide), named Down, Up,

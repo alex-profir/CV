@@ -314,7 +314,7 @@ one shell bundle, their own key maps, and their own looks against FR-031; Consti
 - **Rows** are counted on the output block, as it shows at the desktop window's width. The column
   count is `floor((window width − 2 × padding) / (font size × advance))`, from the tokens (R22)
   and the mono face's advance width. That advance (600 units per em for JetBrains Mono) is a fact
-  of the font file. It is recorded beside the family in `fonts/fonts.json` as `"advance": 0.6`,
+  of the font file. It is recorded beside the family in `fonts/mono-advance.json` as `"advance": 0.6` (moved out of `fonts.json` on 2026-10-30, so the page's script doesn't carry that file),
   and a font test measures it in Chromium against the served file. A text node counts
   `ceil(length / columns)` rows. Each list item, heading and line counts at least 1. So a phone
   gets the same announcement as a desktop, as FR-028 requires.
@@ -1225,6 +1225,12 @@ copy of the file tree in the page (a second source of the visitor's files, stale
 line); a JavaScript readline library (none found that copies bash's completion and not a shell
 of its own; Constitution X).
 
+**As built (2026-10-30)**: `ca` lists `case cat`, not `caller case cat`: `caller` isn't in
+`SHELL_BUILTINS`, and the parity test, which disables every other builtin, agrees. `$HO` adds
+nothing when several variables match; one variable gets a space, or `/` when it holds a folder. A
+word with `*`, `?` or `[...]` completes to nothing, and `~` alone gives `~/` (bash lists users).
+Folders in the list use `font-weight-semibold`, the only heavier weight token.
+
 ## R44. Tab in the command line
 
 **Decision**: `CommandLine.tsx` handles Tab only when FR-026 lets it:
@@ -1270,6 +1276,12 @@ answer arriving after other keys must never overwrite them.
 in the page, R43); Escape clearing the line, as some terminals do (005's edge case keeps Escape's
 meaning and keeps the line).
 
+**As built (2026-10-30)**: the line and caret are noted when Tab is pressed, not when its answer
+comes, so a second Tab ahead of the first's answer still counts as the second. The list measures
+`.terminal-screen`'s width less its padding, over the list's own font size: a phone's font is
+smaller than the window's, and `.pocket .terminal` has `min-inline-size: 0` so the list's rows can't
+widen the screen before it is measured.
+
 ## R45. Proving completion against bash (SC-017)
 
 **Decision**: `packages/web/test/terminal/shell/completion-parity.test.ts`, in Node, beside
@@ -1305,6 +1317,9 @@ the real CV, plus a few visitor files (`notes/`, `todo`, `my file`). For a fixed
 `node-pty` (a native dependency for one test, Constitution X); `expect` (on macOS, but not on the
 CI image by default).
 
+**As built (2026-10-30)**: `readline-driver.py` marks with `echo -n`, as `printf` is turned off with
+the other builtins.
+
 ## R46. The pocket terminal's Tab key (FR-078)
 
 **Decision**: `Pocket.tsx`'s command keys become `help`, `about`, `work`, `projects`, `cv`, `ls`,
@@ -1324,6 +1339,12 @@ CI image by default).
 **Alternatives considered**: a ninth key (the design keeps two rows of four); the Tab key only in
 the strip (the design shows it in the key rows too, so a visitor can complete without opening the
 keyboard).
+
+**As built (2026-10-30)**: the served subsets have no `⇥`, so by R16 it is drawn: `glyphs/TabMark.tsx`,
+`aria-hidden`, after the key's text `Tab`, named `Tab, complete`. Text can't hold a drawn mark, so
+`help`'s phone sentence reads `Tab completes a command or path.`, without the mark the design
+writes: a small adjustment (constitution 1.6.0). A vim key pressed from insert mode leaves it
+first, as the `:help` and `:q` chips do. While `/` or `:` is typed in vim, the strip is empty.
 
 ## R47. The vim view as an editor
 
@@ -1373,6 +1394,12 @@ Monaco still hold), and every rule above is a reducer case with a Node test.
 **Alternatives considered**: keeping JSON rows and re-lexing the whole text on each key (an
 unfinished edit isn't JSON, and re-printing would change the visitor's text); an undo log of
 operations (more code than copies of a few hundred lines, with the same result).
+
+**As built (2026-10-30)**: `D` and `C` ignore a count; `dw` with a count stops at the line's end; `i`
+and its kin ignore a count. Vim's name is shown with home as `~`, as vim does. The help split still
+has one status line, not the wireframe's second `[HELP] keys [RO]` line. Below the text, `~` rows are
+drawn by `.vim-text::after` in the height left, with empty alternative text, so they add no scroll
+and aren't read.
 
 ## R48. Typing in insert mode
 
@@ -1472,6 +1499,12 @@ The keyboard check confirms each row in at most two keys (SC-016), and that no l
 
 **Alternatives considered**: skipping the vim view's chips in the tab order, to leave the Terminal
 itself in two keys (the chips would be unreachable by keyboard, against FR-064's `:q` control).
+
+**As built (2026-10-30)**: the `keyboard` part tries Escape then Tab, and Shift+Tab, on a fresh page
+from four states rather than from a copy of every step: an empty line, a typed line, the vim text and
+insert mode. Every step with focus there is one of those four, and a fresh page per step would add
+minutes for the same check. The flow's own steps also try the ways out in place. A step that can't
+write adds the problem type `not-written`.
 
 ## R51. Tests and checks for the 2026-10-30 amendment
 

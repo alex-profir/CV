@@ -130,7 +130,9 @@ describe('006-terminal-FR-030: the Terminal’s words are site text, CV text or 
     // What this test types, and the folder it makes: the visitor's own.
     const typed = ['notes', 'todo', 'mine', 'typed', 'readme', 'text', 'cv.json'];
     const known = (text: string) => rest(typed.reduce((left, word) => left.split(word).join(' '), text)) === '';
-    const unknown = (seen: string[]) => [...new Set(seen)].filter((text) => !known(text));
+    // A vim key's own text, one letter of site text.
+    const keyNames = new Set(siteText.terminal.pocket.vim.map((key) => key.key));
+    const unknown = (seen: string[]) => [...new Set(seen)].filter((text) => !keyNames.has(text) && !known(text));
 
     const page = await openTerminalPage('desktop');
     await typeLine(page, 'mkdir notes && touch todo');

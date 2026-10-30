@@ -127,7 +127,8 @@ describe('006-terminal-FR-039 and SC-016: the flow proves Tab, the ways out and 
 
   test('a copy where Tab on an empty line is taken fails, naming the step', async () => {
     const root = seededCopy((copy) => replaceIn(copy, COMMAND_LINE, "if (typed.trim() === '') return;\n      event.preventDefault();", 'event.preventDefault();'));
-    expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('trapped', 'Tab on an empty line', 'focus stayed in the command line')));
+    // The flow's first Tab, from an empty line, is the one taken.
+    expect(await problems(root)).toContain(`keyboard / ${TERMINAL_VARIANT} trapped input.command-line: Tab didn't move focus out of the command line`);
   });
 
   test('a copy where Shift+Tab is taken in insert mode fails, naming the step', async () => {
