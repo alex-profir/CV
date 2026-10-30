@@ -16,10 +16,11 @@ function strings(value: unknown): string[] {
   return [];
 }
 
-// The inspector's words too (007 FR-009, FR-021), with the chain's ›.
-const SHELL_TEXT = strings([siteText.os, siteText.desktop, siteText.mobile, siteText.about, siteText.noScript, siteText.inspector]);
+// The inspector's words too (007 FR-009, FR-021), with the chain's ›, and
+// the Playground's (008 FR-031), with its marks for no errors and errors.
+const SHELL_TEXT = strings([siteText.os, siteText.desktop, siteText.mobile, siteText.about, siteText.noScript, siteText.inspector, siteText.playground]);
 
-const ENGLISH = /^[\x20-\x7E–—·’↗…›]*$/u;
+const ENGLISH = /^[\x20-\x7E–—·’↗…›✓⊗]*$/u;
 
 // A site text pattern as a regular expression: each `{key}` stands for any
 // text.
@@ -43,7 +44,7 @@ const shellLabels = (page: Page) =>
   });
 
 describe('005-os-shell-FR-043: every shell label is site text or CV text', () => {
-  test('every value under os, desktop, mobile, about and noScript is English and holds no key fact of the real CV', () => {
+  test('every value under os, desktop, mobile, about, noScript, inspector and playground is English and holds no key fact of the real CV', () => {
     expect(SHELL_TEXT.length).toBeGreaterThan(60);
     const facts = [resume.basics?.name, resume.basics?.email, resume.basics?.location?.city, ...(resume.work ?? []).map((work) => work.name), ...(resume.projects ?? []).map((project) => project.name)].filter(
       (fact): fact is string => typeof fact === 'string' && fact !== '',
