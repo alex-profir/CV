@@ -4,7 +4,10 @@
 // the shell has hydrated, never through a hook in the site. Elements are
 // found by their structure, not their names, so a check of the names (such
 // as axe's `button-name`) still gets to measure every state.
+import { createHash } from 'node:crypto';
+import { deflateRawSync } from 'node:zlib';
 import type { BrowserContextOptions, Locator, Page } from 'playwright';
+import { siteText } from '../../../packages/web/src/site-text.ts';
 
 export type Shell = 'desktop' | 'mobile';
 
@@ -65,9 +68,40 @@ export const INSPECTOR_MOBILE_STATES = ['cv-specs', 'cv-specs-whats-this', 'term
 
 const INSPECTOR_STATES = new Set<string>([...INSPECTOR_DESKTOP_STATES, ...INSPECTOR_MOBILE_STATES]);
 
-export const DESKTOP_STATES = ['first-load', 'no-window', 'about', 'two-windows', 'site-menu', 'window-menu', 'minimized', 'maximized', 'keyboard-move', 'keyboard-resize', ...TERMINAL_DESKTOP_STATES, ...INSPECTOR_DESKTOP_STATES] as const;
+// The Playground's states (008 contracts/cli.md States) follow the
+// inspector's. The list of keys joins them with its popup (008 T071).
+export const PLAYGROUND_DESKTOP_STATES = [
+  'playground-downloading',
+  'playground-offline',
+  'playground-ready',
+  'playground-errors',
+  'playground-hover',
+  'playground-suggestions',
+  'playground-peek',
+  'playground-rename',
+  'playground-quick-fixes',
+  'playground-palette',
+  'playground-menu',
+  'playground-options',
+  'playground-examples',
+  'playground-running',
+  'playground-stuck',
+  'playground-shared',
+  'playground-too-long',
+  'playground-broken-link',
+  'playground-shared-opened',
+  'playground-reset',
+  'playground-specs',
+  'playground-narrow',
+] as const;
 
-export const MOBILE_STATES = ['home', 'home-landscape', 'cv-app', 'about', ...TERMINAL_MOBILE_STATES, ...INSPECTOR_MOBILE_STATES] as const;
+export const PLAYGROUND_MOBILE_STATES = ['playground-best-on-desktop', 'playground-shared-link', 'playground-best-on-desktop-320', 'playground-best-on-desktop-landscape'] as const;
+
+const PLAYGROUND_STATES = new Set<string>([...PLAYGROUND_DESKTOP_STATES, ...PLAYGROUND_MOBILE_STATES]);
+
+export const DESKTOP_STATES = ['first-load', 'no-window', 'about', 'two-windows', 'site-menu', 'window-menu', 'minimized', 'maximized', 'keyboard-move', 'keyboard-resize', ...TERMINAL_DESKTOP_STATES, ...INSPECTOR_DESKTOP_STATES, ...PLAYGROUND_DESKTOP_STATES] as const;
+
+export const MOBILE_STATES = ['home', 'home-landscape', 'cv-app', 'about', ...TERMINAL_MOBILE_STATES, ...INSPECTOR_MOBILE_STATES, ...PLAYGROUND_MOBILE_STATES] as const;
 
 export type DesktopState = (typeof DESKTOP_STATES)[number];
 
@@ -85,6 +119,8 @@ const MOBILE_SIZES: Record<string, { width: number; height: number }> = {
   'pocket-landscape': { width: 812, height: 375 },
   'cv-specs-landscape': { width: 812, height: 375 },
   'cv-specs-320': { width: 320, height: 568 },
+  'playground-best-on-desktop-320': { width: 320, height: 568 },
+  'playground-best-on-desktop-landscape': { width: 812, height: 375 },
 };
 
 export const SHELL_STATES: readonly ShellState[] = Object.freeze([
@@ -94,6 +130,9 @@ export const SHELL_STATES: readonly ShellState[] = Object.freeze([
 
 // The Terminal's states alone, in the same order.
 export const TERMINAL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => !INSPECTOR_STATES.has(state) && (state.startsWith('terminal-') || state.startsWith('pocket'))));
+
+// The Playground's states alone, in the same order.
+export const PLAYGROUND_SHELL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => PLAYGROUND_STATES.has(state)));
 
 // The inspector's states alone, in the same order.
 export const INSPECTOR_SHELL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => INSPECTOR_STATES.has(state)));
@@ -650,6 +689,10 @@ async function driveInspector(page: Page, shell: Shell, state: string): Promise<
 }
 
 async function drive(page: Page, { shell, state }: ShellState): Promise<void> {
+  if (PLAYGROUND_STATES.has(state)) {
+    if (shell === 'desktop') await shown(page, SHELL.cvWindow);
+    return drivePlayground(page, shell, state);
+  }
   if (INSPECTOR_STATES.has(state)) {
     if (shell === 'desktop') await shown(page, SHELL.cvWindow);
     return driveInspector(page, shell, state);
@@ -707,6 +750,226 @@ async function drive(page: Page, { shell, state }: ShellState): Promise<void> {
       await page.keyboard.press(state === 'keyboard-move' ? 'ArrowRight' : 'ArrowLeft');
       return;
   }
+}
+
+// ---- The Playground (008 contracts/cli.md States) ---------------------------
+
+// The Playground's elements, inside its window or full-screen view.
+export const PLAYGROUND = Object.freeze({
+  window: '#os .window[data-view="playground"]',
+  root: '#os section.playground',
+  dockItem: '#os .dock-item[data-app="playground"]',
+  icon: '#os .home .app-icon[data-view="playground"]',
+  phoneScreen: '#os .full-screen[data-view="playground"] section.playground-mobile',
+  loading: '#os section.playground .playground-loading',
+  retry: '#os section.playground .playground-loading button.playground-retry',
+  editor: '#os section.playground .playground-editor',
+  toolbar: '#os section.playground .playground-toolbar',
+  status: '#os section.playground .playground-status',
+  version: '#os section.playground .playground-status span.ts-version',
+  check: '#os section.playground .playground-status .check',
+  message: '#os section.playground .playground-message',
+  popup: '#os section.playground section.playground-popup',
+  paneTabs: '#os section.playground .pane-tabs [role="tab"]',
+  runner: 'iframe.playground-runner',
+});
+
+// How long the engine's download, a check or a run may take.
+export const PLAYGROUND_WAIT_MS = 60_000;
+
+export async function openPlayground(page: Page): Promise<void> {
+  await page.click(PLAYGROUND.dockItem);
+  await shown(page, PLAYGROUND.root);
+}
+
+// Waits until TypeScript is downloaded and the editor shows.
+export async function playgroundReady(page: Page): Promise<void> {
+  await page.waitForSelector(`${PLAYGROUND.editor} .monaco-editor`, { state: 'visible', timeout: PLAYGROUND_WAIT_MS });
+  await page.waitForSelector(PLAYGROUND.version, { state: 'visible', timeout: PLAYGROUND_WAIT_MS });
+  await page.waitForSelector(PLAYGROUND.loading, { state: 'detached', timeout: PLAYGROUND_WAIT_MS });
+}
+
+// The editor's primary modifier, as Monaco chooses it from the platform.
+export const primaryKey = async (page: Page) => ((await page.evaluate(() => /Macintosh|Mac OS X/.test(navigator.userAgent))) ? 'Meta' : 'Control');
+
+// Waits until the current code's check has come back: the status bar no
+// longer says it is checking, settled for 400 ms.
+export async function playgroundChecked(page: Page): Promise<void> {
+  await page.waitForTimeout(400);
+  await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('…'), PLAYGROUND.check, { timeout: PLAYGROUND_WAIT_MS });
+}
+
+// Replaces the code as a paste does: select all, then the text as one
+// input. Then waits for its check.
+export async function putCode(page: Page, code: string): Promise<void> {
+  await page.click(`${PLAYGROUND.editor} .view-lines`);
+  await page.keyboard.press(`${await primaryKey(page)}+KeyA`);
+  await page.keyboard.insertText(code);
+  await playgroundChecked(page);
+}
+
+// Puts the cursor at `line`:`column` by Go to line.
+export async function cursorAt(page: Page, line: number, column: number): Promise<void> {
+  await page.keyboard.press('Control+KeyG');
+  await page.keyboard.type(`${line}:${column}`);
+  await page.keyboard.press('Enter');
+}
+
+const stopDisabled = (page: Page) => page.evaluate((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${PLAYGROUND.toolbar} button.stop`);
+
+// Presses Run and waits for the run to start, or to end.
+export async function runPlayground(page: Page, until: 'start' | 'end'): Promise<void> {
+  await page.click(`${PLAYGROUND.toolbar} button.run`);
+  const ended = until === 'end';
+  await page.waitForFunction(({ selector, ended: waitEnd }) => (document.querySelector(selector)?.getAttribute('aria-disabled') === 'true') === waitEnd, { selector: `${PLAYGROUND.toolbar} button.stop`, ended }, { timeout: PLAYGROUND_WAIT_MS });
+}
+
+export const playgroundRunning = async (page: Page) => !(await stopDisabled(page));
+
+// A link as 008 contracts/share-link.md writes it: version 1, the content's
+// JSON deflated in base64url, and its check.
+export function shareLink(origin: string, content: { c: string; o?: Record<string, unknown> }): string {
+  const payload = deflateRawSync(Buffer.from(JSON.stringify(content), 'utf8')).toString('base64url');
+  const check = createHash('sha256').update(payload, 'ascii').digest('base64url').slice(0, 11);
+  return `${origin}/#playground=1.${payload}.${check}`;
+}
+
+// Follows `href` as a new load, as opening a link does.
+export async function followLink(page: Page, href: string): Promise<void> {
+  await page.goto('about:blank');
+  await page.goto(href, { waitUntil: 'load' });
+  await waitForShell(page);
+}
+
+// Code that names a function, an object with properties and a use of both.
+const NAMES = 'function area(side: number) {\n  return side * side;\n}\nconst job = { level: 1, title: "x" };\nconsole.log(area(2), job);';
+
+// Code whose link is over the limit: 14,000 letters no compression shrinks.
+export function tooLongCode(): string {
+  let seed = 11;
+  let noise = '';
+  while (noise.length < 14_000) {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    noise += String.fromCharCode(97 + (seed % 26));
+  }
+  return `const noise = "${noise}";`;
+}
+
+async function readyPlayground(page: Page): Promise<void> {
+  await openPlayground(page);
+  await playgroundReady(page);
+}
+
+async function drivePlayground(page: Page, shell: Shell, state: string): Promise<void> {
+  const origin = new URL(page.url()).origin;
+  if (shell === 'mobile') {
+    if (state === 'playground-shared-link') await followLink(page, shareLink(origin, { c: 'console.log("shared");' }));
+    else await page.tap(PLAYGROUND.icon);
+    await shown(page, PLAYGROUND.phoneScreen);
+    return;
+  }
+  switch (state) {
+    case 'playground-downloading':
+      // The engine's files held back, so the download stays on screen.
+      await page.route(/\/playground\//, () => undefined);
+      await openPlayground(page);
+      await shown(page, PLAYGROUND.loading);
+      return;
+    case 'playground-offline':
+      await page.context().setOffline(true);
+      await openPlayground(page);
+      await page.waitForSelector(PLAYGROUND.retry, { timeout: PLAYGROUND_WAIT_MS });
+      return;
+    case 'playground-broken-link':
+    case 'playground-shared-opened':
+      await followLink(page, state === 'playground-broken-link' ? `${origin}/#playground=1.ZZZZ.ZZZZ` : shareLink(origin, { c: 'console.log("shared");' }));
+      await playgroundReady(page);
+      await shown(page, PLAYGROUND.message);
+      return;
+  }
+  await readyPlayground(page);
+  const key = await primaryKey(page);
+  switch (state) {
+    case 'playground-ready':
+      return;
+    case 'playground-errors':
+      await putCode(page, 'const n: number = "one";');
+      await page.locator(PLAYGROUND.paneTabs).filter({ hasText: new RegExp(`^\\s*${siteText.playground.panes.errors}`) }).click();
+      return;
+    case 'playground-hover':
+      await putCode(page, NAMES);
+      await cursorAt(page, 5, 14);
+      await page.keyboard.press(`${key}+KeyK`);
+      await page.keyboard.press(`${key}+KeyI`);
+      return shown(page, `${PLAYGROUND.editor} .monaco-hover:not(.hidden)`);
+    case 'playground-suggestions':
+      await putCode(page, `${NAMES}\njob.le`);
+      await page.keyboard.press(`${key}+ArrowDown`);
+      await page.keyboard.press('End');
+      await page.keyboard.press('Control+Space');
+      return shown(page, `${PLAYGROUND.editor} .suggest-widget.visible`);
+    case 'playground-peek':
+      await putCode(page, NAMES);
+      await cursorAt(page, 5, 14);
+      await page.keyboard.press('Alt+F12');
+      return shown(page, `${PLAYGROUND.editor} .peekview-widget`);
+    case 'playground-rename':
+      await putCode(page, NAMES);
+      await cursorAt(page, 5, 14);
+      await page.keyboard.press('F2');
+      return shown(page, `${PLAYGROUND.editor} .rename-box input`);
+    case 'playground-quick-fixes':
+      await putCode(page, 'interface Job { title: string; years: number }\nconst job: Job = {};');
+      await cursorAt(page, 2, 7);
+      await page.keyboard.press(`${key}+Period`);
+      return shown(page, '.action-widget');
+    case 'playground-palette':
+      await page.click(`${PLAYGROUND.editor} .view-lines`);
+      await page.keyboard.press('F1');
+      return shown(page, `${PLAYGROUND.editor} .quick-input-widget`);
+    case 'playground-menu':
+      await page.click(SHELL.appMenuTitle);
+      return shown(page, SHELL.appMenu);
+    case 'playground-options':
+      await page.click(`${PLAYGROUND.toolbar} button.options`);
+      return shown(page, `${PLAYGROUND.root} section.options-panel`);
+    case 'playground-examples':
+      await page.click(`${PLAYGROUND.toolbar} button.examples`);
+      return shown(page, `${PLAYGROUND.root} section.examples-panel`);
+    case 'playground-running':
+      await putCode(page, 'let n = 0;\nconst id = setInterval(() => { console.log(++n); if (n === 50) clearInterval(id); }, 100);');
+      await runPlayground(page, 'start');
+      await page.waitForTimeout(1_000);
+      return;
+    case 'playground-stuck':
+      await putCode(page, 'while (true) {}');
+      await runPlayground(page, 'start');
+      await page.waitForSelector(PLAYGROUND.popup, { timeout: 20_000 });
+      return;
+    case 'playground-shared':
+    case 'playground-too-long':
+      if (state === 'playground-too-long') await putCode(page, tooLongCode());
+      await page.click(`${PLAYGROUND.toolbar} button.share`);
+      return shown(page, PLAYGROUND.message);
+    case 'playground-reset':
+      await page.click(SHELL.appMenuTitle);
+      await page.getByRole('menuitem', { name: siteText.playground.menu.reset, exact: true }).click();
+      return shown(page, PLAYGROUND.popup);
+    case 'playground-specs':
+      await page.click(`${PLAYGROUND.window} button.show-specs`);
+      return shown(page, '#os section.spec-view[data-view="playground"]');
+    case 'playground-narrow': {
+      const frame = (await page.locator(PLAYGROUND.window).boundingBox())!;
+      const corner = (await page.locator(`${PLAYGROUND.window} .resize-se`).boundingBox())!;
+      const from = { x: corner.x + corner.width / 2, y: corner.y + corner.height / 2 };
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + 600 - frame.width, from.y, { steps: 10 });
+      await page.mouse.up();
+      return;
+    }
+  }
+  throw new Error(`no way to reach ${shell}/${state}`);
 }
 
 // Brings a fresh, hydrated page to `target`. Throws, naming the state, when
