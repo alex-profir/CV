@@ -6,8 +6,8 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
-import { settle } from '../helpers/shell.ts';
-import { editorText, focusEditor, freshProfile, MESSAGE, onMac, openPlayground, PLAYGROUND, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
+import { settle, waitForReady } from '../helpers/shell.ts';
+import { chooseExample, editorText, focusEditor, freshProfile, MESSAGE, onMac, openPlayground, PLAYGROUND, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -140,6 +140,29 @@ describe('008-typescript-playground-FR-019: the starting example first, then the
 });
 
 describe('008-typescript-playground-FR-026: the compiler options are kept as the code is', () => {
+  test('choosing Welcome or editing back to it keeps nothing, so a reload shows Welcome; Undo keeps the code again', async () => {
+    const page = await freshProfile();
+    await reopen(page);
+    const start = welcome(await onMac(page));
+    const code = 'console.log("older code");';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await expect.poll(() => kept(page)).toContain('older code');
+    await chooseExample(page, start.title);
+    await showsStartOf(page, start.code);
+    await expect.poll(() => kept(page)).toBeNull();
+    await page.locator(`${MESSAGE} button`).filter({ hasText: messages.actions.undo }).click();
+    await waitForCode(page, code);
+    await expect.poll(() => kept(page)).toContain('older code');
+    await chooseExample(page, start.title);
+    await expect.poll(() => kept(page)).toBeNull();
+    await page.reload();
+    await waitForReady(page);
+    await settle(page);
+    await reopen(page);
+    await showsStartOf(page, start.code);
+  });
+
   test('an option changed alone is kept and comes back after a reload', async () => {
     const page = await freshProfile();
     await reopen(page);

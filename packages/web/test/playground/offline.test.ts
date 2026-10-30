@@ -43,6 +43,20 @@ describe('008-typescript-playground-FR-011: offline before the download, the Pla
     await waitReady(page);
   });
 
+  test('with the requests failing and no `online` event, the download starts by itself when they stop failing', async () => {
+    const page = await freshProfile();
+    let down = true;
+    await page.route(/\/playground\/[^/]+\/files\.json$/, async (route: Route) => {
+      if (down) await route.abort('connectionfailed');
+      else await route.continue();
+    });
+    await openPlayground(page);
+    await page.waitForSelector(RETRY, { timeout: 30_000 });
+    expect(await page.evaluate(() => navigator.onLine)).toBe(true);
+    down = false;
+    await waitReady(page);
+  });
+
   test('a download cut part way shows "The download stopped", is never used, and completes after Retry', async () => {
     const page = await freshProfile();
     let cut = false;
