@@ -93,6 +93,12 @@
   another origin on the site's host, so FR-041 holds there only because the site sets no cookies.
   Should the Playground enforce it? → A: Yes. The Playground's runtime makes `fetch`,
   `XMLHttpRequest` and `EventSource` send no credentials, whatever the code asks (FR-041).
+- Q: With no code to carry, the "best on desktop" screen shares a plain `#playground` link, which
+  opens whatever code the recipient's browser has kept, not always the starting example. What
+  should FR-059 say? → A: That such a link opens the Playground as its dock item does: the kept
+  code, or the starting example when there is none (FR-059).
+- Q: FR-016 requires marks within 1 second every time, while SC-002 allows 95% of attempts. Which
+  holds? → A: SC-002's: within 1 second in 95% of attempts, in FR-016 too.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -652,7 +658,7 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   code or a selection as TypeScript formats it.
 - **FR-016**: The editor MUST mark every error and warning TypeScript reports for the code with the
   current options, at its place in the code, with its message on hover and at the cursor. The marks
-  MUST update within 1 second of the visitor pausing their typing. While checking takes longer, the
+  MUST update within 1 second of the visitor pausing their typing, in 95% of attempts (SC-002). While checking takes longer, the
   Playground MUST show that it is still checking rather than show earlier results as current.
 - **FR-017**: Pointing at a name, or asking with the keyboard with the cursor on it, MUST show its
   type and any documentation it has, as TypeScript describes it.
@@ -866,8 +872,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-059**: The link the "best on desktop" screen shares MUST open the Playground at a desktop
   width. When the screen was opened from a shared link, it MUST be that link, unchanged. When the
   Playground holds the visitor's code, such as after the shell switched from desktop, it MUST carry
-  that code as Share does (FR-052, FR-055). Otherwise it MUST open the Playground with the starting
-  example.
+  that code as Share does (FR-052, FR-055). Otherwise it MUST open the Playground as its dock item
+  does: with the code the recipient's browser keeps, or the starting example when it keeps none.
 - **FR-060**: Opening a shared link at a phone width MUST open the mobile shell with the Playground's
   "best on desktop" screen full screen, saying in site text that the link holds code to open on a
   desktop. It MUST NOT show the shared code, run anything or download TypeScript.
