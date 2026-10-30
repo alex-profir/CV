@@ -141,7 +141,9 @@
 
 /* ---- Buttons ------------------------------------------------------------ */
 
+/* No margin: the Terminal's `.run` rule would otherwise reach `button.run`. */
 .playground .button {
+  margin: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
