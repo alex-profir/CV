@@ -35,6 +35,14 @@ fonts, layout, print, modes
 | `accessibility` | The new states below |
 | `other-sites` | Also runs the `terminal` part's added lines (FR-038) |
 
+### Added 2026-10-30 (FR-026, FR-039, FR-040, SC-016, research R51)
+
+| Part | What it adds |
+|------|--------------|
+| `keyboard` | FR-039's new steps, after the existing ones: type `ab`, Tab, and the line reads `about ` with focus still in the command line; Escape then Tab leaves the typed line; `vim todo`, `i`, a typed line, Escape, `:wq`, and focus is back in the command line; `cat todo` shows the line. At every step with focus in the command line or the vim view, Escape then Tab, and Shift+Tab, are tried on a copy of the state and must take focus out of it in at most two keys and one (SC-016, research R50) |
+| `terminal` | In each shell, by typing: `vim notes` then `i`, a line, Escape, `:wq`, and `cat notes` prints the line; `vim about`, `x`, `:w` shows `E45` and `cat about` is unchanged after `:q!` |
+| `accessibility` | The new states below |
+
 ## States
 
 Added to 005's state driver (`tools/site-check/src/shell-states.ts`). Each is reached from a fresh
@@ -76,6 +84,11 @@ page by real input: clicks, taps and typed keys.
 | desktop | `terminal-stopped` | From `terminal-open`, `while true; do :; done` and its stop (FR-069) |
 | desktop | `terminal-selected-all` | From `terminal-help`, Ctrl+A in the command line (FR-075) |
 | mobile | `pocket-stopped` | From `pocket`, tap the command line, the same loop, Enter (FR-069) |
+| desktop | `terminal-tab-list` | From `terminal-open`, type `cat ~/`, Tab, Tab: the list (FR-076, added 2026-10-30) |
+| desktop | `terminal-vim-insert` | From `terminal-open`, `vim notes.txt`, `i`, a line typed (FR-079) |
+| desktop | `terminal-vim-readonly` | From `terminal-open`, `vim about`, `o`, a word, Escape, `:w`: `[RO] [+]` and `E45` (FR-081) |
+| mobile | `pocket-tab-key` | From `pocket`, tap the command line, type `cat ~/`, tap the Tab key twice, then make the page 300 px shorter: the list and the strip (FR-078) |
+| mobile | `pocket-vim-insert` | From `pocket`, type `vim notes.txt`, Enter, tap the `i` key, make the page 300 px shorter: the strip's `Esc` (FR-066) |
 
 ## Variants
 
@@ -106,6 +119,8 @@ terminal / desktop/terminal/shell/1440px line-mismatch rm about: prints nothing 
 terminal / mobile/terminal/shell/375px not-stopped while true; do :; done: still running 10 s after Enter
 keyboard / desktop/terminal-keyboard/1440px cursor step 18 "leave the command line with Tab": the cursor stays filled after Tab left the command line
 modes / desktop/cursor-blink/1440px blinking span.cursor-block: still blinks 5.5 s after the last key press
+keyboard / desktop/terminal-keyboard/1440px trapped step 21 "Escape then Tab": focus stayed in input.command-line after 2 keys
+terminal / desktop/terminal/shell/1440px line-mismatch vim about :w: wrote about, where it should show E45
 ```
 
 ## Tests
@@ -124,3 +139,6 @@ fail with the line above that names it (US8):
 - (2026-10-29) `rm about` succeeding: the `terminal` part fails, naming the line and `about`.
 - (2026-10-29) An outline on the focused command line, or a cursor that stays filled after Tab:
   the `keyboard` part fails, naming the step (SC-015).
+- (2026-10-30) Tab taken in the command line after Escape: the `keyboard` part fails, naming the
+  step (SC-016).
+- (2026-10-30) `:w` writing a protected file: the `terminal` part fails, naming the line.

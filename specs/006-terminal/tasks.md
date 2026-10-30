@@ -17,7 +17,14 @@ description: "Task list for the Terminal"
 exports in `design/exports/`, the
 [Penpot link](https://design.penpot.app/#/workspace?team-id=86d07029-2be7-815f-8008-d2a9447f2808&file-id=eaccfa4c-8a01-81ad-8008-d441a46da254&page-id=07f3159c-7750-805c-8008-dade1b6b707f)
 and the signed [review.md](./design/review.md) (**006 Terminal — Glass**, commit `c34fd51`,
-2026-10-27, and its "2026-10-29 amendment" section, signed 2026-10-29).
+2026-10-27, its "2026-10-29 amendment" section, signed 2026-10-29, and its "2026-10-30
+amendment" section, signed 2026-10-30).
+
+**Amended 2026-10-30**: Phases 26 to 34 implement the spec's 2026-10-30 amendment: Tab completion
+as bash's (FR-076, FR-077), the pocket terminal's Tab key (FR-078), editing in vim (FR-079 to
+FR-081), and the requirements it amends (FR-026, FR-039, FR-058, FR-060, FR-064 to FR-066; plan.md
+rows marked *(2026-10-30)*). Tasks it overturns (T025, T039, T066, T075, T076, T141, T182) stay
+ticked and are marked superseded in part, naming the tasks that replace them.
 
 **Amended 2026-10-29**: Phase 15 implements the removal of the greeting (spec FR-005 as amended,
 design approved 2026-10-29). Phases 16 to 25 implement the rest of the spec's 2026-10-29
@@ -268,6 +275,7 @@ then every CV command it lists, and compare each output with the CV document and
   - covers 006-terminal-FR-061: on opening, each top-level object or array is one closed fold and everything else is open; `za`, `zo`, `zc`, `zR`, `zM` and `{ fold: n }` toggle, open, close, open all and close all;
   - covers 006-terminal-FR-062: `/REST` Enter finds every match case-insensitively across the file, opens the fold holding the current one, `n` and `N` move between them with wrap, a missing word gives `not-found` and the cursor stays;
   - covers 006-terminal-FR-064: `:help` opens the split; the first `:q` closes it, the second returns `'quit'`; `:q!` likewise.
+  - Superseded 2026-10-30 (in part): `i`, `a`, `o`, `x`, `dd`, `p`, `:w`, `:wq`, `:w!` and `:x` changing nothing with `read-only`, `:foo`'s `unknown` message and "the text never changes", by T240 (FR-060, FR-064 and FR-079 to FR-081 as amended).
 - [X] T026 [P] [US1] Write `packages/web/test/terminal/engine/session.test.ts`:
   - covers 006-terminal-FR-020: Up and Down step newest first, Down past the newest restores the saved draft, Up with no history changes nothing; empty lines don't enter `history`;
   - covers 006-terminal-FR-021: `reset()` empties entries, history, folder, draft, scroll and `vim`; `run('cv')` sets `vim` and appends its entry only on `'quit'`.
@@ -309,6 +317,7 @@ then every CV command it lists, and compare each output with the CV document and
   - covers 006-terminal-FR-062: `/REST` Enter makes matches `mark`s, the current one with `aria-current="true"` and an outline, and the message reads `match 1 of {n}`;
   - covers 006-terminal-FR-063: with the `long-words` fixture, in a 400 px window, no horizontal scroll; a wrapped line's second row starts 2 characters past its first row's text; its number shows on the first row only;
   - covers 006-terminal-FR-064: `:q` and the `:q` chip restore the output with `cv` after its prompt and a new prompt, focus in the command line; the `:help` chip opens the split.
+  - Superseded 2026-10-30 (in part): `[RO]` in the status line of every file, by T242 (FR-058 as amended); `:q` and the `:q` chip always restoring the output, by T242 and T243 (`E37` with unwritten changes, FR-064 as amended).
 - [X] T040 [P] [US1] Write `packages/web/test/terminal/site-text.test.ts`, covers 006-terminal-FR-030: every value under `siteText.terminal` is English and holds no key fact of the real CV (004's check); every text node of the rendered Terminal after `help`, `work` and `cv` is CV text, spec list text or site text; every character of `siteText.terminal` is inside the served subsets' `unicodeRange` (research R16).
 - [X] T041 [P] [US1] Write `packages/web/test/terminal/design.test.ts`, and extend `packages/web/test/tokens.test.ts`, covers 006-terminal-FR-031: the output and command line use the mono token's family; the window opens at 760 × 536 at 640, 176 at 1440 × 900; the glass's computed background, `backdrop-filter` and rim come from the tokens; the icon, prompt mark, clock and cursor are the committed SVG components or CSS boxes; no Apple or system UI font is named; `tokens.test.ts` asserts every token T005 added is read by a style sheet or by `metrics.ts`.
 
@@ -422,6 +431,7 @@ home. Repeat at 320 × 568 and 568 × 320.
   - covers 006-terminal-FR-058 and 006-terminal-FR-063 (US4 scenario 4): at 375 × 812 and 320 × 568 with touch, the `cv` key opens the vim view filling the pocket's screen, with line numbers, the status line and the message line; with the `long-words` fixture at 320 × 568, every line wraps inside the screen with no horizontal scroll, each continuation starts 2 characters past its line's text, and the number shows on the first row only;
   - covers 006-terminal-FR-066: with the vim view open the keys are `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q`, named `Down` to `Quit`, at least 44 × 44, acting on the view; after `:q` the command keys are back; a tap on a fold line toggles it.
   - Superseded 2026-10-29 (in part): "from the greeting", by T122.
+  - Superseded 2026-10-30 (in part): the 8 command keys with `skills`, by T252 (`Tab ⇥` in its place, FR-051, FR-078); every key hidden with the keyboard open, by T252 (the strip keeps the Tab key, FR-053); the 8 vim keys, by T252 (11 keys with `i`, `u` and `:w`, FR-066 as amended).
 - [X] T067 [P] [US4] Extend `packages/web/test/terminal/controls.test.ts`, covers 006-terminal-FR-015: at 375 with touch, a tapped chip or key leaves the command line focused with `inputmode="none"` (no keyboard), and a tap on the command line itself removes it; `exit` on mobile shows the home screen with focus on the Terminal icon (US4 scenario 6).
 
 ### Implementation for User Story 4
@@ -455,7 +465,9 @@ close it. With a screen reader, run `pwd` and `work` and move by heading.
   - covers 006-terminal-FR-028: after Enter, `.terminal-status` holds the announcement once, focus stays in the command line, and scrolling earlier output doesn't change it; `cd work` announces `Now in ~/work`; `clear` announces `Cleared`;
   - covers 006-terminal-FR-029: one `h1` `Terminal`; an `h2` per run; in `projects` and `work` an `h3` per entry, with no section heading between; no level skipped (004's `ax.ts`); lists are `ul`, links `a`, controls `button`s named by their line; the reading order follows the boxes on screen.
 - [X] T075 [P] [US5] Write `packages/web/test/terminal/keyboard.test.ts`, covers 006-terminal-FR-026: Tab from the command line moves focus on and leaves its value unchanged; Shift+Tab comes back; `Alt+Shift+D` and `Alt+Shift+M` from the command line reach the dock and the menu bar; Ctrl and Alt key events reaching the page aren't `defaultPrevented`; Escape leaves the typed text.
+  - Superseded 2026-10-30 (in part): Tab moving focus on with text typed, by T233 (Tab completes there; Escape then Tab leaves, FR-026 as amended).
 - [X] T076 [P] [US5] Extend `packages/web/test/terminal/vim.test.ts`, covers 006-terminal-FR-065: on opening, focus is on `.vim-text`, named and read only; the status region announces the file's name, read only, the line count and `:q`; a message change is announced once; fold lines expose `aria-expanded`; Tab moves to the chips, then out of the Terminal, and Shift+Tab back.
+  - Superseded 2026-10-30 (in part): focus on `.vim-text` named read only, and the opening announcement saying read only, for every file, by T242 and T256 (only a protected file is read only, FR-065 as amended).
 
 ### Implementation for User Story 5
 
@@ -953,6 +965,7 @@ may start until it is done, and Phase 15 is done.
   - covers 006-terminal-FR-014 and 006-terminal-FR-019: `open cv`, `open about` and `clear` return their effects, in order after the line (`clear; open cv` gives both); `open settings` gives its reply listing `cv` and `about`;
   - covers 006-terminal-FR-017 and 006-terminal-FR-020: `work 2020` and `open` alone give the usage reply on stderr with status 2; `history` prints the request's history numbered from 1, `history 2` the last two, and `history -c` empties it.
   - Done 2026-10-29: `shell/site-commands.test.ts`, 12 tests pass.
+  - Superseded 2026-10-30 (in part): `vim nowhere` giving its reply, and the effect's `name` alone, by T223 (a missing path opens a new file; the effect carries `file` with its path, `readonly` and `new`, FR-058 as amended).
 - [X] T142 Write the site's commands in `packages/web/src/apps/terminal/shell/site-commands.ts` after T136, T139, T140 and T141 (research R29): one just-bash custom command per row of `COMMANDS` and per alias, printing the row's `SiteRun.text` to stdout and its `stderr`, returning its status, recording `{ text, block }`, and returning its effect; `cv` runs `cat cv.json | jq | vim -` through `ctx.exec` from `/home/guest`; `history` prints the request's history and takes `history N` and `history -c`; wrappers of the built-ins through `ctx.origCommand`: `cat` records the block of each protected file it prints whole, `ls` records a listing with controls for the names it printed (the design's order for the home folder) and `jq` records a `json` block of what it printed, lexed by `engine/json.ts`. The `rm` wrapper and `ls -l`'s owners are US3's (T178, T179).
   - Done 2026-10-29: `shell/site-commands.ts`. just-bash's `help` builtin wins over a custom command, so the site's `help` runs as `__cv_help`: the adapter's transform renames the typed word (`RENAMED`). A command whose output goes into a pipe or a `$(…)` gets the prefix assignment `__CV_PIPED=1` from the same transform and records nothing. Bundled commands may give stdout as latin1 bytes (`stdoutKind: 'bytes'`), so the wrappers decode it before comparing.
 - [X] T143 [P] Write the first cases of `packages/web/test/terminal/shell/adapter.test.ts` before T144:
@@ -1179,6 +1192,7 @@ Cmd+Z; Cmd+A then copy; Ctrl+C on a typed line and on `while true; do :; done`.
   - covers 006-terminal-FR-074: on macOS, in `cat cv.json | jq`, Cmd+Left puts the caret at 0, each Option+Right at the next word end the field gives, and Cmd+Right at 16, and the mirror's cursor is at the field's caret after each (US5 scenario 8); Ctrl+A, Ctrl+E, Ctrl+B, Ctrl+F, Ctrl+K, Ctrl+U and Ctrl+W do readline's, and Cmd+Z after Ctrl+W restores the word; Ctrl+L clears the output and keeps the line; Shift+Option+Left selects a word and the mirror shows it selected in the selection colors; on macOS, Option+Backspace deletes the word before the caret, Cmd+Backspace everything before it, and Delete the character after it; the system's redo (Cmd+Shift+Z on macOS, Ctrl+Y on Windows, Ctrl+Shift+Z on Linux) after an undo restores the change; on Linux and Windows, Home, End, Ctrl+Left, Ctrl+Right, Ctrl+Backspace and Shift+Home do the same through the field;
   - covers 006-terminal-FR-026: on each platform, every key the plan's FR-026 table and research R37 reserve (Ctrl+W, Ctrl+L, Ctrl+U, Ctrl+K and Ctrl+E on Linux and Windows; Cmd+L, Cmd+W, Cmd+T; every `Alt+Shift` shortcut; Tab) is not `defaultPrevented`.
   - Done 2026-10-29. `test/helpers/shell.ts`'s `platform` option gains `Linux`. Playwright gives a key its macOS editing command by the machine it runs on, not the page's platform, so the case of the system's macOS keys (Cmd+Left, Option+Right, Option+Backspace, Cmd+Backspace, Cmd+Z, Cmd+Shift+Z) runs only on a Mac, and the Linux and Windows field keys only elsewhere; each is skipped on the other host. The readline keys and the reserved keys run on every host. A reserved key counts as taken only when the Terminal prevented it: the OS shell's own Alt+Shift shortcuts (005) are handled before, on the document. Screen readers' own keys (NVDA's Insert) never reach the page, so aren't in the list.
+  - Superseded 2026-10-30 (in part): Tab among the keys never `defaultPrevented`, by T233 and T257 (Tab with text before the cursor completes, FR-026 as amended).
 - [X] T183 [P] [US5] Write `packages/web/test/terminal/select-all.test.ts`, covers 006-terminal-FR-075: after `help` and `work` with `abc` typed, Cmd+A (macOS) and Ctrl+A (others), from the command line and from the output, select a range inside `.terminal-screen` only, whose text holds the outputs and `abc`, and nothing of the dock, the menu bar or the CV window; the copied text (read through the clipboard permission) has no cursor character and no control's `aria-label`; a letter typed then clears the selection and is added to the command line.
   - Done 2026-10-29, on macOS (Cmd+A) and Windows (Ctrl+A), from the command line and from a control in the output; the copy is made with the system's copy command (`execCommand('copy')`), as Playwright's copy key follows the host.
 - [X] T184 [P] [US5] Extend `packages/web/test/terminal/stop.test.ts`, covers 006-terminal-FR-075: Ctrl+C with `abc` typed and nothing selected shows `abc` with `^C` and an empty prompt, and `abc` isn't in `history`; during `while true; do :; done` it stops the line at once with `stopped: you pressed Ctrl+C.`, and a variable set before survives; with output text selected, Ctrl+C isn't `defaultPrevented`.
@@ -1529,3 +1543,400 @@ T203; SC-004 and SC-010 T215.
     hasn't grown.
   - **The network lock** is `shell/no-network.ts`, imported first by `worker.ts` (T148), since ES
     imports are hoisted and the lock must run before just-bash's module body.
+
+---
+
+## Phase 26: Amendment of 2026-10-30: setup and design gate
+
+**Purpose**: a clean baseline for the second amendment (Tab completion, the pocket Tab key and
+editing in vim: spec Clarifications, Session 2026-10-30 (owner review of the shell); FR-026,
+FR-039, FR-058, FR-060, FR-064 to FR-066 amended; FR-076 to FR-081, SC-016 and SC-017 added),
+built on `006-terminal-shell` and shipped in PR #32 with the 2026-10-29 amendment (plan
+Constitution Check XI). Research R43 to R52 decide how.
+
+- [ ] T218 Bring `006-terminal-shell` up to date and record the baseline, with Node 26 active (`nvm use`): commit the plan's output and this tasks.md first if they aren't yet (`docs(006): plan and tasks for the Tab and vim amendment`); `git fetch origin main`, and since `main` has moved past the branch (#33 `2de6ace`, #34 `c7059d8`), `git merge origin/main` as a merge commit (no rebase); `npm ci`. Then `npm run typecheck`, `npm run content-check`, `npm run token-check` and `npm run site-check` exit 0; `npm run traceability` fails only on the 6 uncovered IDs `006-terminal-FR-076` to `006-terminal-FR-081`; `npm test` (with GNU tools first on `PATH` for T158, as the 006 notes say) fails only on the traceability self-check and `data-req.test.tsx`'s requirement count (81 in the spec, 75 in the test, fixed by T271). Run `npm run build` and record here the gzipped size (`gzip -9`) of `packages/web/dist/site/assets/os-*.js` against `OS_BUDGET` in `packages/web/scripts/build-site.ts` (119,260 bytes), so T275 knows the amendment's headroom.
+- [ ] T219 Confirm the design gate for the 2026-10-30 amendment in `specs/006-terminal/design/` (Constitution II, research R52): `review.md`'s "2026-10-30 amendment" section reads `**Status**: Approved`, signed by the owner on 2026-10-30 with its 7 decisions (commit `852ba9c`); `exports/` holds `desktop-21-tab-list-1440.png` to `desktop-26-vim-e37-1440.png`, `phone-22-tab-key-list-375.png` to `phone-25-vim-e45-320.png`, `tab-vim-editing-1440.png` and the re-exported phone boards with `Tab ⇥` (`review.md` lists them); `wireframes.md` has "States added by the amendment of 2026-10-30" and the amended vim help; the spec's Design checklist item for the 2026-10-30 amendment is ticked; the Penpot link is unchanged in `spec.md`, `design/README.md` and `design/review.md`. Write the result here. No task that creates or changes UI (T237, T238, T248, T249, T253, T258, T262) starts before it.
+
+---
+
+## Phase 27: Amendment 2026-10-30 foundational: the vim effect and writing files
+
+**Purpose**: the token, the site text, the message types, the `vim` effect with its file, and the
+worker's `write`, which the vim view (US3) and the pocket keys (US4) build on.
+
+**⚠️ CRITICAL**: no story task of this amendment can begin until this phase is complete.
+
+- [ ] T220 Add `color.vim-warning` after T219, exactly as `design/README.md`'s tokens for the 2026-10-30 amendment list it (research R52, design decision 1): in `packages/tokens/penpot/tokens.json`, in the `light` set beside `color.terminal-error`, `color.vim-warning` → `{color.base.amber}`, in the hand-written export's form (`JSON.stringify(value, null, 2)`, no final newline). Run `npm run token-output`, then `npm run token-check` (exits 0, no exception). `packages/web/test/tokens.test.ts`'s "every token in the export is read" stays red until T248 reads it.
+- [ ] T221 [P] Add the amendment's site text to `packages/web/src/site-text.ts` after T219, in the design's words (design/wireframes.md "States added by the amendment of 2026-10-30" and its amended vim help; contracts/commands.md "The vim view" and the `help` row; contracts/terminal.md Announcements), with no CV fact and no design value (FR-030): `help`'s lead sentence for Tab beside `helpLead` (`Tab completes a command or path; Escape then Tab leaves the command line.`, phone `Tab ⇥ completes a command or path.`); the command line's description `Tab completes. Escape then Tab leaves.`; the question `Display all {n} possibilities? (y or n)` and the announcement `{n} possibilities`; under `terminal.vim`, the mode `-- INSERT --`, the marks `[+]` and `[No Name]`, the four opening lines (`"{file}" {n} lines`, `"{file}" [readonly] {n} lines`, `"{file}" [New]`, `"[No Name]" {n} lines`, each with the existing fold hint on desktop and phone), the written message `"{file}" {new}{n}L, {b}B written` with `[New] `, vim's messages word for word (`W10: Warning: Changing a readonly file`, `E13: File exists (add ! to override)`, `E32: No file name`, `E37: No write since last change (add ! to override)`, `E45: 'readonly' option is set (add ! to override)`, `"{path}" E212: Can't open file for writing`, `E492: Not an editor command: {typed}`, `"{path}" E514: Write error (file system full?)`, `Already at oldest change`, `Already at newest change`), the view's label forms (`{file}`, `{file}, read only`, `{file}, new`), the help heading `KEYS FOR {file}` with its two suffixes (`· :w <path> writes it to a file`, `· read only: :w <path> keeps a copy`) and the help's new rows and note (Insert, Edit, Write, Leave, the count and Ctrl+R sentence); the opening announcement's three forms (`{file}, {n} lines. Type :q to leave.`, with `read only` or `new` after the name); under `terminal.pocket`, the Tab key (`Tab ⇥`, named `Tab, complete`), `Esc` (named `Esc, back to normal mode`) and the vim keys `i` `Insert`, `u` `Undo`, `:w` `Write`; and `cv`'s and `vim`'s `help` rows as contracts/commands.md amends them (`vim`: `Edit a file in vim. - reads what is piped in`; `cv` no longer "read-only"). Keep `vim.readOnly`, `vim.unknown`, the old `helpNote`, `readOnlyMark`'s use and `pocket.commands`' `skills` until T250 and T253 remove their last use; `content-check` passes.
+- [ ] T222 [P] Add the 2026-10-30 types, exactly as data-model.md's "Vim view", "Completion" and "Write request and outcome" and contracts/shell-worker.md's Messages set them: in `packages/web/src/apps/terminal/engine/block.ts`, `VimFile` (`name`, `path: string | null`, `readonly`, `new`) and the effect `{ kind: 'vim'; file: VimFile; pipe: string | null; text: string }` in place of `name`; in `packages/web/src/apps/terminal/shell/protocol.ts`, `CompleteRequest`, `Completion`, `CompletionMatch`, `WriteRequest`, `WriteOutcome` (`error: 'exists' | 'cant-open' | 'full'`), the page-to-worker messages `{ type: 'complete', request }` and `{ type: 'write', request }`, and the worker-to-page `{ type: 'completion', completion }` and `{ type: 'wrote', outcome }`. Types only; `typecheck` names every reader of the old effect for T226.
+- [ ] T223 [P] Extend `packages/web/test/terminal/shell/site-commands.test.ts` before T226, covers 006-terminal-FR-058 and 006-terminal-FR-081: `vim cv.json` and `cat cv.json | vim -` return the `vim` effect with `file.name` as typed (`[No Name]` for piped text, `path` null), the absolute `path`, the text, `readonly` and `new`; `vim about` and `vim ~/work/<file>` are `readonly: true`; `vim notes.txt` and `vim work/new` on missing paths open with empty text and `new: true`, and so does a missing path inside a protected or missing folder (research R49); `cv` gives the `[No Name]` effect with its pipe, not read only, from any working folder; `vim work`, `vim -` with nothing piped and `vim` alone still give their replies on stderr and no effect. Write them to fail against today's build.
+- [ ] T224 [P] Extend `packages/web/test/terminal/shell/adapter.test.ts` before T227, covers 006-terminal-FR-080, 006-terminal-FR-081 and 006-terminal-FR-073: `write(request)` through TerminalFs creates a visitor's file (`created: true`, lines and bytes as vim counts them, `text` ending in its line break) that `cat` then prints and `ls` lists, and replaces one (`created: false`); a path relative to `cwd`, `~/` and `/tmp/` resolve; an existing file without `force` gives `exists`, with `force` is replaced; a protected file (with or without `force`), a folder and a path in a missing or protected folder give `cant-open` and change nothing; a write past `QUOTA` (1,048,576 bytes) gives `full` and leaves the file as it was; the outcome holds the visitor's files (`VisitorFiles`) after a change; the history doesn't change.
+- [ ] T225 [P] Extend `packages/web/test/terminal/engine/session.test.ts` before T228 (driving the real shell client with a worker in Node, as T185 does), covers 006-terminal-FR-080 and 006-terminal-FR-021: `client.write(request)` posts `write` and resolves with the worker's `wrote` outcome, matched by `id`; with no answer in 2,000 ms it resolves `{ ok: false, error: 'cant-open' }` and the worker isn't restarted (contracts/shell-worker.md Timing); after an `ok` outcome the session's `files` equal its `files`, so a worker restarted by Ctrl+C restores the written file; `reset()` (close) still empties them.
+- [ ] T226 Give the `vim` effect its file in `packages/web/src/apps/terminal/shell/site-commands.ts` after T222 and T223 (research R49): `vim <path>` resolves the path, sets `readonly` from TerminalFs's protected rule and `new` when nothing is there (no "no such file" reply any more), and opens a folder with FR-048's reply as before; `vim -` and `cv` give `name: '[No Name]'`, `path: null`. Update the effect's readers (`session.ts`, `Terminal.tsx`, `VimView.tsx`, `engine/vim.ts`'s opening) to read `effect.file`, with the view still behaving as today; T223's cases pass and `vim.test.ts` and `pocket.test.ts` still pass.
+- [ ] T227 Add `write` to `packages/web/src/apps/terminal/shell/adapter.ts` and the worker after T222 and T224 (research R49, contracts/shell-worker.md): `write(request): WriteOutcome` resolves `path` from `cwd` (`~` as home), refuses as T224 sets, writes through TerminalFs so the protected rules and `QUOTA` hold, counts lines and bytes as vim does, and returns the visitor's `snapshot()` when they changed; `shell/worker.ts` answers `{ type: 'write' }` with `{ type: 'wrote', outcome }`, only between runs. T224's cases pass.
+- [ ] T228 Add `write(request)` to `packages/web/src/apps/terminal/shell-client.ts` and keep its outcome in `packages/web/src/apps/terminal/session.ts` after T225 and T227: the client posts `write`, resolves on the `wrote` with the same `id`, and resolves `cant-open` after 2,000 ms with no answer (a new `TIMING` entry, set once); the session takes `files` from an `ok` outcome (data-model.md Session, "A vim write answered"). T225's cases pass.
+
+**Checkpoint**: the shell writes a visitor's file on request and the `vim` effect says what was
+opened; the Terminal behaves as before.
+
+---
+
+## Phase 28: User Story 1 - Tab completes as bash does (Priority: P1) 🎯 MVP of the 2026-10-30 amendment
+
+**Goal**: on desktop, Tab with text before the cursor completes the word as bash 5's readline
+does (commands, builtins, keywords, functions and the working folder's folders in a first word;
+paths after it; quotes kept; the common part; `/` or a space), a second Tab in a row lists the
+matches in readline's columns, 100 or more ask first, and focus is never trapped: Tab on an empty
+line, Escape then Tab, and Shift+Tab leave (US1 scenarios 20 to 22; FR-026, FR-076, SC-016,
+SC-017).
+
+**Independent Test**: at 1440 × 900, `ab` Tab gives `about `; `cat cv` Tab `cat cv.json `; `cd wo`
+Tab `cd work/`; `c` Tab Tab lists `caller case cat …` then the prompt and `c` again; type `ls`,
+Escape, Tab, and focus leaves; Shift+Tab leaves with text typed; Tab on an empty line leaves.
+`npm test -- completion-parity` passes with bash 5 and `python3`.
+
+### Tests for User Story 1 (REQUIRED) ⚠️
+
+- [ ] T229 [P] [US1] Write `packages/web/test/terminal/shell/complete.test.ts` before T234, against `complete(request, sources)` on the Terminal's file system for the real CV (through `test/terminal/shell/context.ts`), covers 006-terminal-FR-076: every row of research R43's table (`cat cv` → `cat cv.json `; `cd wo`, `cat ~/sk`, `./w` → `cd work/`, `cat ~/skills `, `./work/`; `cat "cv` → `cat "cv.json" `; `cat my` with a visitor file `my file` → `cat my\ file `; `echo hi > ab` → `echo hi > about `; `ab`, `gr`, `hist`, `ls | wc` → `about `, `grep `, `history `, `ls | wc `; `wo` from home → `work`, no space, matches `work` once; `c`, `ca`, `i` add nothing and list `caller case cat`, `if in`; `cat c` lists `contact  cv.json` by last part only; `xyz` nothing); a first word after `|`, `;`, `&&`, `||`, `(`, `then` and `do`; a visitor's function (`f() { :; }` then `f` Tab); `$HO` → `$HOME`, and a variable the visitor set; folders marked `folder: true`; `~/` and quotes kept as typed; no match is `__cv_*`; matches merged and in byte order; a word in the middle of the line (cursor before the end) completes only the word before the cursor; `insert` empty when nothing is added. Each case names its R43 row.
+- [ ] T230 [P] [US1] Write `packages/web/test/terminal/engine/columns.test.ts` before T235, covers 006-terminal-FR-076: `columns(matches, width)` lays names out as readline does (research R44): as many columns as fit `width`, each the longest name plus 2, filled down, the last column unpadded; the home folder's 13 names at 80, 40 and 20 characters give 7, 3 and 1 columns as the design draws; folders keep their `/`; one name is one row.
+- [ ] T231 [P] [US1] Write `packages/web/test/terminal/shell/readline-driver.py` and `packages/web/test/terminal/shell/completion-parity.test.ts` before T234 (research R45), covers SC-017 (no FR of its own, plan "Success criteria without an FR"): the driver, run with the system's `python3 -I`, starts `bash --norc --noprofile -i` in a `pty` with `INPUTRC=/dev/null`, `HISTFILE=/dev/null`, `LC_ALL=C`, `TERM=dumb`, 80 columns, `bell-style none` and `page-completions off`, binds a key to `printf '<<%s|%d>>' "$READLINE_LINE" "$READLINE_POINT"`, sends a line then Tab (and Tab again), and prints the line, the cursor and the list up to the next prompt as JSON. The test shares `bash-parity.test.ts`'s temporary home folder (the real CV's files plus `notes/`, `todo` and `my file`), puts on `PATH` a folder of empty executables named after every site command, alias and `STANDARD_COMMANDS` name, and runs `enable -n` for every bash builtin not in `SHELL_BUILTINS`. For at least 20 partly typed lines covering R45's list (a command, an alias, a builtin, a keyword, a function, a folder in the first word, a file, a folder, a path from `/` and from `~/`, a word in double and in single quotes, a name with a space, after a redirect and after `|`, several matches with and without a common part, no match, and a visitor folder of 100 files for the question), the line and cursor after one Tab, and the list after two laid out by `engine/columns.ts` at 80 columns, equal bash's, each compared on its own and named on failure. It checks `python3` and bash 5 as `bash-parity.test.ts` checks GNU tools and fails naming what to install; it runs in the slow project, as T158 does.
+- [ ] T232 [P] [US1] Write `packages/web/test/terminal/completion.test.ts` on the real build at 1440 × 900 before T237 and T238, covers 006-terminal-FR-076: `ab` Tab reads `about ` with the caret after the space and focus kept; `cat cv` Tab reads `cat cv.json `; after `mkdir notes && touch todo`, `cat ~/` Tab Tab adds a `section.run` whose heading is `cat ~/` as typed, not added to `history`, holding `div.completion-list` with the names in readline's columns as text (no `button`, no link; folders with `/`), then the live prompt with `cat ~/` and the caret where it was; a visitor folder of 100 files (made with `mkdir h && touch h/f{1..100}`) asks `Display all 100 possibilities? (y or n)` as one line, `y` lists them and `n` (or another key) lists nothing and brings the prompt back with the line unchanged and nothing typed; a key typed while the answer is on its way wins (the answer is dropped); Cmd+Z on macOS and Ctrl+Z elsewhere takes a completion back; Tab while the shell loads or runs a line does nothing and focus stays.
+- [ ] T233 [P] [US1] Rewrite the FR-026 Tab cases of `packages/web/test/terminal/keyboard.test.ts` before T238, covers 006-terminal-FR-026 and SC-016: Tab on an empty line, and with only spaces before the caret, moves focus on and leaves the value; with `ab` typed Tab completes and focus stays; `ls` typed then Escape then Tab moves focus on, the value unchanged, and Escape isn't `defaultPrevented`; a key between Escape and Tab (or focus leaving and coming back) makes Tab complete again; Shift+Tab with text typed leaves backwards and is never `defaultPrevented`; Ctrl+Tab, Alt+Tab and Meta+Tab aren't `defaultPrevented`; after leaving, the next Tab isn't taken by the Terminal; `Alt+Shift+D` and `Alt+Shift+M` still reach the dock and the menu bar. Write them to fail against today's build.
+
+### Implementation for User Story 1
+
+- [ ] T234 [US1] Write the completer in `packages/web/src/apps/terminal/shell/complete.ts` and add `SHELL_KEYWORDS` to `packages/web/src/apps/terminal/shell/standard.ts` after T229 (research R43, contracts/shell-worker.md): `SHELL_KEYWORDS` is `if then else elif fi case esac for while until do done in function select time { } [[ ]] !`; `complete(request, sources)` is pure over the file system interface it's given and the `ShellState`, and follows R43: readline's word boundaries (space, tab, newline, `"`, `'`, `` ` ``, `@`, `$`, `>`, `<`, `=`, `;`, `|`, `&`, `{`, `(`), an open quote starting the word and a backslash escaping; a command's first word (also after `|`, `;`, `&&`, `||`, `(` and keywords) against `COMMANDS` and its aliases, `STANDARD_COMMANDS`, `SHELL_BUILTINS`, `SHELL_KEYWORDS`, `ShellState.functions` and the working folder's folders, never an `__cv_*` name; later words and words after a redirect against TerminalFs's `readdir` and `stat` from the working folder, `/` or `~`, with regard to capitals; `$` words against variable names; names merged and sorted in byte order; `insert` the common part past the word, quoted as bash quotes it, with the closing quote and a space, or `/`, for one match. Read the command names from the tables the adapter registers, not a copy (Constitution IV). T229's cases pass.
+- [ ] T235 [P] [US1] Write `packages/web/src/apps/terminal/engine/columns.ts` after T230: `columns(names, width): string[][]`, readline's layout as data-model.md Completion sets it, pure, imported by the page and by T231's test. T230's cases pass.
+- [ ] T236 [US1] Carry `complete` between the page and the worker after T234: extend `packages/web/test/terminal/engine/session.test.ts` first (`client.complete(line, cursor)` posts `complete` with the shell state and resolves with the `completion` whose `id` is the last request's; an earlier answer arriving late is dropped; no answer in 2,000 ms resolves to no completion; while a line runs or the shell isn't `ready` it resolves to no completion without posting), then answer `{ type: 'complete' }` in `packages/web/src/apps/terminal/shell/worker.ts` with `complete(request, sources)` over the adapter's TerminalFs and command tables, and add `complete()` to `packages/web/src/apps/terminal/shell-client.ts` with the 2,000 ms timeout in `TIMING` (contracts/shell-worker.md Timing).
+- [ ] T237 [US1] Show a second Tab's list after T219, T232 and T235: in `packages/web/src/apps/terminal/session.ts`, an entry like Ctrl+C's (the line as typed, not in `history`) holding the matches, or the question, then the live prompt with the line and cursor unchanged (data-model.md Session, "A second Tab's list"); in `packages/web/src/apps/terminal/Output.tsx`, `div.completion-list` (`data-req="006-terminal-FR-076"`) laying the names out with `engine/columns.ts` at the screen's text width (`.terminal-screen`'s `clientWidth` over the mono advance from `../os/metrics.ts`, so the phone gets 3 columns and the window 7), each name a `span`, folders bold periwinkle with their `/`, files snow, all selectable output; the question as one haze line; in `packages/web/src/apps/terminal/terminal.css`, the list's grid and colors from tokens only (`token-check`). Compare with `design/exports/desktop-21-tab-list-1440.png`.
+- [ ] T238 [US1] Take Tab in `packages/web/src/apps/terminal/CommandLine.tsx` only where FR-026 lets it, after T219, T233, T236 and T237 (research R44, contracts/terminal.md Keyboard): Tab with no modifier, text other than spaces before the caret and no Escape since the last key is `preventDefault`ed and sends `complete`; Escape is never `preventDefault`ed and arms the way out until the next other key or focus leaving; Shift+Tab and modified Tabs are never handled; the answer is applied only if the line and caret are unchanged since Tab, through `execCommand('insertText')` (or `setRangeText` where it isn't supported) inside the field's own editing so its undo takes it back; a second Tab in a row with nothing to add and two or more matches asks the session for the list entry, and 100 or more for the question, after which the line takes one key (`y` lists; any other key adds nothing and brings the prompt back); while the shell loads, fails or runs, Tab does nothing and focus stays. Add `006-terminal-FR-076` to `input.command-line`'s `data-req` (contracts/terminal.md data-req targets). T232's and T233's cases pass.
+- [ ] T239 [US1] After T234 to T238, run `npm run typecheck`, `npm run token-check`, `npm run content-check` and the US1 tests (`shell/complete.test.ts`, `engine/columns.test.ts`, `shell/completion-parity.test.ts` with GNU tools and bash 5 first on `PATH`, `completion.test.ts`, `keyboard.test.ts`, `line-keys.test.ts`, `command-line.test.ts`, `history.test.ts`); then quickstart 12 steps 1 to 3 at 1440 × 900 by script. Record the results here, and any line where bash and the Terminal differ (fix the completer, or ask the owner if bash's behavior seems wrong for the site).
+
+**Checkpoint**: Tab completes as bash does on desktop, and focus is never trapped. The amendment's
+MVP.
+
+---
+
+## Phase 29: User Story 3 - vim edits files (Priority: P3)
+
+**Goal**: the vim view edits text as vim does: insert mode through a real text area, vim's editing
+keys, counts, `.`, one register and undo; `:w` and its kin write the visitor's files through the
+worker with vim's messages; a protected file opens `[RO]`, can change on screen with `W10`, and
+refuses `:w` with `E45`; `:q` with changes gives `E37` (US3 scenarios 12 to 14; FR-058, FR-060,
+FR-064, FR-065, FR-079 to FR-081).
+
+**Independent Test**: at 1440 × 900, `vim todo`, `i`, `ship it`, Escape, `:wq`, then `cat todo`
+prints `ship it`; `vim todo`, `dd`, `u`, and the line is back; `o`, a word, Escape, `:q` gives
+`E37`, `:q!` closes and `todo` is unchanged; `vim about`, `dd` shows `W10` in amber, `:w` `E45`
+in rose, `:w ~/about-copy` makes a copy; `cv`, `:w` gives `E32: No file name`.
+
+### Tests for User Story 3 (REQUIRED) ⚠️
+
+- [ ] T240 [P] [US3] Rewrite `packages/web/test/terminal/engine/vim.test.ts` for the editor before T247 (research R47, R49; data-model.md Vim view transitions), on buffers opened from text:
+  - covers 006-terminal-FR-060: every move of the transitions table, each after a count (`5j`, `3w`), closed folds as one line; Escape cancels `/`, `:` and a pending count, operator, `g`, `z`, `Z` or `r`; Ctrl, Alt and Meta keys are ignored except `{ key: 'r', ctrl: true }`; each message is vim's own, word for word, with its tone (`info`, `warning`, `error`), and `:foo` gives `E492: Not an editor command: foo`;
+  - covers 006-terminal-FR-079: `i a I A o O` enter insert mode at vim's places (`o` and `O` opening a line) and set `-- INSERT --`; `{ text }`, `{ delete: 'backward' | 'forward' }`, `{ lineBreak: true }` and Tab (`{ text: '\t' }`) edit; Escape returns to normal mode with the cursor back one character and the insert as one undo step; `x dd dw D cw cc C r{c} J yy yw p P` act as vim on characters and lines, `c…` ending in insert mode; counts (`3dd`, `2yy`, `5x`, `3p`); `.` replays the last change with its count, or a new one; `u` and `:redo` step through changes, `Already at oldest change` and `Already at newest change` at the ends, at most 1,000 steps kept; Ctrl+R redoes only when sent with `ctrl: true`; on a closed fold `dd` and `yy` take the whole fold, and `x` or `i` open it first; folds are recomputed from the lines after each change and keep their closed state by key; `{ point }` moves the cursor in both modes; the cursor never lands inside a closed fold;
+  - covers 006-terminal-FR-080: `:w`, `:w {path}`, `:w! {path}`, `:wq`, `:x` and `ZZ` return `{ write, then }` as research R49's table sets (`:x` and `ZZ` only when `modified`, else `quit`), `:w` with `[No Name]` gives `E32`; `{ wrote }` with `ok` gives `"{name}" [New] {n}L, {b}B written` (`[New]` only when created), clears `modified` for the buffer's own file and keeps it for a copy, names a `[No Name]` buffer after its path, and `quit`s after `:wq`, `:x` or `ZZ`; `exists` gives `E13`, `cant-open` `E212` and `full` `E514`, the view open and the text kept;
+  - covers 006-terminal-FR-081: a `readonly` buffer changes on screen, with `W10` once at the first change (not again); `:w`, `:wq` and `:x` give `E45` and no `write`; `:w!` gives a `write` with `force` (refused by the worker as `cant-open`, so `E212`); `:w ~/copy` gives a `write` of the changed text;
+  - covers 006-terminal-FR-064 and 006-terminal-FR-061: `:help` opens the split; the first `:q` closes it, the second quits, or gives `E37: No write since last change (add ! to override)` when `modified`; `:q!` always quits; on opening, each top-level object or array of a JSON buffer is one closed fold, and plain text has none.
+- [ ] T241 [P] [US3] Extend `packages/web/test/terminal/engine/json.test.ts` before T246, covers 006-terminal-FR-079: `lexLine(text)` gives, for each line `printJson` prints of the `every-field` CV, the same tokens and colors as `printJson`'s row; an unfinished line (`"work": [`, `"na`, `12,`) is colored as far as it lexes and the rest is plain; the tokens' text joins back to the line exactly.
+- [ ] T242 [P] [US3] Update `packages/web/test/terminal/vim.test.ts` before T248:
+  - covers 006-terminal-FR-058: the status line holds the mode, the name (`[No Name]` for `cv`), `[RO]` only for a protected file, `[+]` after a change and gone after `:w`, the pipe for `cv`, the type, line and column and position, and never `[New]`; the message line opens with `"todo" [New]` for a new file, `"about" [readonly] {n} lines` for a protected one, `"[No Name]" {n} lines` for `cv` (each with the fold hint where it has folds);
+  - covers 006-terminal-FR-060: `Ctrl+D`, `Ctrl+F` and `Ctrl+U` aren't `defaultPrevented` on any platform, nor Ctrl+R off macOS (platform set per case as `line-keys.test.ts` does), and Ctrl+R on macOS redoes;
+  - covers 006-terminal-FR-064: the `:q` chip with unwritten changes shows `E37` and the view stays; `:q!` then closes it with focus in the command line; the `:help` chip opens the split, whose rows include the Insert, Edit, Write and Leave keys and whose heading has the suffix for piped text and for a protected file (design);
+  - covers 006-terminal-FR-065: on opening, `.vim-text`'s name is the file's, with `, read only` for `about` and `, new` for a new file; in normal mode Tab moves to the `:help` and `:q` chips, then out of the Terminal.
+- [ ] T243 [P] [US3] Write `packages/web/test/terminal/vim-edit.test.ts` on the real build before T248 and T249:
+  - covers 006-terminal-FR-079: `vim todo`, `i` puts focus on `textarea.vim-insert`, holding the text with its caret at the cursor; typed keys (through `beforeinput`), Backspace, Delete and Enter edit the buffer and the drawn lines; a composition's `input` (set through `InputEvent` with `isComposing` then the textarea's value) reaches the buffer; Escape returns to normal mode with focus on `.vim-text`; a click on a character moves the cursor there in both modes; `-- INSERT --` shows in the status line; the insert cursor is a 2 px bar of `color.terminal-cursor`;
+  - covers 006-terminal-FR-080: `vim notes.txt`, `i`, a line, Escape, `:wq`: the view closes with focus in the command line, `cat notes.txt` prints the line and `ls` lists `notes.txt`; after Ctrl+C on a running line restarts the worker, `cat notes.txt` still prints it; `:w ~/nowhere/x` shows `E212`; `vim todo`, a change, `:q` shows `E37`, `:q!` closes and `todo` is unchanged;
+  - covers 006-terminal-FR-081: `vim about`, `dd` shows `W10` in `color.vim-warning`, `[RO] [+]` in the status line; `:w` shows `E45` in `color.terminal-error`; after `:q!`, `cat about` is unchanged; `vim about`, `dd`, `:w ~/about-copy` makes a file holding the change;
+  - covers 006-terminal-FR-065 and SC-016: in insert mode Tab inserts a tab, Shift+Tab leaves the view backwards (with `.vim-text` at `tabindex=-1`), and Escape then Tab leaves the text for the `:help` chip; after leaving, no later Tab is taken.
+- [ ] T244 [P] [US3] Extend `packages/web/test/terminal/state.test.ts` before T249, covers 006-terminal-FR-021: minimize and restore, mobile Home and reopen, and a 1440 → 375 → 1440 resize keep an open vim view's mode, unwritten changes (`[+]`), cursor and undo (`u` after restoring takes back the change made before); close and reopen starts afresh, the unwritten changes gone with no question and `todo` as last written.
+- [ ] T245 [P] [US3] Extend `packages/web/test/terminal/engine/announce.test.ts` before T249, covers 006-terminal-FR-028: opening a visitor's file → `{file}, {n} lines. Type :q to leave.`; a protected file → `{file}, read only, {n} lines…`; a new file → `{file}, new, 0 lines…`; `cv` → `[No Name], {n} lines…`.
+
+### Implementation for User Story 3
+
+- [ ] T246 [US3] Add `lexLine(text): JsonToken[]` to `packages/web/src/apps/terminal/engine/json.ts` after T241 (data-model.md JSON lexer, amended): one line at a time, the same token kinds and colors as `printJson`'s rows, plain text for what doesn't lex; `printJson` stays for `jq`. T241's cases pass.
+- [ ] T247 [US3] Rewrite `packages/web/src/apps/terminal/engine/vim.ts` as the editor after T240 and T246 (research R47, R49; data-model.md `VimState`, `VimInput`, `VimOutput` and the transitions): `lines` as the buffer, folds recomputed from the lines after each change (a top-level key at indent 2 opening `{` or `[` to the indent-2 line closing it) with `closed` by key, `mode`, `pending` with count, operator and prefix, the unnamed `register`, `undo` and `redo` as copies of the lines (at most 1,000), `modified`, `warned`, `last` for `.`, and the `{ write, then }` output with its `{ wrote }` answer, every message kind of data-model.md `Message`. No DOM, no worker: still a pure reducer under `engine/` (`boundaries.test.ts`). T240's cases pass.
+- [ ] T248 [US3] Make `packages/web/src/apps/terminal/VimView.tsx` the editor's view after T219, T220, T228, T242, T243 and T247 (research R48, contracts/terminal.md "The vim view"): each shown line colored with `lexLine` for a `json` buffer, only changed lines re-rendered (keyed by line, memoized); the status line `[NORMAL]`, `-- INSERT --` or `HELP` in the mint pill, the name or `[No Name]`, `[RO]`, `[+]` and the pipe in haze; `div.vim-status` with `data-req="006-terminal-FR-058 006-terminal-FR-081"`, `div.vim-message` with `data-req="006-terminal-FR-060 006-terminal-FR-080"` toned info (haze), warning (`color.vim-warning`) or error (`color.terminal-error`) and wrapping to a second line with the text above giving up a row; `textarea.vim-insert` (`data-req="006-terminal-FR-065 006-terminal-FR-079"`) in insert mode, laid transparent over the text, named and described as `.vim-text`, its `beforeinput` turned into reducer inputs and `preventDefault`ed, a composition read on `input` and replaced by the buffer's text, Tab inserting a tab with no Escape since, Shift+Tab unhandled with `.vim-text` at `tabindex=-1`, Escape back to `.vim-text`; the insert cursor a 2 px bar (`border.thick`, `color.terminal-cursor`) before its character; a click or tap mapped to `{ point }` through `caretPositionFromPoint` (`caretRangeFromPoint` in Safari) and the line's tokens; Ctrl+R sent as `{ key: 'r', ctrl: true }` only on macOS (the platform test the Terminal already uses); a `{ write }` output sent through `shell-client.ts`'s `write()` with the buffer's path, `force` and the text with its final line break, and the outcome fed back as `{ wrote }`; the help split's rows and heading suffix from T221's site text; `div.vim-text` adds `006-terminal-FR-079` to its `data-req`. Styles in `packages/web/src/apps/terminal/terminal.css`, tokens only (`token-check`; `tokens.test.ts` now reads `color.vim-warning`). T242's and T243's cases pass. Compare with `design/exports/desktop-22-vim-insert-1440.png` to `desktop-26-vim-e37-1440.png`.
+- [ ] T249 [US3] Open, announce and close the editor in `packages/web/src/apps/terminal/session.ts` and `Terminal.tsx` after T219, T244, T245 and T248: the view opens from the effect's `file` (`section.vim`'s label with `, read only` or `, new`), the opening announcement in `engine/announce.ts` takes the three forms of T221's site text, the vim state (mode, changes, undo) is kept with the session as the view's cursor, folds and search already are, and closing the Terminal drops it with no question (FR-021, FR-080); `:wq`, `:x` and `ZZ` after a write, and `:q!`, close the view with `vim <path>` after its prompt and focus in the command line, as `:q` does. T244's and T245's cases pass.
+- [ ] T250 [US3] Delete the read-only view's text from `packages/web/src/site-text.ts` after T248 and T249: `terminal.vim.readOnly`, `unknown`, the old `helpNote` and `helpHeading`, `label`'s `(read only)` form and the `announce.vim` read-only form, with any test that still names them; `content-check` and `site-text.test.ts` pass.
+- [ ] T251 [US3] After T246 to T250, run `npm run typecheck`, `npm run token-check`, `npm run content-check` and the US3 tests (`engine/vim.test.ts`, `engine/json.test.ts`, `engine/announce.test.ts`, `engine/boundaries.test.ts`, `shell/adapter.test.ts`, `shell/site-commands.test.ts`, `vim.test.ts`, `vim-edit.test.ts`, `state.test.ts`, `files.test.ts`); then quickstart 12 steps 4 to 6 at 1440 × 900 by script. Record the results here.
+
+**Checkpoint**: vim edits and writes the visitor's files, and protected files stay as they were.
+
+---
+
+## Phase 30: User Story 4 - the pocket terminal's Tab key and vim keys (Priority: P4)
+
+**Goal**: on a phone, the eighth command key is `Tab ⇥` in `skills`' place, completing as Tab does
+and keeping the keyboard open; with the keyboard open a strip keeps the Tab key (or `Esc` in vim's
+insert mode); the vim keys are 11 in three rows with `i`, `u` and `:w`, and `:q` twice as wide
+(FR-051, FR-053, FR-066, FR-078).
+
+**Independent Test**: at 375 × 812 with touch, tap the command line, type `cat ~/sk`, tap `Tab ⇥`:
+`cat ~/skills `, keyboard still open; tap it twice after `cat ~/`: the list. `vim notes.txt`, tap
+`i`: the keyboard opens and the strip shows `Esc`; type, tap `Esc`, tap `:w`.
+
+### Tests for User Story 4 (REQUIRED) ⚠️
+
+- [ ] T252 [P] [US4] Update `packages/web/test/terminal/pocket.test.ts` before T253:
+  - covers 006-terminal-FR-051: 8 command keys in the design's order, `help`, `about`, `work`, `projects`, `cv`, `ls`, `clear`, `Tab ⇥`, each a `button` named by its command or `Tab, complete`, at least 44 × 44 px; `skills` is still reached in 2 taps through `help` or `ls` (SC-001's search over controls);
+  - covers 006-terminal-FR-078: tapped with `cat ~/sk` typed, the Tab key gives `cat ~/skills `, focus stays in the command line and its `pointerdown` is `defaultPrevented`; tapped twice after `cat ~/`, the list shows; with nothing typed, nothing changes; reached with the arrow keys and pressed with Enter, it completes and focus returns to the command line;
+  - covers 006-terminal-FR-053: with the page made 300 px shorter after a tap on the command line, the other keys hide and `div.pocket-strip`, 60 px tall, holds the Tab key alone at its right; restoring the height brings the keys back and hides the strip;
+  - covers 006-terminal-FR-066: with the vim view open the keys are `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `i`, `u`, `:w`, `:q` in three rows of four, named `Down` to `Quit` after their key (`i, Insert`, `u, Undo`, `:w, Write`), at least 44 × 44, `:q` twice as wide; `i` focuses `textarea.vim-insert` inside the tap's handler; with the page made 300 px shorter, the strip shows `Esc` (named `Esc, back to normal mode`), which returns to normal mode; `u` undoes; `:w` writes; a tap on the text moves the cursor there; after `:q` the command keys are back; a tap on a fold line toggles it; at 320 × 568 the third row fits with no horizontal scroll.
+
+### Implementation for User Story 4
+
+- [ ] T253 [US4] Add the Tab key, the strip and the new vim keys to `packages/web/src/apps/terminal/Pocket.tsx` and `pocket.css` after T219, T238, T248 and T252 (research R46, R48; contracts/terminal.md "The pocket terminal"): `siteText.terminal.pocket.commands` becomes `help`, `about`, `work`, `projects`, `cv`, `ls`, `clear` with the Tab key last (`skills` removed); the Tab key sends the same completion as Tab from the command line's text and caret (sharing `CommandLine.tsx`'s path, so a second press in a row counts as the second Tab), its `pointerdown` `preventDefault`ed and its `click` acting, and from the keyboard focus returns to the command line; `div.pocket-strip` (`data-req="006-terminal-FR-066 006-terminal-FR-078"`) shows only while `data-keyboard` is set, holding the Tab key, or `Esc` in insert mode; `div.pocket-keys` adds `006-terminal-FR-078` to its `data-req`; the vim keys from T221's site text in three rows of four, `:q` spanning two, the third row in the grille's place at 375 px and taking a row from the screen at 320 px, `i` entering insert mode and focusing `textarea.vim-insert` in the same handler; key sizes from the key tokens (75 × 52, 66 × 48 below 375 px). Tokens only (`token-check`). T252's cases pass.
+- [ ] T254 [US4] After T253, run the US4 tests (`pocket.test.ts`, `controls.test.ts`, `layout.test.ts`, `targets.test.ts`) and compare the phone states with `design/exports/phone-22-tab-key-list-375.png` to `phone-25-vim-e45-320.png` and the re-exported phone boards with `Tab ⇥`. Record the results here.
+
+**Checkpoint**: the pocket terminal completes and edits by taps.
+
+---
+
+## Phase 31: User Story 5 - completion for keyboard and screen reader users (Priority: P5)
+
+**Goal**: a completion is announced once (the line's new text, or the number of matches), the
+command line's description and `help` say that Tab completes and how to leave, insert mode is read
+as a text field, and no key a browser or screen reader reserves is taken (US5 scenario 11;
+FR-008, FR-026, FR-028, FR-065, FR-077).
+
+**Independent Test**: with VoiceOver or NVDA, `ab` Tab is announced as `about `; `cat ~/` Tab Tab
+as `13 possibilities`, not the names; the command line reads its description; `help` holds the
+Tab sentence.
+
+### Tests for User Story 5 (REQUIRED) ⚠️
+
+- [ ] T255 [P] [US5] Extend `packages/web/test/terminal/completion.test.ts` and `packages/web/test/terminal/engine/help.test.ts` before T258:
+  - covers 006-terminal-FR-077: after `ab` Tab the status region holds `about ` once; after `cat ~/` Tab Tab, `{n} possibilities` once and none of the names; after the question, its text once; nothing for no match; `input.command-line`'s accessible description (through `aria-describedby`) is `Tab completes. Escape then Tab leaves.`, and the element it names is visually hidden; `help`'s lead holds the desktop sentence at 1440 and the phone's at 375;
+  - covers 006-terminal-FR-008: `help`'s block leads with the Tab sentence for the shell it runs in, before the table, and the rest of `help` is unchanged.
+- [ ] T256 [P] [US5] Extend `packages/web/test/terminal/screen-reader.test.ts` before T258, covers 006-terminal-FR-065 and 006-terminal-FR-028: in insert mode `textarea.vim-insert` is in the accessibility tree as a text field named after the file (with `read only` or `new` as the case is) and described by the status line; entering and leaving insert mode announce `-- INSERT --` and `NORMAL` once each; a vim message change (`W10`, `E45`, `E37`, a written message) is announced once; opening `about` announces `about, read only, …` and a new file `{file}, new, 0 lines…`; focus stays where it was.
+- [ ] T257 [P] [US5] Update `packages/web/test/terminal/line-keys.test.ts` before T258, covers 006-terminal-FR-026 and 006-terminal-FR-079: Tab leaves the reserved-key list for the command line with text typed (it completes there; T233 covers its rules), but Tab on an empty line, Shift+Tab and every modified Tab stay never `defaultPrevented` on each platform; in the vim view, Ctrl+R isn't `defaultPrevented` on Linux and Windows, and is on macOS; Ctrl+W, Ctrl+L, Ctrl+T and Cmd+L, Cmd+W, Cmd+T aren't taken in insert mode either.
+
+### Implementation for User Story 5
+
+- [ ] T258 [US5] Describe and announce completion after T219, T238 and T255 to T257 (research R44, contracts/terminal.md Announcements): in `packages/web/src/apps/terminal/CommandLine.tsx`, `aria-describedby` a visually hidden element holding T221's description, and `006-terminal-FR-077` in `input.command-line`'s `data-req`; in `packages/web/src/apps/terminal/engine/commands.ts` (`help`'s block), the Tab sentence for the shell after the existing lead; in `packages/web/src/apps/terminal/engine/announce.ts` and `session.ts`, a completion's announcement (the line's new text), a list's (`{n} possibilities`), the question's text, and vim's mode and message changes once each; `.terminal-status` gains `006-terminal-FR-077` in its `data-req`. T255 to T257 pass.
+- [ ] T259 [US5] After T258, run the US5 tests (`completion.test.ts`, `screen-reader.test.ts`, `line-keys.test.ts`, `keyboard.test.ts`, `engine/help.test.ts`, `engine/announce.test.ts`, `vim-edit.test.ts`) and record the results here.
+
+**Checkpoint**: completion and editing work by keyboard alone and are heard once.
+
+---
+
+## Phase 32: User Story 6 - the new states in forced colors, at larger text and to axe (Priority: P6)
+
+**Goal**: the completion list, the Tab key and strip, insert mode and vim's toned messages hold in
+forced colors and reduced transparency, at 200% and 400% zoom and with text spacing, pass axe, and
+meet the target sizes (FR-031, FR-033 to FR-035).
+
+**Independent Test**: emulate `forced-colors: active` and open `terminal-tab-list`,
+`terminal-vim-insert` and `terminal-vim-readonly`; zoom to 200%; run axe.
+
+### Tests for User Story 6 (REQUIRED) ⚠️
+
+- [ ] T260 [P] [US6] Extend `packages/web/test/terminal/modes.test.ts` before T262, covers 006-terminal-FR-033: in forced colors the completion list's folders keep their `/` and stay distinct from files without color; the insert cursor is a `Highlight` bar; `W10` and the `E` messages show as text in `CanvasText` (their code says what they are, not their color); `[RO]` and `[+]` show; the Tab key, `Esc` and the strip show their borders; with reduced transparency the strip is solid like the keys.
+- [ ] T261 [P] [US6] Extend `packages/web/test/terminal/targets.test.ts`, `accessibility.test.ts` and `design.test.ts` before T262:
+  - covers 006-terminal-FR-034: the Tab key, `Esc`, `i`, `u`, `:w` and the double `:q` are at least 44 × 44 px in every pocket state at 320, 375 and 568 wide; the vim chips at least 24 × 24 in insert mode;
+  - covers 006-terminal-FR-035: axe (WCAG 2.2 A and AA tags) finds nothing with the Tab list shown, in insert mode, with `W10` and with `E45`, in both shells; 200% zoom, text-only 200%, 400% on 1280 px and text spacing keep the list, the strip, the insert text area and a wrapped vim message visible, with no clipping or overlap;
+  - covers 006-terminal-FR-031: the warning's computed color is `color.vim-warning`'s, the error's `color.terminal-error`'s, the insert bar `color.terminal-cursor` at `border.thick`'s width, the folders' periwinkle the token's; `packages/web/test/tokens.test.ts`'s "every token in the export is read" passes.
+
+### Implementation for User Story 6
+
+- [ ] T262 [US6] Fix what T260 and T261 find in `packages/web/src/apps/terminal/terminal.css` and `pocket.css` after T219 and T248: forced-colors rules for the insert bar, the toned messages and the strip; zoom and text-spacing fixes for the list and the wrapped message; every value a token (`token-check`). T260 and T261 pass.
+- [ ] T263 [US6] Compare every 2026-10-30 state with its export, scripted with Playwright on the real build with screenshots in the scratchpad (desktop 21 to 26, phone 22 to 25, the re-exported phone boards), and record each difference here; a difference the design doesn't explain is fixed or put to the owner.
+
+**Checkpoint**: the new states are as accessible as the rest of the Terminal.
+
+---
+
+## Phase 33: User Story 8 - the site check proves Tab and vim (Priority: P8)
+
+**Goal**: the site check covers the 2026-10-30 amendment: the keyboard flow's new steps and
+SC-016's leaving checks, the `terminal` part's vim write in each shell, and the new states
+(contracts/cli.md "Added 2026-10-30"; FR-038 to FR-040, SC-016).
+
+**Independent Test**: break one thing at a time in a copy of the build (Tab taken after Escape,
+`:wq` writing nothing, `:w` writing a protected file) and see the matching part fail with the line
+contracts/cli.md shows.
+
+### Tests for User Story 8 (REQUIRED) ⚠️
+
+- [ ] T264 [P] [US8] Extend `tools/site-check/test/shell-states.test.ts`, covers 006-terminal-FR-038: the states `terminal-tab-list`, `terminal-vim-insert`, `terminal-vim-readonly`, `pocket-tab-key` and `pocket-vim-insert` (contracts/cli.md States, added 2026-10-30) are each reached by real input on the real build and checked for what they show (the list, `-- INSERT --` with focus in the text area, `[RO] [+]` and `E45`, the strip's Tab key with the list, the strip's `Esc`), and the summary lists `/` under `accessibility` in each.
+- [ ] T265 [P] [US8] Extend `tools/site-check/test/keyboard.test.ts`, covers 006-terminal-FR-039 and SC-016: the flow passes on the real build with its new steps; copies where Tab is taken after Escape (`keyboard / desktop/terminal-keyboard/1440px trapped step … "Escape then Tab"`), where Tab on an empty line completes, where Shift+Tab is taken in insert mode, and where `:wq` writes nothing each fail naming the step.
+- [ ] T266 [P] [US8] Extend `tools/site-check/test/terminal.test.ts`, covers 006-terminal-FR-040: the `terminal` part passes on the real build with the vim lines in both shells; a copy where `:w` writes a protected file fails with `line-mismatch vim about :w: wrote about, where it should show E45`, and one where `:wq` loses the typed line fails naming the shell and `cat notes`.
+
+### Implementation for User Story 8
+
+- [ ] T267 [US8] Add the 5 states to `tools/site-check/src/shell-states.ts` after T264 (contracts/cli.md States), each from a fresh page by clicks, taps and typed keys: `terminal-tab-list` (`cat ~/`, Tab, Tab, after `mkdir notes && touch todo`), `terminal-vim-insert` (`vim notes.txt`, `i`, a line), `terminal-vim-readonly` (`vim about`, `o`, a word, Escape, `:w`), `pocket-tab-key` (tap the command line, `cat ~/`, the Tab key twice, the page 300 px shorter) and `pocket-vim-insert` (`vim notes.txt`, Enter, the `i` key, the page 300 px shorter).
+- [ ] T268 [US8] Extend `tools/site-check/src/parts/keyboard.ts` after T265 (contracts/cli.md "Added 2026-10-30"): after the existing steps, type `ab`, Tab, and the line reads `about ` with focus still in the command line; Escape then Tab leaves the typed line; `vim todo`, `i`, a typed line, Escape, `:wq`, and focus is back in the command line; `cat todo` shows the line. At every step with focus in the command line or the vim view, try Escape then Tab, and Shift+Tab, on a copy of the state (a fresh page brought to the same step) and require focus out of the element in at most two keys and one, and no later Tab taken (SC-016, research R50), failing with `trapped step {n} "{name}"`; add the problem type to `tools/site-check/src/report.ts` and data-model.md if it isn't there.
+- [ ] T269 [US8] Extend `tools/site-check/src/parts/terminal.ts` and `parts/accessibility.ts` after T266 and T267: in each shell, by typing, `vim notes` then `i`, a line, Escape, `:wq`, and `cat notes` prints the line; `vim about`, `x`, `:w` shows `E45`, and after `:q!` `cat about` is unchanged; failures as contracts/cli.md shows. `accessibility` runs axe in the 5 new states.
+- [ ] T270 [US8] After T267 to T269, run `npm run site-check`: it exits 0 with the new states, steps and lines in both shells. Record the summary line and the run's time here (the CI `site` job's limit is 12 minutes since T217).
+
+**Checkpoint**: every pull request proves Tab and vim in both shells.
+
+---
+
+## Phase 34: Amendment 2026-10-30 polish & constitution verification
+
+**Purpose**: traceability for 81 requirements, sizes and speed, the audits, the full verification,
+the owner's manual checks, and PR #32 carrying both amendments
+
+- [ ] T271 [P] Extend `packages/web/test/terminal/data-req.test.tsx`, covers 006-terminal-FR-037: the requirement count is 81, and every target contracts/terminal.md's `data-req` table adds or changes on 2026-10-30 carries its IDs in the rendered Terminal (`input.command-line` with FR-076 and FR-077, `div.completion-list`, the pocket Tab key and `div.pocket-strip`, `textarea.vim-insert`, `div.vim-status`, `div.vim-message`, `div.pocket-keys` with FR-078, `div.vim-text` with FR-079, `.terminal-status` with FR-077), reaching each state as T267 does.
+- [ ] T272 [P] Extend `packages/web/test/terminal/site-text.test.ts`, covers 006-terminal-FR-030: every value T221 added is English and holds no key fact of the real CV; every text node of the rendered Terminal after a Tab list, in insert mode with typed text, after `W10`, `E45` and a written message, and in the pocket's Tab and vim states is CV text, spec list text, site text, text the shell printed, a completion list's names or text the visitor typed; every character of the new site text is inside the served subsets' `unicodeRange` (`⇥` included, research R16), or the subset gains it.
+- [ ] T273 [P] Extend `packages/web/test/terminal/performance.test.ts` (plan Performance Goals), covers 006-terminal-FR-079: at 1440 px, the line after Tab changes within 100 ms of the key, over a folder of a few dozen names; in insert mode on `cv`'s JSON (about 300 lines), each typed key's character is drawn within the next animation frame, and only the changed line re-renders.
+- [ ] T274 Run `npm run traceability` after T271 to T273 (Constitution III, SC-009): it exits 0, and its PASS line counts `006-terminal`'s 81 active requirements; every row of "Amendment 2026-10-30 Requirement Coverage" below has a passing test. Record the PASS line here.
+- [ ] T275 [P] Verify SC-013 and SC-005 on the real build: `/` and `/cv` load no shell bytes; the `os` script's gzipped size is within `OS_BUDGET` (record it beside T218's); the worker's sizes beside T211's (the completer adds a little); the shell still ready within 1 s, and 3 s with Lighthouse's mobile slowdown; Lighthouse 90 or more in every category on `/` and `/cv`, mobile and desktop. Record each number here.
+- [ ] T276 [P] Audit Constitution X, IV, V and IX for the 2026-10-30 amendment in `package.json`, `packages/web/` and `tools/site-check/`: **X**, no package added; the abstractions added are exactly plan.md's Dependencies table rows marked 2026-10-30 (completer, columns, `complete` and `write` messages, the insert text area, the readline driver), with any other helper added there with its reason; **IV**, every new word in `site-text.ts`, the completer reading the shell's own tables (no second list of commands), the 2,000 ms timeout set once, no design value in script but through `metrics.ts`; **V**, `packages/os-core` unchanged by the amendment; **IX**, the list, the Tab key, the insert bar and the toned messages in the site's tokens, nothing from another terminal's or editor's look. Record the result here.
+- [ ] T277 Run the full verification after T274 to T276: `npm run typecheck`, `npm test` (with GNU tools and bash 5 first on `PATH` for T158 and T231, and `python3`), `npm run content-check`, `npm run token-check`, `npm run traceability` and `npm run site-check` all exit 0. Update plan.md, research.md (R43 to R52), data-model.md and the contracts wherever the build differs from what they say, before pushing (Constitution I). Record the results here.
+- [ ] T278 Run quickstart.md scenario 12's automatable steps (12.1 to 12.6) on the real build, scripted with Playwright, with scratch output in the scratchpad, and record any deviation here. Step 12.7's real phones are T279's.
+- [ ] T279 Owner action, by hand (quickstart 12.7, research R24): the pocket Tab key and `i` key with real phone keyboards (iOS Safari, Android Chrome), keeping the keyboard open; VoiceOver, TalkBack and NVDA with a completion, a second Tab's list and insert mode (FR-077, FR-065); Ctrl+R in the vim view in Safari and Firefox on macOS; forced colors in Edge with the list, the insert bar and the toned messages (FR-033); comparing the 2026-10-30 states with `design/exports/` (FR-031). Record each result here and in the PR. Under the constitution's interim provision on deferred manual checks, the owner may defer them to the final testing phase: then record that here, list each one in the PR, and leave this task open.
+- [ ] T280 Commit the remaining work with Conventional Commits and push `006-terminal-shell` to PR #32, which carries both amendments (plan Constitution Check XI):
+  - Per CLAUDE.md, commits, the PR title and the PR description contain no AI or Claude attribution.
+  - Update the PR's title and description to name the 2026-10-29 and 2026-10-30 amendments; link `specs/006-terminal/spec.md` and `specs/006-terminal/tasks.md`; state that no dependency is added for the second; record T275's, T278's and T279's results, listing every manual check deferred under the interim provision, beside T216's items (T129's issue links, T214's open >1 MB variable bug, T215).
+  - Confirm the CI jobs run and pass, that the `site` job's summary matches a local `npm run site-check` on the same commit (FR-042), and that it fits its 12-minute limit.
+  - Owner action: the local full run on a clean checkout of the PR's head commit, signed off so its `local-verify` status passes (Constitution, Merge requirements), again after every new commit. Merging is the owner's.
+
+---
+
+## Amendment 2026-10-30: Dependencies & Execution Order
+
+### Phase dependencies
+
+- **Phase 26 (Setup)**: T218 first (the merge of `main` and the baseline), then T219.
+- **Phase 27 (Foundational)**: after T218. BLOCKS every story of this amendment.
+  - T220 and T221 after T219; T222 to T225 in parallel after T218.
+  - T226 after T222 and T223; T227 after T222 and T224; T228 after T225 and T227.
+- **Design gate**: every task that creates or changes UI (T237, T238, T248, T249, T253, T258,
+  T262) depends on T219.
+- **US1 (Phase 28)**: after Phase 27. The amendment's MVP. T234 after T229; T235 after T230; T236
+  after T234; T237 after T232 and T235; T238 after T233, T236 and T237; T231 needs T234 and T235
+  to pass; T239 last.
+- **US3 (Phase 29)**: after Phase 27; independent of US1 except that both change
+  `session.ts` (T237, T249), so run T249 after T237 if both are in flight. T246 after T241; T247
+  after T240 and T246; T248 after T228, T242, T243 and T247; T249 after T244, T245 and T248; T250
+  after T249; T251 last.
+- **US4 (Phase 30)**: after US1 (the Tab key shares T238's completion path) and US3 (the `i`,
+  `u`, `:w` keys and the insert text area of T248).
+- **US5 (Phase 31)**: after US1 and US3.
+- **US6 (Phase 32)**: after US1, US3 and US4 (every new state exists).
+- **US8 (Phase 33)**: after US1 to US6.
+- **US2 and US7**: nothing in this amendment changes them; their tests must still pass (T277).
+- **Polish (Phase 34)**: after every story above. T280 last.
+
+### Within each phase
+
+- Tests first, failing before the code they cover.
+- Types before the adapter, the adapter before the worker, the worker before the client, the
+  client before the session, the session before the components.
+- The pure modules (`complete.ts`, `columns.ts`, `json.ts`'s `lexLine`, `vim.ts`) before the
+  components that use them.
+
+### Parallel opportunities
+
+- Phase 27: T221 to T225 together after T219 (different files).
+- US1: T229 to T233 are all [P]; T235 alongside T234.
+- US3: T240 to T245 are all [P]; US3's tests can be written while US1 is built.
+- US5: T255 to T257 [P]. US6: T260, T261 [P]. US8: T264 to T266 [P].
+- Polish: T271, T272, T273, T275 and T276 [P].
+
+## Amendment 2026-10-30: Parallel Example, User Story 1
+
+```bash
+Task: "Write shell/complete.test.ts (FR-076, research R43's table) (T229)"
+Task: "Write engine/columns.test.ts (FR-076) (T230)"
+Task: "Write shell/readline-driver.py and shell/completion-parity.test.ts (SC-017) (T231)"
+Task: "Write terminal/completion.test.ts (FR-076) (T232)"
+Task: "Rewrite keyboard.test.ts's Tab cases (FR-026, SC-016) (T233)"
+```
+
+## Amendment 2026-10-30: Parallel Example, User Story 3
+
+```bash
+Task: "Rewrite engine/vim.test.ts for the editor (FR-060, FR-064, FR-079 to FR-081) (T240)"
+Task: "Extend engine/json.test.ts with lexLine (FR-079) (T241)"
+Task: "Update terminal/vim.test.ts (FR-058, FR-060, FR-064, FR-065) (T242)"
+Task: "Write terminal/vim-edit.test.ts (FR-065, FR-079 to FR-081) (T243)"
+Task: "Extend terminal/state.test.ts (FR-021) (T244)"
+Task: "Extend engine/announce.test.ts (FR-028) (T245)"
+```
+
+## Amendment 2026-10-30: Implementation Strategy
+
+### MVP first
+
+1. T218 (the baseline, with `main` merged) and T219 (the design gate).
+2. Phase 27: the token, site text, types, the `vim` effect's file and the worker's `write`.
+3. Phase 28 (US1): Tab completes as bash does, with the way out.
+4. **STOP and VALIDATE**: quickstart 12 steps 1 to 3 at 1440 × 900, and the completion parity
+   test.
+
+### Incremental delivery
+
+1. Phase 27 → the worker writes files; nothing visible has changed.
+2. US1 → Tab completion on desktop (the MVP).
+3. US3 → vim edits and writes files.
+4. US4 → the pocket Tab key and vim keys.
+5. US5 → completion and editing heard once, and described.
+6. US6 → the new states in forced colors, zoom and axe.
+7. US8 → the site check.
+
+The amendment ships in PR #32 with the 2026-10-29 one (Constitution XI); the increments are
+checkpoints within it.
+
+## Amendment 2026-10-30 Requirement Coverage
+
+The requirements the 2026-10-30 amendment adds or amends, or whose tests it changes (plan.md rows
+marked *(2026-10-30)*), and the test tasks that cover them now. Every other requirement keeps its
+coverage from the tables above.
+
+| Requirement | Test task(s) |
+|-------------|--------------|
+| 006-terminal-FR-008 | T255 |
+| 006-terminal-FR-021 | T225, T244 |
+| 006-terminal-FR-026 | T233, T257 |
+| 006-terminal-FR-028 | T245, T256 |
+| 006-terminal-FR-030 | T272 |
+| 006-terminal-FR-031 | T261 |
+| 006-terminal-FR-033 | T260 |
+| 006-terminal-FR-034 | T261 |
+| 006-terminal-FR-035 | T261 |
+| 006-terminal-FR-037 | T271 |
+| 006-terminal-FR-038 | T264 |
+| 006-terminal-FR-039 | T265 |
+| 006-terminal-FR-040 | T266 |
+| 006-terminal-FR-051 | T252 |
+| 006-terminal-FR-053 | T252 |
+| 006-terminal-FR-058 | T223, T242 |
+| 006-terminal-FR-060 | T240, T242 |
+| 006-terminal-FR-061 | T240 |
+| 006-terminal-FR-064 | T240, T242 |
+| 006-terminal-FR-065 | T242, T243, T256 |
+| 006-terminal-FR-066 | T252 |
+| 006-terminal-FR-073 | T224 |
+| 006-terminal-FR-076 | T229, T230, T232 |
+| 006-terminal-FR-077 | T255 |
+| 006-terminal-FR-078 | T252 |
+| 006-terminal-FR-079 | T240, T241, T243, T257, T273 |
+| 006-terminal-FR-080 | T224, T225, T240, T243 |
+| 006-terminal-FR-081 | T223, T240, T243 |
+
+Success criteria added: SC-016 T233, T243, T265; SC-017 T231. SC-013 and SC-005 T275; SC-004 and
+SC-010 T279.
+
+## Amendment 2026-10-30: Notes
+
+- Superseded by this amendment, in part, and marked where they are: T025 (by T240), T039 (by
+  T242 and T243), T066 (by T252), T075 (by T233), T076 (by T242 and T256), T141 (by T223) and
+  T182 (by T233 and T257). They stay ticked; their tests are rewritten, not left to fail.
+- T279's and T280's owner actions are the owner's: the hand checks, the `local-verify` sign-off
+  and the merge.
+- **Choices made here that the design documents don't fix**. If the owner prefers otherwise,
+  change the plan or contract first:
+  - **One foundational phase for the `vim` effect's file and the worker's `write`** (T222 to
+    T228), as both US3 and US4 need them and neither changes what a visitor sees.
+  - **The client's `complete()` is US1's** (T236), not foundational: only the command line and
+    the pocket Tab key use it, and the Tab key comes after US1.
+  - **FR-026's new Tab rules are tested in US1** (T233), with completion, since completing
+    without the way out would trap focus; US5 keeps the reserved-key list (T257).
+  - **The 2,000 ms timeout for `write` resolves as `cant-open`**, so the view shows `E212` and
+    keeps the text, as contracts/shell-worker.md's Timing row says.
+  - **The completion parity test runs in the slow project**, as T158 does, so it runs in the
+    local full run with GNU tools, bash 5 and `python3`, not in CI's `test:fast`.

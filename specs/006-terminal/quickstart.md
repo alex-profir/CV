@@ -12,6 +12,8 @@ constitution's interim provision on deferred manual checks (research R24).
 - For the bash parity test (2026-10-29, research R38): bash 5 and the GNU tools on `PATH`. Linux
   has them. On macOS: `brew install bash coreutils grep gnu-sed gawk findutils diffutils`, with
   their `gnubin` folders first on `PATH`.
+- For the completion parity test (2026-10-30, research R45): also `python3`, for its `pty`
+  module. Linux and macOS have it.
 
 ## 1. Fast checks
 
@@ -23,7 +25,7 @@ npm run token-check      # no literal design value (FR-031)
 npm test                 # engine, core and browser tests on the real build
 ```
 
-Expected: each exits 0. `npm run traceability` lists 75 requirements for `006-terminal`, all
+Expected: each exits 0. `npm run traceability` lists 81 requirements for `006-terminal`, all
 covered.
 
 ## 2. The site check
@@ -161,3 +163,25 @@ Automated by `packages/web/test/terminal/shell/` and `shell.test.ts`, and by the
 
 The macOS keys, VoiceOver and NVDA with the new cursor, and Safari's and Firefox's readline keys
 are by hand, and may wait for the final testing phase (research R24).
+
+## 12. Tab and editing in vim (amendment 2026-10-30, FR-076 to FR-081)
+
+Automated by `shell/complete.test.ts`, `shell/completion-parity.test.ts`, `completion.test.ts`,
+`vim-edit.test.ts` and the site check's `keyboard` and `terminal` parts. By hand, at 1440 × 900:
+
+1. `ab`, Tab: `about ` (FR-076). `cat cv`, Tab: `cat cv.json `. `cd wo`, Tab: `cd work/`.
+   `wo`, Tab, from home: `work`, no space, as bash, since `work/` matches too.
+2. `mkdir notes && touch todo`, then `cat ~/`, Tab, Tab: the names in columns, folders with `/`,
+   then the prompt and `cat ~/` again; a screen reader hears the count only (FR-076, FR-077).
+3. Type `ls`, press Escape, then Tab: focus leaves. Shift+Tab with text typed: focus leaves
+   backwards. On an empty line, Tab leaves (FR-026, SC-016).
+4. `vim notes.txt`: `"notes.txt" [New]`. `i`, type two lines, Escape, `:w`: `"notes.txt" [New] 2L,
+   …B written`. `:q`. `cat notes.txt` shows them (FR-079, FR-080).
+5. `vim about`, `dd`: `W10` in amber. `:w`: `E45`. `:q`: `E37`. `:w ~/about-copy`, `:q!`, then
+   `cat about` is unchanged and `cat about-copy` has the change (FR-081).
+6. `cv`, `:w`: `E32: No file name` (design decision 2). `u` until `Already at oldest change`;
+   Ctrl+R on macOS redoes (FR-079).
+7. On a phone (or Chrome's device mode with touch): the Tab key completes and keeps the keyboard
+   open; in `vim notes.txt`, the `i` key opens the keyboard and the strip shows `Esc` (FR-066,
+   FR-078). Real phone keyboards, VoiceOver and TalkBack in insert mode are by hand and may wait
+   for the final testing phase (research R24).

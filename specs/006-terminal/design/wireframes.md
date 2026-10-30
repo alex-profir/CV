@@ -928,9 +928,11 @@ the line come back unchanged, the cursor at its end. Exports:
   slash, as `ls` marks them; files are snow. Nothing is underlined: the list is output, not
   controls, and it scrolls and selects as output does.
 - One match completes at once: `cat ~/sk` gives `cat ~/skills ` with a space, `cd ~/wo` gives
-  `cd ~/work/`, and a first word completes against commands: `wo` gives `work `. No match
+  `cd ~/work/`, and a first word completes against commands, and folders as bash does: `ab`
+  gives `about `. (Amended 2026-10-30 from `/speckit-plan`: the example was `wo` → `work `, but
+  from the home folder bash also matches the `work/` folder and adds no space.) No match
   changes nothing and shows nothing.
-- More than 100 matches: a haze line `Display all [n] possibilities? (y or n)`; `y` lists them,
+- 100 matches or more (amended 2026-10-30 from `/speckit-plan`: more than 100): a haze line `Display all [n] possibilities? (y or n)`; `y` lists them,
   any other key brings the prompt back. It is one line of output, so it has no board.
 
 ### The pocket terminal's Tab key (FR-078)

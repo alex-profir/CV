@@ -170,6 +170,22 @@ The amendment approved by the owner 2026-10-30.
   "No write since last change" error, and `:q!` leaves without saving (FR-064, FR-080).
 - Q: Which messages does the vim view give? → A: vim's own, such as `E37`, `E45` and `W10`, as
   the shell gives bash's. They replace the site's "read only" message (FR-060, FR-081).
+- Q (from `/speckit-plan`): Real bash 5's completion, driven over a copy of the Terminal's home
+  folder, completes folders as well as commands in a command's first word. From the home folder,
+  `wo` matches both the `work` command and the `work/` folder, so bash gives `work` with no space,
+  where FR-039 and User Story 5 expected `work `. And bash asks `Display all N possibilities?` at
+  100 matches or more, not only past 100. Which wins? → A: bash, exactly, as FR-076 and SC-017
+  say. The examples change to one bash completes the same way: `ab` gives `about ` (FR-039,
+  User Stories 1 and 5), and the question comes at 100 matches or more (FR-076). Approved by the owner
+  2026-10-30.
+- Q (from `/speckit-analyze`): SC-016 says focus leaves the Terminal in two keys, but Tab from the
+  vim text reaches the `:help` and `:q` controls first; FR-076's list for a command's first word
+  leaves out the keywords and folders bash completes there, and names the visitor's aliases, which
+  the shell doesn't have; and FR-058 puts `[New]` in the status line where the approved design and
+  vim put it in the message line. → A: SC-016 and FR-065 say focus leaves the command line or the
+  vim text; FR-076 lists keywords and the working folder's folders, without aliases the visitor
+  defined; a new file shows `[New]` in the message line only (FR-058, FR-065, FR-076, SC-016).
+  Approved by the owner 2026-10-30.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -243,8 +259,9 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
     line.
 19. **Given** the Terminal is open, **When** the visitor runs `work | grep -i engineer`, **Then**
     only the lines of `work`'s output that hold "engineer" appear, as bash would show them.
-20. **Given** `wo` typed in the command line, **When** the visitor presses Tab, **Then** the line
-    reads `work ` with the cursor after the space. (added 2026-10-30)
+20. **Given** `ab` typed in the command line, **When** the visitor presses Tab, **Then** the line
+    reads `about ` with the cursor after the space. (added 2026-10-30; amended 2026-10-30 from
+    `/speckit-plan`: the example was `wo` and `work `)
 21. **Given** `cat cv` typed in the home folder, **When** the visitor presses Tab, **Then** the line
     reads `cat cv.json `. **Given** `cd wo`, **Then** Tab gives `cd work/`. (added 2026-10-30)
 22. **Given** `c` typed, which more than one command starts with, **When** the visitor presses Tab
@@ -433,9 +450,10 @@ run `help` and `work` and confirm what is announced and that the output can be b
    Typing a letter then clears the selection and adds the letter to the command line.
 10. **Given** a command line typed or running, with no text selected, **When** the user presses
     Ctrl+C, **Then** the line shows `^C`, nothing more runs, and a new empty prompt follows.
-11. **Given** `wo` typed and completed to `work ` with Tab, **When** a screen reader user listens,
+11. **Given** `ab` typed and completed to `about ` with Tab, **When** a screen reader user listens,
     **Then** they hear the line's new text. **When** a second Tab lists several matches, **Then**
-    they hear how many there are, once. (added 2026-10-30)
+    they hear how many there are, once. (added 2026-10-30; amended 2026-10-30 from `/speckit-plan`:
+    the example was `wo` completed to `work `, which bash doesn't do from the home folder)
 
 ---
 
@@ -633,7 +651,7 @@ can't merge.
   as the visitor's files are when it closes (FR-021).
 - **Tab with nothing to complete**, such as `xyz` or a path no file starts with: nothing changes and
   focus stays. A second Tab lists nothing (FR-076).
-- **Tab with more than 100 matches**, such as `ls /usr/` if it held that many: as bash, the second
+- **Tab with 100 matches or more**, such as `ls /usr/` if it held that many: as bash, the second
   Tab asks `Display all N possibilities? (y or n)`, and `y` lists them (FR-076).
 - **Tab inside quotes or after a redirect**, such as `cat "cv` or `echo hi > no`: it completes the
   path, keeping the quote, as bash does (FR-076).
@@ -971,12 +989,14 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-058**: `vim <path>` and `vim -` with piped input MUST open the vim view: the text shown in
   place of the Terminal's output, filling the Terminal window, or the pocket terminal's screen,
   with line numbers, a status line and a message line. The status line MUST show the mode, the
-  file's name, whether it is read only, new or changed since it was last written, the file type,
-  the cursor's line and column, and how far through the file the view is. `vim` on a folder MUST
-  get the reply FR-048 sets, and `vim -` with nothing piped or `vim` alone the usage reply
-  (FR-017), without opening the view. `vim` on a path that doesn't exist MUST open an empty, new
-  file (FR-080). Amended 2026-10-30: the status line always said the file was read only, and a
-  path that didn't exist got FR-048's reply.
+  file's name, whether it is read only or changed since it was last written, the file type, the
+  cursor's line and column, and how far through the file the view is. A new file MUST be marked
+  `[New]` in the message line when the view opens and in the message `:w` gives (FR-080). `vim`
+  on a folder MUST get the reply FR-048 sets, and `vim -` with nothing piped or `vim` alone the
+  usage reply (FR-017), without opening the view. `vim` on a path that doesn't exist MUST open an
+  empty, new file (FR-080). Amended 2026-10-30: the status line always said the file was read
+  only, and a path that didn't exist got FR-048's reply. Amended 2026-10-30 (from
+  `/speckit-analyze`): the status line showed whether the file was new.
 - **FR-059**: `cv` MUST run `cat cv.json | jq | vim -` as if typed, and the status line MUST show
   that pipe. `help` MUST say what `cv` runs.
 - **FR-060**: The vim view MUST support at least these keys in normal mode: `h`, `j`, `k`,
@@ -1013,9 +1033,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   MUST be readable with the screen reader's own reading keys, fold lines MUST be buttons that say
   whether they are open, and a change to the mode, the status line or the message line MUST be
   announced once. In insert mode, what is typed and deleted MUST be announced as in a text field.
-  In normal mode, Tab and Shift+Tab MUST move focus out of the view; in insert mode, Shift+Tab
-  MUST, and Escape then Tab MUST, so focus is never trapped (FR-026, FR-079). Amended 2026-10-30:
-  the view was always read only, announced as read only, and Tab always left it.
+  In normal mode, Tab and Shift+Tab MUST move focus out of the view's text, Tab to its `:help`
+  and `:q` controls (FR-064); in insert mode, Shift+Tab MUST, and Escape then Tab MUST, so focus
+  is never trapped (FR-026, FR-079). Amended 2026-10-30: the view was always read only, announced
+  as read only, and Tab always left it. Amended 2026-10-30 (from `/speckit-analyze`): it said
+  focus moved out of the view, where the `:help` and `:q` controls are.
 - **FR-066**: On mobile, while the vim view is open, the pocket terminal's command keys MUST become
   vim keys: `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `i`, `u`, `:w` and `:q`, and in insert mode
   `Esc`, in the order the approved design sets, each a button named by what it does, at least 44
@@ -1108,16 +1130,19 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   the vim view, its own keys apply (FR-060).
 - **FR-076** (added 2026-10-30): Tab with text before the cursor MUST complete the word before the
   cursor as bash's own completion does, with no completion scripts: the first word of a command
-  against the site's commands and aliases, the standard commands, the shell's builtins and the
-  functions and aliases the visitor defined; any later word, and a word after a redirect, against
-  the paths in the shell's file system, from the working folder, `/` or `~`. One match MUST be
+  against the site's commands and aliases, the standard commands, the shell's builtins and
+  keywords, the functions the visitor defined and the folders of the working folder; any later
+  word, and a word after a redirect, against the paths in the shell's file system, from the working folder, `/` or `~`. One match MUST be
   completed, followed by a space for a command or file and a `/` for a folder. Several matches
   MUST be completed as far as they all agree; when that adds nothing, a second Tab in a row MUST
   list them below the line, in columns, folders marked as `ls` marks them, then show the prompt
-  and the line again, unchanged. More than 100 matches MUST first ask bash's
+  and the line again, unchanged. 100 matches or more MUST first ask bash's
   `Display all N possibilities? (y or n)`. No match MUST change nothing. A word inside quotes
   MUST keep its quote. The listed matches are output: they scroll and select as output does and
-  are never command controls.
+  are never command controls. Amended 2026-10-30 (from `/speckit-plan`): it said more than 100
+  matches. Amended 2026-10-30 (from `/speckit-analyze`): the first word's list left out keywords
+  and folders, and named aliases the visitor defined, which the shell doesn't have (`alias` is
+  out of scope).
 - **FR-077** (added 2026-10-30): A completion MUST be announced to screen readers once: the
   line's new text after a completion, or the number of matches when a second Tab lists them,
   without reading the list (FR-028). The command line's accessible description MUST say that Tab
@@ -1183,8 +1208,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-039**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
   open the Terminal from the dock, run `help`, run a command from its output with Enter, recall a
   command with the Up arrow, run `cv`, move with `j`, open a fold with `za` and leave the vim view
-  with `:q`, leave the empty command line with Tab and come back with Shift+Tab, complete `wo` to
-  `work ` with Tab and leave the typed line with Escape then Tab, open `vim todo`, type a line in
+  with `:q`, leave the empty command line with Tab and come back with Shift+Tab, complete `ab` to
+  `about ` with Tab and leave the typed line with Escape then Tab, open `vim todo`, type a line in
   insert mode, write it with `:wq` and confirm `cat todo` shows it, reach
   the dock with the shell's shortcut, and close the Terminal with `exit`, confirming a visible
   focus indicator and where focus lands at each step. In the command line, the visible focus
@@ -1194,7 +1219,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   with the key FR-075 sets and confirm the selection holds the Terminal's text and nothing else,
   and cancel a typed line with Ctrl+C.
   Amended 2026-10-29: the check didn't cover the cursor, the line-editing keys, select all or
-  Ctrl+C.
+  Ctrl+C. Amended 2026-10-30 (from `/speckit-plan`): the completion step completed `wo` to `work `,
+  which bash doesn't do from the home folder.
 - **FR-040**: A Terminal content check MUST run every CV command in each shell and confirm that its
   output holds every shown field the CV document holds for that section, in the CV document's
   order, and that `cat cv.json`, `cat cv.json | jq` and the vim view opened by `cv` hold the CV
@@ -1315,7 +1341,7 @@ plain server-rendered page.
   (FR-008), the shell loading and failing to load (FR-070), a command line stopped by its limit
   (FR-069), and the command line's selection and the Terminal's text selected all (FR-074,
   FR-075), the greeting removed (FR-005), with the owner's sign-off added to `review.md`
-- [ ] For the 2026-10-30 amendment: the mockup and wireframes updated for a completion and the
+- [x] For the 2026-10-30 amendment: the mockup and wireframes updated for a completion and the
   list a second Tab shows (FR-076), the pocket terminal's Tab key (FR-078), the vim view in insert
   mode with its status line, a changed file, a protected file with vim's `W10` warning and `E45`
   error, a new file, and `E37` after `:q` (FR-079 to FR-081), and the pocket terminal's vim keys
@@ -1374,8 +1400,11 @@ plain server-rendered page.
   filled, and there is no outline or border around the command line; in 100% of the steps with
   focus elsewhere, the cursor is hollow.
 - **SC-016** (added 2026-10-30): From every state the keyboard check reaches with focus in the
-  command line or the vim view, typed text or insert mode included, focus leaves the Terminal in
-  at most two key presses (Escape, then Tab), and Shift+Tab leaves in one, in 100% of the steps.
+  command line or the vim view's text, typed text or insert mode included, focus leaves that
+  element in at most two key presses (Escape, then Tab), and Shift+Tab leaves it in one, and no
+  later Tab is taken, in 100% of the steps. Amended 2026-10-30 (from `/speckit-analyze`): it said
+  focus leaves the Terminal, which the vim view's `:help` and `:q` controls, next in the tab
+  order, would not allow.
 - **SC-017** (added 2026-10-30): For a fixed list of at least 20 partly typed command lines, of
   commands, files, folders and paths in quotes, on the same files, a first and a second Tab give
   the line and the list that bash 5's own completion gives, with no completion scripts, in 100%

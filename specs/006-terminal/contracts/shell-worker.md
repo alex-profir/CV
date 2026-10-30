@@ -13,7 +13,8 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect guard, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
 | `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
-| `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS` (research R32) |
+| `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS`, and from 2026-10-30 `SHELL_KEYWORDS` (research R32, R43) |
+| `src/apps/terminal/shell/complete.ts` | the worker, and Node | Added 2026-10-30: `complete(request, sources)`, Tab's matches and what readline inserts (research R43) |
 | `src/apps/terminal/shell/no-zlib.ts` | the worker | The `node:zlib` stub (research R34) |
 | `src/apps/terminal/shell/protocol.ts` | both | The message types below |
 
@@ -31,13 +32,20 @@ From the page to the worker:
 | `{ type: 'run', request: RunRequest }` | A line, when `ready` and nothing runs | `{ type: 'result', result: RunResult }` |
 | `{ type: 'restore', state: ShellState, files: VisitorFiles }` | After a restart, before the next `run` | `{ type: 'ready' }` |
 | `{ type: 'reset' }` | The Terminal closed (FR-021) | `{ type: 'ready' }` |
+| `{ type: 'complete', request: CompleteRequest }` | Tab, or the pocket Tab key, when `ready` and nothing runs (added 2026-10-30, research R44) | `{ type: 'completion', completion: Completion }` |
+| `{ type: 'write', request: WriteRequest }` | `:w` and its kin in the vim view (added 2026-10-30, research R49) | `{ type: 'wrote', outcome: WriteOutcome }` |
 
 `ShellData` is what the worker can't build alone: nothing today, since the worker imports the CV,
 the site data and the spec list from the same modules as the page. As built, it is typed empty
 and the worker ignores it: tests that need a fixture CV call `createShell` in Node instead.
 
 One line runs at a time. The page never sends `run` while one is running. A line entered then
-waits, as a line entered before `ready` does (FR-070).
+waits, as a line entered before `ready` does (FR-070). The page sends `complete` only when no line
+runs, and drops a `completion` whose `id` isn't its last request's (research R44). A `write` comes
+only from the vim view, which no line runs under; the worker writes through TerminalFs, so its
+rules and the 1 MB limit hold, and answers with the visitor's files when they changed (research
+R49). Types: [data-model.md](../data-model.md#completion-fr-076-to-fr-078-research-r43-r44) and
+[Write request and outcome](../data-model.md#write-request-and-outcome-fr-080-research-r49).
 
 ## Timing
 
@@ -49,6 +57,7 @@ waits, as a line entered before `ready` does (FR-070).
 | No answer to `run` | 6,000 ms | The page terminates the worker, starts a new one with `restore`, and shows the "stopped" text |
 | No `ready` after `start` | 10,000 ms | The page shows the failure line with its retry control (FR-070) |
 | Ctrl+C while a line runs | at once | The page terminates the worker and restarts it as above (FR-075) |
+| No answer to `complete` or `write` | 2,000 ms | The page drops the completion (Tab did nothing), or shows the write's `E212` and keeps the view open; the worker isn't restarted, as nothing runs (added 2026-10-30) |
 
 ## The shell just-bash is given
 

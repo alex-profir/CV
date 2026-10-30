@@ -57,7 +57,8 @@ about 12 KB and HTML about 16 KB, unchanged by the shell (SC-005, SC-013).
 ## Tokens
 
 `packages/tokens/penpot/tokens.json` gains the tokens of research R22, in the hand-written
-export's form. `npm run token-output` regenerates `packages/tokens/src/tokens.generated.{css,ts}`.
+export's form. The 2026-10-29 amendment adds research R42's, and the 2026-10-30 amendment
+`color.vim-warning` (`{color.base.amber}`, research R52). `npm run token-output` regenerates `packages/tokens/src/tokens.generated.{css,ts}`.
 `npm run token-check` passes with no exception (FR-031).
 
 ## Fonts

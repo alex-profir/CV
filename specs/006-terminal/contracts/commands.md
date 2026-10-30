@@ -31,7 +31,7 @@ take, or missing one it needs, replies `{command} takes {what}. Usage: {usage}` 
 
 | Command | Aliases | Arguments | Shows |
 |---------|---------|-----------|-------|
-| `help` | `?` | `[command]` | `help`'s table: every command and alias as a control, with its usage and description (FR-008, FR-015). With a command or alias: that command's usage, description and own help. An unknown name gets the unknown-command reply |
+| `help` | `?` | `[command]` | Its lead adds `Tab completes a command or path; Escape then Tab leaves the command line.` (phone: `Tab ⇥ completes a command or path.`) (FR-077, added 2026-10-30). `help`'s table: every command and alias as a control, with its usage and description (FR-008, FR-015). With a command or alias: that command's usage, description and own help. An unknown name gets the unknown-command reply |
 | `about` | `whoami` | none | `basics`: name, label, location as `/cv` writes it, summary (FR-009) |
 | `work` | `experience` | none | Every work entry in order: position · organization, the date range, location, summary, highlights as a list, URL as a link |
 | `projects` | | none | Every project: name, dates, description, highlights, keywords, URL |
@@ -47,7 +47,7 @@ take, or missing one it needs, replies `{command} takes {what}. Usage: {usage}` 
 | `cd` | | bash's `cd` | bash's builtin. `cd` alone and `cd ~` go home, `cd /` goes to the root, `cd -` back (FR-045, FR-046) |
 | `cat` | | GNU `cat`'s options and paths | GNU `cat`. A protected file printed whole is drawn as its block (FR-047, research R29). `cat cv.json` shows the JSON text as it is (FR-055) |
 | `jq` | | `[filter] [path]` or input | jq, with its filter language. Output that reaches the screen unchanged is colored (FR-056, research R31) |
-| `vim` | | `<path>` or `-` with input | Opens the vim view (FR-058) |
+| `vim` | | `<path>` or `-` with input | Opens the vim view to read or edit (FR-058, FR-079): a file, piped text as `[No Name]`, or, for a path that doesn't exist, an empty new file. A protected file opens read only (FR-081). `help`: `Edit a file in vim. - reads what is piped in` (amended 2026-10-30) |
 | `pwd` | | bash's `pwd` | The working folder's path, such as `/home/guest/work`. The prompt shows it as `~/work` (FR-046) |
 | `open` | | `<name>` | `cv` or `about`: opens it in the shell (FR-014) |
 | `history` | | `[n]`, `-c` | The commands run since the Terminal opened, oldest first, numbered from 1, or the last `n`. `-c` empties the history (FR-020) |
@@ -122,11 +122,26 @@ commands and run (FR-068).
 
 ## The vim view's keys
 
-As [data-model.md](../data-model.md#vim-view-key-entities-vim-view-pipe) lists. Messages:
+> **Amended 2026-10-30.** The view edits text, and its messages are vim's own (FR-060, FR-079 to
+> FR-081, research R47 to R49). The read-only and "not a command here" messages are gone.
 
-| Case | Message line |
-|------|--------------|
-| Opened | `"{file}" [readonly] {n} lines  ·  za or click opens a fold` (phone: `"{file}" {n} lines  ·  tap a fold`) |
-| An editing key or `:w`, `:wq`, `:w!`, `:x` | `{file} is read only: nothing can be changed` |
-| An unknown `:` command | `:{typed} is not a command here. :help lists the keys.` |
-| Search | `/{text}   match {i} of {n}  ·  n next  ·  N previous`, or `/{text}   not found` |
+As [data-model.md](../data-model.md#vim-view-key-entities-vim-view-pipe) lists. Messages, in vim's
+words, with the design's tone:
+
+| Case | Message line | Tone |
+|------|--------------|------|
+| Opened: a visitor's file | `"{file}" {n} lines  ·  za or click opens a fold` (phone: `  ·  tap a fold`) | info |
+| Opened: a protected file | `"{file}" [readonly] {n} lines  ·  …` | info |
+| Opened: a new file | `"{file}" [New]` | info |
+| Opened: piped text | `"[No Name]" {n} lines  ·  …` | info |
+| Written | `"{file}" [New] {n}L, {b}B written`, `[New]` only when it was created | info |
+| First change to a protected file | `W10: Warning: Changing a readonly file` | warning |
+| `:w`, `:wq`, `:x` on a protected file | `E45: 'readonly' option is set (add ! to override)` | error |
+| `:w` with no name | `E32: No file name` | error |
+| `:w {path}` on an existing file | `E13: File exists (add ! to override)` | error |
+| A path that can't be written: protected, a folder, a missing folder, `:w!` on a protected file | `"{path}" E212: Can't open file for writing` | error |
+| Past the 1 MB the visitor's files hold | `"{path}" E514: Write error (file system full?)` | error |
+| `:q` with changes unwritten | `E37: No write since last change (add ! to override)` | error |
+| An unknown `:` command | `E492: Not an editor command: {typed}` | error |
+| `u` or `:redo` at the end | `Already at oldest change`, `Already at newest change` | info |
+| Search | `/{text}   match {i} of {n}  ·  n next  ·  N previous`, or `/{text}   not found` | info |

@@ -8,6 +8,11 @@ session store and the shell's additions. The spec's Key Entities map to them as 
 amendment's (research R25 to R37). Where an earlier section changes, a note under its heading
 says how. `Parsed`, `Stage`, `Call` and `Piped` are gone with the Terminal's own parser.
 
+**Amendment, 2026-10-30**: [Vim view](#vim-view-key-entities-vim-view-pipe) is amended for
+editing, and [Completion](#completion-fr-076-to-fr-078-research-r43-r44) and
+[Write request and outcome](#write-request-and-outcome-fr-080-research-r49) are added (research R43
+to R50).
+
 ## Command (Key Entities: Command, Alias)
 
 > **Amended 2026-10-29.** `run` now takes the shell's arguments and context and returns a
@@ -180,6 +185,10 @@ Produced at build time by `readSpecList(root)` (research R10), and served to the
 
 ## JSON rows (FR-056)
 
+> **Amended 2026-10-30.** The vim view colors its lines with `lexLine(text): JsonToken[]`, one
+> line at a time, so edited text is colored as typed and never re-printed (research R47).
+> `printJson` stays for `jq`'s output.
+
 ```ts
 type JsonToken = { kind: 'key' | 'string' | 'number' | 'literal' | 'punctuation' | 'space'; text: string };
 type JsonRow = { indent: number; tokens: readonly JsonToken[] };
@@ -193,47 +202,128 @@ spelling (research R11). `indent` is 2 per level.
 
 ## Vim view (Key Entities: Vim view, Pipe)
 
+> **Amended 2026-10-30** (research R47 to R50). The view edits text: the buffer is lines of text,
+> with a mode, a register, undo and a file to write to. The read-only message is gone, and the
+> messages are vim's.
+
 ```ts
-type VimSource = { name: string; pipe: string | null; rows: readonly JsonRow[]; folds: readonly JsonFold[]; type: 'json' | 'text' };
-// `name` '-' for piped text shows as cv.json when it came from cat cv.json; `pipe` the command line for the status line (FR-059)
+type VimFile = {
+  name: string;             // as typed, or '[No Name]' for piped text (design decision 2)
+  path: string | null;      // absolute; null for piped text until `:w <path>` names it
+  readonly: boolean;        // a protected file (FR-081)
+  new: boolean;             // the path didn't exist when opened, until first written (FR-080)
+};
+
+type VimSource = { file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' };
+// `pipe`: the command line for the status line (FR-059). `type`: whether `text` parsed as JSON
+// when opened; it stays for the view's life.
 
 type VimState = {
   source: VimSource;
+  lines: readonly string[];             // the buffer, never re-printed
+  folds: readonly JsonFold[];           // from `lines` after each change (research R47)
+  closed: ReadonlySet<string>;          // closed folds, by key
+  mode: 'normal' | 'insert';
   cursor: { line: number; column: number };
-  closed: ReadonlySet<number>;          // fold start lines that are closed
   numbers: boolean;                     // :set nu / :set nonu
   search: { text: string; matches: readonly Match[]; current: number } | null;
   entry: { kind: '/' | ':'; text: string } | null;   // a / or : being typed
   help: boolean;                        // the :help split (FR-064)
   message: Message;                     // the message line
-  pending: 'g' | 'z' | 'd' | null;      // the first key of gg, za…, dd
+  pending: Pending | null;              // a count, an operator, `g`, `z`, `Z` or `r` waiting for its key
+  register: { text: string; lines: boolean } | null;  // the unnamed register
+  undo: readonly Step[];                // at most 1,000 (vim's undolevels)
+  redo: readonly Step[];
+  modified: boolean;                    // `[+]`: lines differ from what was opened or last written
+  warned: boolean;                      // W10 shown for this buffer (FR-081)
+  last: readonly VimInput[];            // the last change's inputs, for `.`
 };
+type Pending = { count: number | null; operator: 'd' | 'c' | 'y' | null; prefix: 'g' | 'z' | 'Z' | 'r' | null };
+type Step = { lines: readonly string[]; cursor: { line: number; column: number } };
 type Match = { line: number; start: number; end: number };
+type Tone = 'info' | 'warning' | 'error';     // haze, color.vim-warning, color.terminal-error
 type Message =
-  | { kind: 'opened' } | { kind: 'read-only' } | { kind: 'unknown'; command: string }
-  | { kind: 'match'; index: number; count: number } | { kind: 'not-found'; text: string } | { kind: 'none' };
+  | { kind: 'opened' }                         // the opening line (design site text)
+  | { kind: 'written'; name: string; created: boolean; lines: number; bytes: number }
+  | { kind: 'vim'; code: 'W10' | 'E13' | 'E32' | 'E37' | 'E45' | 'E212' | 'E492' | 'E514'; arg?: string }
+  | { kind: 'oldest' } | { kind: 'newest' }    // u and :redo at the ends of undo
+  | { kind: 'match'; index: number; count: number } | { kind: 'not-found'; text: string }
+  | { kind: 'none' };
 
-type VimInput = { key: string } | { submit: string } | { cancel: true } | { fold: number };
-function vimReducer(state: VimState, input: VimInput): VimState | 'quit';
+type VimInput =
+  | { key: string; ctrl?: boolean; page?: number }   // ctrl only for Ctrl+R on macOS (FR-079)
+  | { text: string } | { delete: 'backward' | 'forward' } | { lineBreak: true }   // insert mode (research R48)
+  | { submit: string } | { cancel: true } | { fold: number } | { point: { line: number; column: number } }
+  | { wrote: WriteOutcome };                  // the worker's answer to a write (research R49)
+
+type VimOutput = VimState | 'quit' | { write: WriteRequest; then: 'stay' | 'quit' };
+function vimReducer(state: VimState, input: VimInput): VimOutput;
 ```
 
-**Transitions** (FR-060 to FR-064):
+**Transitions** (FR-060 to FR-064, FR-079 to FR-081):
 
-| Input | Result |
-|-------|--------|
-| `h` `j` `k` `l`, arrows | Move by one, skipping closed folds as one line |
-| `w` `b`, `0` `$`, `gg` `G`, `{` `}`, Page Up and Page Down | As vim. `{` and `}` move between top-level sections |
-| `/` text Enter, `n` `N` | Search, case-insensitive, matches across the whole file. Opens folds holding the current match |
-| `za` `zo` `zc` `zR` `zM`, fold activated | Toggle, open, close, open all, close all |
-| `:` number, `:set nu`, `:set nonu`, `:help` | Go to line, show and hide line numbers, open the help split |
-| `:q`, `:q!` | Close the help split when open, else `'quit'` |
-| `i` `a` `o` `x` `dd` `p`, `:w` `:wq` `:w!` `:x` | Nothing changes. Message `read-only` |
-| Another `:` command | Message `unknown` |
-| Escape | Cancels `entry` or `pending` |
-| Any other key | Nothing |
+| Input | Mode | Result |
+|-------|------|--------|
+| `h` `j` `k` `l`, arrows, `w` `b`, `0` `$`, `gg` `G`, `{` `}`, Page Up and Down, each after a count | normal | As vim, as before, a count repeating the move. Closed folds count as one line |
+| `/` text Enter, `n` `N`, `za` `zo` `zc` `zR` `zM`, a fold activated, `:` number, `:set nu`, `:set nonu`, `:help` | normal | As before (R12) |
+| `i` `a` `I` `A` `o` `O` | normal | Insert mode at vim's place; `o` and `O` open a line. `-- INSERT --` |
+| text, Backspace, Delete, Enter, Tab | insert | Inserts, deletes, splits the line, inserts `\t` (research R48) |
+| Escape | insert | Normal mode; the cursor back one character; the insert is one undo step |
+| `x` `dd` `dw` `D` `cw` `cc` `C` `r{c}` `J` `yy` `yw` `p` `P`, with a count | normal | As vim. `c…` ends in insert mode. Line commands take a closed fold whole; other changes open it (research R47) |
+| `.` | normal | Replays `last`, with a new count if one was typed |
+| `u`, `:redo`, Ctrl+R (macOS) | normal | One step back or forward; `oldest` or `newest` at the ends |
+| any change to a `readonly` buffer, the first time | either | The change, and `W10` (FR-081) |
+| `:w` `:w!` `:w {path}` `:w! {path}` `:wq` `:x` `ZZ` | normal | research R49's table: a `write` output, or `E45`, `E32`, `E13` at once |
+| `{ wrote }` | normal | `written` (and `quit` when it was `:wq`, `:x` or `ZZ`), or `E212` or `E514` |
+| `:q` | normal | Closes the help split when open; else `quit`, or `E37` when `modified` |
+| `:q!` | normal | `quit` |
+| another `:` command | normal | `E492` naming it |
+| Escape | normal | Cancels `entry` or `pending` |
+| `{ point }` | either | The cursor to that line and column (FR-079, FR-066) |
+| any other key | either | Nothing |
 
-**Invariants**: the cursor is always on a shown line, never inside a closed fold. `search.current`
-indexes `matches` when they aren't empty. The text never changes.
+**Invariants**: the cursor is always on a shown line, never inside a closed fold, and in insert mode
+may sit one past a line's end. `undo` holds at most 1,000 steps. `modified` is false right after
+opening and after a write of the buffer to its own file. `search.current` indexes `matches` when
+they aren't empty.
+
+## Completion (FR-076 to FR-078, research R43, R44)
+
+```ts
+type CompleteRequest = { id: number; line: string; cursor: number; state: ShellState };
+type Completion = {
+  id: number;
+  start: number; end: number; insert: string;   // replace line[start, end) with insert; empty when nothing is added
+  matches: readonly CompletionMatch[];           // sorted in byte order, merged
+};
+type CompletionMatch = { name: string; folder: boolean };   // as listed: the last part of a path, a folder with its `/`
+
+type TabState = { line: string; cursor: number; asked: number | null } | null;
+// The command line's: the line and cursor after the last Tab, so the next Tab counts as the
+// second in a row; `asked` while `Display all {n} possibilities? (y or n)` waits for its key.
+```
+
+**Rules**: `insert` is readline's: the common part of the matches past the word typed, quoted as
+bash quotes it; with one match, also its closing quote and a space, or `/` for a folder. Two or
+more matches with nothing to add, on the second Tab in a row, give the list entry; 100 or more
+first give the question. A `Completion` whose `id` isn't the last request's, or whose line and
+cursor no longer match, is dropped.
+
+`columns(names: readonly CompletionMatch[], width: number): string[][]` (`engine/columns.ts`, pure):
+readline's layout, as many columns as fit `width` characters, each the longest name plus 2,
+filled down.
+
+## Write request and outcome (FR-080, research R49)
+
+```ts
+type WriteRequest = { id: number; path: string; text: string; force: boolean; cwd: string };
+// `path` as typed or the buffer's; the worker resolves it from `cwd`. `text` ends with a line break.
+type WriteOutcome =
+  | { id: number; ok: true; path: string; created: boolean; lines: number; bytes: number; files: VisitorFiles }
+  | { id: number; ok: false; error: 'exists' | 'cant-open' | 'full'; path: string };
+// exists → E13 (not forced, the file is there); cant-open → E212 (protected, a folder, or a
+// missing folder); full → E514 (past QUOTA, FR-073).
+```
 
 ## Terminal session (Key Entities: Terminal, Command history, Working folder)
 
@@ -406,7 +496,7 @@ type Recorded = { text: string; block: Block };   // what a site command printed
 
 type Effect =
   | { kind: 'clear' }                                       // clear (FR-019)
-  | { kind: 'vim'; name: string; pipe: string | null; text: string }  // vim, cv (FR-058, FR-059)
+  | { kind: 'vim'; file: VimFile; pipe: string | null; text: string }  // vim, cv (FR-058, FR-059); file amended 2026-10-30
   | { kind: 'open'; view: 'cv' | 'about' }                 // open (FR-014)
   | { kind: 'clear-history' };                             // history -c (FR-020), added 2026-10-29
 ```
@@ -478,6 +568,8 @@ type Session = Session006 & {
 | Ctrl+C with a line running, or the worker 1 s past the deadline | Worker terminated and restarted from `state` and `files`; the entry shows `^C` or the "stopped" text (FR-069, FR-075) |
 | Ctrl+C with no line running | An entry with the typed text and `^C`, not added to `history`; `draft` empty |
 | Close (`onClose`) | As before, and `state` and `files` back to their initial values; the worker gets `reset` (FR-021) |
+| A vim write answered (added 2026-10-30) | `files` updated from the outcome, so a restarted worker has the written file (research R49) |
+| A second Tab's list (added 2026-10-30) | An entry like Ctrl+C's: the line as typed, not in `history`, then the list or the question (research R44) |
 
 ## Cursor and selection (FR-072, FR-074, FR-075)
 

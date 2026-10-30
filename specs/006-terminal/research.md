@@ -4,6 +4,10 @@ Phase 0 of [plan.md](./plan.md). Each decision gives what was chosen, why, and w
 weighed. The Terminal is built on 005's shell, which is implemented on the `005-os-shell` branch
 and not yet merged. Paths, components and checks named here are that branch's (see R1).
 
+**Amendment, 2026-10-30.** Tab completes as bash does, the pocket terminal gets a Tab key, and
+the vim view edits files (spec Clarifications, Session 2026-10-30 (owner review of the shell)).
+R43 to R52, at the very end, are its decisions.
+
 **Amendment, 2026-10-29.** The spec was amended after the owner's review of the built Terminal: a
 real bash-like shell, files the visitor can change, `jq` filters, and a terminal's cursor, focus
 and keys (spec Clarifications, Session 2026-10-29). R25 to R42, at the end, are the decisions
@@ -255,6 +259,9 @@ can rewrite numbers, against FR-055 and FR-056's "keys in their order"); a JSON 
 package (Constitution X; the lexer is about 100 lines, and folds need its line positions).
 
 ## R12. The vim view
+
+> **Replaced in part by R47 to R50 (2026-10-30).** The view now edits text, as vim does. The
+> structure, the wrapping, the folds, the search and focus on opening stay.
 
 **Decision**: a model and a view, as the rest of the Terminal.
 
@@ -1006,6 +1013,9 @@ the native caret (R15).
 
 ## R37. A terminal's keys in the command line
 
+> **Extended by R44 (2026-10-30).** Tab completes with text before the cursor, and Escape then
+> Tab leaves.
+
 **Decision**: the input is a real text field, so the system's own line-editing keys work without
 any code: Left and Right, Home and End, Cmd+Left and Cmd+Right and Option+Left and Option+Right on
 macOS, Ctrl+Left and Ctrl+Right elsewhere, Shift with any of them, the delete keys with their
@@ -1144,3 +1154,369 @@ review also removed the greeting (FR-005) and made the standard commands' names 
   left to the plan (decision 5, R32).
 - **Phones**: Ctrl+C and Cmd+A need a hardware keyboard on a phone, as the design notes (decision
   9). The spec sets no phone-only way, and the plan adds none.
+
+# Amendment, 2026-10-30: Tab completion, and editing in vim
+
+R43 to R52 decide how the 2026-10-30 amendment (spec Clarifications, Session 2026-10-30 (owner
+review of the shell); FR-026, FR-039, FR-058, FR-060, FR-064 to FR-066, FR-076 to FR-081, SC-016,
+SC-017) is built, on the code as it stands at `852ba9c`. The bash measurements below were taken on
+2026-10-30 with GNU bash 5.3.20 and its own readline, started as `bash --norc --noprofile -i` with
+`INPUTRC=/dev/null`, so no completion script and no user setting was loaded, over a copy of the
+Terminal's home folder. just-bash's were taken with 3.6.0 in Node 26. The scripts are kept outside
+the repository, as for R25.
+
+## R43. Where Tab's completions come from
+
+**Decision**: a pure completer, `apps/terminal/shell/complete.ts`, in the worker beside the file
+system it reads. Given the line, the cursor and the shell's state, it returns what bash's readline
+would insert and the full list of matches. It doesn't use just-bash's `compgen`, which can't give
+what readline gives:
+
+| # | Gap in just-bash 3.6.0 | Handled by |
+|---|------------------------|------------|
+| G21 | `compgen -c` prints nothing: no command, custom or registered, is ever a match | The completer lists commands itself, from the tables the shell is built from (below) |
+| G22 | `compgen -f ~/` prints `/home/guest/about`, expanding the tilde; `compgen -o default -f c` prints each match twice; `compgen -f /` lists `/proc`, which TerminalFs drops (R28) | The completer reads TerminalFs directly, and keeps the word as typed |
+
+And `compgen` is in any case only the match list: the common part, the quoting, the space or slash
+after one match, and the second Tab's list are readline's, not `compgen`'s.
+
+What bash 5's readline does with no completion scripts, measured (the rules the completer follows):
+
+| Typed, then Tab | Bash gives | Rule |
+|-----------------|------------|------|
+| `cat cv` | `cat cv.json ` | One file: completed, then a space |
+| `cd wo`, `cat ~/sk`, `./w` | `cd work/`, `cat ~/skills `, `./work/` | A folder gets `/` and no space. `~/` stays as typed |
+| `cat "cv` | `cat "cv.json" ` | Inside a quote: one match closes the quote, then a space |
+| `cat my` (a file `my file`) | `cat my\ file ` | Outside quotes, a space and the other characters bash quotes get a backslash |
+| `echo hi > ab` | `echo hi > about ` | After a redirect: a path |
+| `ab`, `gr`, `hist`, `ls \| wc` | `about `, `grep `, `history `, `ls \| wc ` | A command's first word, also after `\|`, `;`, `&&`, `\|\|`, `(` and keywords such as `then` and `do`: commands, aliases, builtins, keywords, the visitor's functions and **folders** of the working folder |
+| `wo`, from the home folder | `work`, no space; a second Tab lists `work` | The `work` command and the `work/` folder both match; readline adds nothing past the shared `work`, and lists the one name left once the two are merged. From any folder without `work/`, `work ` (spec Clarifications, the owner chose bash's behavior 2026-10-30) |
+| `c`, `ca`, `i` | nothing; a second Tab lists `caller case cat`, `if in` | Keywords and builtins match too |
+| `cat c` | nothing; a second Tab lists `contact  cv.json` | The list holds the names only, not the folder part typed before them |
+| `xyz` | nothing, and nothing on a second Tab | No match changes nothing |
+| `ls h100/f` (100 files) | a second Tab asks `Display all 100 possibilities? (y or n)` | Readline asks at 100 or more (`completion-query-items`); 99 are listed at once. FR-076 now says 100 or more (spec Clarifications) |
+
+The completer's sources, all in the worker already:
+
+- **Commands**: the names of `COMMANDS` and its aliases (R7), `STANDARD_COMMANDS` (R32),
+  `SHELL_BUILTINS` (R32), bash's reserved words that just-bash parses (`if then else elif fi case
+  esac for while until do done in function select time { } [[ ]] !`, listed as `SHELL_KEYWORDS` in
+  `standard.ts`), and the functions in `ShellState` (R27). Never the adapter's own `__cv_*`
+  commands. Aliases the visitor would define don't exist (`alias` is left out, R32), and FR-076
+  names none.
+- **Folders**: in a command's first word, the folders of the working folder, as readline offers
+  them there (the `wo` row above).
+- **Paths**: TerminalFs's `readdir` and `stat` from the working folder, `/` or `~`, matched with
+  regard to capitals, as readline's default `completion-ignore-case off` does. FR-045's matching
+  without regard to capitals is the file system's, for names typed whole; completion stays bash's.
+- **Variables**: a word starting with `$` completes the names in `ShellState.variables` and the
+  shell's own (`HOME`, `PWD`, `USER`…), as readline does.
+- **Word boundaries**: readline's for bash, `rl_completer_word_break_characters` (space, tab,
+  newline, `"`, `'`, `` ` ``, `@`, `$`, `>`, `<`, `=`, `;`, `|`, `&`, `{`, `(`), with an open quote
+  starting the word after it, and a backslash escaping the next character.
+- **Order**: names sorted as bash sorts them in the C locale (byte order), duplicates merged.
+
+**Rationale**: the file system and the state are in the worker (R26, R28), so the completer reads
+them where they are, with no copy kept in the page. A pure function over a small file system
+interface is tested in Node and against bash (R45).
+
+**Alternatives considered**: `compgen` in a hidden line (G21, G22, and no readline behavior); a
+copy of the file tree in the page (a second source of the visitor's files, stale after every
+line); a JavaScript readline library (none found that copies bash's completion and not a shell
+of its own; Constitution X).
+
+## R44. Tab in the command line
+
+**Decision**: `CommandLine.tsx` handles Tab only when FR-026 lets it:
+
+- **Tab with no modifier**, with text other than spaces before the cursor, and Escape not pressed
+  since the last key: `preventDefault`, then a `complete` message to the worker
+  ([contracts/shell-worker.md](./contracts/shell-worker.md)) with the line, the cursor and the
+  state. Otherwise Tab isn't handled, and focus moves on, as before. Shift+Tab and every modified
+  Tab are never handled.
+- **Escape** is never `preventDefault`ed (005 keeps its meaning) and arms the way out: the next
+  Tab isn't handled. Any other key, or focus leaving, disarms it.
+- **The answer** is applied only if the line and the cursor are as they were when Tab was pressed;
+  a key typed meanwhile wins. The text is replaced with `setRangeText` inside the field's own
+  editing (`execCommand('insertText')` where it exists), so the system's undo takes back a
+  completion, as FR-074 keeps undo.
+- **A second Tab in a row** (no other key between, the line unchanged since the first) with two or
+  more matches and nothing to add lists them: an output entry like Ctrl+C's (R33), the prompt and
+  the line as typed, not added to `history`, then the list, then the live prompt with the line
+  unchanged and the cursor where it was (FR-076). The list is output, never controls (design
+  decision 6).
+- **100 matches or more** first shows `Display all {n} possibilities? (y or n)` as one haze line of
+  that entry. The command line then takes one key: `y` lists them; any other key removes nothing,
+  adds nothing to the line, and brings the prompt back, as readline does.
+- **The list's columns** are readline's: as many columns as fit the screen's text width, each the
+  longest name plus 2, filled down, the last column with no padding. The text width is the
+  screen's `clientWidth` over the mono advance (R13's measure, at the screen's real width, not the
+  desktop's), so a phone gets 3 columns where a window gets 7, as designed. Folders are bold
+  periwinkle with their `/`, files snow (design). A pure `engine/columns.ts` lays the names out;
+  the parity test calls it with 80 columns (R45).
+- **While the shell loads, fails or runs a line**, Tab does nothing and focus stays, as with no
+  match. Escape then Tab still leaves.
+- **Announcements** (FR-077, R13): after a completion, the line's new text, once; after a second
+  Tab's list, `{n} possibilities`, bash's own word, from the design's `Display all [n]
+  possibilities?`; after the question, its text. Nothing for no match.
+- **The command line's description** (FR-077): `aria-describedby` a visually hidden element with
+  the design's `Tab completes. Escape then Tab leaves.`, and `help`'s lead adds the design's
+  sentence (FR-077, design decision 7).
+
+**Rationale**: FR-026 leaves Tab to the browser everywhere a visitor could be trapped, and the
+answer arriving after other keys must never overwrite them.
+
+**Alternatives considered**: completing in the page with no round trip (needs the visitor's files
+in the page, R43); Escape clearing the line, as some terminals do (005's edge case keeps Escape's
+meaning and keeps the line).
+
+## R45. Proving completion against bash (SC-017)
+
+**Decision**: `packages/web/test/terminal/shell/completion-parity.test.ts`, in Node, beside
+`bash-parity.test.ts` and sharing its temporary home folder (R38): the Terminal's file system for
+the real CV, plus a few visitor files (`notes/`, `todo`, `my file`). For a fixed list of at least
+20 partly typed lines, it compares the Terminal's completer and real bash 5's readline:
+
+- **Driving readline**: readline completes only in an interactive bash on a terminal. Node can't
+  open a pseudo-terminal without a native package (`node-pty`), and macOS's `script` gives no
+  output with a pipe for its input (tried). So the test runs a small driver,
+  `test/terminal/shell/readline-driver.py`, with the system's `python3 -I` and its standard `pty`
+  module, which is on the CI image and on macOS. The driver starts
+  `bash --norc --noprofile -i` with `INPUTRC=/dev/null`, `HISTFILE=/dev/null`, `LC_ALL=C`,
+  `TERM=dumb`, an 80-column terminal, `bell-style none` and `page-completions off`, and binds a key
+  to `printf '<<%s|%d>>' "$READLINE_LINE" "$READLINE_POINT"` to read the line and the cursor after
+  a Tab. A second Tab is sent straight after the first, so readline sees two in a row, and its
+  list is read up to the next prompt.
+- **The same commands on both sides**: `PATH` is a folder of empty executables named after every
+  command the Terminal registers (the site's commands and aliases, `STANDARD_COMMANDS`), and
+  `enable -n` turns off each bash builtin not in `SHELL_BUILTINS`, which also takes it out of
+  readline's matches. So `ca` lists the same names in both, or the line names the difference.
+- **Compared**: the line and the cursor after one Tab, and the list after two, as SC-014 compares:
+  each on its own, the Terminal's list laid out by `engine/columns.ts` at 80 columns. The list
+  covers FR-076's cases: a command, an alias, a builtin, a keyword, a function, a folder in the
+  first word, a file, a folder, a path from `/` and from `~/`, a word in double and in single
+  quotes, a name with a space, a word after a redirect and after `|`, several matches with and
+  without a common part, no match, and the 100-match question (a visitor folder of 100 files).
+- **Tools**: the test checks `python3` and bash 5 as `bash-parity.test.ts` checks GNU tools, and
+  fails naming what to install. It runs in `npm test`, so in CI (FR-042), and only locally with
+  GNU tools on `PATH` on macOS, as T158 does.
+
+**Alternatives considered**: hand-written expected lines (the test author's idea of readline);
+`node-pty` (a native dependency for one test, Constitution X); `expect` (on macOS, but not on the
+CI image by default).
+
+## R46. The pocket terminal's Tab key (FR-078)
+
+**Decision**: `Pocket.tsx`'s command keys become `help`, `about`, `work`, `projects`, `cv`, `ls`,
+`clear` and `Tab ⇥` (design: `Tab ⇥` takes `skills`' place). The Tab key is a `button` named
+`Tab, complete` (design), 75 × 52 px, 66 × 48 below 375 px, from the key tokens (R22).
+
+- **Pressing it** sends the same `complete` as Tab, from the command line's text and cursor, and
+  counts as a second Tab when pressed twice in a row. It never moves focus out of the command
+  line: its `pointerdown` is `preventDefault`ed, so the field keeps focus and a phone's keyboard
+  stays open, and its `click` acts. Reached by the keyboard (the toolbar's arrows), Enter or Space
+  acts and focus goes back to the command line, as a command key does (FR-015).
+- **With the phone's keyboard open** (`data-keyboard`, R15) the command keys hide as before, and a
+  strip, `div.pocket-strip`, 60 px tall between the screen and the keyboard, holds the Tab key
+  alone at its right (design). In the vim view's insert mode the strip holds `Esc` instead (R48).
+- **With nothing to complete** it changes nothing (FR-078).
+
+**Alternatives considered**: a ninth key (the design keeps two rows of four); the Tab key only in
+the strip (the design shows it in the key rows too, so a visitor can complete without opening the
+keyboard).
+
+## R47. The vim view as an editor
+
+> Replaces R12's "the text never changes" and its editing message. The view's structure, wrapping,
+> folds, search and focus on opening stay.
+
+**Decision**: `engine/vim.ts` stays a pure reducer, now over editable text:
+
+- **Text**: the buffer is `lines: readonly string[]`, the text as given, never re-printed. Colors
+  for a `json` buffer come from a new one-line lexer, `lexLine` in `engine/json.ts`, run per shown
+  line, so an edited line is colored as typed. Folds are recomputed after each change from the
+  text: a top-level key at indent 2 opening `{` or `[`, to the line at indent 2 that closes it, as
+  the CV's JSON is laid out (R11). A fold keeps its closed state by its key. Text that has no such
+  shape has no folds. The type (`json` or `text`, for the status line) is set when the view opens,
+  from whether the text parses as JSON, and stays.
+- **Modes**: `normal` and `insert` (FR-079). Visual mode, registers other than the unnamed one,
+  macros, `:s`, `:g` and other splits stay out (spec Assumptions).
+- **Normal keys** (FR-060, FR-079): the moves as before, and `i a I A o O` into insert mode, `x dd
+  dw D cw cc C r{char} J yy yw p P`, a count before a move or any of these (`3dd`, `5j`), `.` to
+  repeat the last change with its count, `u` to undo and `:redo` to redo, and Ctrl+R to redo on
+  macOS only (FR-079: no current main browser reserves Ctrl+R there; on Windows and Linux it
+  reloads the page). `ZZ` is `:x`. `pending` grows to hold a count, an operator (`d`, `c`, `y`)
+  and `r`'s character.
+- **The register**: one unnamed register, its text and whether it holds whole lines, as vim's
+  `"` register. `dd`, `yy` and `D` fill it; `p` and `P` put it after or before, by line or by
+  character.
+- **Undo** (FR-079): each change, one normal command or everything from entering insert mode to
+  Escape, is one step, as vim's undo blocks. A step keeps the lines before it (the array is
+  copied, the unchanged strings shared) and the cursor. At most 1,000 steps, vim's default
+  `undolevels`. At the ends, vim's `Already at oldest change` and `Already at newest change`;
+  otherwise the message line clears (vim's "1 change; before #4 …" lines aren't shown, as they
+  need a clock in the reducer).
+- **`.`**: the reducer records the inputs of the last change, from its first key to its Escape or
+  its last key, and replays them.
+- **Closed folds** (FR-079): line commands (`dd`, `yy`, `cc`, `J`, `o`, `O`, `p` and `P` by line)
+  act on every line of a closed fold, as vim includes a closed fold whole. Any other change on a
+  closed fold's line, or entering insert mode there, opens the fold first, then acts.
+- **Changed**: `modified` is true once the text differs from what was last written or opened, and
+  the status line shows `[+]` (design).
+- **Keys taken**: as R12, plus Backspace and Delete in insert mode, and Ctrl+R on macOS. Tab and
+  every other Ctrl, Alt and Meta combination stay untaken (FR-060, FR-026). In insert mode Tab is
+  taken and inserts a tab (R48).
+
+**Rationale**: the view stays the Terminal's own small vim (R12's reasons against CodeMirror and
+Monaco still hold), and every rule above is a reducer case with a Node test.
+
+**Alternatives considered**: keeping JSON rows and re-lexing the whole text on each key (an
+unfinished edit isn't JSON, and re-printing would change the visitor's text); an undo log of
+operations (more code than copies of a few hundred lines, with the same result).
+
+## R48. Typing in insert mode
+
+**Decision**: a real `textarea.vim-insert`, as the command line is a real input (R15, R36):
+
+- On entering insert mode, focus moves to the textarea, which holds the buffer's whole text with
+  its caret at the cursor. It is laid over the text, transparent, as the command line is over its
+  mirror; the view draws the text and the insert cursor, a 2 px haze bar (`border.thick`,
+  `color.terminal-cursor`) before the character it inserts at (design). On a phone, focusing it
+  inside the key's or the tap's own event handler opens the keyboard (FR-066).
+- Its `beforeinput` is turned into reducer inputs (`insertText`, `insertLineBreak`,
+  `deleteContentBackward`, `deleteContentForward`) and `preventDefault`ed, so the reducer's text is
+  the only text and its undo the only undo. Input that can't be cancelled, a phone's composition or
+  autocorrect, is read on `input` by comparing the textarea's value with the buffer, then
+  replaced by the buffer's text.
+- A screen reader hears what is typed and deleted as in any text field, since it is one (FR-065).
+  It is named after the file and described by the status line, as `.vim-text` is.
+- **Tab** in the textarea inserts a tab, with no modifier and Escape not pressed since (FR-079).
+  **Shift+Tab** isn't handled: while insert mode lasts, `.vim-text` has `tabindex="-1"`, so focus
+  leaves the view backwards, not to its own text. **Escape** returns to normal mode, moves the
+  cursor back one character as vim does, and puts focus back on `.vim-text`; a Tab then leaves it
+  as in normal mode (FR-065, R50).
+- **A click or tap on the text** (FR-079, FR-066) moves the cursor to the character under it, from
+  `caretPositionFromPoint` (`caretRangeFromPoint` in Safari) on the line's code, mapped back
+  through the line's tokens to a column. In insert mode it sets the textarea's caret too.
+- On a phone in insert mode, the vim keys hide with the keyboard open, and the strip (R46) holds
+  `Esc`, named `Esc, back to normal mode` (design), which sends Escape.
+
+**Rationale**: a phone's keyboard opens only for an editable element, and a screen reader reads
+typing only in one. The pattern is the command line's, already built and tested.
+
+**Alternatives considered**: `contenteditable` on `.vim-text` (R15's reasons: unreliable with
+screen readers and phone keyboards, and the browser would edit React's markup); a one-line input
+for the current line (Enter, Backspace at a line start and `J` cross lines).
+
+## R49. Opening and writing files from the vim view
+
+**Decision**:
+
+- **Opening** (FR-058, FR-081): the `vim` command's effect carries the name as typed, the
+  absolute path (none for `vim -`), the text, `readonly` (the path is protected, R28) and `new`
+  (the path doesn't exist). `vim <path>` on a missing path opens an empty new buffer, also inside a
+  protected or missing folder, as vim does; only a folder, `vim -` with nothing piped and `vim`
+  alone get their replies. Piped text, `cv`'s included, is `[No Name]`, not read only (design
+  decision 2).
+- **Writing** (FR-080): the view sends `{ type: 'write', request }` to the worker
+  ([contracts/shell-worker.md](./contracts/shell-worker.md)) with the target path, resolved from
+  the working folder, the text with vim's final line break (`fixeol`), and whether it may
+  overwrite. The worker writes through TerminalFs, so the file system's rules hold: protected
+  paths and missing folders refuse, the 1 MB limit holds (FR-073), and the file is in the shell at
+  once. It answers with the outcome and the visitor's files when they changed, which the session
+  keeps for a restarted worker (R26).
+- **The commands**, each as vim gives it, with vim's messages:
+
+| Command | Buffer | Result |
+|---------|--------|--------|
+| `:w` | named, not read only | Written: `"{name}" [New] {n}L, {b}B written` (`[New]` only when the file didn't exist), `[+]` goes |
+| `:w` | read only | `E45: 'readonly' option is set (add ! to override)`, nothing written |
+| `:w!` | read only | Tried: protected, so `"{name}" E212: Can't open file for writing` |
+| `:w` | `[No Name]` | `E32: No file name` |
+| `:w {path}` | any | Writes there if `{path}` doesn't exist; an existing file gives `E13: File exists (add ! to override)`, and `:w! {path}` overwrites it. A `[No Name]` buffer takes the path as its name; a named buffer stays as it was, `[+]` included, as vim keeps 'modified' when writing a copy |
+| `:wq`, `:x`, `ZZ` | | Write as `:w`, then close; `:x` and `ZZ` write only when changed. A failed write keeps the view open |
+| `:q` | changed | `E37: No write since last change (add ! to override)`, the view stays |
+| `:q!` | any | Closes, the changes unwritten |
+| any write | the 1 MB limit passed | `"{name}" E514: Write error (file system full?)`, the file as before, the view open with the changes |
+| any write | a protected or missing folder | `"{path}" E212: Can't open file for writing` |
+| `:{unknown}` | | `E492: Not an editor command: {typed}` |
+
+- **The first change** to a read-only buffer shows `W10: Warning: Changing a readonly file`, once
+  per buffer, as vim does (FR-081).
+- **Tones** (design): information haze, `W10` in `color.vim-warning` (new token, amber), errors in
+  `color.terminal-error` (rose). A message longer than the line wraps to a second line, and the
+  text above gives up a row (design decision 5).
+- **Closing the Terminal** with changes unwritten ends the view with them, with no question, as the
+  visitor's files end (FR-021, FR-080).
+
+**Alternatives considered**: writing through a hidden shell line such as `printf … > path` (the
+redirect guard and G1 would word the errors as bash, not vim, and the line would enter the
+history); writing in the page and sending files on the next run (the shell wouldn't have the file
+"at once", FR-080).
+
+## R50. Leaving, and SC-016
+
+**Decision**: SC-016's "leaves" means leaving the command line or the vim view's text, as SC-016
+and FR-065 say (both amended 2026-10-30 from `/speckit-analyze`): focus goes out of the element
+that takes keys to the next element in the page's tab order, where Tab works as everywhere. So:
+
+| From | Leaves with | Focus goes to |
+|------|-------------|---------------|
+| The command line, empty or spaces before the cursor | Tab | The next element after the command line, as before (FR-026) |
+| The command line, text typed | Escape, Tab | The same |
+| The command line, any state | Shift+Tab | The element before it |
+| The vim text, normal mode | Tab, or Shift+Tab | The `:help` and `:q` chips, then out of the Terminal; or the element before the view (FR-065) |
+| The vim view, insert mode | Escape, Tab; or Shift+Tab | As normal mode; or the element before the view (R48) |
+
+The keyboard check confirms each row in at most two keys (SC-016), and that no later Tab is taken.
+
+**Alternatives considered**: skipping the vim view's chips in the tab order, to leave the Terminal
+itself in two keys (the chips would be unreachable by keyboard, against FR-064's `:q` control).
+
+## R51. Tests and checks for the 2026-10-30 amendment
+
+**Decision**:
+
+- **Node**: `shell/complete.test.ts` (R43: every row of its table, the sources, quoting, `$`
+  names, never `__cv_*`), `shell/completion-parity.test.ts` (R45, SC-017),
+  `engine/columns.test.ts` (R44's layout), `engine/vim.test.ts` rewritten for R47 (every key and
+  command of FR-060 and FR-079, counts, `.`, undo to 1,000 steps, closed folds, `W10`, the
+  messages of R49) and `engine/json.test.ts` for `lexLine`. `shell/site-commands.test.ts`: the
+  `vim` effect's `readonly`, `new` and path (R49). `shell/adapter.test.ts`: `write` through
+  TerminalFs, each outcome of R49's table.
+- **Browser**: `completion.test.ts` (FR-076, FR-077: the line after Tab, the second Tab's entry,
+  the 100-match question, stale answers dropped, undo of a completion, announcements, the
+  description), `keyboard.test.ts` (FR-026: Tab leaves an empty line, Escape then Tab leaves a
+  typed one, Shift+Tab always), `pocket.test.ts` (FR-078's key and strip, FR-066's vim keys and
+  `Esc`), `vim.test.ts` and a new `vim-edit.test.ts` (FR-058, FR-064, FR-065, FR-079 to FR-081 in
+  the real build: insert mode through the textarea, a click moving the cursor, `:w` making a file
+  that `cat` then shows, protected files refused, the Tab rules of R48).
+- **The site check**: the `keyboard` part gains FR-039's new steps (complete `ab` to `about `,
+  leave with Escape then Tab, `vim todo`, a typed line, `:wq`, `cat todo`) and SC-016's leaving
+  checks; new states `terminal-tab-list`, `terminal-vim-insert`, `terminal-vim-readonly`,
+  `pocket-tab-key`, `pocket-vim-insert`; the `terminal` part writes a file with `vim` and reads it
+  back in each shell. [contracts/cli.md](./contracts/cli.md) lists them.
+- Tests whose expectations change are rewritten, not left to fail: `vim.test.ts`'s read-only
+  message, `pocket.test.ts`'s `skills` key, `keyboard.test.ts`'s "Tab always leaves", and
+  `data-req.test.tsx`'s count (81 requirements).
+
+## R52. The amendment's design, and what this plan takes from it
+
+**Decision**: the design of the 2026-10-30 amendment is approved (design/review.md, "2026-10-30
+amendment", signed by the owner on 2026-10-30, commit `bad9df6`), so Constitution II's gate is
+open for its UI tasks. This plan takes:
+
+- **Token**: `color.vim-warning`, `{color.base.amber}`, into the hand-written export (design
+  decision 1). The insert bar reuses `color.terminal-cursor` and `border.thick`; the Tab and `Esc`
+  keys the key tokens; errors `color.terminal-error`. No other new value.
+- **Status line**: `[NORMAL]` or `-- INSERT --` in the mint pill, the name or `[No Name]`, then
+  `[RO]`, `[+]` and the pipe in haze (the contrast fix, design decision 3).
+- **Messages and wrapping**: R49.
+- **The pocket keys**: R46, and the vim keys in three rows of four with `:q` twice as wide, the
+  third row in the grille's place at 375 px, and at 320 px taking a row from the screen (design
+  decision 4).
+- **Wording**: `help`'s lead and the command line's description (design decision 7), the
+  opening lines (`"{file}" {n} lines`, `"{file}" [readonly] {n} lines`, `"{file}" [New]`,
+  `"[No Name]" {n} lines`), and the key names of the design's site text.
+- **`[New]`**: in the message line only, as the approved boards and vim show it (FR-058 as
+  amended 2026-10-30 from `/speckit-analyze`); the status line's marks are `[RO]` and `[+]`.
