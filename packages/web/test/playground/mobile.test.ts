@@ -134,8 +134,10 @@ describe('008-typescript-playground-FR-059: the link the screen passes on opens 
     await setCode(page, code);
     await waitForCode(page, code);
     await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((key) => (localStorage.getItem(key) ?? '').includes('by the recipient')))).toBe(true);
-    await page.goto(`${new URL(page.url()).origin}/#playground`);
-    await page.reload();
+    // A new load, as following the link is.
+    const origin = new URL(page.url()).origin;
+    await page.goto('about:blank');
+    await page.goto(`${origin}/#playground`);
     await page.waitForSelector(PLAYGROUND, { state: 'visible' });
     await waitReady(page);
     await waitForCode(page, code);
@@ -161,6 +163,21 @@ describe('008-typescript-playground-FR-059: the link the screen passes on opens 
 });
 
 describe('008-typescript-playground-FR-060: a shared link opened on a phone shows the link screen and runs nothing', () => {
+  test('a link pasted into a tab already on the site shows the link screen, and changes the open screen', async () => {
+    const path = linkPath(JSON.stringify({ c: 'console.log("pasted on a phone");' }));
+    const { page, engineRequests } = await phone({});
+    await settle(page);
+    await page.evaluate((hash) => void (location.hash = hash), new URL(`http://site${path}`).hash);
+    await page.waitForSelector(SCREEN);
+    expect((await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(words.link.heading);
+    expect((await page.locator(NOTE).textContent())?.trim()).toBe(words.link.note);
+    await page.evaluate(() => void (location.hash = 'playground'));
+    await expect.poll(async () => (await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(words.app.heading);
+    await page.evaluate((hash) => void (location.hash = hash), new URL(`http://site${path}`).hash);
+    await expect.poll(async () => (await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(words.link.heading);
+    await expectNothingLoaded(page, engineRequests);
+  });
+
   test('the screen says the link holds code, shows no code, runs and downloads nothing, and passes the link on unchanged', async () => {
     const code = 'console.log("never on a phone");';
     const path = linkPath(JSON.stringify({ c: code }));

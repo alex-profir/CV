@@ -72,6 +72,8 @@ function noteText(note: NoteKey): string {
     case 'prompt':
     case 'confirm':
       return fill(logs[note.key], { name: note.key });
+    case 'closed':
+      return logs.closed;
     case 'ended':
       return outcomeText(note.outcome);
   }

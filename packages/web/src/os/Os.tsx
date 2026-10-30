@@ -132,6 +132,22 @@ export function Os({ resume, siteData, apps }: OsProps) {
     } else if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
   }, [state.shell, state.mobile.open, apps]);
 
+  // A link pasted into a tab already on the site changes only the fragment:
+  // no load, so it is read here, as on hydration (008 FR-053, FR-060).
+  useEffect(() => {
+    if (state.shell === 'both') return undefined;
+    const shell = state.shell;
+    const onHashChange = () => {
+      const fromAddress = appFromAddress(apps, location.href, shell);
+      if (fromAddress === undefined) return;
+      fromAddress.onOpenFromAddress?.(shell);
+      const view = fromAddress.id as ViewId;
+      dispatch(shell === 'desktop' ? { type: 'open', view } : { type: 'mobileOpen', view });
+    };
+    addEventListener('hashchange', onHashChange);
+    return () => removeEventListener('hashchange', onHashChange);
+  }, [state.shell, apps]);
+
   // Focus moved after a key shows its indicator (FR-024).
   useEffect(() => watchInput(), []);
 

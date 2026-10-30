@@ -1,8 +1,10 @@
 // How fast the Playground answers (SC-001, SC-002): usable within 15 s of
 // the first open on a 10 Mbit/s connection and within 2 s on a later open,
 // online and offline; with 300 lines of code, errors within 1 s of a pause
-// and a type or suggestions within 500 ms, in 95 of 100 tries. CI's shared
-// runners only log the times, as the other timing tests do.
+// and a type or suggestions within 500 ms, in 95 of 100 tries. A timing says
+// nothing with other browsers at work beside it, so `npm test` and CI only log
+// the times, and `npm run test:engines`, in the local full run, holds them to
+// their budgets with this file running alone (PLAYGROUND_TIMED=alone).
 import { describe, expect, test, vi } from 'vitest';
 import { siteText } from '../../src/site-text.ts';
 import type { Page } from 'playwright';
@@ -10,6 +12,8 @@ import { settle } from '../helpers/shell.ts';
 import { EDITOR, freshProfile, onMac, openPlayground, openPlaygroundPage, PLAYGROUND, setCode, waitChecked, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 900_000 });
+
+const ALONE = process.env.PLAYGROUND_TIMED === 'alone';
 
 const TRIES = 100;
 const STATUS_CHECK = `${PLAYGROUND} .playground-status .check`;
@@ -54,7 +58,7 @@ describe('the Playground is quick to open and to answer (SC-001, SC-002)', () =>
     await settle(page);
     const offline = await timedOpen(page);
     console.log(`SC-001: first open ${first} ms, later ${later} ms, offline ${offline} ms`);
-    if (!process.env.CI) {
+    if (ALONE) {
       expect(first).toBeLessThanOrEqual(15_000);
       expect(later).toBeLessThanOrEqual(2_000);
       expect(offline).toBeLessThanOrEqual(2_000);
@@ -119,7 +123,7 @@ describe('the Playground is quick to open and to answer (SC-001, SC-002)', () =>
     }
 
     console.log(`SC-002: errors p95 ${p95(errors)} ms, types p95 ${p95(types)} ms, suggestions p95 ${p95(suggestions)} ms`);
-    if (!process.env.CI) {
+    if (ALONE) {
       expect(p95(errors)).toBeLessThanOrEqual(1_000);
       expect(p95(types)).toBeLessThanOrEqual(500);
       expect(p95(suggestions)).toBeLessThanOrEqual(500);
