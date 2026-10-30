@@ -126,7 +126,7 @@ the site root, which the service worker already answers offline.
   `section.playground`, and only Stop, a new run, the window's close or `pagehide` removes it
   (FR-005, FR-046, FR-061).
 
-**Scale/Scope**: 86 active requirements (FR-006 removed) and 4 amended ones of 005 and 006; 2
+**Scale/Scope**: 87 active requirements (FR-006 removed) and 4 amended ones of 005 and 006; 2
 shells; 24 desktop and 3 mobile design states; 11 examples; 24 compiler options; about 40 tokens;
 27 new check states; 1 new site check part and 8 parts extended; 1 new package.
 

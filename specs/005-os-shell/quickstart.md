@@ -57,7 +57,7 @@ npm run site-check
 
 Expected: `Site check: PASSED`, with the root listed under every part but `print`, the `cv-app`
 part passing in both shells, every Lighthouse category at 90 or more for `/` and `/cv` on both
-profiles, and the run under 8 minutes (SC-004, SC-010).
+profiles, and the run within the latest feature's budget (SC-004, SC-010).
 
 ## 4. The other checks still pass
 

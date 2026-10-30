@@ -11,6 +11,9 @@ sign-off on the pull request's head commit, and pull requests run only the fast 
 Clarifications, Session 2026-10-29, and Constitution 1.4.0, Merge requirements). Approved
 2026-10-21; the amendment approved by the owner 2026-10-29.
 
+**Amended**: 2026-10-30 by 008-typescript-playground: the `site` job's limit in SC-008 becomes 20
+minutes (see Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -87,6 +90,12 @@ Clarifications, Session 2026-10-29, and Constitution 1.4.0, Merge requirements).
 - Q: Does this change the traceability check itself? → A: No. FR-001 to FR-029 are unchanged.
   The amendment adds the run around the tests and the sign-off; the check still reads every
   test, wherever it runs (FR-030).
+
+### Session 2026-10-30 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground (008) adds its part to the site check, which now takes 7 minutes or
+  more before Lighthouse, past the `site` job's 6-minute limit. Which gives way? → A: The limit. The
+  `site` job gets 20 minutes, and every other job keeps 6 (SC-008).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -469,8 +478,9 @@ and `/cv` remains a plain server-rendered page.
 - **SC-007**: For every reported problem, a reviewer can go straight to the file and line
   involved using only the report, without reading the check's code.
 - **SC-008** *(added 2026-10-29)*: Every pull request's checks finish within 6 minutes of
-  starting, on the hosting service's standard runners. Before the amendment the slowest took
-  about 19 minutes.
+  starting, and the `site` job within 20, on the hosting service's standard runners. Before the
+  amendment the slowest took about 19 minutes. Amended 2026-10-30 by 008-typescript-playground: it
+  said 6 minutes for every job, the `site` job included.
 - **SC-009** *(added 2026-10-29)*: No pull request merges without a passing sign-off on its head
   commit, whoever merges it, the owner included.
 - **SC-010** *(added 2026-10-29)*: The local full run runs 100% of the project's test files, and

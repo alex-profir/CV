@@ -204,7 +204,7 @@ Success criteria without an FR are also tested:
 - SC-004: `performance.test.ts` runs 50 generated specs and 2,000 tests in under 10 s. The time
   is asserted off CI only, because SC-004 is about the owner's machine.
 - SC-003 and SC-007 are covered by FR-025 and FR-022 above, plus quickstart.md.
-- SC-008 (added 2026-10-29): `repo-settings.test.ts` asserts `timeout-minutes: 6` on every job
+- SC-008 (added 2026-10-29, amended 2026-10-30 by 008): `repo-settings.test.ts` asserts `timeout-minutes: 6` on every job but `site`, which has 20,
   and no browser install in `test`, so a job past the budget fails. Quickstart scenario 13
   measures a real run.
 - SC-009 (added 2026-10-29): covered by FR-035 and FR-034 above; quickstart scenarios 11 and 13
@@ -377,5 +377,6 @@ The amendment's re-check (2026-10-29) found none either.
   absent or as `null`. The drift check in quickstart scenario 7 removes `null` values first, so
   either form compares equal; the first application (scenario 13) shows which.
 - **`timeout-minutes: 6` and slow runners**: the limit makes SC-008 a failing check instead of a
-  slow one. The `site` job's measured 3.5 minutes leaves room; if a hosted runner ever needs
-  more, the fix is to make that job faster (or amend SC-008), not to raise the limit quietly.
+  slow one. If a hosted runner ever needs more, the fix is to make that job faster (or amend
+  SC-008), not to raise the limit quietly. The `site` job measured 3.5 minutes when this was written;
+  008 took it past 6, so SC-008 was amended on 2026-10-30 to give it 20.
