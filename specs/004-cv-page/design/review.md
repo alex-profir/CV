@@ -52,4 +52,5 @@
   `cv-phone-375.png` were exported again at Penpot file revision 165. The not-found exports stay at
   revision 10. The file keeps the earlier boards in a version named "Before the 2026-10-30 CV
   update". The owner reviewed the new exports and approved them on 2026-10-30: this approval covers
-  `cv-desktop-1440.png` and `cv-phone-375.png` at revision 165.
+  `cv-desktop-1440.png` and `cv-phone-375.png` at revision 165. Later edits to the CV document's
+  text change what the page says, not the design, so the exports aren't redone for them.

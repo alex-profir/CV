@@ -26,8 +26,7 @@
       "summary": "Software developer building web and mobile applications and backend microservices on scalable cloud infrastructure, using spec-driven development and agentic coding.",
       "highlights": [
         "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality.",
-        "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop.",
-        "Built notification and device management microservices to replace a monolith, and maintained the auth microservice with teammates.",
+        "Built notification and device management microservices to start replacing a monolith, and maintained the auth microservice with teammates.",
         "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
         "Built and maintained responsive web applications using modern frameworks.",
         "Designed and implemented RESTful APIs powering multiple services.",
@@ -160,7 +159,7 @@
     {
       "name": "Faith-Based Social Network Mobile App",
       "startDate": "2025-12",
-      "description": "Part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
+      "description": "Independent freelance work, part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
       "highlights": [
         "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
         "Maintained Expo and React Native on the latest package versions",
@@ -179,7 +178,7 @@
       "highlights": [
         "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
         "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
-        "Built notification and device management microservices using spec-driven development, replacing the monolith that held all the logic",
+        "Built notification and device management microservices using spec-driven development, to start replacing the monolith that held all the logic",
         "Implemented and maintained the auth microservice with teammates using spec-driven development",
         "Delivered features at least 2x faster with spec-driven, agentic development, per team lead reports",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
