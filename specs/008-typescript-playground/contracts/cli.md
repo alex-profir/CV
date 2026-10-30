@@ -58,6 +58,7 @@ engine is stored in the profile.
 | desktop | `playground-reset` | Reset… |
 | desktop | `playground-specs` | Show specs |
 | desktop | `playground-narrow` | The window resized to 600 px wide |
+| desktop | `playground-contained` | A failure while drawing the logs, forced by the test (accessibility test only; the site can't reach it by input) |
 | mobile | `playground-best-on-desktop` | Tap the Playground icon |
 | mobile | `playground-shared-link` | Open a shared link |
 | mobile | `playground-best-on-desktop-320` | At 320 × 568 |

@@ -63,9 +63,16 @@ today. Only `playground.css` and `proposed-tokens.css` are new. The CV window fr
 | Desktop, Reset, to confirm | `desktop-22-reset-1440.png` |
 | Desktop, the Playground's spec view | `desktop-23-spec-view-1440.png` |
 | Desktop, a narrow window | `desktop-24-narrow-1440.png` |
+| Desktop, the Playground stopped showing (amendment) | `desktop-25-contained-1440.png` |
+| Desktop, the download stopped part way (amendment) | `desktop-26-download-stopped-1440.png` |
+| Desktop, TypeScript won't open (amendment) | `desktop-27-wont-open-1440.png` |
+| Desktop, JavaScript that can't be read (amendment) | `desktop-28-cant-parse-1440.png` |
+| Desktop, the code closed its worker (amendment) | `desktop-29-worker-closed-1440.png` |
+| Desktop, Share: the link to copy by hand (amendment) | `desktop-30-link-field-1440.png` |
 | Phone, the home screen | `phone-1-home-375.png` |
 | Phone, best on a desktop | `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568), `-landscape-812.png` (812 × 375) |
 | Phone, a shared link | `phone-3-shared-link-375.png`, `-320.png` (320 × 568) |
+| Phone, the link to copy by hand (amendment) | `phone-4-link-field-375.png`, `-320.png` (320 × 568) |
 
 ## Rendering the mockup
 
