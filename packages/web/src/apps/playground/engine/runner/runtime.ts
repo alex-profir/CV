@@ -268,7 +268,8 @@ define('cancelAnimationFrame', (id: unknown) => {
 });
 
 // A request is pending from its start until it settles; a body being read
-// counts as one too, so `await (await fetch(…)).json()` keeps the run going.
+// counts as one too (`countCalls` below), so `await (await fetch(…)).json()`
+// keeps the run going.
 function counting<T>(promise: Promise<T>): Promise<T> {
   requests += 1;
   changed();
@@ -280,26 +281,53 @@ function counting<T>(promise: Promise<T>): Promise<T> {
   return promise;
 }
 
-if (realFetch !== null) define('fetch', (...args: Parameters<typeof fetch>) => counting(realFetch(...args)));
-
-if (typeof scope['Response'] === 'function') {
-  const prototype = scope['Response'].prototype as Record<string, unknown>;
-  for (const name of ['arrayBuffer', 'blob', 'bytes', 'formData', 'json', 'text']) {
-    const read = prototype[name];
-    if (typeof read === 'function') {
-      Object.defineProperty(prototype, name, {
-        value(this: unknown, ...args: unknown[]) {
-          return counting(Promise.resolve(read.apply(this, args)));
-        },
-        writable: true,
-        configurable: true,
-      });
-    }
+// No request of the code's sends cookies or other credentials, whatever it
+// asks (FR-041): Firefox and WebKit would otherwise send the site's own to
+// another port on its host. The wrappers replace the originals where the
+// code could reach them, on the scope and its prototypes, and can't be
+// deleted to show them again.
+if (realFetch !== null) {
+  const omitting = (input: RequestInfo | URL, init?: RequestInit) => counting(realFetch(input, { ...init, credentials: 'omit' }));
+  for (let holder: object | null = scope; holder !== null; holder = Object.getPrototypeOf(holder)) {
+    if (holder === scope || Object.hasOwn(holder, 'fetch')) Object.defineProperty(holder, 'fetch', { value: omitting, writable: true, configurable: false, enumerable: false });
   }
 }
 
+// The browser's own promises settle in a later task, so each is pending work
+// too, or the run would end before they do (FR-037). Only a promise of the
+// code's own that never settles ends a run with nothing pending.
+function countCalls(holder: Record<string, unknown> | undefined, names: readonly string[]): void {
+  if (holder === undefined) return;
+  for (const name of names) {
+    const call = holder[name];
+    if (typeof call !== 'function') continue;
+    Object.defineProperty(holder, name, {
+      value(this: unknown, ...args: unknown[]) {
+        return counting(Promise.resolve(call.apply(this, args)));
+      },
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+const prototypeOf = (name: string) => (typeof scope[name] === 'function' ? (scope[name].prototype as Record<string, unknown>) : undefined);
+const BODY_READS = ['arrayBuffer', 'blob', 'bytes', 'formData', 'json', 'text'];
+
+countCalls(prototypeOf('Response'), BODY_READS);
+countCalls(prototypeOf('Request'), BODY_READS);
+countCalls(prototypeOf('Blob'), BODY_READS);
+countCalls(prototypeOf('SubtleCrypto'), ['decrypt', 'deriveBits', 'deriveKey', 'digest', 'encrypt', 'exportKey', 'generateKey', 'importKey', 'sign', 'unwrapKey', 'verify', 'wrapKey']);
+countCalls(prototypeOf('CacheStorage'), ['delete', 'has', 'keys', 'match', 'open']);
+countCalls(prototypeOf('Cache'), ['add', 'addAll', 'delete', 'keys', 'match', 'matchAll', 'put']);
+countCalls(prototypeOf('IDBFactory'), ['databases']);
+countCalls(scope['WebAssembly'] as Record<string, unknown> | undefined, ['compile', 'compileStreaming', 'instantiate', 'instantiateStreaming']);
+countCalls(scope, ['createImageBitmap']);
+
 if (typeof scope['XMLHttpRequest'] === 'function') {
   const Real = scope['XMLHttpRequest'] as typeof XMLHttpRequest;
+  // On the original's prototype, so a subclass or the original can't set it.
+  Object.defineProperty(Real.prototype, 'withCredentials', { get: () => false, set: () => undefined, configurable: false });
   define(
     'XMLHttpRequest',
     class extends Real {
@@ -344,30 +372,37 @@ if (typeof scope['WebSocket'] === 'function') {
 
 if (typeof scope['EventSource'] === 'function') {
   const Real = scope['EventSource'] as typeof EventSource;
-  define(
-    'EventSource',
-    class extends Real {
-      #open = true;
-      constructor(url: string | URL, init?: EventSourceInit) {
-        super(url, init);
-        requests += 1;
-        changed();
-        this.addEventListener('error', () => {
-          if (this.readyState === Real.CLOSED) this.#closed();
-        });
-      }
-      #closed(): void {
-        if (!this.#open) return;
-        this.#open = false;
-        requests -= 1;
-        changed();
-      }
-      override close(): void {
-        super.close();
-        this.#closed();
-      }
+  const realClose = Real.prototype.close;
+  const open = new WeakSet<EventSource>();
+  const closed = (source: EventSource) => {
+    if (!open.delete(source)) return;
+    requests -= 1;
+    changed();
+  };
+  // Not a subclass: `Object.getPrototypeOf` on one would give the code the
+  // original, which takes `withCredentials`.
+  const Wrapped = function EventSource(this: unknown, url: string | URL) {
+    const source = Reflect.construct(Real, [url], Wrapped) as EventSource;
+    open.add(source);
+    requests += 1;
+    changed();
+    source.addEventListener('error', () => {
+      if (source.readyState === Real.CLOSED) closed(source);
+    });
+    return source;
+  } as unknown as typeof EventSource;
+  Object.defineProperty(Wrapped, 'prototype', { value: Real.prototype });
+  for (const name of ['CONNECTING', 'OPEN', 'CLOSED'] as const) Object.defineProperty(Wrapped, name, { value: Real[name] });
+  Object.defineProperty(Real.prototype, 'constructor', { value: Wrapped, writable: true, configurable: true });
+  Object.defineProperty(Real.prototype, 'close', {
+    value(this: EventSource) {
+      realClose.call(this);
+      closed(this);
     },
-  );
+    writable: true,
+    configurable: true,
+  });
+  define('EventSource', Wrapped);
 }
 
 // ---- The end (R18) -------------------------------------------------------

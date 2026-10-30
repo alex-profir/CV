@@ -13,7 +13,7 @@ import { SHOWN_FIELDS } from '../../../../packages/web/src/supported.ts';
 import { CV_COMMANDS, terminalFields } from '../expected.ts';
 import type { CvCommand, ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
-import { ENDLESS_LINE, TERMINAL, openTerminal, runCommand, settle, shown as waitShown, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
+import { ENDLESS_LINE, PLAYGROUND, TERMINAL, openTerminal, runCommand, settle, shown as waitShown, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
 import type { Shell } from '../shell-states.ts';
 import { elementSequence, fieldProblems } from './no-script.ts';
 
@@ -353,8 +353,19 @@ async function vimWriteProblems(page: Page): Promise<Found[]> {
 // ---- The part ---------------------------------------------------------------
 
 // The part's variants in a shell, in the order it runs them: each CV
-// command, the JSON, the file system, and the shell's lines.
-export const terminalVariants = (shell: Shell, width: number) => [...CV_COMMANDS, 'json', 'files', 'shell'].map((name) => terminalVariant(shell, name, width));
+// command, the JSON, the file system, the shell's lines, and `open playground`.
+export const terminalVariants = (shell: Shell, width: number) => [...CV_COMMANDS, 'json', 'files', 'shell', 'open-playground'].map((name) => terminalVariant(shell, name, width));
+
+// `open playground` shows the Playground, or the phone's screen for it (008 FR-087).
+async function openPlaygroundProblems(page: Page, shell: Shell): Promise<Found[]> {
+  await typeLine(page, 'open playground');
+  const shown = shell === 'desktop' ? PLAYGROUND.window : PLAYGROUND.phoneScreen;
+  const opened = await page.waitForSelector(shown, { state: 'visible', timeout: 5_000 }).then(
+    () => true,
+    () => false,
+  );
+  return opened ? [] : [{ type: 'open-failed', subject: 'open playground', detail: "the Playground didn't open" }];
+}
 
 // On a fresh, hydrated page of the root in `shell`: opens the Terminal and
 // runs every check, each under its own variant.
@@ -369,5 +380,7 @@ export async function terminalProblems(page: Page, shell: Shell, resume: Resume,
   add('json', await jsonProblems(page, resume));
   add('files', await fileProblems(page, resume));
   add('shell', await shellLineProblems(page, shell, resume));
+  // Last, as it leaves the Terminal.
+  add('open-playground', await openPlaygroundProblems(page, shell));
   return runs;
 }

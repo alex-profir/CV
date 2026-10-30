@@ -68,7 +68,7 @@ export type Announcement = { full: string } | { command: string; count: number; 
 export type Effect =
   | { kind: 'clear' }
   | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
-  | { kind: 'open'; view: 'cv' | 'about' }
+  | { kind: 'open'; view: 'cv' | 'playground' | 'about' }
   | { kind: 'clear-history' };
 
 export const text = (value: string, tone?: Tone): Node => (tone === undefined ? { kind: 'text', text: value } : { kind: 'text', text: value, tone });
