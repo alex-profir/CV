@@ -150,6 +150,12 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
   new design values). Every desktop export is rendered again, as each shows the dock: apart from
   the dock, they differ from the earlier exports only in text anti-aliasing, from a different
   renderer. Confirmed by the owner on 2026-10-28.
+- **2026-10-30, no Minimize or Maximize shortcut** (amended by 008-typescript-playground FR-086;
+  005 FR-063 and FR-065). The shell drops `Alt+Shift+H` and `Alt+Shift+F`, so the Playground's
+  editor can keep VS Code's `Shift+Alt+F` for Format Document. Minimize and Maximize stay on the
+  window controls and in the window's menu, with no key shown. Changed:
+  [wireframes.md](wireframes.md) (commit `f5143a1`), and the window-menu, own-menu and two-window
+  pages and their exports (commit `f06573b`). Approved by the owner on 2026-10-30.
 
 ## Sign-off
 
@@ -158,6 +164,8 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 - Approved by: Alex Profir (project owner)
 - Amended: 2026-10-27 and 2026-10-28, by the changes above, the first two and the last two at the
   owner's request. The owner confirmed every change on 2026-10-28.
+- Amended: 2026-10-30, by 008-typescript-playground FR-086 (no Minimize or Maximize shortcut),
+  mockup commits `f5143a1` and `f06573b`. Approved by Alex Profir (project owner) on 2026-10-30.
 - Notes: Approved in review of the exports, with the neutral window controls rather than colored
   lights. Under Constitution 1.2.0's interim provision on local mockups, this approval stands on
   the local mockup and its exports. The design is rebuilt in Penpot and linked in the provision's
