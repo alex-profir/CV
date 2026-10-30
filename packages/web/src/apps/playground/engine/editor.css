@@ -240,7 +240,52 @@
 
 /* With forced colors, backgrounds give way to the system's, so the masked
    glyphs take the text color and the letters lose their wash (FR-070). */
+/* Reduced motion (FR-069, wireframes Accessibility): Monaco's widgets,
+   hovers and scrollbars, in the editor and the output panes, appear and go
+   at once, with no fade or slide. The Playground draws no motion of its own. */
+@media (prefers-reduced-motion: reduce) {
+  .playground *,
+  .playground *::before,
+  .playground *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Forced colors (FR-070, wireframes Accessibility): error and warning
+   marks stay wavy lines, in LinkText and CanvasText; the cursor, the
+   scrollbars and the selected row of a list show by their own lines, not
+   by a background forced colors remove. */
 @media (forced-colors: active) {
+  .playground .monaco-editor :is(.squiggly-error, .squiggly-warning) {
+    forced-color-adjust: none;
+    background: LinkText;
+    mask-image: url("./glyphs/wavy.svg");
+    mask-position: left bottom;
+    mask-repeat: repeat-x;
+  }
+
+  .playground .monaco-editor .squiggly-warning {
+    background: CanvasText;
+  }
+
+  .playground .monaco-editor .cursor {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .playground .monaco-scrollable-element .slider {
+    box-sizing: border-box;
+    border: var(--token-border-thin) solid CanvasText;
+  }
+
+  .playground-editor .monaco-editor .suggest-widget .monaco-list-row.focused,
+  .playground .action-widget .monaco-list-row.focused,
+  .playground-editor .monaco-editor .quick-input-widget .monaco-list-row.focused {
+    border-width: var(--token-border-thick);
+    border-color: Highlight;
+  }
+
   .playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close, .codicon-error, .codicon-warning, .codicon-info)::before {
     forced-color-adjust: none;
     background-color: CanvasText;
