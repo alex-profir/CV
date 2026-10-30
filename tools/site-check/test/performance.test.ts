@@ -64,6 +64,6 @@ describe('004-cv-page-FR-058: stdout holds only the report', () => {
     const { status, stdout } = realRun();
     expect(status === 0 || status === 1).toBe(true);
     expect(stdout).toMatch(/^(?:Site check: |[a-z-]+ (?:\/\S*|-) \S+ \S+ )/);
-    expect(stdout).toMatch(/\n {2}(?:No problems|\d+ problems? in \d+ parts?)\. \d+ of 14 parts passed\.\n$/);
+    expect(stdout).toMatch(/\n {2}(?:No problems|\d+ problems? in \d+ parts?)\. \d+ of 15 parts passed\.\n$/);
   });
 });

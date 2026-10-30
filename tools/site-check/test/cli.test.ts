@@ -79,7 +79,7 @@ const ROOT_VARIANT = new RegExp(`^(?:desktop|mobile)/(?:${ROOT_STATES.join('|')}
 // each visit; the files, the JSON and the shell's lines; the keyboard flow;
 // and the cursor's blink (added 2026-10-29).
 const TERMINAL_VARIANT = new RegExp(
-  `^(?:desktop|mobile)/(?:(?:${TERMINAL_STATES.map(({ state }) => state).join('|')})(?:-(?:narrow-window|200%-zoom|400%-zoom|text-spacing))?|(?:terminal|terminal-after-cv)/[a-z]+(?:\\.json)?|terminal-keyboard|cursor-blink)/\\d+px$`,
+  `^(?:desktop|mobile)/(?:(?:${TERMINAL_STATES.map(({ state }) => state).join('|')})(?:-(?:narrow-window|200%-zoom|400%-zoom|text-spacing))?|(?:terminal|terminal-after-cv)/[a-z-]+(?:\\.json)?|terminal-keyboard|cursor-blink)/\\d+px$`,
 );
 
 // The inspector's variants (007 contracts/cli.md Variants): its states,

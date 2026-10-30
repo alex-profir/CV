@@ -59,7 +59,7 @@ describe('008-typescript-playground-FR-086: 005 is amended before the shortcuts 
     return [lines[start]!, ...rest.slice(0, rest.findIndex((candidate) => !candidate.startsWith('  ')))].map((part) => part.trim()).join(' ');
   };
 
-  test("005's spec records the session and marks FR-063 and FR-065 amended, keeping the controls and the menu commands", () => {
+  test("005's spec records the session and marks minimize and maximize amended, keeping the controls and the menu commands", () => {
     expect(spec).toContain('### Session 2026-10-29 (amended by 008-typescript-playground)');
     expect(entry005('FR-063')).toMatch(/minimize control.*minimize command, with no shortcut.*Amended 2026-10-29 \(008-typescript-playground\)/);
     expect(entry005('FR-065')).toMatch(/maximize control.*maximize command, with no shortcut.*Amended 2026-10-29 \(008-typescript-playground\)/);
