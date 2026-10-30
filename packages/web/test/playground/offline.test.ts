@@ -7,6 +7,7 @@ import type { Page, Route } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { examples } from '../../src/apps/playground/examples/index.ts';
 import { megabytes } from '../../src/apps/playground/text.ts';
+import { settled, until } from '../helpers/offline.ts';
 import { press, settle, waitForReady } from '../helpers/shell.ts';
 import { chooseExample, EDITOR, editorText, focusEditor, freshProfile, linkFrom, LOADING, MESSAGE, onMac, openPlayground, PLAYGROUND, POPUP, readErrors, readLogs, run, running, setCode, showPane, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
@@ -22,6 +23,7 @@ const statedSize = (page: Page) => page.evaluate(() => Number(document.querySele
 
 // Reloads the page with the network off, as a visitor back offline.
 async function reloadOffline(page: Page): Promise<void> {
+  expect(await until(() => settled(page))).toBe(true);
   await page.context().setOffline(true);
   await page.reload();
   await waitForReady(page);
@@ -91,6 +93,8 @@ describe('008-typescript-playground-FR-073: after one open, everything works off
     await page.locator(`${TOOLBAR} button.options`).click();
     await page.locator(`${PLAYGROUND} section.options-panel #playground-option-noUncheckedIndexedAccess`).check();
     await page.locator(`${TOOLBAR} button.options`).click();
+    await waitChecked(page);
+    expect((await readErrors(page)).length).toBe(1);
     // Every example, the CV's included: each puts its code in the editor and
     // checks with no errors.
     for (const example of examples(await onMac(page))) {
@@ -120,8 +124,13 @@ describe('008-typescript-playground-FR-073: after one open, everything works off
   test('a shared link opened offline before TypeScript is stored waits, and opens after the download', async () => {
     const page = await freshProfile();
     const shared = 'console.log("shared while offline");';
+    const link = linkFrom(new URL(page.url()).origin, JSON.stringify({ c: shared }));
+    // The site's worker holds the site before the network goes.
+    expect(await until(() => settled(page))).toBe(true);
     await page.context().setOffline(true);
-    await page.goto(linkFrom(new URL(page.url()).origin, JSON.stringify({ c: shared })));
+    // A new load, as following the link is.
+    await page.goto('about:blank');
+    await page.goto(link);
     await waitForReady(page);
     await page.waitForSelector(RETRY, { timeout: 30_000 });
     expect(await heading(page)).toBe(words.offline);
