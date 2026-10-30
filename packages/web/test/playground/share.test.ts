@@ -3,14 +3,13 @@
 // code in front of the CV window and never runs it; broken, too-long and
 // unknown-option links are handled, and kept code survives.
 import { createHash } from 'node:crypto';
-import { deflateRawSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
 import { frontWindow, settle, waitForReady } from '../helpers/shell.ts';
 import type { ShellOptions } from '../helpers/shell.ts';
-import { editorText, freshProfile, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
+import { editorText, freshProfile, linkFrom, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -24,14 +23,6 @@ const kept = (page: Page) => page.evaluate((key) => localStorage.getItem(key), K
 const clipboard = (page: Page) => page.evaluate(() => navigator.clipboard.readText());
 const messageText = async (page: Page) => ((await page.locator(`${MESSAGE} p`).textContent()) ?? '').trim();
 const messageButtons = async (page: Page) => (await page.locator(`${MESSAGE} .message-actions button.text-button`).allTextContents()).map((text) => text.trim());
-
-// A link as contracts/share-link.md writes it, made here from the content's
-// JSON, so the page's reading is checked against the contract.
-function linkFrom(origin: string, json: string): string {
-  const payload = deflateRawSync(Buffer.from(json, 'utf8')).toString('base64url');
-  const check = createHash('sha256').update(payload, 'ascii').digest('base64url').slice(0, 11);
-  return `${origin}/#playground=1.${payload}.${check}`;
-}
 
 // The same link's address within the site, for a page not opened yet.
 const pathFrom = (json: string) => linkFrom('', json);

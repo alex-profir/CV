@@ -19,6 +19,8 @@ export function defineTheme(theme: EditorTheme): void {
       { token: 'type', foreground: bare(c.type) },
       { token: 'type.identifier', foreground: bare(c.type) },
       { token: 'identifier', foreground: bare(c.text) },
+      { token: 'variable', foreground: bare(c.text) },
+      { token: 'parameter', foreground: bare(c.text) },
       { token: 'function', foreground: bare(c.function) },
       { token: 'property', foreground: bare(c.property) },
       { token: 'string', foreground: bare(c.string) },

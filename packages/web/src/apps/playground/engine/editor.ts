@@ -37,6 +37,7 @@ import 'monaco-editor/features/quickOutline/register';
 import 'monaco-editor/features/readOnlyMessage/register';
 import 'monaco-editor/features/referenceSearch/register';
 import 'monaco-editor/features/rename/register';
+import 'monaco-editor/features/semanticTokens/register';
 import 'monaco-editor/features/smartSelect/register';
 import 'monaco-editor/features/snippet/register';
 import 'monaco-editor/features/suggest/register';
@@ -52,6 +53,7 @@ import TsWorker from './ts.worker.ts?worker';
 import type { Runnable } from './ts.worker.ts';
 import { compilerOptions } from '../compiler-options.ts';
 import type { ChangedOptions, CheckResult } from '../types.ts';
+import { mendListAria } from './aria.ts';
 import type { EditorTheme, EditorView, EngineInit, OutputView } from './contract.ts';
 import { THEME, defineTheme } from './theme.ts';
 
@@ -78,6 +80,7 @@ function setUp(theme: EditorTheme): void {
 
 type WorkerProxy = {
   getCheck(fileName: string, packagesMessage: string): Promise<CheckResult | null>;
+  getNameKinds(fileName: string, start: number, length: number): Promise<number[]>;
   getRunnable(fileName: string): Promise<Runnable | null>;
   getVersion(): Promise<string>;
 };
@@ -117,6 +120,36 @@ export function createEditing(init: EngineInit) {
   let again = false;
 
   model.onDidChangeContent(() => init.onChange(model.getVersionId()));
+
+  // Names colored by what TypeScript knows they are (FR-068): the theme's
+  // `function`, `property` and `type` rules, for what the tokenizer can't
+  // tell from the text alone. TypeScript's 2020 kinds, by their number.
+  const NAME_KINDS = ['type', 'type', 'type', 'type', 'type', 'type', 'parameter', 'variable', 'property', 'property', 'function', 'function'];
+  const legend = { tokenTypes: [...new Set(NAME_KINDS)], tokenModifiers: [] };
+  const names = languages.registerDocumentRangeSemanticTokensProvider('typescript', {
+    getLegend: () => legend,
+    provideDocumentRangeSemanticTokens: async (asked, range) => {
+      if (asked.uri.toString() !== model.uri.toString()) return null;
+      const version = asked.getVersionId();
+      const start = asked.getOffsetAt(range.getStartPosition());
+      const spans = await (await worker()).getNameKinds(asked.uri.toString(), start, asked.getOffsetAt(range.getEndPosition()) - start);
+      if (asked.isDisposed() || asked.getVersionId() !== version) return null;
+      const data: number[] = [];
+      let lastLine = 0;
+      let lastColumn = 0;
+      for (let at = 0; at + 2 < spans.length; at += 3) {
+        const kind = NAME_KINDS[(spans[at + 2]! >> 8) - 1];
+        if (kind === undefined) continue;
+        const where = asked.getPositionAt(spans[at]!);
+        const line = where.lineNumber - 1;
+        const column = where.column - 1;
+        data.push(line - lastLine, line === lastLine ? column - lastColumn : column, spans[at + 1]!, legend.tokenTypes.indexOf(kind), 0);
+        lastLine = line;
+        lastColumn = column;
+      }
+      return { data: new Uint32Array(data) };
+    },
+  });
 
   const worker = async (): Promise<WorkerProxy> => {
     const get = await getTypeScriptWorker();
@@ -173,6 +206,7 @@ export function createEditing(init: EngineInit) {
       lineHeight: init.theme.lineHeight,
       lineDecorationsWidth: 0,
       lineNumbersMinChars: 3,
+      padding: { top: init.theme.inset },
       // The gutter holds the lightbulb, before the line numbers (FR-082).
       glyphMargin: true,
       // Folding by its keys and the palette: the design's gutter draws no
@@ -187,15 +221,17 @@ export function createEditing(init: EngineInit) {
       tabSize: 2,
       insertSpaces: true,
       stickyScroll: { enabled: false },
-      'semanticHighlighting.enabled': false,
+      // A setting Monaco keeps for every editor: the output panes' language
+      // has no provider, so it colors only the code.
+      'semanticHighlighting.enabled': true,
     });
     view = created;
-    // The gutter is the design's width: the lightbulb's lane and the line
-    // numbers, then the rest before the code, refitted as the numbers grow
-    // or the font loads.
+    // The gutter is the design's width, the lightbulb's lane and the line
+    // numbers, and the code starts the inset after it; refitted as the
+    // numbers grow or the font loads.
     const fitGutter = () => {
       const layout = created.getLayoutInfo();
-      const rest = Math.max(0, init.theme.gutter - layout.glyphMarginWidth - layout.lineNumbersWidth);
+      const rest = Math.max(0, init.theme.gutter + init.theme.inset - layout.glyphMarginWidth - layout.lineNumbersWidth);
       if (rest !== layout.decorationsWidth) created.updateOptions({ lineDecorationsWidth: rest });
     };
     fitGutter();
@@ -226,7 +262,9 @@ export function createEditing(init: EngineInit) {
       if (uris.some((uri) => uri.toString() === model.uri.toString())) showInline();
     });
     const tabFocus = TabFocus.onDidChangeTabFocus((on) => init.onTabFocus?.(on));
+    const unmend = mendListAria(element.closest('.playground') ?? element);
     created.onDidDispose(() => {
+      unmend();
       markers.dispose();
       tabFocus.dispose();
     });
@@ -265,7 +303,6 @@ export function createEditing(init: EngineInit) {
       editContext: false,
       contextmenu: false,
       stickyScroll: { enabled: false },
-      'semanticHighlighting.enabled': false,
     });
     return {
       setText: (text) => {
@@ -333,6 +370,7 @@ export function createEditing(init: EngineInit) {
     version: () => model.getVersionId(),
     dispose: () => {
       view?.dispose();
+      names.dispose();
       model.dispose();
     },
   };
