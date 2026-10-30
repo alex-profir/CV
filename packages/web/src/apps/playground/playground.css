@@ -1043,16 +1043,18 @@
 /* In landscape, the icon on the left and the rest beside it, the buttons
    side by side (wireframes, Phone screen). */
 @media (orientation: landscape) {
+  /* The icon beside the text, in source order (004 FR-027). */
   .playground-mobile-card {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: var(--token-space-5);
+    position: relative;
     max-inline-size: calc(var(--token-size-playground-loading) * 1.6);
+    padding-inline-start: calc(var(--token-size-app-icon) + var(--token-space-5));
     text-align: start;
   }
 
   .playground-mobile-card > .app-glyph {
-    grid-row: span 4;
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
   }
 
   .playground-mobile h2 {

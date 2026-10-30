@@ -114,7 +114,7 @@ describe('008-typescript-playground-FR-074: every Playground target carries its 
     await expectRows(page, [[POPUP, ids(48, 49, 50, 51)]], 'stuck');
   });
 
-  test("the menu's items: each carries FR-003 and the requirement it acts on", async () => {
+  test("the menu's items: each carries the menu's requirement and the one it acts on", async () => {
     const page = await openPlaygroundPage();
     await page.click('#menu-title-app');
     const items = await idsOf(page, '#menu-app [role="menuitem"][data-req*="008-typescript-playground-"]');

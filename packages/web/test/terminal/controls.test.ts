@@ -74,7 +74,7 @@ describe('006-terminal-FR-015: every command control is a button named by its fu
     const unknown = await controlsIn((await runGroup(page, 'wrok')).locator('.run-output'));
     expect(unknown.map((control) => control.name)).toEqual(['help', 'work']);
     const open = await controlsIn((await runGroup(page, 'open settings')).locator('.run-output'));
-    expect(open.map((control) => control.name)).toEqual(['open cv', 'open about']);
+    expect(open.map((control) => control.name)).toEqual(['open cv', 'open playground', 'open about']);
     for (const control of [...starter, ...help, ...unknown, ...open]) {
       expect(control.tag, control.name ?? '').toBe('button');
       expect(control.type, control.name ?? '').toBe('button');
