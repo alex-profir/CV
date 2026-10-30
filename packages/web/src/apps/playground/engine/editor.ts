@@ -320,6 +320,9 @@ export function createEditing(init: EngineInit) {
     model.pushStackElement();
     model.pushEditOperations([], [{ range: model.getFullModelRange(), text: code }], () => null);
     model.pushStackElement();
+    // The old code's marks don't belong to the new code: none shows until
+    // its own check comes back.
+    editor.setModelMarkers(model, 'playground', []);
     view?.setPosition({ lineNumber: 1, column: 1 });
   }
 
