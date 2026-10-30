@@ -57,6 +57,25 @@ describe('008-typescript-playground-FR-032: Run and its key run the code, open t
   });
 });
 
+describe('008-typescript-playground-FR-032: code with exports runs as a script', () => {
+  for (const [name, code, shown] of [
+    ['an anonymous default function', 'export default function () { console.log("never called"); }\nconsole.log("ran");', ['ran']],
+    ['an anonymous default async function', 'export default async function () { console.log("never called"); }\nconsole.log("ran");', ['ran']],
+    ['an anonymous default generator', 'export default function* () { yield 1; }\nconsole.log("ran");', ['ran']],
+    ['an anonymous default class', 'export default class { static made = console.log("made"); }\nconsole.log("ran");', ['made', 'ran']],
+    ['a named default function, still callable', 'export default function named() { return 2; }\nconsole.log(named());', ['2']],
+    ['a default expression, still evaluated', 'export default console.log("evaluated");\nconsole.log("ran");', ['evaluated', 'ran']],
+  ] as const) {
+    test(name, async () => {
+      const page = await openPlaygroundPage();
+      await withCode(page, code);
+      await run(page);
+      expect(await values(page)).toEqual(shown);
+      expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(/^Finished/);
+    });
+  }
+});
+
 describe('008-typescript-playground-FR-033: code with errors runs, and the logs say so first', () => {
   test('code with 2 errors runs and says so first', async () => {
     const page = await openPlaygroundPage();

@@ -79,6 +79,40 @@ describe('008-typescript-playground-FR-034: the logs show each level and every k
   });
 });
 
+describe('008-typescript-playground-FR-034: every console call shows its real output', () => {
+  test('count, assert and time print what a console prints, and the browser\'s own objects show their state', async () => {
+    const page = await openPlaygroundPage();
+    await runCode(
+      page,
+      [
+        'console.count("a");',
+        'console.count("a");',
+        'console.count();',
+        'console.assert(true, "hidden");',
+        'console.assert(false, "shown");',
+        'console.time("t");',
+        'console.timeEnd("t");',
+        'console.log(new DataView(new ArrayBuffer(8)));',
+        'console.log(new ArrayBuffer(8));',
+        'console.log(/a+/g);',
+        'console.log(new URL("https://example.test/x"));',
+        'console.log(Promise.resolve(1));',
+      ].join('\n'),
+    );
+    const rows = await entries(page);
+    expect(rows.map((row) => row.text).slice(0, 4)).toEqual(['a: 1', 'a: 2', 'default: 1', 'shown']);
+    expect(rows[3]!.level).toBe('error');
+    expect(rows[4]!.text).toMatch(/^t: \d+\.\d{3} ms$/);
+    expect(rows.slice(5).map((row) => row.text)).toEqual(['DataView { byteLength: 8, byteOffset: 0 }', 'ArrayBuffer { byteLength: 8 }', '/a+/g', 'URL { href: "https://example.test/x" }', 'Promise']);
+  });
+
+  test('a Proxy that throws on every step shows the error and the code goes on', async () => {
+    const page = await openPlaygroundPage();
+    await runCode(page, ['const bad = new Proxy({}, { getPrototypeOf() { throw new TypeError("no prototype"); } });', 'console.log(bad);', 'console.log("after");'].join('\n'));
+    expect((await entries(page)).map((row) => row.text)).toEqual(['TypeError: no prototype', 'after']);
+  });
+});
+
 describe('008-typescript-playground-FR-047: nothing the code prints becomes markup', () => {
   test('logging markup, a link and a style string adds no element, link or style to the page', async () => {
     const page = await openPlaygroundPage();

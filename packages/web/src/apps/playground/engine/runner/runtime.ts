@@ -10,7 +10,7 @@
 // their place in this script; answers the page's heartbeat at once; and
 // reports the end when nothing is left to do.
 import { LOG_LIMITS } from '../../limits.ts';
-import { formatEntry } from './format.ts';
+import { formatEntry, measure } from './format.ts';
 import type { LogEntry } from '../../types.ts';
 
 type Scope = Record<string, any> & {
@@ -39,6 +39,12 @@ const dataOf = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(Mess
 const BATCH_LIMIT = LOG_LIMITS.entries;
 // A batch goes at once when this long has passed since the last.
 const BATCH_MS = 50;
+// A loop can't hear back from the page, so what it may send is limited by the
+// clock: after each batch the next waits until the page has had time for this
+// one, and a port's queue on the page can't grow without end (FR-040, FR-044).
+const CHARS_PER_MS = 4_000;
+// What an entry counts for at least, for the object that carries it.
+const ENTRY_CHARS = 50;
 
 let toPage: ((message: unknown) => void) | null = null;
 let nonce = '';
@@ -66,7 +72,7 @@ function queueTask(): void {
 
 tasks.port1.onmessage = () => {
   taskQueued = false;
-  if (flushWanted) flush();
+  if (flushWanted) flushWhenDue();
   if (pendingChanged) sendPending();
   if (endCheckWanted) checkEnd();
 };
@@ -74,30 +80,53 @@ tasks.port1.onmessage = () => {
 // ---- Logs ---------------------------------------------------------------
 
 let buffer: LogEntry[] = [];
+let sizes: number[] = [];
+let bufferChars = 0;
 let dropped = 0;
 let cleared = false;
-let lastSend = -Infinity;
+let nextSend = -Infinity;
+let flushTimer: number | null = null;
 let entryIds = 0;
 
 function flush(): void {
   flushWanted = false;
+  if (flushTimer !== null) realClearTimeout(flushTimer);
+  flushTimer = null;
   if (buffer.length === 0 && dropped === 0 && !cleared) return;
   send({ logs: true, entries: buffer, dropped, cleared });
+  nextSend = now() + Math.max(BATCH_MS, bufferChars / CHARS_PER_MS);
   buffer = [];
+  sizes = [];
+  bufferChars = 0;
   dropped = 0;
   cleared = false;
-  lastSend = now();
+}
+
+// From a task: at once if it is due, else when it is. The timer isn't the
+// code's, so it doesn't keep the run going; the end sends what's left.
+function flushWhenDue(): void {
+  flushWanted = false;
+  const wait = nextSend - now();
+  if (wait <= 0) flush();
+  else flushTimer ??= realSetTimeout(() => {
+    flushTimer = null;
+    flush();
+  }, wait);
 }
 
 function push(entry: Omit<LogEntry, 'id'>): void {
   if (ended) return;
   entryIds += 1;
+  const chars = Math.max(ENTRY_CHARS, measure(entry.values));
   buffer.push({ id: entryIds, ...entry });
+  sizes.push(chars);
+  bufferChars += chars;
   if (buffer.length > BATCH_LIMIT) {
     buffer.shift();
+    bufferChars -= sizes.shift()!;
     dropped += 1;
   }
-  if (now() - lastSend >= BATCH_MS) flush();
+  if (now() >= nextSend) flush();
   else {
     flushWanted = true;
     queueTask();
@@ -116,8 +145,49 @@ for (const name of Object.keys(console)) {
   if (typeof (console as unknown as Record<string, unknown>)[name] === 'function') playgroundConsole[name] = (...values) => log('log', values);
 }
 for (const level of LEVELS) playgroundConsole[level] = (...values) => log(level, values);
+// The methods that print something other than their arguments, as browsers'
+// consoles do (FR-034).
+const labelOf = (label: unknown): string => {
+  try {
+    return label === undefined ? 'default' : String(label);
+  } catch {
+    return 'default';
+  }
+};
+const counts = new Map<string, number>();
+const timing = new Map<string, number>();
+const elapsedText = (label: string, from: number) => `${label}: ${(now() - from).toFixed(3)} ms`;
+
+playgroundConsole['assert'] = (condition, ...values) => {
+  if (!condition) log('error', values.length > 0 ? values : [condition]);
+};
+playgroundConsole['count'] = (label) => {
+  const name = labelOf(label);
+  const n = (counts.get(name) ?? 0) + 1;
+  counts.set(name, n);
+  log('log', [`${name}: ${n}`]);
+};
+playgroundConsole['countReset'] = (label) => void counts.delete(labelOf(label));
+playgroundConsole['time'] = (label) => {
+  const name = labelOf(label);
+  if (!timing.has(name)) timing.set(name, now());
+};
+playgroundConsole['timeLog'] = (label, ...values) => {
+  const name = labelOf(label);
+  const from = timing.get(name);
+  if (from !== undefined) log('log', [elapsedText(name, from), ...values]);
+};
+playgroundConsole['timeEnd'] = (label) => {
+  const name = labelOf(label);
+  const from = timing.get(name);
+  if (from === undefined) return;
+  timing.delete(name);
+  log('log', [elapsedText(name, from)]);
+};
 playgroundConsole['clear'] = () => {
   buffer = [];
+  sizes = [];
+  bufferChars = 0;
   dropped = 0;
   cleared = true;
   flushWanted = true;
@@ -320,6 +390,109 @@ function countCalls(holder: Record<string, unknown> | undefined, names: readonly
 const prototypeOf = (name: string) => (typeof scope[name] === 'function' ? (scope[name].prototype as Record<string, unknown>) : undefined);
 const BODY_READS = ['arrayBuffer', 'blob', 'bytes', 'formData', 'json', 'text'];
 
+// A stream's reads settle in a later task as well, and so do delayed tasks and
+// the like. A read of a stream that never ends keeps the run going until Stop,
+// as a request that never answers does.
+countCalls(prototypeOf('ReadableStreamDefaultReader'), ['read']);
+countCalls(prototypeOf('ReadableStreamBYOBReader'), ['read']);
+countCalls(prototypeOf('ReadableStream'), ['pipeTo']);
+countCalls(prototypeOf('WritableStreamDefaultWriter'), ['close', 'write']);
+countCalls(prototypeOf('Scheduler'), ['postTask', 'yield']);
+countCalls(prototypeOf('LockManager'), ['query', 'request']);
+countCalls(prototypeOf('StorageManager'), ['estimate', 'getDirectory', 'persist', 'persisted']);
+countCalls(prototypeOf('Permissions'), ['query']);
+
+// `for await` on a stream doesn't go through a reader's `read`.
+function countIterator(holder: Record<PropertyKey, unknown> | undefined, key: PropertyKey): void {
+  const open = holder?.[key];
+  if (holder === undefined || typeof open !== 'function') return;
+  Object.defineProperty(holder, key, {
+    value(this: unknown, ...args: unknown[]) {
+      const iterator = open.apply(this, args) as AsyncIterator<unknown>;
+      return {
+        next: () => counting(iterator.next()),
+        return: (value?: unknown) => counting(iterator.return?.(value) ?? Promise.resolve({ done: true, value })),
+        [Symbol.asyncIterator]() {
+          return this;
+        },
+      };
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+countIterator(prototypeOf('ReadableStream'), Symbol.asyncIterator);
+countIterator(prototypeOf('ReadableStream'), 'values');
+
+// A timer the browser holds, counted once the code listens for it: a signal
+// only passed to `fetch`, as `AbortSignal.timeout` usually is, doesn't hold a
+// run open after its request is done.
+if (typeof scope['AbortSignal']?.timeout === 'function') {
+  const realTimeout = scope['AbortSignal'].timeout.bind(scope['AbortSignal']) as (ms: number) => AbortSignal;
+  const realListen = EventTarget.prototype.addEventListener;
+  const handler = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'onabort');
+  Object.defineProperty(scope['AbortSignal'], 'timeout', {
+    value(ms: number) {
+      const signal = realTimeout(ms);
+      let counted = false;
+      const count = () => {
+        if (counted || signal.aborted) return;
+        counted = true;
+        frameIds += 1;
+        const id = -frameIds;
+        timers.set(id, 'timeout');
+        changed();
+        realListen.call(signal, 'abort', () => {
+          timers.delete(id);
+          changed();
+        });
+      };
+      Object.defineProperty(signal, 'addEventListener', {
+        value(this: AbortSignal, type: string, ...rest: [EventListenerOrEventListenerObject | null, (boolean | AddEventListenerOptions)?]) {
+          if (type === 'abort') count();
+          return realListen.call(this, type, ...rest);
+        },
+        writable: true,
+        configurable: true,
+      });
+      if (handler?.get !== undefined && handler.set !== undefined) {
+        const { get, set } = handler;
+        Object.defineProperty(signal, 'onabort', {
+          get() {
+            return get.call(signal);
+          },
+          set(value: unknown) {
+            count();
+            set.call(signal, value);
+          },
+          configurable: true,
+        });
+      }
+      return signal;
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+// A message to one of the code's own ports is pending until it has arrived. A
+// port with a handler isn't pending by itself (a test sets this): nothing says
+// a message will ever come, and the run would never end.
+const MESSAGE_MS = 10;
+Object.defineProperty(MessagePort.prototype, 'postMessage', {
+  value(this: MessagePort, ...args: unknown[]) {
+    (realPost as (...values: unknown[]) => void).apply(this, args);
+    requests += 1;
+    changed();
+    realSetTimeout(() => {
+      requests -= 1;
+      changed();
+    }, MESSAGE_MS);
+  },
+  writable: true,
+  configurable: true,
+});
+
 countCalls(prototypeOf('Response'), BODY_READS);
 countCalls(prototypeOf('Request'), BODY_READS);
 countCalls(prototypeOf('Blob'), BODY_READS);
@@ -338,17 +511,23 @@ if (typeof scope['XMLHttpRequest'] === 'function') {
     'XMLHttpRequest',
     class extends Real {
       override send(body?: Document | XMLHttpRequestBodyInit | null): void {
+        let pending = true;
+        const done = () => {
+          if (!pending) return;
+          pending = false;
+          requests -= 1;
+          changed();
+        };
         requests += 1;
         changed();
-        this.addEventListener(
-          'loadend',
-          () => {
-            requests -= 1;
-            changed();
-          },
-          { once: true },
-        );
-        super.send(body);
+        this.addEventListener('loadend', done, { once: true });
+        try {
+          super.send(body);
+        } catch (error) {
+          // `send` that throws never ends with `loadend`.
+          done();
+          throw error;
+        }
       }
     },
   );

@@ -264,7 +264,7 @@ type LogEntry = {
 
 // A value as the runner formats it (FR-034). Text only: rendered as React text, never markup (FR-047).
 type Shown =
-  | { t: 'str'; v: string } | { t: 'num' | 'bigint' | 'bool' | 'sym'; v: string }
+  | { t: 'str'; v: string } | { t: 'num' | 'bigint' | 'bool' | 'sym' | 'text'; v: string }
   | { t: 'null' } | { t: 'undef' }
   | { t: 'fn'; name: string; cls: boolean }
   | { t: 'arr'; items: Shown[]; more: number }

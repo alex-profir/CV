@@ -86,6 +86,9 @@ rendering stays in the Playground's window, with a Try again that clears the log
 | `localStorage`, `indexedDB`, `caches`, `document`, `window` | Missing or throwing: the frame's origin is opaque and a worker has no DOM (FR-039) |
 | `importScripts`, `import(…)` of a URL | Blocked by the frame's policy: nothing is fetched (FR-042) |
 | `Worker`, `SharedWorker` | Not offered (R18) |
+| Stream reads, `scheduler.postTask`, locks and the like | Pending until they settle; a read of a stream that never ends keeps the run going until Stop, as a request that never answers does (FR-037) |
+| `AbortSignal.timeout` | A pending timer once the code listens for its `abort`; a signal only passed to `fetch` holds nothing (FR-037) |
+| A message to the code's own port | Pending until it has arrived; a port with a handler and no message isn't pending (FR-037) |
 
 `close()`, on the scope and its prototypes, logs the `closed` note and ends the run before closing
 the worker, so a closed worker doesn't read as blocked (T188).

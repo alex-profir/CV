@@ -369,7 +369,10 @@ embedded in the engine (with the bootstrap, whose hash the build computes). Befo
   functions and classes by name (FR-034, FR-044, FR-047);
 - sends entries in batches: at once if 50 ms have passed since the last send, else on the next
   task, keeping at most the latest 1,000 between sends and counting the rest as dropped, so a
-  printing loop still shows its latest output and the page receives at most 20 batches a second;
+  printing loop still shows its latest output and the page receives at most 20 batches a second.
+  A loop can't hear back from the page, so the clock limits it too: after a batch, the next waits
+  until 4,000 characters a millisecond would have sent it, and the end sends what's left. The page
+  draws the logs at most every 250 ms, and only the rows in view are laid out (T193);
 - gives `alert` (an `alert` entry), `prompt` (a note, returns `null`) and `confirm` (a note, returns
   `false`), FR-043;
 - wraps `setTimeout`, `setInterval`, `clear*`, `requestAnimationFrame`, `fetch`, `XMLHttpRequest`,
