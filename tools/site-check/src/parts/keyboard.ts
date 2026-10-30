@@ -899,7 +899,7 @@ export async function inspectorKeyboardProblems(page: Page, pageLabel: string, v
       await pressTo('ArrowRight', SHELL.terminalDockItem, 5)();
       await page.keyboard.press('Enter');
     };
-    if (!(await step('open the Terminal', { act: openTerminal, done: () => visible(page, TERMINAL.commandLine), failed: { subject: 'Alt+Shift+D', detail: 'the dock did not open the Terminal' }, target: TERMINAL.commandLine, targetName: "the Terminal's command line", reveal: true }))) return;
+    if (!(await step('open the Terminal', { act: openTerminal, done: () => visible(page, TERMINAL.commandLine), failed: { subject: 'Alt+Shift+D', detail: 'the dock did not open the Terminal' }, target: TERMINAL.commandLine, targetName: "the Terminal's command line", reveal: true, indicator: false, check: () => filledCursor(page) }))) return;
     if (!(await step("reach the Terminal's Show specs", { act: pressTo('Shift+Tab', I.showSpecs('terminal', 'desktop')), target: I.showSpecs('terminal', 'desktop'), targetName: "the Terminal window's Show specs" }))) return;
     if (!(await show('terminal'))) return;
     if (!(await leave('terminal'))) return;

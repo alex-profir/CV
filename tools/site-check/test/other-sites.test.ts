@@ -87,10 +87,14 @@ describe('006-terminal-FR-038: the Terminal loads nothing from another site whil
       replaceIn(copy, worker, '    await shell.warm();\n', `    await shell.warm();\n    void fetch('${address}').catch(() => undefined);\n`);
     });
     const report = await runCheck(root, { parts: ['other-sites'] });
-    // A dedicated worker's request is the page's to Playwright.
+    // A dedicated worker's request is the page's to Playwright. The worker
+    // warms up whenever the Terminal opens, so 007's Terminal spec views,
+    // which open it first, record the request too.
     expect(report.problems.map(renderProblem)).toEqual([
       `other-sites / desktop/terminal-open/1440px other-site-request ${address}: requested by the page`,
       `other-sites / mobile/pocket/375px other-site-request ${address}: requested by the page`,
+      `other-sites / desktop/terminal-specs/1440px other-site-request ${address}: requested by the page`,
+      `other-sites / mobile/terminal-specs/375px other-site-request ${address}: requested by the page`,
     ]);
   });
 });
