@@ -836,14 +836,18 @@ async function commandLineSteps(page: Page, step: Flow['step']): Promise<void> {
 
 const TYPED = 'ship it';
 
-// Whether the next Tab reaches the browser, and where it goes.
-const nextTabTaken = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<boolean>((resolve) => {
-        window.addEventListener('keydown', (event) => event.key === 'Tab' && resolve(event.defaultPrevented), { once: true });
-      }),
-  );
+// Whether the next Tab reaches the browser, and where it goes. The listener is
+// on the page before the key is sent: on a busy page a key overtakes an
+// evaluate still on its way, and the listener would wait for ever.
+const nextTabTaken = async (page: Page) => {
+  await page.evaluate(() => {
+    (window as unknown as { tabTaken: Promise<boolean> }).tabTaken = new Promise<boolean>((resolve) => {
+      window.addEventListener('keydown', (event) => event.key === 'Tab' && resolve(event.defaultPrevented), { once: true });
+    });
+  });
+  await page.keyboard.press('Tab');
+  return page.evaluate(() => (window as unknown as { tabTaken: Promise<boolean> }).tabTaken);
+};
 
 // A state with focus in the command line or the vim view, on a fresh page.
 const LEAVING: { name: string; element: string; reach: (page: Page) => Promise<void> }[] = [
@@ -896,9 +900,7 @@ async function leavingProblems(page: Page): Promise<Found[]> {
           found.push({ type: 'trapped', detail: `${said} left focus in ${state.name}` });
           continue;
         }
-        const taken = nextTabTaken(fresh);
-        await fresh.keyboard.press('Tab');
-        if (await taken) found.push({ type: 'trapped', detail: `after ${said} from ${state.name}, the next Tab was taken` });
+        if (await nextTabTaken(fresh)) found.push({ type: 'trapped', detail: `after ${said} from ${state.name}, the next Tab was taken` });
       } finally {
         await fresh.close();
       }

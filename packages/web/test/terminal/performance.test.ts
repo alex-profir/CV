@@ -93,21 +93,21 @@ describe('006-terminal-FR-079: Tab and typing in the editor are quick', () => {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
     await page.locator(COMMAND_LINE).fill('cat h/');
-    // Waits for the line's change, from the key's own event.
-    const timing = page.evaluate(
-      (selector) =>
-        new Promise<number>((resolve) => {
-          const input = document.querySelector<HTMLInputElement>(selector)!;
-          let start = 0;
-          input.addEventListener('keydown', (event) => {
-            if (event.key === 'Tab') start = performance.now();
-          });
-          input.addEventListener('input', () => resolve(performance.now() - start), { once: true });
-        }),
-      COMMAND_LINE,
-    );
+    // Waits for the line's change, from the key's own event. The listeners are
+    // on the page before the key is sent: a key can overtake an evaluate still
+    // on its way, and the time would then count from the page's start.
+    await page.evaluate((selector) => {
+      (window as unknown as { tabSpent: Promise<number> }).tabSpent = new Promise<number>((resolve) => {
+        const input = document.querySelector<HTMLInputElement>(selector)!;
+        let start = 0;
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Tab') start = performance.now();
+        });
+        input.addEventListener('input', () => resolve(performance.now() - start), { once: true });
+      });
+    }, COMMAND_LINE);
     await page.keyboard.press('Tab');
-    const spent = await timing;
+    const spent = await page.evaluate(() => (window as unknown as { tabSpent: Promise<number> }).tabSpent);
     expect(spent).toBeLessThanOrEqual(100);
   });
 
