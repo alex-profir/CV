@@ -45,16 +45,21 @@ Playground after the CV app and the Terminal (FR-001). The Playground's declarat
 | `focusOnOpen` | `'.playground [data-focus-home]'`, set on the editor once it is ready; before that, focus falls back to the title (FR-004) |
 | `menuItems` | Run (`Cmd+Enter`), Stop (disabled with no run), Examples…, Compiler options…, Share…, Command palette (`F1`), Keys…, Reset…, with the design's separators (FR-003, FR-085) |
 | `onClose` | Ends any run, closes popups and panels, empties the logs and stops a download in progress (FR-046) |
+| `opensFromAddress`, `onOpenFromAddress` | `holdsLink`; on the desktop, `readAddressLink` (FR-053, FR-060) |
 
 ## Opening from a link (FR-053, FR-060)
 
-`Os.tsx`, on hydration, reads the address with `readLink` (contracts/share-link.md). For `app`,
+The app declares this, so the shell names no app (Constitution V). `App` gains two optional fields:
+`opensFromAddress(href)`, whether the address is the app's own, and `onOpenFromAddress(shell)`,
+called just before it opens. `Os.tsx`, on hydration, opens the first app in the current shell whose
+`opensFromAddress(location.href)` is true. The Playground's are `holdsLink`, and on the desktop
+`readAddressLink`, which reads the address with `readLink` (contracts/share-link.md). For `app`,
 `code` and `broken`:
 
-- **Desktop**: after `hydrated`, it dispatches `open` for `playground`, so the CV window opens as
+- **Desktop**: after `hydrated`, `Os.tsx` dispatches `open` for the app, so the CV window opens as
   on first load (005 FR-005) and the Playground in front of it, focused, with the usual focus
   rule. The link goes into the Playground's session as `pendingLink`.
-- **Mobile**: after `hydrated`, it dispatches `mobileOpen` for `playground`; the full-screen view
+- **Mobile**: after `hydrated`, `Os.tsx` dispatches `mobileOpen` for the app; the full-screen view
   shows the shared-link screen.
 
 No other first load changes (FR-002): with no `#playground` fragment, the desktop shows only the CV
@@ -64,7 +69,7 @@ window and the phone its home screen.
 
 | File | Change |
 |------|--------|
-| `src/os/Os.tsx` | `isView` accepts `'playground'`; the link read above |
+| `src/os/Os.tsx` | `isView` accepts `'playground'`; opens an app from its own address, as above, importing nothing from `apps/<id>/` |
 | `src/os/metrics.ts` | `METRICS` gains the four placement values |
 | `src/shells/desktop/MenuBar.tsx` | Reads `shortcut`, `disabled` and `separatorBefore` of app items; the window's Minimize and Maximize entries show no shortcut (FR-086) |
 | `src/shells/desktop/Desktop.tsx` | The key listener drops `minimize` and `maximize`; it listens in the capture phase so a shortcut reaches the shell before the editor sees the key, and no character is typed (FR-062, FR-084, R12) |
