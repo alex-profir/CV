@@ -133,7 +133,8 @@ and alias is a control. Export: `exports/desktop-2-after-help-1440.png`.
 # _vim_ [path | -]               Read a file in vim. - reads what  #
 #                                is piped in                       #
 # _pwd_                          Show the current folder           #
-# _open_ <name>                  Open cv or about in the shell   v #
+# _open_ <name>                  Open cv, playground or about in #
+#                                the shell                       v #
 #==================================================================#
   (scrolled further: history, clear, exit, then a new prompt)
 ```
@@ -616,6 +617,6 @@ greeting drops its first line. Export: `exports/phone-6-landscape-568.png`.
 | `cd` on a file | `[path] is a file. Try cat [path].` with `cat [path]` as a control |
 | `cat` on a folder | `[path] is a folder. Try ls [path].` with `ls [path]` as a control |
 | Wrong arguments (FR-017) | `[command] takes [what]. Usage: [usage]`, the usage as `help` shows it |
-| `open` with another name | `open takes cv or about.` with both as controls |
+| `open` with another name | `open takes cv, playground or about.` with the three as controls. Amended 2026-10-30 for 008-typescript-playground FR-087 and 006 FR-014: it read `open takes cv or about.` with both as controls |
 | Pocket case | `cv-os pocket`, and `[name]` from the CV document, set in capitals and spaced out (decoration, hidden from screen readers) |
 | Key names | `help`, `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear`; in the vim view `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q`, named for screen readers `Down`, `Up`, `Open or close fold`, `Search`, `Next match`, `Top`, `Bottom`, `Quit` |

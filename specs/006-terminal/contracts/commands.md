@@ -46,7 +46,7 @@ take, or missing one it needs, replies `{command} takes {what}. Usage: {usage}` 
 | `jq` | | `[path]` or input | The JSON pretty-printed and colored (FR-056) |
 | `vim` | | `<path>` or `-` with input | Opens the vim view (FR-058) |
 | `pwd` | | none | The working folder's path, such as `~/work` (FR-046) |
-| `open` | | `<name>` | `cv` or `about`: opens it in the shell (FR-014) |
+| `open` | | `<name>` | `cv`, `playground` or `about`: opens it in the shell (FR-014, amended 2026-10-30 for 008 FR-087) |
 | `history` | | none | The commands run since the Terminal opened, oldest first, numbered from 1 (FR-020) |
 | `clear` | | none | Clears the output (FR-019) |
 | `exit` | | none | Closes the window on desktop, goes home on mobile (FR-008) |
@@ -71,7 +71,7 @@ and `help work` shows `work`'s own help (edge cases).
 | No such path | `{path}: no such file or folder.` (FR-048) |
 | `cd` on a file | `{path} is a file. Try ` control `cat {path}` `.` (FR-048) |
 | `cat` or `vim` on a folder | `{path} is a folder. Try ` control `ls {path}` `.` (FR-048, FR-058) |
-| `open` with another name | `open takes cv or about.`, with both as controls (FR-014) |
+| `open` with another name | `open takes cv, playground or about.`, with the three as controls (FR-014; amended 2026-10-30 for 008 FR-087, it read `open takes cv or about.`) |
 | `jq` on text that isn't JSON | `jq: {path or |} is not JSON.` (FR-056) |
 | `jq` with a filter other than `.` | `jq here only pretty-prints. Usage: jq [path], or … \| jq` (FR-056) |
 | `vim -` with nothing piped, `vim` alone | The usage reply (FR-058) |
