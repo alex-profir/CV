@@ -4,12 +4,16 @@
 
 **Created**: 2026-10-27
 
-**Status**: Approved
+**Status**: Draft
 
 **Amended**: 2026-10-29, after the owner's review of the built Terminal: a real bash-like shell
 and a terminal's cursor, focus and keys, and, from the design review that day, no greeting and
 `help <name>` for the standard commands (see Clarifications, Session 2026-10-29). Approved
 2026-10-27; the amendment approved by the owner 2026-10-29.
+
+**Amended**: 2026-10-30, after the owner tried the shell: Tab completes as in bash, with a way
+out, and vim edits files (see Clarifications, Session 2026-10-30 (owner review of the shell)).
+Back to Draft until the owner approves this amendment.
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -145,6 +149,28 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
   limit? → A: Raise it. This feature amends 001's SC-008 in its pull request: the `site` job gets
   12 minutes, the other jobs keep 6 (Constitution XI). Approved by the owner 2026-10-30.
 
+### Session 2026-10-30 (owner review of the shell)
+
+- Q: Should Tab complete what was typed, as in a terminal, when FR-026 keeps it for moving focus?
+  → A: Yes, as bash does, with a way out. With text before the cursor, Tab completes the word
+  before it: a command name as the first word, a path after it. It fills in what all the matches
+  share, and a second Tab in a row lists them. On an empty command line Tab leaves, as before, and
+  Escape then Tab always leaves, so focus is never trapped. Shift+Tab always leaves. The command
+  line's accessible description and `help` say how to leave (WCAG 2.2 success criterion 2.1.2)
+  (FR-026, FR-076, FR-077).
+- Q: The pocket terminal has no Tab key. → A: Its command keys get one, which completes as Tab
+  does (FR-078).
+- Q: Should vim edit files now that visitors have files of their own? → A: Yes, as vim does. The
+  view gets insert mode and vim's editing keys, undo and redo, and `:w`, `:wq`, `:x` and `:q!`.
+  `vim <path>` on a path that doesn't exist yet opens an empty file that `:w` creates. A protected
+  file opens as vim opens a read-only one: it can be changed on screen, with vim's warning at the
+  first change, but `:w` refuses with vim's error and the file stays as it was (FR-049, FR-060,
+  FR-079 to FR-081).
+- Q: Does `:q` still always leave? → A: As in vim, not with unsaved changes: it gives vim's
+  "No write since last change" error, and `:q!` leaves without saving (FR-064, FR-080).
+- Q: Which messages does the vim view give? → A: vim's own, such as `E37`, `E45` and `W10`, as
+  the shell gives bash's. They replace the site's "read only" message (FR-060, FR-081).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)
@@ -200,8 +226,12 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
 14. **Given** the vim view, **When** the visitor types `/REST` and presses Enter, **Then** every
     match in view is highlighted, the cursor moves to the first, and the message line says which
     match of how many it is. `n` moves to the next.
-15. **Given** the vim view, **When** the visitor presses `i` or types `:w`, **Then** nothing
-    changes and the message line says the file is read only.
+15. **Given** the vim view on `cv.json`, **When** the visitor presses `i` and types, **Then** the
+    text changes on screen and the message line shows vim's warning that the file is read only.
+    **When** they type `:w`, **Then** vim's "'readonly' option is set" error appears and
+    `cat cv.json` shows it as before.
+    Amended 2026-10-30: `i` and `:w` changed nothing and the message line said the file was read
+    only.
 16. **Given** the vim view, **When** the visitor types `:q` and presses Enter, or clicks the `:q`
     control, **Then** the view closes, the Terminal's output is back with `cv` after its prompt,
     a new prompt follows, and focus is in the command line.
@@ -213,6 +243,14 @@ and with `/cv`. Run an unknown command and a misspelt one, and run a command by 
     line.
 19. **Given** the Terminal is open, **When** the visitor runs `work | grep -i engineer`, **Then**
     only the lines of `work`'s output that hold "engineer" appear, as bash would show them.
+20. **Given** `wo` typed in the command line, **When** the visitor presses Tab, **Then** the line
+    reads `work ` with the cursor after the space. (added 2026-10-30)
+21. **Given** `cat cv` typed in the home folder, **When** the visitor presses Tab, **Then** the line
+    reads `cat cv.json `. **Given** `cd wo`, **Then** Tab gives `cd work/`. (added 2026-10-30)
+22. **Given** `c` typed, which more than one command starts with, **When** the visitor presses Tab
+    twice, **Then** the first Tab adds nothing, and the second lists every command starting with
+    `c` below the line, as bash does, followed by the prompt and `c` again, with the cursor after
+    it. (added 2026-10-30)
 
 ---
 
@@ -289,6 +327,14 @@ Try a path that doesn't exist, `cd` into a file and `cat` a folder.
     `notes` is gone.
 11. **Given** the home folder, **When** the visitor runs `grep -ril rest ~/work`, **Then** the
     paths of the work files that mention REST appear, one per line.
+12. **Given** the home folder, **When** the visitor runs `vim todo`, presses `i`, types `ship it`,
+    presses Escape and types `:wq`, **Then** the view closes, and `cat todo` shows `ship it`.
+    (added 2026-10-30)
+13. **Given** `vim todo` with a line changed and not written, **When** the visitor types `:q`,
+    **Then** the view stays open with vim's "No write since last change" error. **When** they type
+    `:q!`, **Then** the view closes and `todo` is as it was. (added 2026-10-30)
+14. **Given** the vim view, **When** the visitor deletes a line with `dd`, then presses `u`,
+    **Then** the line is back. (added 2026-10-30)
 
 ---
 
@@ -356,9 +402,11 @@ run `help` and `work` and confirm what is announced and that the output can be b
 1. **Given** focus is on the Terminal item in the dock, **When** the user presses Enter,
    **Then** the Terminal opens and focus lands in its command line, and a screen reader announces
    the Terminal and the command line's name.
-2. **Given** focus is in the command line, **When** the user presses Tab, **Then** focus leaves
-   the command line for the next element, and Shift+Tab moves it back. Tab never completes or
-   inserts text.
+2. **Given** focus is in an empty command line, **When** the user presses Tab, **Then** focus
+   leaves the command line for the next element, and Shift+Tab moves it back. With text typed,
+   Tab completes it (FR-076), and Escape then Tab leaves; Shift+Tab always leaves. A screen reader
+   hears how to leave as part of the command line's description.
+   Amended 2026-10-30: Tab always left and never completed or inserted text.
 3. **Given** focus is in the command line, **When** the user presses the shell's shortcut for the
    dock, the menu bar or the next window (005 FR-025, FR-026), **Then** the shell acts on it as it
    would anywhere else.
@@ -385,6 +433,9 @@ run `help` and `work` and confirm what is announced and that the output can be b
    Typing a letter then clears the selection and adds the letter to the command line.
 10. **Given** a command line typed or running, with no text selected, **When** the user presses
     Ctrl+C, **Then** the line shows `^C`, nothing more runs, and a new empty prompt follows.
+11. **Given** `wo` typed and completed to `work ` with Tab, **When** a screen reader user listens,
+    **Then** they hear the line's new text. **When** a second Tab lists several matches, **Then**
+    they hear how many there are, once. (added 2026-10-30)
 
 ---
 
@@ -452,7 +503,7 @@ width and command failed.
 behavior the other stories define.
 
 **Independent Test**: break one thing at a time on a branch (drop a field from the output of
-`work`, make Tab stop leaving the command line, give the command line no name, hardcode a CV fact
+`work`, make Tab stop leaving an empty command line, give the command line no name, hardcode a CV fact
 in a command) and confirm that the matching check fails with a clear message and the pull request
 can't merge.
 
@@ -460,8 +511,10 @@ can't merge.
 
 1. **Given** a pull request where `work` leaves out a field `/cv` shows, **When** the checks run,
    **Then** the Terminal content check fails and names the command, the field and the shell.
-2. **Given** a pull request where Tab no longer leaves the command line, **When** the checks run,
-   **Then** the keyboard check fails and names the step.
+2. **Given** a pull request where Tab no longer leaves an empty command line, or Escape then Tab
+   no longer leaves a typed one, **When** the checks run, **Then** the keyboard check fails and
+   names the step.
+   Amended 2026-10-30: the pull request was one where Tab no longer left the command line.
 3. **Given** a pull request where a command's text holds the owner's email typed by hand,
    **When** the checks run, **Then** the content check (002) fails and names the file and line.
 4. **Given** a pull request where the file system has no file for one project, **When** the
@@ -564,8 +617,28 @@ can't merge.
 - **The command line loses focus**, such as when the visitor tabs to the dock: the cursor turns
   hollow and stops blinking, and comes back filled when focus returns (FR-072).
 - **Forced colors**: every part of the Terminal stays visible and distinguishable (FR-033).
-- **Editing keys in the vim view**, such as `i`, `dd` or `:w`: nothing changes, and the message
-  line says the file is read only (FR-060). `:w!` and `:wq` get the same message.
+- **Editing a protected file in the vim view**, such as `cv.json` or `about`: the text changes on
+  screen, with vim's `W10` warning at the first change. `:w`, `:wq` and `:x` give vim's `E45`
+  error, `:w!` the error vim gives for a file it can't write, and the file stays as it was. `:q!`
+  leaves (FR-081). Amended 2026-10-30: every editing key changed nothing and said the file was
+  read only.
+- **`vim` on a new path**, such as `vim notes/todo` with `notes` made by the visitor: an empty file
+  marked new, which `:w` creates. In a protected folder, such as `vim work/new`, `:w` gives the
+  error vim gives for a file it can't write, and nothing is created (FR-080).
+- **`:w` past the 1 MB the visitor's files may hold** (FR-073): vim's write error, the file as it
+  was before, and the view still open with the changes.
+- **`vim -` with piped input, then `:w`**: vim's "No file name" error. `:w <name>` writes it
+  there, if that path may be written (FR-080).
+- **The Terminal closed with unsaved changes in the vim view**: they are gone, with no question,
+  as the visitor's files are when it closes (FR-021).
+- **Tab with nothing to complete**, such as `xyz` or a path no file starts with: nothing changes and
+  focus stays. A second Tab lists nothing (FR-076).
+- **Tab with more than 100 matches**, such as `ls /usr/` if it held that many: as bash, the second
+  Tab asks `Display all N possibilities? (y or n)`, and `y` lists them (FR-076).
+- **Tab inside quotes or after a redirect**, such as `cat "cv` or `echo hi > no`: it completes the
+  path, keeping the quote, as bash does (FR-076).
+- **Tab in the vim view**: in normal mode it leaves the view, as before (FR-065). In insert mode it
+  inserts a tab, as vim does, and Escape then Tab leaves (FR-079).
 - **An unknown `:` command** in the vim view, such as `:foo`: the message line names it and says
   it isn't a command there. Escape cancels a `:` or `/` being typed.
 - **A search with no match**: the message line says the text wasn't found, and the cursor stays.
@@ -656,7 +729,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `cd [path]` | Changes the working folder. `cd` alone returns to the home folder. |
   | `cat <path>` | Shows a file. |
   | `jq [path]` | Pretty-prints JSON from the path or from piped input (FR-056). |
-  | `vim <path>`, `vim -` | Opens the file, or the piped input, in the read-only vim view (FR-058). |
+  | `vim <path>`, `vim -` | Opens the file, the piped input, or a new file, in the vim view, to read or edit (FR-058, FR-079). |
   | `pwd` | The working folder's path. |
   | `open <name>` | Opens the CV app (`open cv`) or About this site (`open about`) in the shell. |
   | `history` | The commands run since the Terminal opened, oldest first. |
@@ -869,6 +942,11 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-053**: While the on-screen keyboard is open, the command keys MUST give it room, so the
   command line and the newest output stay visible above the keyboard (FR-025). When the keyboard
   closes, the keys MUST come back as they were.
+- **FR-078** (added 2026-10-30): The pocket terminal's command keys MUST include a Tab key, a
+  button named for completing, at least 44 by 44 CSS px, in the place the approved design sets.
+  With text before the cursor it MUST complete as Tab does (FR-076), a second press in a row
+  listing the matches; with none it MUST change nothing. Pressing it MUST keep the on-screen
+  keyboard open, and focus in the command line.
 - **FR-054**: The pocket terminal's drawn case MUST be decoration only: it MUST NOT be announced by
   screen readers, take focus or carry meaning. It MUST be of the site's own design and MUST NOT
   copy or trace any real device (Constitution IX). A pressed key MAY show a pressed state, which
@@ -893,22 +971,27 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-058**: `vim <path>` and `vim -` with piped input MUST open the vim view: the text shown in
   place of the Terminal's output, filling the Terminal window, or the pocket terminal's screen,
   with line numbers, a status line and a message line. The status line MUST show the mode, the
-  file's name, that it is read only, the file type, the cursor's line and column, and how far
-  through the file the view is. `vim` on a folder or a path that doesn't exist MUST get the
-  replies FR-048 sets, and `vim -` with nothing piped or `vim` alone the usage reply (FR-017),
-  without opening the view.
+  file's name, whether it is read only, new or changed since it was last written, the file type,
+  the cursor's line and column, and how far through the file the view is. `vim` on a folder MUST
+  get the reply FR-048 sets, and `vim -` with nothing piped or `vim` alone the usage reply
+  (FR-017), without opening the view. `vim` on a path that doesn't exist MUST open an empty, new
+  file (FR-080). Amended 2026-10-30: the status line always said the file was read only, and a
+  path that didn't exist got FR-048's reply.
 - **FR-059**: `cv` MUST run `cat cv.json | jq | vim -` as if typed, and the status line MUST show
   that pipe. `help` MUST say what `cv` runs.
-- **FR-060**: The vim view MUST be read only. It MUST support at least these keys: `h`, `j`, `k`,
+- **FR-060**: The vim view MUST support at least these keys in normal mode: `h`, `j`, `k`,
   `l` and the arrow keys, `w` and `b`, `0` and `$`, `gg` and `G`, `{` and `}`, Page Up and Page
   Down, `/` with text and Enter to search, `n` and `N`, `za`, `zo`, `zc`, `zR` and `zM` for
-  folds, `:` with a line number, `:set nu` and `:set nonu`, `:help`, and `:q` and `:q!`. Keys and
-  commands that would change the file, such as `i`, `a`, `o`, `x`, `dd`, `p`, `:w` and `:wq`,
-  MUST change nothing and show a message, in site text, that the file is read only. An unknown
-  `:` command MUST show a message that names it. Escape MUST cancel a `/` or `:` being typed. The
-  view MUST NOT take Ctrl+D, Ctrl+F or Ctrl+U on any system, nor any other key a current main
-  browser or screen reader reserves on the visitor's system (FR-026). Amended 2026-10-29: it
-  named Ctrl+D, Ctrl+F and Ctrl+U as keys every browser reserves.
+  folds, `:` with a line number, `:set nu` and `:set nonu`, `:help`, and `:q` and `:q!`, with the
+  editing keys and commands of FR-079 and FR-080. Its messages MUST be vim's own, such as `E37`,
+  `E45` and `W10`, with vim's wording. An unknown `:` command MUST show vim's "Not an editor
+  command" error naming it. Escape MUST cancel a `/` or `:` being typed. The view MUST NOT take
+  Ctrl+D, Ctrl+F or Ctrl+U on any system, nor any other key a current main browser or screen
+  reader reserves on the visitor's system (FR-026). Amended 2026-10-29: it named Ctrl+D, Ctrl+F
+  and Ctrl+U as keys every browser reserves. Amended 2026-10-30: the view was read only, and keys
+  and commands that would change the file, such as `i`, `a`, `o`, `x`, `dd`, `p`, `:w` and `:wq`,
+  changed nothing and showed a message, in site text, that the file was read only; an unknown `:`
+  command got a message in site text.
 - **FR-061**: JSON in the vim view MUST open with each top-level object or array closed to one
   fold line that names its key and its number of lines, and everything else open. Each fold line
   MUST be a control that opens or closes the fold when clicked, tapped, or activated with Enter
@@ -921,25 +1004,61 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   shown on a line's first row only.
 - **FR-064**: `:q`, or the `:q` control in the message line, MUST close the vim view and bring
   back the Terminal's output as it was, with the command that opened the view after its prompt,
-  then a new prompt, with focus in the command line. `:help`, or its control, MUST open the
+  then a new prompt, with focus in the command line. With changes not yet written, `:q` and its
+  control MUST instead keep the view open and give vim's `E37` error, and `:q!` MUST close it
+  without writing them (FR-080). Amended 2026-10-30: `:q` always closed the view. `:help`, or its control, MUST open the
   view's keys in a split below the file, and `:q` MUST close that split first.
 - **FR-065**: When the vim view opens, focus MUST move into it, and a screen reader MUST announce the
-  file's name, that it is read only, its number of lines, and that `:q` leaves. The text MUST be
-  readable with the screen reader's own reading keys as a read-only document, fold lines MUST be
-  buttons that say whether they are open, and a change to the status or message line MUST be
-  announced once. Tab and Shift+Tab MUST move focus out of the view, never trapping it (FR-026).
+  file's name, whether it is read only or new, its number of lines, and that `:q` leaves. The text
+  MUST be readable with the screen reader's own reading keys, fold lines MUST be buttons that say
+  whether they are open, and a change to the mode, the status line or the message line MUST be
+  announced once. In insert mode, what is typed and deleted MUST be announced as in a text field.
+  In normal mode, Tab and Shift+Tab MUST move focus out of the view; in insert mode, Shift+Tab
+  MUST, and Escape then Tab MUST, so focus is never trapped (FR-026, FR-079). Amended 2026-10-30:
+  the view was always read only, announced as read only, and Tab always left it.
 - **FR-066**: On mobile, while the vim view is open, the pocket terminal's command keys MUST become
-  vim keys: `j`, `k`, `za`, `/`, `n`, `gg`, `G` and `:q`, in the order the approved design sets,
-  each a button named by what it does, at least 44 by 44 CSS px. Closing the view MUST bring the
-  command keys back. Fold lines MUST be tappable.
+  vim keys: `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `i`, `u`, `:w` and `:q`, and in insert mode
+  `Esc`, in the order the approved design sets, each a button named by what it does, at least 44
+  by 44 CSS px. Entering insert mode MUST open the on-screen keyboard, and a tap on the text MUST
+  move the cursor there. Closing the view MUST bring the command keys back. Fold lines MUST be
+  tappable. Amended 2026-10-30: the vim keys had no `i`, `u`, `:w` or `Esc`, and the view took no
+  typing.
+
+- **FR-079** (added 2026-10-30): The vim view MUST edit text as vim does, with at least: `i`, `a`,
+  `I`, `A`, `o` and `O` to enter insert mode, where typed text is inserted, Backspace and Delete
+  delete, Enter splits the line, Tab inserts a tab, the arrow keys move, and Escape returns to
+  normal mode; in normal mode `x`, `dd`, `dw`, `D`, `cw`, `cc`, `C`, `r` with a character, `J`,
+  `yy`, `yw`, `p` and `P`, a count before a move or any of these, such as `3dd`, and `.` to repeat
+  the last change; `u` to undo and `:redo` to redo, and Ctrl+R to redo on systems where no current
+  main browser reserves it, such as macOS (FR-026). The status line MUST show `-- INSERT --` in
+  insert mode. A click or tap on the text MUST move the cursor there. Editing a closed fold MUST
+  act on it as vim acts on a closed fold, and a change inside one MUST open it.
+- **FR-080** (added 2026-10-30): `:w` MUST write the view's text to its file, `:w <path>` to that
+  path, and `:wq`, `:x` and `ZZ` MUST write and close the view, each as vim does, with vim's
+  message saying what was written. Writing MUST follow FR-073: the file appears or changes in the
+  shell's file system at once, and a write past the 1 MB limit MUST give vim's write error and
+  change nothing. A view with no file name, as opened by `vim -`, MUST give vim's `E32` error for
+  `:w` without a path. A path that can't be written, inside a protected folder or a folder that
+  doesn't exist, MUST give vim's error for a file it can't open for writing, and change nothing.
+  `:q!` MUST close the view without writing, and closing the Terminal MUST end it with its
+  changes unwritten (FR-021).
+- **FR-081** (added 2026-10-30): A protected file (FR-049) MUST open in the vim view marked read
+  only, as vim marks a file it may not write. It MAY be changed on screen, with vim's `W10`
+  warning at the first change. `:w`, `:wq` and `:x` MUST give vim's `E45` error, `:w!` vim's error
+  for a file it can't open for writing, and the file MUST stay as it was. `:w <path>` to a path the
+  visitor may write MUST write the changed text there, so a visitor can keep an edited copy.
 
 **Keyboard and screen readers**
 
-- **FR-026**: Tab and Shift+Tab MUST always move focus out of the command line, and MUST NOT
-  complete or insert text, so focus is never trapped (WCAG 2.2 success criterion 2.1.2, 005
-  FR-030). The shell's shortcuts MUST keep working while focus is in the command line (005 FR-025
-  to FR-029). The Terminal MUST add no shortcut that takes over one a current main browser or
-  screen reader reserves (005 FR-029).
+- **FR-026**: Focus MUST never be trapped in the command line (WCAG 2.2 success criterion 2.1.2,
+  005 FR-030): Shift+Tab MUST always move focus out of it; Tab MUST move focus out of an empty
+  command line, or one holding only spaces before the cursor; and Escape then Tab MUST move focus
+  out whatever was typed. Otherwise Tab completes (FR-076). The command line's accessible
+  description and `help` MUST say that Tab completes and how to leave (FR-077). The shell's
+  shortcuts MUST keep working while focus is in the command line (005 FR-025 to FR-029). The
+  Terminal MUST add no shortcut that takes over one a current main browser or screen reader
+  reserves (005 FR-029). Amended 2026-10-30: Tab and Shift+Tab always moved focus out and never
+  completed or inserted text.
 - **FR-027**: The command line MUST have an accessible name that says it takes a command. The
   prompt MUST NOT be read as part of what was typed.
 - **FR-028**: After a command runs, its output MUST be announced to screen readers once, without
@@ -987,6 +1106,23 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   stepping through the history (FR-020). No key of this requirement or FR-074 may take over one a
   current main browser or screen reader reserves on the visitor's system (FR-026, 005 FR-029); in
   the vim view, its own keys apply (FR-060).
+- **FR-076** (added 2026-10-30): Tab with text before the cursor MUST complete the word before the
+  cursor as bash's own completion does, with no completion scripts: the first word of a command
+  against the site's commands and aliases, the standard commands, the shell's builtins and the
+  functions and aliases the visitor defined; any later word, and a word after a redirect, against
+  the paths in the shell's file system, from the working folder, `/` or `~`. One match MUST be
+  completed, followed by a space for a command or file and a `/` for a folder. Several matches
+  MUST be completed as far as they all agree; when that adds nothing, a second Tab in a row MUST
+  list them below the line, in columns, folders marked as `ls` marks them, then show the prompt
+  and the line again, unchanged. More than 100 matches MUST first ask bash's
+  `Display all N possibilities? (y or n)`. No match MUST change nothing. A word inside quotes
+  MUST keep its quote. The listed matches are output: they scroll and select as output does and
+  are never command controls.
+- **FR-077** (added 2026-10-30): A completion MUST be announced to screen readers once: the
+  line's new text after a completion, or the number of matches when a second Tab lists them,
+  without reading the list (FR-028). The command line's accessible description MUST say that Tab
+  completes and that Escape then Tab leaves, and `help` MUST say the same in its text about the
+  command line. The keyboard check covers both (FR-039).
 
 **Look, motion and accessibility**
 
@@ -1047,7 +1183,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-039**: The keyboard check (005 FR-057) MUST, at a desktop width and with the keyboard alone,
   open the Terminal from the dock, run `help`, run a command from its output with Enter, recall a
   command with the Up arrow, run `cv`, move with `j`, open a fold with `za` and leave the vim view
-  with `:q`, leave the command line with Tab and come back with Shift+Tab, reach
+  with `:q`, leave the empty command line with Tab and come back with Shift+Tab, complete `wo` to
+  `work ` with Tab and leave the typed line with Escape then Tab, open `vim todo`, type a line in
+  insert mode, write it with `:wq` and confirm `cat todo` shows it, reach
   the dock with the shell's shortcut, and close the Terminal with `exit`, confirming a visible
   focus indicator and where focus lands at each step. In the command line, the visible focus
   indicator is its filled cursor (FR-072), and the check MUST confirm that the cursor is filled
@@ -1126,8 +1264,13 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   (FR-055).
 - **Pipe**: commands joined with `|`, each one's output the next one's input, with bash's meaning
   (FR-057).
-- **Vim view**: the read-only, vim-like view of a file or piped text, with line numbers, folds,
-  search, a status line and a message line (FR-058 to FR-066).
+- **Vim view**: the vim-like view of a file, piped text or a new file, with line numbers, folds,
+  search, insert mode and vim's editing keys, a status line and a message line; it writes the
+  visitor's files and not protected ones (FR-058 to FR-066, FR-079 to FR-081). Amended
+  2026-10-30: it was read only.
+- **Completion**: what Tab adds to the word before the cursor, or the list of matches a second
+  Tab shows, from the commands and the file system as bash completes them (FR-076, FR-077).
+  (added 2026-10-30)
 
 ## Shell Scope *(mandatory)*
 
@@ -1172,6 +1315,12 @@ plain server-rendered page.
   (FR-008), the shell loading and failing to load (FR-070), a command line stopped by its limit
   (FR-069), and the command line's selection and the Terminal's text selected all (FR-074,
   FR-075), the greeting removed (FR-005), with the owner's sign-off added to `review.md`
+- [ ] For the 2026-10-30 amendment: the mockup and wireframes updated for a completion and the
+  list a second Tab shows (FR-076), the pocket terminal's Tab key (FR-078), the vim view in insert
+  mode with its status line, a changed file, a protected file with vim's `W10` warning and `E45`
+  error, a new file, and `E37` after `:q` (FR-079 to FR-081), and the pocket terminal's vim keys
+  with `i`, `u`, `:w` and `Esc` and the on-screen keyboard open (FR-066), with the owner's
+  sign-off added to `review.md`
 
 ## Success Criteria *(mandatory)*
 
@@ -1224,6 +1373,13 @@ plain server-rendered page.
 - **SC-015**: In 100% of the keyboard check's steps with focus in the command line, its cursor is
   filled, and there is no outline or border around the command line; in 100% of the steps with
   focus elsewhere, the cursor is hollow.
+- **SC-016** (added 2026-10-30): From every state the keyboard check reaches with focus in the
+  command line or the vim view, typed text or insert mode included, focus leaves the Terminal in
+  at most two key presses (Escape, then Tab), and Shift+Tab leaves in one, in 100% of the steps.
+- **SC-017** (added 2026-10-30): For a fixed list of at least 20 partly typed command lines, of
+  commands, files, folders and paths in quotes, on the same files, a first and a second Tab give
+  the line and the list that bash 5's own completion gives, with no completion scripts, in 100%
+  of the cases, compared as SC-014 compares.
 
 ## Assumptions
 
@@ -1251,9 +1407,13 @@ plain server-rendered page.
   command line takes the system's own editing keys everywhere, and on macOS, where browsers leave
   Ctrl free, the readline keys too. On Windows and Linux the browser reserves most readline keys
   (Ctrl+W closes the tab), so there the system's editing keys do the same work (FR-074, FR-026).
-- **No completion with Tab**: in a page, Tab moves focus, and taking it over would trap keyboard
-  users (FR-026). Visitors who don't know a command use the command controls (FR-015) and the
-  suggestions for near misses (FR-016) instead.
+- **Completion with Tab** (2026-10-30): engineers press Tab without thinking, and a terminal that
+  ignores it doesn't feel like one. In a page, Tab moves focus, so taking it over everywhere would
+  trap keyboard users. Tab completes only when there is something typed to complete; on an empty
+  line it leaves as before, and Escape then Tab always leaves, as many web code editors do. The
+  command line says so, which WCAG 2.2 success criterion 2.1.2 asks of any exit that isn't plain
+  Tab (FR-026, FR-077). Visitors who don't know a command still have the command controls
+  (FR-015) and the suggestions for near misses (FR-016). Until 2026-10-30, Tab never completed.
 - **Focus on opening**: a terminal is for typing, so focus goes to the command line rather than to
   a heading (FR-004). 005 FR-040 was widened to allow this on 005's branch, before 005 merged.
 - **Output appears at once**: typing output out letter by letter would slow every reader and be
@@ -1280,8 +1440,11 @@ plain server-rendered page.
   is original by construction, and its keys are the way in for visitors who don't want to type
   on a phone. The design sets which device it evokes, as long as it copies none.
 - **Vim view**: engineers know vim, and the CV document is JSON, so the whole CV is shown as that
-  JSON in a vim-like view rather than as a long page of text. It is a viewer: it changes no file,
-  the visitor's own included, and files are changed with the shell's commands. It copies vim's keys and layout conventions, not any
+  JSON in a vim-like view rather than as a long page of text. Since 2026-10-30 it is an editor as
+  well, as vim is: visitors write their own files with it, and protected files behave as
+  read-only files do in vim, so the CV can't change. It covers the editing most vim users reach
+  for, not all of vim: no visual mode, registers beyond the one yank, macros, splits other than
+  `:help`, or `:s`. It copies vim's keys and layout conventions, not any
   vim color scheme, so the look stays the site's own (FR-031). The section commands keep their
   readable text for visitors who don't read JSON, and `/cv` stays the plain CV.
 - **Command keys are big**: they are the phone's main way in, so FR-051 sets 44 by 44 CSS px, the
@@ -1293,8 +1456,11 @@ plain server-rendered page.
   - Running real programs, reaching the network, or any command that changes the site or the
     files built from the CV and the spec list.
   - A file system shared with other apps, or a Files app. A later feature may add them.
-  - Tab completion (FR-026), job control, background jobs, interactive programs other than the
-    vim view, and running a script file with `bash` or `sh`.
+  - Job control, background jobs, interactive programs other than the vim view, running a script
+    file with `bash` or `sh`, and completion scripts (bash-completion's completion of options and
+    arguments). Amended 2026-10-30: Tab completion was out of scope.
+  - In the vim view: visual mode, named registers, macros, `:s` and `:g`, splits other than
+    `:help`, and settings other than `:set nu` and `:set nonu`.
   - Changing the protected files, keeping the visitor's files after the Terminal closes, hidden
     files in the home folder, `chmod`, `chown` and users other than the visitor.
   - Commands for apps that don't exist yet. `open` gains names as later features add apps.
