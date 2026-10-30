@@ -143,6 +143,15 @@ class PlaygroundWorker extends TypeScriptWorker {
     return { code: withoutMapComment(code).replace(/^\s*export\s*\{\s*\};?\s*$/m, ''), map, imports, errors, skipped: false };
   }
 
+  // What each name in the code is, as TypeScript knows it, for the syntax
+  // colors the tokenizer can't tell (FR-068: functions, properties, types):
+  // TypeScript's 2020 classifications in the span asked, as offset, length
+  // and kind triples.
+  async getNameKinds(fileName: string, start: number, length: number): Promise<number[]> {
+    if (this.getLanguageService().getProgram()?.getSourceFile(fileName) === undefined) return [];
+    return this.getLanguageService().getEncodedSemanticClassifications(fileName, { start, length }, ts.SemanticClassificationFormat.TwentyTwenty).spans;
+  }
+
   // TypeScript's fixes, without any that adds an import (FR-082). Monaco
   // passes the editor's format options by their older names
   // (`ConvertTabsToSpaces`, `IndentSize`), which TypeScript's fixes don't

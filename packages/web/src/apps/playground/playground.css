@@ -52,8 +52,10 @@
   color: var(--token-color-shell-text);
 }
 
-/* Narrower than breakpoint.playground-stack, the panes go under the editor
-   (FR-072); wider, beside it. */
+/* With the Playground (the window's content, the container) narrower than
+   breakpoint.playground-stack, the panes go under the editor and the tools
+   show only their glyphs, their names kept for screen readers
+   (FR-072); wider, the panes are beside the editor and the names show. */
 .playground-body {
   flex: 1;
   min-block-size: 0;
@@ -71,6 +73,20 @@
   background: var(--token-color-playground-panel);
 }
 
+.playground-toolbar .button.tool > span {
+  position: absolute;
+  inline-size: var(--token-border-thin);
+  block-size: var(--token-border-thin);
+  margin: calc(-1 * var(--token-border-thin));
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.playground-toolbar .button.tool > .chevron {
+  display: none;
+}
+
 @container (--token-breakpoint-playground-stack) {
   .playground-body {
     grid-template-columns: minmax(0, 1fr) var(--token-size-playground-side);
@@ -80,6 +96,19 @@
   .playground-side {
     border-block-start: 0;
     border-inline-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  }
+
+  .playground-toolbar .button.tool > span {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .playground-toolbar .button.tool > .chevron {
+    display: block;
   }
 }
 
@@ -411,6 +440,7 @@
 
 .pane-tabs {
   display: flex;
+  flex-wrap: wrap;
   flex: none;
   padding-inline: var(--token-space-2);
   border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);

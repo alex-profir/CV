@@ -5,8 +5,10 @@
 //
 // `PLAYGROUND_ENGINE` (`chromium`, `firefox` or `webkit`) chooses the browser
 // for the tests that depend on the engine: `npm run test:engines` sets it.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { deflateRawSync } from 'node:zlib';
 import type { Locator, Page, Route } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import type { Engine } from './browser.ts';
@@ -202,6 +204,14 @@ export async function holdEngine(page: Page): Promise<{ release: () => void }> {
     await route.continue();
   });
   return { release: letGo };
+}
+
+// A link as contracts/share-link.md writes it, made here from the content's
+// JSON, so the page's reading is checked against the contract.
+export function linkFrom(origin: string, json: string): string {
+  const payload = deflateRawSync(Buffer.from(json, 'utf8')).toString('base64url');
+  const check = createHash('sha256').update(payload, 'ascii').digest('base64url').slice(0, 11);
+  return `${origin}/#playground=1.${payload}.${check}`;
 }
 
 export type EngineManifest = {
