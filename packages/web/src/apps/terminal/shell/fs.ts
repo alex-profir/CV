@@ -22,7 +22,15 @@ export const OPENING = '\u0001';
 // The command the adapter runs after one with an output redirect, and the
 // group that holds them, as the shell's `type` prints it.
 export const WROTE = '__cv_wrote';
-const WRAPPED = new RegExp(`\\{ ([^{}]*); ${WROTE} \\$\\?; \\}`, 'g');
+const WRAPPED = new RegExp(`\\{ ([^{}]*); /usr/bin/${WROTE} \\$\\?; \\}`, 'g');
+
+// Starts the message of a `${x:?word}`, which tells it from `exit` (T286).
+export const FATAL = '\u0002';
+
+// `cd`, `eval` and `source` as the adapter runs them, and a `--help` it
+// answers, as `type` prints them.
+const FINISHED = /\{ \/usr\/bin\/__cv_hold "\$\?" (\S*) && .*?\/usr\/bin\/__cv_after; \}/g;
+const HELPED = /\/usr\/bin\/__cv_usage (\S+)/g;
 
 // Written to as bash writes to them, not as files.
 const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full']);
@@ -237,7 +245,8 @@ export class TerminalFs extends InMemoryFs {
       last = body;
       body = body.replace(WRAPPED, '$1');
     }
-    body = body.replaceAll(` ${WROTE} $?;`, '');
+    body = body.replaceAll(` /usr/bin/${WROTE} $?;`, '');
+    body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '');
     if (!body.includes(OPENING)) return body;
     return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
   }
@@ -452,6 +461,7 @@ export class TerminalFs extends InMemoryFs {
   async snapshot(): Promise<VisitorFiles> {
     const folders: string[] = [];
     const files: Record<string, string> = {};
+    const binary: string[] = [];
     let bytes = 0;
     for (const path of [...this.getAllPaths()].sort()) {
       if (this.locked.has(path) || path === HOME || path === TMP || path.startsWith('/dev/') || path.startsWith('/proc')) continue;
@@ -460,11 +470,17 @@ export class TerminalFs extends InMemoryFs {
       if (stat === null) continue;
       if (stat.isDirectory) folders.push(path);
       else if (stat.isFile) {
-        files[path] = await super.readFile(path);
+        const buffer = await super.readFileBuffer(path);
+        try {
+          files[path] = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        } catch {
+          files[path] = Array.from(buffer, (byte) => String.fromCharCode(byte)).join('');
+          binary.push(path);
+        }
         bytes += stat.size;
       }
     }
-    return { folders, files, bytes };
+    return { folders, files, bytes, ...(binary.length === 0 ? {} : { binary }) };
   }
 
   // No visitor file left; the protected tree as it was built (FR-021).
@@ -479,7 +495,7 @@ export class TerminalFs extends InMemoryFs {
     for (const folder of files.folders) await super.mkdir(folder, { recursive: true });
     for (const [path, text] of Object.entries(files.files)) {
       await super.mkdir(parentOf(path), { recursive: true });
-      await super.writeFile(path, text);
+      await super.writeFile(path, files.binary?.includes(path) === true ? Uint8Array.from(text, (character) => character.charCodeAt(0)) : text);
     }
   }
 }

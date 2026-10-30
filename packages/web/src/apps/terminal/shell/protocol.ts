@@ -6,13 +6,14 @@
 import type { Block, Effect } from '../engine/block.ts';
 
 // `set -o` options the adapter carries from line to line (research R27).
-export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace';
+export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport';
 
 // What the shell keeps between lines, since just-bash resets it after each
 // run (research R27, G4).
 export type ShellState = {
   cwd: string;
-  // Shell variables, without the shell's own (PWD, IFS…).
+  // Shell variables that differ from a fresh shell's, without the shell's own
+  // (PWD, LINENO…).
   variables: Readonly<Record<string, string>>;
   exported: readonly string[];
   // Name → its definition, serialized.
@@ -20,9 +21,18 @@ export type ShellState = {
   options: readonly ShellOption[];
   // `$?` after the last line.
   status: number;
+  // Variables a fresh shell has that the visitor unset.
+  unset: readonly string[];
+  // `declare -p`'s line for each array and each variable with an attribute
+  // (readonly, integer…).
+  declarations: readonly string[];
+  // `$1`, `$2`…
+  positional: readonly string[];
+  // `shopt` settings that are on; empty until the first line.
+  shopts: readonly string[];
 };
 
-export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0 };
+export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0, unset: [], declarations: [], positional: [], shopts: [] };
 
 export type Owner = 'root' | 'guest';
 export type FsEntryInfo = { path: string; kind: 'file' | 'folder'; owner: Owner; protected: boolean };
@@ -34,6 +44,8 @@ export type VisitorFiles = {
   folders: readonly string[];
   // Absolute path → text.
   files: Readonly<Record<string, string>>;
+  // The files that aren't valid UTF-8: their text holds one character a byte.
+  binary?: readonly string[];
   // Their total, at most QUOTA.
   bytes: number;
 };

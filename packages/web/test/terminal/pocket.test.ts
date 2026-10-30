@@ -499,6 +499,22 @@ describe('006-terminal-FR-078: the Tab key completes as Tab does', () => {
     expect(await commandLineFocused(page)).toBe(true);
   });
 
+  test('the Tab key completes cd .. and lists again on every further tap', async () => {
+    const page = await openPocket();
+    await typeInLine(page, 'cd ..');
+    await tabKey(page).tap();
+    await expect.poll(() => lineValue(page)).toBe('cd ../');
+    await page.locator(COMMAND_LINE).fill('ls .');
+    await tabKey(page).tap();
+    await settle(page);
+    const lists = page.locator('.terminal div.completion-list');
+    for (const count of [1, 2, 3]) {
+      await tabKey(page).tap();
+      await expect.poll(() => lists.count()).toBe(count);
+    }
+    expect(await lists.last().innerText()).toContain('../');
+  });
+
   // The on-screen keyboard's own events are for T279's real phones.
   test('the 100-match question: a key event of Unidentified is read from what it types, and the Tab key answers yes', async () => {
     const page = await openPocket();

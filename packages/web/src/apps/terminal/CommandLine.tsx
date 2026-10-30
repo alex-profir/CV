@@ -115,9 +115,9 @@ export async function tabComplete(input: HTMLInputElement) {
     return;
   }
   if (!second || answer.matches.length < 2) return;
-  tabbed = null;
   if (answer.matches.length < COMPLETION_QUERY) session.showList(line, answer.matches);
   else {
+    tabbed = null;
     asked = { matches: answer.matches, line, cursor };
     session.askList(line, answer.matches.length);
   }

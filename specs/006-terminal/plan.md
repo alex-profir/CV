@@ -59,7 +59,7 @@ Technical approach (details in [research.md](./research.md)):
   service worker keeps the version an open page came from, so the shell still loads after an
   update (R35).
 - **State carried by an adapter** (R27): just-bash resets variables, functions and the working
-  folder after each run, so the adapter wraps each line in a prelude and an epilogue and carries
+  folder after each run, so the adapter wraps each line in a prelude and a checkpoint and carries
   them, with function bodies from just-bash's own parser.
 - **The Terminal's file system** (R28): the CV and spec files are protected (`Permission denied`,
   owned by `root`), the visitor writes anywhere else up to 1 MB, and everything is gone when the

@@ -347,3 +347,91 @@ describe('006-terminal-FR-064 and 006-terminal-FR-061: the help split, and leavi
     expect(lineText(open('a\nb'), 1)).toBe('b');
   });
 });
+
+// Each expected text and cursor was taken from `vim -u NONE -N -s` (9.1).
+describe('006-terminal-FR-079 and 006-terminal-FR-060: as real vim does', () => {
+  const TEXT = 'one two three\n  four five\n\nsix seven\neight nine\n\n\n  ten\neleven twelve';
+  const after = (from: VimState) => [from.lines.join('\n'), ...at(from)];
+  const typed = (from: VimState, text: string) => inputs(from, ...[...text].map((value) => ({ text: value })));
+
+  test.each([
+    ['3D', 'six seven\neight nine\n\n\n  ten\neleven twelve', 0, 0],
+    ['j3D', 'one two three\neight nine\n\n\n  ten\neleven twelve', 1, 0],
+    ['w2D', 'one \n\nsix seven\neight nine\n\n\n  ten\neleven twelve', 0, 3],
+    ['8G3D', 'one two three\n  four five\n\nsix seven\neight nine\n\n', 6, 0],
+    ['9G2D', TEXT, 8, 0],
+    ['G3dd', TEXT, 8, 0],
+  ])('%s', (sequence, expected, line, column) => {
+    expect(after(keys(open(TEXT), sequence))).toEqual([expected, line, column]);
+  });
+
+  test('2C deletes to the line’s end and the next line, then inserts on the one left', () => {
+    const changed = keys(open(TEXT), '2C');
+    expect(changed.mode).toBe('insert');
+    expect(changed.lines.slice(0, 2)).toEqual(['', '']);
+    expect(after(inputs(typed(changed, 'x'), Esc))[0]).toBe('x\n\nsix seven\neight nine\n\n\n  ten\neleven twelve');
+  });
+
+  test.each([
+    ['3i', 'xxxone two', 0, 2],
+    ['3a', 'oxxxne two', 0, 3],
+    ['3A', 'one twoxxx', 0, 9],
+    ['3I', 'xxxone two', 0, 2],
+    ['3o', 'one two\nx\nx\nx', 3, 0],
+    ['3O', 'x\nx\nx\none two', 2, 0],
+  ])('%sx<Esc> repeats what was typed, as one undo step', (sequence, expected, line, column) => {
+    const done = inputs(typed(keys(open('one two'), sequence), 'x'), Esc);
+    expect(after(done)).toEqual([expected, line, column]);
+    expect(keys(done, 'u').lines).toEqual(['one two']);
+  });
+
+  test('on an empty line: J adds no leading space, dw deletes the line, 2dw the two empty lines', () => {
+    expect(after(keys(open('\nabc'), 'J'))[0]).toBe('abc');
+    expect(after(keys(open('\nabc'), 'dw'))[0]).toBe('abc');
+    expect(after(keys(open('\n\nabc'), '2dw'))[0]).toBe('abc');
+  });
+
+  test.each([
+    ['2G', 1, 2],
+    ['8G', 7, 2],
+    ['G', 8, 0],
+    ['Ggg', 0, 0],
+    ['2gg', 1, 2],
+  ])('%s lands on the line’s first non-blank', (sequence, line, column) => {
+    expect(at(keys(open(TEXT), sequence))).toEqual([line, column]);
+  });
+
+  test(':2 lands on the first non-blank', () => {
+    expect(at(state(command(open(TEXT), '2')))).toEqual([1, 2]);
+  });
+
+  test.each([
+    ['}', 2, 0],
+    ['}}', 5, 0],
+    ['}}}', 8, 12],
+    ['G{', 6, 0],
+    ['G{{', 2, 0],
+    ['G{{{', 0, 0],
+    ['4G{', 2, 0],
+    ['3G}', 5, 0],
+    ['7G{', 2, 0],
+  ])('%s in a text file stops at blank lines', (sequence, line, column) => {
+    expect(at(keys(open(TEXT), sequence))).toEqual([line, column]);
+  });
+
+  test('{ and } in JSON keep the fold jumps', () => {
+    const moved = keys(json(), '}');
+    expect(moved.folds.map((fold) => fold.start)).toContain(moved.cursor.line);
+  });
+
+  test('x, r, h and l treat a character as whole', () => {
+    const emoji = open('a😀b');
+    expect(text(keys(emoji, 'lx'))).toBe('ab');
+    expect(at(keys(emoji, 'll'))).toEqual([0, 3]);
+    expect(at(keys(emoji, 'llh'))).toEqual([0, 1]);
+    expect(at(keys(emoji, '$h'))).toEqual([0, 1]);
+    expect(text(keys(emoji, 'lrz'))).toBe('azb');
+    expect(at(keys(open('a😀'), '$'))).toEqual([0, 1]);
+    expect(at(inputs(keys(emoji, 'A'), { key: 'ArrowLeft' }, { key: 'ArrowLeft' }))).toEqual([0, 1]);
+  });
+});

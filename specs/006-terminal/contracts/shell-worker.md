@@ -67,16 +67,16 @@ new Bash({
   cwd: '/home/guest',
   env: { HOME: '/home/guest', USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash' },
   commands: STANDARD_COMMANDS,          // research R32
-  customCommands: [...siteCommands, cvState],             // research R27, R28, R29
-  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + preludeLines,
+  customCommands: [...siteCommands, ...adapterCommands],  // research R27, R28, R29
+  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + overhead, maxCallDepth: 20000,
                      maxOutputSize: 4 * 1048576,            // LIMITS.pipe, research R33
                      maxLoopIterations: 1_000_000_000 },   // research R33, G15
 });
-// then registerTransformPlugin(sitePlugin) and registerTransformPlugin(guardPlugin(fs, cwd))
+// then registerTransformPlugin for the line's tree (R27), sitePlugin, redirectPlugin and the checkpoints
 // no network, fetch, python or javascript option (research R39)
 ```
 
-`__cv_state` and `__cv_denied` are the adapter's own commands. `help` doesn't list them, and a line
+`__cv_begin`, `__cv_read`, `__cv_end`, `__cv_wrote` and the other `__cv_*` names are the adapter's own commands. `help` doesn't list them, and a line
 that names them gets "command not found" (the adapter refuses a line whose words name them).
 
 ## Build

@@ -585,7 +585,7 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G7 | `FsStat` has no owner, so `ls -l` always shows `user user` | The `ls` wrapper writes the owner (R28) |
 | G8 | Functions can't override `exit` | Not needed: R27 detects `exit` |
 | G9 | `$HOME` defaults to `/` | Set to `/home/guest` (R27) |
-| G10 | `compgen -b` prints nothing, and `type` abbreviates a function's body with `...` | R27 takes bodies from the parser, R32 lists builtins in a tested constant |
+| G10 | `compgen -b` prints nothing, `type` abbreviates a function's body with `...`, and `declare -f` prints a placeholder for it | R27 takes bodies from the parser and from what `eval` and `source` read, R32 lists builtins in a tested constant |
 | G11 | `env` also lists variables that weren't exported | Upstream fix. Until then, `env` lists them. `export -p` is right (spec FR-068) |
 | G12 | `jq`'s error messages are worded differently from jq 1.7's (`jq: parse error: Unexpected token EOF at position 2`) | Accepted: they are jq's errors as the shell's jq gives them (FR-056). R38 leaves jq's errors out of the parity list (spec FR-068) |
 | G13 | `yes` ends with status 0 when it reaches the output limit, printing exactly that much, instead of being stopped | The adapter treats a line whose output reached 1,048,576 bytes as stopped by the output limit (R33) |
@@ -596,6 +596,7 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G18 | `rm`, `mkdir`, `touch` and `seq` don't answer `--help` (`rm: unrecognized option '--help'`, `seq: invalid floating point argument: '--help'`) | Wrappers in `site-commands.ts` print their help in the form just-bash's other commands use (`MISSING_HELP` in `standard.ts`), with the options it implements (FR-068). Upstream report |
 | G19 | `sed -i` reports any write error as "No such file or directory", like `tee` (G5): `sed -i s/a/b/ about` says `sed: about: No such file or directory` | The `sed` wrapper in `site-commands.ts` rewrites it to `Permission denied` when the file exists and the write is refused, as it does `tee`'s (FR-049). Upstream report |
 | G20 | `cp` and `mv` name only the source of a refused copy or move (`cp: cannot copy 'skills': Permission denied`, `mv: cannot move 'mine': Permission denied`), where GNU's name the destination (`cp: cannot create regular file 'about': Permission denied`, `mv: cannot move 'mine' to 'work/mine': Permission denied`) | The `cp` and `mv` wrappers rewrite the line in GNU's form, so the protected path is named as typed (FR-049). `awk`'s `print > "about"` and `sort -o about` still say only `awk: Permission denied` and `sort: Permission denied`, without the path; the file is unchanged. Upstream report |
+| G21 | `printf "\xff\xfe"` prints each byte above 127 that isn't valid UTF-8 as a character, so `wc -c` counts 4, through a pipe or a file (T295) | `printf` and `echo -e` wrappers in `site-commands.ts` mask the byte and print bytes back, and a snapshot marks the file `binary` so a restarted worker has the same bytes. Stays: `x=$'\xff'` holds a character, and on the screen such a byte shows as that character, where a terminal shows a replacement. Upstream report |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -655,41 +656,74 @@ command against SC-002).
 ## R27. Carrying the shell's state from line to line
 
 **Decision**: `apps/terminal/shell/adapter.ts`, the **shell adapter**, runs each line as one
-`exec` with a **prelude** and an **epilogue** around it, and keeps the state between lines
-itself, since just-bash resets it after each `exec` (G4):
+`exec` with a **prelude** before it and a **checkpoint** after it, and keeps the state between lines
+itself, since just-bash resets it after each `exec` (G4). Each part is parsed alone and they are
+joined as trees by a transform plugin; `exec`'s own text is a placeholder. So the line's text can't
+run into the adapter's (T290: `echo a \` prints `a \`), and each statement keeps its line number:
 
 1. **Syntax first.** The line alone goes through just-bash's parser (R25: a second `Bash`'s
-   `transform`). A parse error is returned
-   as just-bash words it (``line 1: unexpected EOF while looking for matching `"'``), with
-   status 2, and nothing runs. A pipeline with an empty side (`ls |`, `| jq`) is a syntax error
-   too, worded as bash words it (`syntax error near unexpected token '|'`) (FR-057, G2). The
-   interface shows both without bash's `bash: ` prefix and line number, as the approved design
-   sets (R30).
-2. **Prelude**: the variables go with `exec`'s `env`, outside the script, as the parser takes at most 1,000,000 bytes and a variable may be bigger (T283); then `export` for those exported, the
-   functions (below), the `set -o` options that were on (`errexit`, `nounset`, `pipefail`,
-   `noglob`, `noclobber`, `xtrace`), and `(exit N)` so `$?` is the last line's status. The working
-   folder is passed as `exec`'s `cwd`. The shell's own variables (`PWD`, `OLDPWD`, `IFS`,
-   `SHELLOPTS` and the like) are left to it. `HOME=/home/guest`, `USER=guest`, `LOGNAME=guest` and
-   `SHELL=/bin/bash` are set once (G9).
-3. **The line**, as typed.
-4. **Epilogue**: `__cv_s=$?; __cv_state "$__cv_s" "$(declare -F)" "$SHELLOPTS"`. `__cv_state` is a
-   hidden custom command that reads the variables, the exported names and the working folder from
-   its context. Its arguments give the status, the names of the functions that exist now, and the
-   options.
+   `transform`). A parse error is worded as bash words it, with status 2, and nothing runs: a line
+   that isn't finished says `line 1: syntax error: unexpected end of file` (`for i in 1`, `f() {`,
+   `(`, `true &&`, `if true; then`), and just-bash's own words (`Expected DO, got EOF`,
+   `Parse error at 1:3`) don't show, in `eval` too, which then gives status 2 (T293). A pipeline with
+   an empty side (`ls |`, `| jq`) is a syntax error too, worded as bash words it
+   (`syntax error near unexpected token '|'`) (FR-057, G2). An unterminated here-document warns as
+   bash does and runs with no input. The interface shows syntax errors without bash's `bash: ` prefix
+   and line number, as the approved design sets (R30).
+2. **Prelude**: the variables and `$1`, `$2`… go with `exec`'s `env`, outside the script, as the
+   parser takes at most 1,000,000 bytes and a variable may be bigger (T283). `OLDPWD` goes the same
+   way, and `exec` hands it to `cd -`. In the script, before the visitor's functions so that none of
+   them runs in it (T290): `unset` for what the visitor unset, `export` for those exported, the
+   `declare -p` line of each array and each variable with an attribute (readonly, integer, lower or
+   upper case, nameref), `shopt`, and `set -o` for `errexit`, `nounset`, `pipefail`, `noglob`,
+   `noclobber`, `xtrace` and `allexport`. Then the functions (below), and `(exit N) && __cv_ok` so
+   `$?` is the last line's status. The working folder is passed as `exec`'s `cwd`. `PWD`, `LINENO`,
+   `SHELLOPTS` and the like are left to the shell. `HOME=/home/guest`, `USER=guest`, `LOGNAME=guest`
+   and `SHELL=/bin/bash` are only the first values (G9): the visitor can change or unset them, and
+   the prompt's `~` still means `/home/guest` (FR-045, FR-046).
+3. **The line**, as typed, in one group, so an arithmetic error drops the rest of the line as bash
+   does (T293) and the checkpoint still runs. A group reports `set -u`'s error and a bad substitution
+   by their messages alone, and the adapter gives them back their `bash: `.
+4. **Checkpoint**, after the line: `__cv_begin "$?"` takes the status, the working folder and the
+   variables; `{ builtin declare -F; builtin declare -p; } | __cv_read "$SHELLOPTS" "$BASHOPTS"` the
+   functions, attributes and settings; `__cv_end && __cv_ok` puts `$?` back. A value of 64 KB or more
+   stays out of `declare -p`, whose output counts towards the line's, so it can't stop a line it
+   didn't print (a variable that long keeps its value and loses any attribute). An array too big to
+   list stops its line at the output limit, and one whose `declare -p` line passes the parser's
+   1,000,000 bytes would have to be left out of the prelude. Every adapter command runs by path
+   (`/usr/bin/__cv_begin`), so the visitor's `PATH` can't hide it (T286), and `echo`, `printf`, `pwd`,
+   `true`, `false`, `test` and `[`, which just-bash runs as commands and bash as builtins, go by path
+   too once the line or the state touches `PATH`.
 5. **Functions**: just-bash can't print a function's body (G10). So the adapter takes bodies from
-   the parser: every function definition in each line is serialized (R25) and kept by
-   name. After the line, only the names `declare -F` listed are kept, so `unset -f` and a
-   definition that never ran are honored. A function defined only through `eval` has no known
-   body and isn't carried, a known limit.
-6. **`exit`**: when the epilogue didn't run and no limit stopped the line, the shell exited. The
-   interface then does what `exit` does (FR-008): closes the window on desktop, goes home on
+   the parser: each definition in a line is serialized (R25) and reports itself when it runs, so the
+   one that ran wins over a later one in the text that didn't (T289). `eval` and `source` are
+   rewritten to hand their text to `__cv_saw` first, with their words expanded once, into a hidden
+   array, and `$?` kept for the text. After the line, only the names `declare -F` listed are kept, so
+   `unset -f` is honored. Known limits: a name reached by expansion (`e=eval; $e "f() { :; }"`) isn't
+   seen and its function isn't carried; inside the text of `eval` or `source`, the last definition
+   counts whether or not it ran; and a visitor's function named `builtin` would run in the checkpoint,
+   as bash has no way past it either.
+6. **`exit`**: when the last checkpoint didn't run and no limit stopped the line, the shell exited.
+   The interface then does what `exit` does (FR-008): closes the window on desktop, goes home on
    mobile. `set -e` and a failing command exit the shell the same way, as in an interactive bash.
-7. **Line numbers**: the prelude's lines are counted, and a runtime message that names a line
-   (`bash: line 7: …`) is shifted back by that count, so it names the visitor's line.
+   Lines that only fail keep the Terminal (T286): just-bash ends a line with `readonly`'s error and
+   `${x:?word}` as it does with `exit`, so a line that might hit one has a checkpoint after each of
+   its statements, the state up to the last one stays, and they are told from `exit` by the message,
+   which for `${x:?word}` holds a mark the plugin adds and also gives bash's `bash: x: word`. The
+   checkpoints are only on such lines, as one changes `$_` and PIPESTATUS for the next statement.
+   Recursion runs into FR-069's limit on commands: `maxCallDepth` is 20,000, as bash has no depth
+   limit a line would meet here first (`:(){ :|:& };:` stops with the site's text).
+7. **Line numbers**: the line is parsed alone, so `$LINENO` and a runtime message that names a line
+   are the visitor's, in a function too.
+8. **`cd`** is finished by the adapter (T287), as just-bash's looks at every folder on the way, keeps
+   `cd -` apart from `OLDPWD`, and ignores extra operands. `__cv_cd` decides as bash does (too many
+   arguments, `OLDPWD not set`, `HOME not set`, `..` from a folder that has gone), and the builtin
+   moves. A dynamic name (`c=cd; $c a b`) goes to just-bash's own. `<builtin> --help` as a literal word
+   prints `help <builtin>`'s text with bash's status 2 (T294).
 
-Measured: variables with quotes, exported variables, `$?`, `set -o pipefail`, the working folder
-and a function with `local`, `if` and a pipe all carry to the next line, and `unset -f` removes
-one. The prelude and epilogue add about 10 statements, within the 10,000 of FR-069.
+Measured: variables with quotes, exported variables, arrays, `$?`, `set -o pipefail`, the working
+folder and a function with `local`, `if` and a pipe all carry to the next line, and `unset -f`
+removes one. The prelude and checkpoint are counted on top of FR-069's 10,000.
 
 The state is data, `ShellState` ([data-model.md](./data-model.md#shell-state-fr-067)), held in
 the session (R5). Closing the Terminal empties it (FR-021).
@@ -757,12 +791,14 @@ public interface, and it changes between versions); asking upstream for persiste
   `(echo x > about) 2>&1 | grep x`, sees just-bash's `cannot open redirect target`, and one reading
   `type f` through a pipe sees `__cv_wrote`, as the wording is corrected where output reaches the
   screen or a file; (4) `__cv_wrote` counts as a command, so a command with an output redirect counts
-  as two of FR-069's 10,000. The plugin, the marker and `__cv_wrote` are deleted once the fix is
+  as three of FR-069's 10,000 (measured), and in the same way (T287, T289) a `cd` counts as ten and an
+  `eval` or `source` as twelve, so a loop of them stops sooner than in the 10,000 commands the spec
+  names. The plugin, the marker and `__cv_wrote` are deleted once the fix is
   released.
 - **`rm -r /`** is refused as GNU's `rm` refuses it by default (`--preserve-root`), and a folder
   the visitor can empty but not remove (`rm -rf /tmp`, as `/` is protected) says
   `rm: cannot remove '/tmp': Permission denied` once. The command stubs of the adapter's own
-  commands (`__cv_help`, `__cv_denied`, `__cv_state`) aren't listed in `/bin` or `/usr/bin`.
+  commands (`__cv_help`, `__cv_wrote`, `__cv_begin` and the rest) aren't listed in `/bin` or `/usr/bin`.
 - **Reset** (FR-021): `reset` rebuilds TerminalFs from the CV and the spec list. `restore(files)`
   rebuilds it with the visitor's files from a snapshot (R26).
 

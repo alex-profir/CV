@@ -143,7 +143,7 @@ describe('006-terminal-FR-021: closing empties the session; nothing else does', 
     session.setDraft('typed');
     session.saveScroll(120);
     expect(session.get().vim).not.toBeNull();
-    expect(session.get().state.variables).toEqual({ x: '1' });
+    expect(session.get().state.variables).toMatchObject({ x: '1' });
     expect(session.get().files.files).toHaveProperty(['/home/guest/notes']);
     session.reset();
     const state = session.get();

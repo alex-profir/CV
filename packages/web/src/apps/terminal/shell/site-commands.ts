@@ -389,10 +389,35 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   // What the adapter's redirect guard runs in place of a command whose
   // output would go to a protected path: bash's message (research R28, G1).
 
+  // `printf` and `echo -e` with a byte that isn't valid UTF-8: just-bash prints
+  // it as a character, so as two bytes (research G21). The byte is masked for
+  // the command, and put back in what it prints.
+  const bytesOf = (text: string) => {
+    const bytes: number[] = [];
+    for (const piece of text.split(/([\uF700-\uF7FF])/u)) {
+      if (/^[\uF700-\uF7FF]$/u.test(piece)) bytes.push(piece.charCodeAt(0) - 0xf700);
+      else for (const byte of new TextEncoder().encode(piece)) bytes.push(byte);
+    }
+    return bytes;
+  };
+  const masked = (arg: string) => arg.replace(/\\x([89a-fA-F][0-9a-fA-F])|\\0?([23][0-7]{2})/g, (_, hex?: string, octal?: string) => String.fromCharCode(0xf700 + Number.parseInt(hex ?? octal!, hex === undefined ? 8 : 16)));
+  const byteExact = (name: string, reads: (args: readonly string[]) => boolean) =>
+    defineCommand(name, async (args, ctx) => {
+      const mask = reads(args) ? args.map(masked) : args;
+      if (mask.every((arg, index) => arg === args[index])) return ctx.origCommand!(args);
+      const result = await ctx.origCommand!(mask);
+      const bytes = Uint8Array.from(bytesOf(result.stdout));
+      try {
+        return { ...result, stdout: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+      } catch {
+        return { ...result, stdout: Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''), stdoutKind: 'bytes' } as Output;
+      }
+    });
+
   // `--help` for the standard commands just-bash gives none (research G18).
   const helped = Object.entries(MISSING_HELP).filter(([name]) => name !== 'rm').map(([name, help]) =>
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), ...helped];
+  return [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
 }

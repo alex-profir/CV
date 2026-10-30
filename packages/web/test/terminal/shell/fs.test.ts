@@ -359,3 +359,27 @@ describe('006-terminal-FR-049: ls -l shows who owns what', () => {
     expect(piped.recorded).toEqual([]);
   });
 });
+
+describe('006-terminal-FR-073 and 006-terminal-FR-068: a file’s bytes as written', () => {
+  test('printf and echo -e write a byte that isn’t UTF-8 as one byte, to a file and through a pipe', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'printf "\\xff\\xfe" > bin; wc -c bin')).stdout).toBe('2 bin\n');
+    expect((await runLine(shell, 'printf "\\xff\\xfe" | wc -c; cat bin | wc -c; printf "\\377" | wc -c; echo -ne "\\xff" | wc -c')).stdout).toBe('2\n2\n1\n1\n');
+    expect((await runLine(shell, 'printf "\\xff" | cat > b2; wc -c b2')).stdout).toBe('1 b2\n');
+  });
+
+  test('valid UTF-8 prints as the character it is, however it was written', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'printf "\\xc3\\xa9"; echo; printf "é" | wc -c; printf "\\xc3\\xa9" > u; wc -c u; cat u')).stdout).toBe('é\n2\n2 u\né');
+  });
+
+  test('a restarted worker gets the same bytes back', async () => {
+    const shell = shellFor('every-field');
+    const { files } = await runLine(shell, 'printf "\\xff\\xfe" > bin');
+    expect(files?.binary).toEqual(['/home/guest/bin']);
+    const next = shellFor('every-field');
+    await next.warm();
+    await next.restore(shell.state, files!);
+    expect((await runLine(next, 'wc -c bin')).stdout).toBe('2 bin\n');
+  });
+});

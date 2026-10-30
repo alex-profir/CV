@@ -92,7 +92,9 @@ function inCommandPosition(before: string, keywords: readonly string[]): boolean
 async function entries(fs: CompleteFs, folder: string, base: string): Promise<CompletionMatch[]> {
   const names = await fs.readdir(folder).catch(() => [] as string[]);
   const matches: CompletionMatch[] = [];
-  for (const name of names) {
+  // A file system's list leaves these two out; readline adds them to a word
+  // that starts with a dot.
+  for (const name of [...(base.startsWith('.') ? ['.', '..'] : []), ...names]) {
     if (!name.startsWith(base)) continue;
     const stat = await fs.stat(`${folder === '/' ? '' : folder}/${name}`).catch(() => null);
     matches.push({ name: stat?.isDirectory === true ? `${name}/` : name, folder: stat?.isDirectory === true });

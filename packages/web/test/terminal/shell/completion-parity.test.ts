@@ -58,6 +58,10 @@ const LINES: readonly string[] = [
   'echo $HOM',
   '[[',
   'cat c?',
+  'cd ..', // the parent, as readline adds it
+  'ls .', // the two dots and any hidden entries
+  'ls ..',
+  'ls notes/.',
 ];
 
 let root = '';

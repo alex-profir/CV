@@ -134,3 +134,20 @@ describe('006-terminal-FR-017: a standard command’s wrong option gives its own
     expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines\n', status: 1 });
   });
 });
+
+describe('006-terminal-FR-068: the builtins answer --help as bash does', () => {
+  test.each([...SHELL_BUILTINS.filter((name) => ![':', '[', 'echo', 'false', 'test', 'true'].includes(name)), 'pwd', 'history'])('%s --help prints help %s’s text, with status 2', async (name) => {
+    const shell = shellFor('every-field');
+    const help = await runLine(shell, `help ${name}`);
+    const result = await runLine(shell, `${name} --help`);
+    expect(result).toMatchObject({ stderr: '', status: 2, end: 'done' });
+    expect(result.stdout).not.toBe('');
+    if (name !== 'pwd') expect(result.stdout).toBe(help.stdout);
+  });
+
+  test('the ones bash doesn’t answer stay silent: :, true, false, test', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, ': --help')).toMatchObject({ stdout: '', status: 0 });
+    expect(await runLine(shell, 'test --help')).toMatchObject({ stdout: '', status: 0 });
+  });
+});

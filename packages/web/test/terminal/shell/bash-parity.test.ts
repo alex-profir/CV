@@ -88,6 +88,19 @@ const LINES: readonly string[] = [
   'grep -c . about; wc -w < skills',
   'cat nowhere; echo "status $?"',
   'cd work; pwd; cd ..; pwd',
+  // Carried line to line in the shell; on one line here, as bash -c runs one.
+  'cd work; cd -; echo $OLDPWD',
+  'cd a b; echo $?',
+  'mkdir d; cd d; rm -r ../d; pwd | wc -l; cd ..; echo $?',
+  'a=(1 2 3); echo ${a[1]} ${#a[@]}',
+  'set -- a b c; echo $#; shift; echo $1',
+  'declare -i n=1; n=1+1; echo $n',
+  'shopt -s nullglob; echo nope*',
+  'HOME=/tmp; cd; pwd; echo $HOME',
+  'echo $LINENO; f() { echo $LINENO; }; f',
+  'echo $((1/0)); echo after',
+  'readonly q=1; q=2; echo after',
+  'cat <<EOF',
 ];
 
 let root = '';
