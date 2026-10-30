@@ -54,7 +54,7 @@ export type Block = readonly Node[];
 export type Unit = 'entries' | 'commands' | 'files' | 'lines' | 'specs';
 export type Announcement = { full: string } | { command: string; count: number; unit: Unit };
 
-export type OsAction = { open: 'cv' | 'about' } | { exit: true };
+export type OsAction = { open: 'cv' | 'playground' | 'about' } | { exit: true };
 
 export type Result =
   // `text`: what a pipe passes on to the next command; `name` the file it

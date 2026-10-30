@@ -128,6 +128,20 @@ describe('008-typescript-playground-FR-059: the link the screen passes on opens 
     await waitForCode(desktop, start.split('\n')[0]!);
   });
 
+  test("with no code to carry, the link opens the Playground as its dock item does, with the code the recipient's browser keeps", async () => {
+    const page = await openPlaygroundPage();
+    const code = 'const kept = "by the recipient";';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).some((key) => (localStorage.getItem(key) ?? '').includes('by the recipient')))).toBe(true);
+    await page.goto(`${new URL(page.url()).origin}/#playground`);
+    await page.reload();
+    await page.waitForSelector(PLAYGROUND, { state: 'visible' });
+    await waitReady(page);
+    await waitForCode(page, code);
+    expect(await editorText(page)).toBe(code);
+  });
+
   test("after a shell switch from the desktop with the visitor's code, the link carries that code", async () => {
     const page = await openPlaygroundPage({ permissions: ['clipboard-read', 'clipboard-write'] });
     const code = 'const fromDesktop = "carried";';

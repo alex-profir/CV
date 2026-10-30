@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 
 const ENGINES = ['firefox', 'webkit'];
 
-const ENGINE_TESTS = ['sandbox', 'memory', 'keys', 'probe'].map((name) => `packages/web/test/playground/${name}.test.ts`);
+const ENGINE_TESTS = ['sandbox', 'memory', 'keys', 'probe', 'network'].map((name) => `packages/web/test/playground/${name}.test.ts`);
 
 let failed = false;
 for (const engine of ENGINES) {

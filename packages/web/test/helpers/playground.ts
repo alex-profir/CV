@@ -91,7 +91,8 @@ export async function focusEditor(page: Page): Promise<void> {
 
 // Replaces the editor's code as a visitor pastes it: select all, then paste
 // from the clipboard. Engines without Playwright's clipboard permission get
-// the text inserted as one input, as a paste gives.
+// the same paste event, carrying the text (inserted as an input, a long text
+// came in twice in Firefox and mangled in WebKit).
 export async function setCode(page: Page, code: string): Promise<void> {
   const key = await primary(page);
   await focusEditor(page);
@@ -100,7 +101,13 @@ export async function setCode(page: Page, code: string): Promise<void> {
     await page.evaluate((value) => navigator.clipboard.writeText(value), code);
     await page.keyboard.press(`${key}+V`);
   } else {
-    await page.keyboard.insertText(code);
+    await page.evaluate((value) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', value);
+      // Firefox's constructor takes the text itself.
+      const init = { clipboardData, dataType: 'text/plain', data: value, bubbles: true, cancelable: true };
+      document.activeElement?.dispatchEvent(new ClipboardEvent('paste', init));
+    }, code);
   }
 }
 

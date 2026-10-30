@@ -249,8 +249,8 @@ const CV_PIPE = 'cat cv.json | jq | vim -';
 function open(call: Call, context: RunContext): Result {
   if (call.args.length !== 1) return usage(call, context, 'open');
   const name = call.args[0]!.toLowerCase();
-  if (name === 'cv' || name === 'about') return { kind: 'os', action: { open: name }, block: [] };
-  return reply(context.text.terminal.replies.open, {}, { cv: command('open cv', 'inline', { label: 'cv' }), about: command('open about', 'inline', { label: 'about' }) });
+  if (name === 'cv' || name === 'playground' || name === 'about') return { kind: 'os', action: { open: name }, block: [] };
+  return reply(context.text.terminal.replies.open, {}, { cv: command('open cv', 'inline', { label: 'cv' }), playground: command('open playground', 'inline', { label: 'playground' }), about: command('open about', 'inline', { label: 'about' }) });
 }
 
 // `history`: a numbered line per command run, as a list (FR-020, FR-029).
