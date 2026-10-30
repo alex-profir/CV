@@ -55,6 +55,8 @@ export type Shown =
   | { t: 'map'; entries: [Shown, Shown][]; more: number }
   | { t: 'set'; items: Shown[]; more: number }
   | { t: 'date'; v: string }
+  // Text the formatter makes for a browser object, such as `/a+/g`.
+  | { t: 'text'; v: string }
   | { t: 'err'; name: string; message: string }
   | { t: 'circ' }
   | { t: 'deep' };

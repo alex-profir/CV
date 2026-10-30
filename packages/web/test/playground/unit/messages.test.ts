@@ -48,7 +48,9 @@ describe('008-typescript-playground-FR-040: nothing the worker sends is trusted'
 
   test('a batch keeps its good entries; anything else as a batch is none', () => {
     const good = entry([{ t: 'null' }]);
-    expect(workerEntries([good, { t: 'arr' }, 7])).toEqual([good]);
+    // A refused entry keeps its place, shortened (FR-034).
+    const refused = { id: 0, level: 'log', values: [{ t: 'deep' }] };
+    expect(workerEntries([good, { t: 'arr' }, 7])).toEqual([good, refused, refused]);
     expect(workerEntries('nope')).toEqual([]);
   });
 

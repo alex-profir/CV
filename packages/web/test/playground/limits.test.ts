@@ -3,7 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { counted, fill, siteText } from '../../src/site-text.ts';
-import { focusEditor, openPlaygroundPage, PLAYGROUND, readLogs, run, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { focusEditor, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -51,4 +51,43 @@ describe('008-typescript-playground-FR-044: the logs keep the latest 1,000 entri
     const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
     expect(Math.max(...delays)).toBeLessThan(100);
   });
+
+  // Each loop stamps its entries, so the newest row shows how far behind the
+  // page is: a queue that grew would show as an age that grows (it took the
+  // browser down at about 5.7 GB). (SC-005)
+  for (const [size, name] of [[10_000, '10,000'], [1_000, '1,000']] as const) {
+    test(`printing ${name} characters as fast as it can: the page keeps up, within its memory, and keys answer`, async () => {
+      const page = await openPlaygroundPage();
+      await start(page, `const s = "x".repeat(${size});\nwhile (true) console.log(Date.now() + " " + s);`);
+      await watchKeys(page);
+      await run(page, { wait: 'start' });
+      await focusEditor(page);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Performance.enable');
+      const ages: number[] = [];
+      let heap = 0;
+      for (let i = 0; i < 12; i += 1) {
+        await page.waitForTimeout(500);
+        await page.keyboard.press('ArrowRight');
+        ages.push(
+          await page.evaluate((selector) => {
+            const rows = document.querySelectorAll(selector);
+            const stamp = Number.parseInt(rows[rows.length - 1]?.textContent ?? '', 10);
+            return Number.isNaN(stamp) ? 0 : Date.now() - stamp;
+          }, `${PLAYGROUND} .pane-logs ol.logs > li.log[data-level="log"] .value`),
+        );
+        const { metrics } = await cdp.send('Performance.getMetrics');
+        heap = Math.max(heap, metrics.find((metric) => metric.name === 'JSHeapUsedSize')?.value ?? 0);
+      }
+      const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
+      console.log(`${name}: ages ${ages.join(' ')} ms, heap ${Math.round(heap / 1e6)} MB, keys ${delays.map(Math.round).join(' ')} ms`);
+      expect(Math.max(...ages.slice(4))).toBeLessThan(4_000);
+      expect(heap).toBeLessThan(400e6);
+      expect(Math.max(...delays)).toBeLessThan(100);
+      // The stuck popup is up by now: its Stop still works and the page lived.
+      await page.click(`${POPUP} button.danger`);
+      await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${PLAYGROUND} .playground-toolbar button.stop`);
+      expect((await readLogs(page)).length).toBeLessThanOrEqual(1000);
+    });
+  }
 });

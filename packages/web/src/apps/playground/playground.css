@@ -532,6 +532,10 @@
   gap: var(--token-space-3);
   padding-block: var(--token-space-1);
   border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  /* A batch can add 1,000 long rows: only those in view are laid out, so
+     drawing them doesn't hold up a key (SC-005). */
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto var(--token-space-8);
 }
 
 .playground .log .level {
