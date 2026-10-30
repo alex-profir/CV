@@ -935,8 +935,9 @@ the typed text with `^C` after it, as an entry that isn't added to the history, 
 - **The `os` script** keeps the interface, the session, the output renderer and the vim view. The
   command implementations, the file system and the JSON lexer used by `jq` move into the worker,
   so the `os` script doesn't grow. SC-013's "within 5%" is checked by `build-site.ts` against a
-  budget written next to the check: as built, T127's 108,962 bytes (gzip -9, measured before the
-  amendment) plus 5%, `OS_BUDGET = 114_410`.
+  budget written next to the check: as built, the `os` script's size on `main` before the
+  amendment plus 5%. T127 measured 108,962 bytes (gzip -9); merging 007's inspector from `main`
+  (`a3f9532`) raised that base to 113,581, so `OS_BUDGET = 119_260`.
 - **Warm-up**: the worker runs `true` once before it answers `ready`, so the first visitor line
   doesn't pay just-bash's first-run cost (about 100 ms in Node) (SC-002).
 

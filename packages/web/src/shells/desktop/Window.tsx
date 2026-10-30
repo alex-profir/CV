@@ -14,6 +14,7 @@ import { byPointer, elementOf } from '../../os/focus.ts';
 import { FOCUS_REACH } from '../../os/metrics.ts';
 import type { ShellProps } from '../../os/shell-props.ts';
 import { animateBox, animateIn, animateInto, finishMotion } from '../../os/motion.ts';
+import { useSpecScroll } from '../../inspector/scroll.ts';
 import { View } from '../../os/View.tsx';
 import { Pad } from './Pad.tsx';
 import { ResizeHandles } from './ResizeHandles.tsx';
@@ -23,6 +24,9 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
   const { window, depth, state, dispatch, apps, resume, siteData, mac, canAnimate } = props;
   const { view, geometry, placement, minimized, maximized } = window;
   const section = useRef<HTMLElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  // The spec view starts at the top; the app comes back where it was (007 research R3).
+  useSpecScroll(content, state.specs[view]);
 
   // Opening grows the window in; minimizing shrinks it into its dock item,
   // or the site menu's title for About this site, and restoring grows it
@@ -123,8 +127,8 @@ export function Window(props: ShellProps & { window: WindowState; depth: number;
       data-req="005-os-shell-FR-017 005-os-shell-FR-018 005-os-shell-FR-021 005-os-shell-FR-030 005-os-shell-FR-039 005-os-shell-FR-067 005-os-shell-FR-069 005-os-shell-FR-070 005-os-shell-FR-071"
     >
       <TitleBar {...props} session={session} />
-      <div className="window-content" data-req="005-os-shell-FR-022">
-        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="desktop" mac={mac} dispatch={dispatch} />
+      <div ref={content} className="window-content" data-req="005-os-shell-FR-022">
+        <View view={view} apps={apps} resume={resume} siteData={siteData} shell="desktop" mac={mac} dispatch={dispatch} showingSpecs={state.specs[view] !== undefined} name={props.viewName(view)} />
       </div>
       {maximized === null && session === null && <ResizeHandles window={window} dispatch={dispatch} />}
       {session !== null && <Pad {...props} session={session} />}

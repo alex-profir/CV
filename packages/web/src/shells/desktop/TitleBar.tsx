@@ -3,10 +3,13 @@
 // it moves the window with any pointer (FR-019); a drag that starts on a
 // control doesn't, and the controls act on click, so releasing away from
 // one does nothing. During a keyboard move or resize, the controls give way
-// to the mode's name (FR-020).
+// to the mode's name (FR-020). "Show specs" sits at the bar's right end
+// while the window shows its app, and the title says when it shows its
+// specs (007 contracts/inspector.md).
 import { useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { Session, WindowState } from '@cv/os-core';
+import { ShowSpecs } from '../../inspector/ShowSpecs.tsx';
 import { CloseGlyph } from '../../os/icons/CloseGlyph.tsx';
 import { MaximizeGlyph } from '../../os/icons/MaximizeGlyph.tsx';
 import { MinimizeGlyph } from '../../os/icons/MinimizeGlyph.tsx';
@@ -19,9 +22,10 @@ import { useFrameBatch } from './frame-batch.ts';
 // opens (FR-040).
 export const windowTitleId = (view: string) => `window-title-${view}`;
 
-export function TitleBar({ window, session, dispatch, viewName, apps }: ShellProps & { window: WindowState; session: Session }) {
+export function TitleBar({ window, session, state, dispatch, viewName, viewTitle, apps }: ShellProps & { window: WindowState; session: Session }) {
   const { view, maximized } = window;
   const name = viewName(view);
+  const showingSpecs = state.specs[view] !== undefined;
   // An app's own title bar text, such as `Terminal — ~/work`, in place of
   // its name; the controls, dock and menus keep the name (006 contracts/shell.md).
   const WindowTitle = apps.find((app) => app.id === view)?.WindowTitle;
@@ -29,7 +33,7 @@ export function TitleBar({ window, session, dispatch, viewName, apps }: ShellPro
   const schedule = useFrameBatch();
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (maximized !== null || event.button !== 0 || (event.target as Element).closest('.control') !== null) return;
+    if (maximized !== null || event.button !== 0 || (event.target as Element).closest('.control, .show-specs') !== null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { pointer: event.pointerId, startX: event.clientX, startY: event.clientY, x: window.geometry.x, y: window.geometry.y };
   };
@@ -49,7 +53,7 @@ export function TitleBar({ window, session, dispatch, viewName, apps }: ShellPro
       {/* First in the DOM, so Tab from the focused title reaches the controls
           next, then the content (research R9); the style sheet centers it. */}
       <div className="window-title" id={windowTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
-        {WindowTitle === undefined ? name : <WindowTitle />}
+        {showingSpecs ? <span data-req="007-requirement-inspector-FR-002">{viewTitle(view)}</span> : WindowTitle === undefined ? name : <WindowTitle />}
       </div>
       {session === null ? (
         <div className="controls">
@@ -72,6 +76,7 @@ export function TitleBar({ window, session, dispatch, viewName, apps }: ShellPro
       ) : (
         <span className="mode">{session.kind === 'move' ? siteText.desktop.mode.move : siteText.desktop.mode.resize}</span>
       )}
+      {session === null && !showingSpecs && <ShowSpecs view={view} name={name} shell="desktop" dispatch={dispatch} />}
     </div>
   );
 }

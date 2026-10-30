@@ -21,11 +21,13 @@ import { axeProblems } from './parts/accessibility.ts';
 import { contentProblems } from './parts/content.ts';
 import { cvAppProblems } from './parts/cv-app.ts';
 import { shellLineProblems, terminalProblems, terminalVariants } from './parts/terminal.ts';
+import { INSPECTOR_VIEWS, elementProblems, inspectorVariants, inspectorViewProblems, readInspectorExpected, sweepProblems } from './parts/inspector.ts';
+import type { InspectorExpected } from './parts/inspector.ts';
 import { fontProblems } from './parts/fonts.ts';
-import { asLinux, desktopKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
+import { asLinux, desktopKeyboardProblems, inspectorKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
 import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
-import { cursorBlinkProblems, forcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
+import { cursorBlinkProblems, forcedColorsProblems, inspectorForcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
 import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
@@ -33,8 +35,8 @@ import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
 import type { CheckResult, Part, Problem, Report } from './report.ts';
 import { startServer } from './server.ts';
-import { CV_APP_ROOT, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, openTerminal, reachState, runCommand, shellContext, stateVariant, waitForShell } from './shell-states.ts';
-import type { Shell, ShellState } from './shell-states.ts';
+import { CV_APP_ROOT, INSPECTOR, INSPECTOR_SHELL_STATES, SHELL, SHELL_SIZES, SHELL_STATES, findState, openCvApp, openTerminal, openView, reachState, runCommand, shellContext, showSpecs, stateVariant, waitForShell } from './shell-states.ts';
+import type { InspectorView, Shell, ShellState } from './shell-states.ts';
 
 // Where the built site and the CV document are, from the repository root.
 export const SITE_DIR = 'packages/web/dist/site';
@@ -84,7 +86,22 @@ const TERMINAL_LAYOUTS: readonly { condition: string; shell: Shell; width: numbe
 
 const TERMINAL_ROOT = '#os .terminal';
 
-export type CheckOptions = { parts?: readonly Part[] };
+// The view an inspector state shows the specs of.
+const stateView = (state: string): InspectorView => (state.startsWith('cv-') ? 'cv' : state.startsWith('terminal-') ? 'terminal' : 'about');
+
+// The inspector's layout runs (contracts/cli.md Parts): its states at
+// 320 × 568, at 812 × 375 and in a window narrowed to 400 px, and each
+// view's spec state at 200% and 400% zoom and with text spacing.
+const INSPECTOR_LAYOUT_STATES: readonly ShellState[] = [findState('desktop', 'cv-specs-narrow'), findState('mobile', 'cv-specs-320'), findState('mobile', 'cv-specs-landscape')];
+
+const INSPECTOR_SPEC_STATES = ['cv-specs', 'terminal-app-specs', 'about-specs'] as const;
+
+const INSPECTOR_LAYOUTS = TERMINAL_LAYOUTS.filter(({ condition }) => condition === '200%-zoom' || condition === '400%-zoom' || condition === 'text-spacing');
+
+// `repository` is where the inspector part reads the requirement data and
+// the site's repository address: the root itself, unless a test checks a
+// built site laid out apart from its repository.
+export type CheckOptions = { parts?: readonly Part[]; repository?: string };
 
 export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
@@ -162,7 +179,7 @@ const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' &&
 
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
-export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {}): Promise<Report> {
+export async function runCheck(root: string, { parts = PARTS, repository = root }: CheckOptions = {}): Promise<Report> {
   const manifest = readManifest(root);
   const siteDir = path.join(root, SITE_DIR);
   // Read when a part needs it, so an unreadable CV document fails only
@@ -227,6 +244,43 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           } catch (error) {
             for (const variant of terminalVariants(shell, target.width)) results.push(crashed('terminal', ROOT, variant, error));
           }
+        }
+      },
+      inspector: async () => {
+        // As `cv-app`: with no shell at the root, there's no inspector.
+        if (!shellRoot) {
+          results.push(result('inspector', '-', '-', []));
+          return;
+        }
+        let expected: InspectorExpected;
+        try {
+          expected = readInspectorExpected(repository, siteDir);
+        } catch (error) {
+          for (const shell of SHELLS) for (const variant of inspectorVariants(shell, shellAt(shell).width)) results.push(crashed('inspector', ROOT, variant, error));
+          return;
+        }
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          for (const view of INSPECTOR_VIEWS) {
+            const variant = stateVariant(shell, `${view}-specs`, target.width);
+            results.push(await run('inspector', ROOT, variant, () => withShell(chromium, rootUrl, target, {}, (page) => inspectorViewProblems(page, shell, view, expected, ROOT, variant))));
+          }
+          // Every `data-req` in every state the driver reaches (FR-012).
+          const variant = stateVariant(shell, 'elements', target.width);
+          results.push(
+            await run('inspector', ROOT, variant, () =>
+              sweepProblems(
+                SHELL_STATES.filter((state) => state.shell === shell),
+                (state) =>
+                  withShell(chromium, rootUrl, state, {}, async (page) => {
+                    await reachState(page, state);
+                    return elementProblems(page, expected);
+                  }),
+                ROOT,
+                variant,
+              ),
+            ),
+          );
         }
       },
       accessibility: async () => {
@@ -310,6 +364,9 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
         const desktop = shellAt('desktop');
         const terminalVariant = stateVariant('desktop', 'terminal-keyboard', desktop.width);
         results.push(await run('keyboard', ROOT, terminalVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => terminalKeyboardProblems(page, ROOT, terminalVariant), asLinux)));
+        // The inspector's flow (007 FR-032), on the desktop.
+        const inspectorVariant = stateVariant('desktop', 'inspector-keyboard', desktop.width);
+        results.push(await run('keyboard', ROOT, inspectorVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => inspectorKeyboardProblems(page, ROOT, inspectorVariant))));
       },
       'other-sites': async () => {
         for (const pagePath of allPaths) {
@@ -371,6 +428,29 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             }),
           );
         }
+        // Each spec view shown, with What's this? open (007 FR-028).
+        for (const shell of SHELLS) {
+          const target = shellAt(shell);
+          for (const view of INSPECTOR_VIEWS) {
+            const variant = stateVariant(shell, `${view}-specs`, target.width);
+            results.push(
+              await run('other-sites', ROOT, variant, async () => {
+                const context = await chromium.newContext(shellContext(target));
+                try {
+                  const foreign = await recordRequests(context, server.url);
+                  return await otherSiteProblems(context, foreign, rootUrl, ROOT, variant, async (page) => {
+                    await waitForShell(page);
+                    await openView(page, view, shell);
+                    await showSpecs(page, view, shell);
+                    await page.click(INSPECTOR.whatsThis(view));
+                  });
+                } finally {
+                  await context.close();
+                }
+              }),
+            );
+          }
+        }
       },
       fonts: async () => {
         for (const pagePath of allPaths) {
@@ -380,7 +460,7 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           }
         }
         if (!shellRoot) return;
-        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app'), findState('desktop', 'terminal-help'), findState('mobile', 'pocket-vim')]) {
+        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app'), findState('desktop', 'terminal-help'), findState('mobile', 'pocket-vim'), findState('desktop', 'cv-specs'), findState('mobile', 'about-specs')]) {
           const variant = stateVariant(state.shell, state.state, state.width);
           results.push(
             await run('fonts', ROOT, variant, () =>
@@ -455,6 +535,38 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
             );
           }
         }
+        // The inspector: no horizontal scroll in its spec views.
+        for (const state of INSPECTOR_LAYOUT_STATES) {
+          const variant = stateVariant(state.shell, state.state, state.width);
+          const view = stateView(state.state);
+          results.push(
+            await run('layout', ROOT, variant, () =>
+              withShell(chromium, rootUrl, state, {}, async (page) => {
+                await reachState(page, state);
+                const found: Problem[] = [];
+                if (state.state === 'cv-specs-narrow') {
+                  const width = await page.evaluate((target) => document.querySelector(target)?.getBoundingClientRect().width ?? 0, SHELL.cvWindow);
+                  if (width > NARROW_WINDOW_MAX) found.push({ part: 'layout', page: ROOT, variant, type: 'too-wide', subject: SHELL.cvWindow, detail: `narrows only to ${Math.round(width)}px, wider than ${NARROW_WINDOW_MAX}px` });
+                }
+                return [...found, ...(await horizontalScroll(page, ROOT, variant)), ...(await boxScroll(page, INSPECTOR.specView(view), ROOT, variant))];
+              }),
+            ),
+          );
+        }
+        for (const { condition, shell, width, height, deviceScaleFactor, textSpacing } of INSPECTOR_LAYOUTS) {
+          for (const state of INSPECTOR_SPEC_STATES) {
+            const variant = stateVariant(shell, `${state}-${condition}`, width);
+            results.push(
+              await run('layout', ROOT, variant, () =>
+                withShell(chromium, rootUrl, { shell, width, height }, { deviceScaleFactor }, async (page) => {
+                  await reachState(page, { ...findState(shell, state), width, height } as ShellState);
+                  if (textSpacing) await page.addStyleTag({ content: TEXT_SPACING_CSS });
+                  return [...(await horizontalScroll(page, ROOT, variant)), ...(await boxScroll(page, INSPECTOR.specView(stateView(state)), ROOT, variant))];
+                }),
+              ),
+            );
+          }
+        }
         const zoomVariant = stateVariant('desktop', 'text-zoom', desktop.width);
         results.push(
           await run('layout', ROOT, zoomVariant, () =>
@@ -498,6 +610,18 @@ export async function runCheck(root: string, { parts = PARTS }: CheckOptions = {
           // press and stops (006 FR-032).
           const blink = stateVariant(shell, 'cursor-blink', target.width);
           results.push(await run('modes', ROOT, blink, () => withShell(chromium, rootUrl, target, { reducedMotion: 'no-preference' }, (page) => cursorBlinkProblems(page, shell, ROOT, blink))));
+        }
+        // Forced colors in every inspector state (007 FR-023).
+        for (const state of INSPECTOR_SHELL_STATES) {
+          const variant = stateVariant(state.shell, state.state, state.width);
+          results.push(
+            await run('modes', ROOT, variant, () =>
+              withShell(chromium, rootUrl, state, { forcedColors: 'active' }, async (page) => {
+                await reachState(page, state);
+                return inspectorForcedColorsProblems(page, stateView(state.state), ROOT, variant);
+              }),
+            ),
+          );
         }
       },
     };

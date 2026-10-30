@@ -106,8 +106,13 @@ function blankCommentsAndFences(lines: string[]): string[] {
   });
 }
 
+// A spec's lines without their line endings.
+function linesOf(text: string): string[] {
+  return text.split('\n').map((line) => (line.endsWith('\r') ? line.slice(0, -1) : line));
+}
+
 export function parseSpec(feature: string, file: string, text: string): Spec {
-  const lines = blankCommentsAndFences(text.split('\n').map((line) => (line.endsWith('\r') ? line.slice(0, -1) : line)));
+  const lines = blankCommentsAndFences(linesOf(text));
 
   let status: Spec['status'] = 'Invalid';
   let statusText: string | null = null;
@@ -217,4 +222,48 @@ export function specProblems(spec: Spec, requirements: Requirement[]): Problem[]
     });
   }
   return problems;
+}
+
+const TITLE_PREFIX = 'Feature Specification:';
+
+// The spec's title: the text after `Feature Specification:` in its first
+// heading, or null when the first heading doesn't start that way or there's
+// none. Comments and fences are blanked first, as parseSpec blanks them.
+export function specTitle(text: string): string | null {
+  for (const line of blankCommentsAndFences(linesOf(text))) {
+    const heading = HEADING.exec(line);
+    if (!heading) continue;
+    const title = heading[2]!;
+    return title.startsWith(TITLE_PREFIX) ? title.slice(TITLE_PREFIX.length).trim() || null : null;
+  }
+  return null;
+}
+
+const LIST_ITEM = /^(?:[-*+]|\d+[.)])(?:[ \t]|$)/;
+
+// A requirement's text (007 research R6): its entry's line from after its ID,
+// its closing markup and the colon, then each following line that is indented
+// and isn't blank, a list item or a heading, trimmed and joined with single
+// spaces. Comments and fences are blanked as parseSpec blanks them: a line a
+// comment blanks whole is passed over, and a fence ends the text.
+export function requirementText(text: string, entry: RequirementEntry): string {
+  const original = linesOf(text);
+  const lines = blankCommentsAndFences(original);
+  const first = lines[entry.location.line - 1] ?? '';
+  let at = entry.location.column - 1 + entry.rawId.length;
+  while (first.startsWith('**', at) || first.startsWith('~~', at)) at += 2;
+  const rest = first.slice(at).replace(/^[ \t]*:/, '');
+  const parts = [rest];
+  for (let index = entry.location.line; index < lines.length; index++) {
+    const line = lines[index]!;
+    if (!/^[ \t]/.test(original[index]!)) break;
+    const trimmed = line.trim();
+    if (trimmed === '') {
+      if (original[index]!.trim() === '') break;
+      continue;
+    }
+    if (LIST_ITEM.test(trimmed) || HEADING.test(trimmed)) break;
+    parts.push(trimmed);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
 }

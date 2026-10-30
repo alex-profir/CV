@@ -50,9 +50,18 @@ export const TERMINAL_MOBILE_STATES = [
   'pocket-stopped',
 ] as const;
 
-export const DESKTOP_STATES = ['first-load', 'no-window', 'about', 'two-windows', 'site-menu', 'window-menu', 'minimized', 'maximized', 'keyboard-move', 'keyboard-resize', ...TERMINAL_DESKTOP_STATES] as const;
+// The inspector's states (007 contracts/cli.md States) follow the
+// Terminal's. 006's desktop `terminal-specs` is the `specs` command's
+// output, so the Terminal's spec view is `terminal-app-specs`.
+export const INSPECTOR_DESKTOP_STATES = ['cv-specs', 'cv-specs-whats-this', 'terminal-app-specs', 'terminal-app-specs-beside-cv', 'about-specs', 'cv-specs-narrow'] as const;
 
-export const MOBILE_STATES = ['home', 'home-landscape', 'cv-app', 'about', ...TERMINAL_MOBILE_STATES] as const;
+export const INSPECTOR_MOBILE_STATES = ['cv-specs', 'cv-specs-whats-this', 'terminal-app-specs', 'about-specs', 'cv-specs-320', 'cv-specs-landscape'] as const;
+
+const INSPECTOR_STATES = new Set<string>([...INSPECTOR_DESKTOP_STATES, ...INSPECTOR_MOBILE_STATES]);
+
+export const DESKTOP_STATES = ['first-load', 'no-window', 'about', 'two-windows', 'site-menu', 'window-menu', 'minimized', 'maximized', 'keyboard-move', 'keyboard-resize', ...TERMINAL_DESKTOP_STATES, ...INSPECTOR_DESKTOP_STATES] as const;
+
+export const MOBILE_STATES = ['home', 'home-landscape', 'cv-app', 'about', ...TERMINAL_MOBILE_STATES, ...INSPECTOR_MOBILE_STATES] as const;
 
 export type DesktopState = (typeof DESKTOP_STATES)[number];
 
@@ -61,19 +70,27 @@ export type MobileState = (typeof MOBILE_STATES)[number];
 export type ShellState = { shell: 'desktop'; state: DesktopState; width: number; height: number } | { shell: 'mobile'; state: MobileState; width: number; height: number };
 
 // The sizes each shell is measured at: the desktop at 1440 × 900, the phone
-// at 375 × 812, and on its side at 812 × 375 for `home-landscape` and
-// `pocket-landscape`.
+// at 375 × 812, and on its side at 812 × 375 for `home-landscape`,
+// `pocket-landscape` and `cv-specs-landscape`; `cv-specs-320` at 320 × 568.
 export const SHELL_SIZES = Object.freeze({ desktop: { width: 1440, height: 900 }, mobile: { width: 375, height: 812 } });
 
-const LANDSCAPE = new Set<string>(['home-landscape', 'pocket-landscape']);
+const MOBILE_SIZES: Record<string, { width: number; height: number }> = {
+  'home-landscape': { width: 812, height: 375 },
+  'pocket-landscape': { width: 812, height: 375 },
+  'cv-specs-landscape': { width: 812, height: 375 },
+  'cv-specs-320': { width: 320, height: 568 },
+};
 
 export const SHELL_STATES: readonly ShellState[] = Object.freeze([
   ...DESKTOP_STATES.map((state): ShellState => ({ shell: 'desktop', state, ...SHELL_SIZES.desktop })),
-  ...MOBILE_STATES.map((state): ShellState => ({ shell: 'mobile', state, ...(LANDSCAPE.has(state) ? { width: 812, height: 375 } : SHELL_SIZES.mobile) })),
+  ...MOBILE_STATES.map((state): ShellState => ({ shell: 'mobile', state, ...(MOBILE_SIZES[state] ?? SHELL_SIZES.mobile) })),
 ]);
 
 // The Terminal's states alone, in the same order.
-export const TERMINAL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => state.startsWith('terminal-') || state.startsWith('pocket')));
+export const TERMINAL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => !INSPECTOR_STATES.has(state) && (state.startsWith('terminal-') || state.startsWith('pocket'))));
+
+// The inspector's states alone, in the same order.
+export const INSPECTOR_SHELL_STATES: readonly ShellState[] = Object.freeze(SHELL_STATES.filter(({ state }) => INSPECTOR_STATES.has(state)));
 
 // A variant on the root (contracts/cli.md Variants on the root): the shell,
 // the state or the sequence's name, and the width.
@@ -144,6 +161,20 @@ export const SHELL_WORKER = '**/assets/shell-*.js';
 
 // A line that never ends, which the shell stops (006 FR-069).
 export const ENDLESS_LINE = 'while true; do :; done';
+
+// The inspector's elements (007 contracts/inspector.md): a view's "Show
+// specs", in its window or full-screen view, and its spec view.
+export type InspectorView = 'cv' | 'terminal' | 'about';
+
+export const INSPECTOR = Object.freeze({
+  frame: (view: InspectorView, shell: Shell) => (shell === 'desktop' ? `#os .window[data-view="${view}"]` : `#os .full-screen[data-view="${view}"]`),
+  scroller: (view: InspectorView, shell: Shell) => (shell === 'desktop' ? `#os .window[data-view="${view}"] .window-content` : `#os .full-screen[data-view="${view}"] .view-content`),
+  showSpecs: (view: InspectorView, shell: Shell) => `${INSPECTOR.frame(view, shell)} button.show-specs`,
+  specView: (view: InspectorView) => `#os section.spec-view[data-view="${view}"]`,
+  groups: (view: InspectorView) => `#os section.spec-view[data-view="${view}"] section.spec-group`,
+  back: (view: InspectorView) => `#os section.spec-view[data-view="${view}"] button.spec-back`,
+  whatsThis: (view: InspectorView) => `#os section.spec-view[data-view="${view}"] button.whats-this`,
+});
 
 // Where the CV app's document is in each shell, for the field sequence.
 export const CV_APP_ROOT = Object.freeze({ desktop: `${SHELL.cvWindow} .cv`, mobile: `${SHELL.cvFullScreen} .cv` });
@@ -475,7 +506,105 @@ async function driveShellLoad(page: Page, shell: Shell, state: 'terminal-loading
   await shown(page, TERMINAL.busyRun);
 }
 
+// ---- The inspector (007 contracts/cli.md States) -------------------------
+
+const press = async (page: Page, shell: Shell, selector: string) => {
+  if (shell === 'desktop') await page.click(selector);
+  else await page.tap(selector);
+};
+
+// Shows an open view's specs by its "Show specs", and waits for the groups.
+export async function showSpecs(page: Page, view: InspectorView, shell: Shell): Promise<void> {
+  await press(page, shell, INSPECTOR.showSpecs(view, shell));
+  await page.locator(INSPECTOR.groups(view)).first().waitFor({ state: 'attached', timeout: WAIT_MS });
+  await settle(page);
+}
+
+// Goes back to the app by its "Back to [view]".
+export async function leaveSpecs(page: Page, view: InspectorView, shell: Shell): Promise<void> {
+  await press(page, shell, INSPECTOR.back(view));
+  await page.locator(INSPECTOR.specView(view)).waitFor({ state: 'detached', timeout: WAIT_MS });
+  await settle(page);
+}
+
+// Opens a view as a visitor does, if it isn't shown.
+export async function openView(page: Page, view: InspectorView, shell: Shell): Promise<void> {
+  if (await page.locator(INSPECTOR.frame(view, shell)).first().isVisible()) return;
+  if (shell === 'mobile' && (await page.locator('#os .full-screen').count()) > 0) {
+    await page.tap(SHELL.homeButton);
+    await shown(page, '#os .home');
+  }
+  if (view === 'cv') {
+    if (shell === 'desktop') await page.click(SHELL.cvDockItem);
+    else await page.tap(SHELL.cvIcon);
+  } else if (view === 'terminal') {
+    if (shell === 'desktop') await page.click(SHELL.terminalDockItem);
+    else await page.tap(SHELL.terminalIcon);
+  } else if (shell === 'desktop') await openAbout(page);
+  else await page.tap(SHELL.aboutButton);
+  await shown(page, INSPECTOR.frame(view, shell));
+  await settle(page);
+}
+
+// Narrows the focused CV window as far as a keyboard resize goes: wide
+// steps to the left until its width stops changing, then Enter.
+async function narrowCv(page: Page): Promise<void> {
+  const width = () => page.evaluate((target) => document.querySelector(target)?.getBoundingClientRect().width ?? 0, SHELL.cvWindow);
+  await focusCv(page);
+  await page.keyboard.press('Alt+Shift+S');
+  await shown(page, SHELL.pad);
+  for (let presses = 0, last = -1; presses < 40; presses += 1) {
+    await page.keyboard.press('Shift+ArrowLeft');
+    const now = await width();
+    if (now === last) break;
+    last = now;
+  }
+  await page.keyboard.press('Enter');
+  await gone(page, SHELL.pad);
+}
+
+async function driveInspector(page: Page, shell: Shell, state: string): Promise<void> {
+  switch (state) {
+    case 'cv-specs':
+    case 'cv-specs-320':
+    case 'cv-specs-landscape':
+      await openView(page, 'cv', shell);
+      return showSpecs(page, 'cv', shell);
+    case 'cv-specs-whats-this':
+      await openView(page, 'cv', shell);
+      await showSpecs(page, 'cv', shell);
+      await press(page, shell, INSPECTOR.whatsThis('cv'));
+      return void (await page.waitForSelector(`${INSPECTOR.whatsThis('cv')}[aria-expanded="true"]`, { timeout: WAIT_MS }));
+    case 'cv-specs-narrow':
+      await showSpecs(page, 'cv', shell);
+      return narrowCv(page);
+    case 'terminal-app-specs':
+    case 'terminal-app-specs-beside-cv':
+      if (shell === 'desktop') {
+        await shown(page, SHELL.cvWindow);
+        await openTerminal(page, shell);
+        await runCommand(page, 'help');
+      } else {
+        await openTerminal(page, shell);
+        await newRun(page, () => tapPocketKey(page, 'help'));
+      }
+      await showSpecs(page, 'terminal', shell);
+      // The CV window brought in front, showing the CV, the Terminal's
+      // spec view beside it.
+      if (state === 'terminal-app-specs-beside-cv') await page.click(`${SHELL.cvWindow} .title-bar`);
+      return;
+    case 'about-specs':
+      await openView(page, 'about', shell);
+      return showSpecs(page, 'about', shell);
+  }
+  throw new Error(`no way to reach ${shell}/${state}`);
+}
+
 async function drive(page: Page, { shell, state }: ShellState): Promise<void> {
+  if (INSPECTOR_STATES.has(state)) {
+    if (shell === 'desktop') await shown(page, SHELL.cvWindow);
+    return driveInspector(page, shell, state);
+  }
   if (state.startsWith('terminal-') || state.startsWith('pocket')) {
     if (shell === 'desktop') await shown(page, SHELL.cvWindow);
     if (state === 'terminal-loading' || state === 'terminal-load-failed') return driveShellLoad(page, shell, state);

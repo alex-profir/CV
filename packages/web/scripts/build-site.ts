@@ -3,8 +3,9 @@
 //   1. a Vite client build of the assets into `<out>/site/assets/`, the
 //      shell worker and its license file included;
 //   2. a Vite SSR build of `src/render.tsx` into a temporary directory;
-//   3. each route rendered to `<out>/site/<file>`, with asset links from
-//      Vite's manifest;
+//   3. the requirement data, `<out>/site/assets/requirements-<hash>.json`
+//      (007 contracts/requirement-data.md), then each route rendered to
+//      `<out>/site/<file>`, with asset links from Vite's manifest;
 //   4. the service worker, `<out>/site/sw.js`, with its precache list,
 //      version and route table;
 //   5. `<out>/site-manifest.json`: the routes and every served file.
@@ -32,11 +33,15 @@ import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
+import { buildRequirementData } from './requirements/index.ts';
 import { checkSpecList } from './spec-list.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
 
 const WEB_ROOT = path.resolve(import.meta.dirname, '..');
+
+// The repository the requirement data is read from.
+const REPOSITORY_ROOT = path.resolve(WEB_ROOT, '../..');
 
 export const DEFAULT_OUT = path.join(WEB_ROOT, 'dist');
 
@@ -54,9 +59,10 @@ const SHELL_ENTRY = 'src/client/os.tsx';
 const SSR_ENTRY = 'src/render.tsx';
 
 // The os script's gzipped size may grow by at most 5% with the shell (006
-// SC-013): 108,962 bytes at `gzip -9` before the amendment (tasks T127),
-// plus 5%.
-export const OS_BUDGET = 114_410;
+// SC-013): 113,581 bytes at `gzip -9` before the amendment, measured on
+// `main` at a3f9532 (with 007's inspector) when it was merged, plus 5%.
+// T127 measured 108,962 on the `main` it branched from.
+export const OS_BUDGET = 119_260;
 
 // The shell worker's file, and the words only the worker's code holds
 // (no-network.ts, no-zlib.ts): the os script holding them has the shell
@@ -81,7 +87,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.txt': 'text/plain',
 };
 
-type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[] };
+type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string };
 
 type RenderModule = {
   renderShell(input: { resume: Resume; siteData: SiteData; assets: PageAssets }): string;
@@ -199,6 +205,17 @@ function listFiles(dir: string, base = dir): string[] {
 
 const sha256 = (data: string | Buffer) => crypto.createHash('sha256').update(data).digest('hex');
 
+// Writes the requirement data as a hashed asset (007 research R9) and gives
+// its served path. It is a built file like any other, so the site manifest
+// and the service worker's precache list it.
+function writeRequirementData(siteDir: string): string {
+  const text = JSON.stringify(buildRequirementData(REPOSITORY_ROOT));
+  const file = `assets/requirements-${sha256(text).slice(0, 8)}.json`;
+  fs.mkdirSync(path.join(siteDir, 'assets'), { recursive: true });
+  fs.writeFileSync(path.join(siteDir, file), text);
+  return `/${file}`;
+}
+
 // Every file under `siteDir`, with its hash and content type, sorted by
 // path.
 function servedFiles(siteDir: string): SiteManifest['files'] {
@@ -280,6 +297,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
   checkContainerBreakpoints(siteDir);
   checkScripts(siteDir, viteManifest);
   const assets = pageAssets(viteManifest);
+  const requirements = writeRequirementData(siteDir);
 
   // 2. SSR build, into a temporary directory.
   const ssrDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-ssr-'));
@@ -290,7 +308,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     // 3. Every route's page, each by its own render function. A route with
     // none fails the build, rather than getting a copy of another page.
     const renderers: Record<string, () => string> = {
-      '/': () => render.renderShell({ resume, siteData, assets: shellAssets(viteManifest, assets) }),
+      '/': () => render.renderShell({ resume, siteData, assets: { ...shellAssets(viteManifest, assets), requirements } }),
       '/cv': () => render.renderCv({ resume, siteData, assets }),
     };
     const pages: Record<string, string> = {};

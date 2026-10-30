@@ -5,6 +5,8 @@
   --token-border-thin: 1px;
   --token-breakpoint-desktop-width: 1024px;
   --token-breakpoint-pocket-narrow: 375px;
+  --token-breakpoint-spec-two-column: 480px;
+  --token-breakpoint-spec-wide: 700px;
   --token-breakpoint-wide: 900px;
   --token-color-base-amber: #fcd34d;
   --token-color-base-amber-wash: #fcd34d33;
@@ -71,6 +73,9 @@
   --token-color-shell-surface: #1b1c24;
   --token-color-shell-text: #ececf2;
   --token-color-shell-text-secondary: #a3a3b0;
+  --token-color-shell-text-soft: #c9cad6;
+  --token-color-status-approved: #5eead4;
+  --token-color-status-draft: #fcd34d;
   --token-color-surface: #f4f4ef;
   --token-color-surface-raised: #ffffff;
   --token-color-terminal-approved: #5eead4;
@@ -200,6 +205,9 @@
   --token-size-pocket-max-width: 560px;
   --token-size-pocket-max-width-landscape: 900px;
   --token-size-section-label: 260px;
+  --token-size-spec-bar-touch: 48px;
+  --token-size-spec-id-column: 64px;
+  --token-size-spec-measure: 760px;
   --token-size-target: 24px;
   --token-size-terminal-blur: 32px;
   --token-size-terminal-chip: 26px;
@@ -370,4 +378,6 @@
 
 @custom-media --token-breakpoint-desktop-width (width >= 1024px);
 @custom-media --token-breakpoint-pocket-narrow (width >= 375px);
+@custom-media --token-breakpoint-spec-two-column (width >= 480px);
+@custom-media --token-breakpoint-spec-wide (width >= 700px);
 @custom-media --token-breakpoint-wide (width >= 900px);

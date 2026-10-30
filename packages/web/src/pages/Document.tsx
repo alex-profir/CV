@@ -5,7 +5,9 @@
 // only script is the service worker's registration (US4).
 import type { ReactNode } from 'react';
 
-export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[] };
+// `requirements`: the root's requirement data file (007 research R9), on
+// `#os` for the inspector to fetch once the shell is ready.
+export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string };
 
 export function Document({ title, description, assets, children }: { title: string; description?: string | undefined; assets: PageAssets; children: ReactNode }) {
   return (

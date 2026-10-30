@@ -4,7 +4,8 @@
 import type { Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
-import { SHELL, TERMINAL, control, openAbout, openCvApp, openTerminal, settle, tapPocketKey, typeLine } from '../shell-states.ts';
+import { INSPECTOR, SHELL, TERMINAL, control, leaveSpecs, openAbout, openCvApp, openTerminal, openView, settle, showSpecs, tapPocketKey, typeLine } from '../shell-states.ts';
+import type { InspectorView } from '../shell-states.ts';
 
 type Found = { type: string; subject: string; detail: string };
 
@@ -264,6 +265,7 @@ type Recorded = { subject: string; properties: string[]; scales: number[]; trans
 
 declare global {
   interface Window {
+    __cvTransitions?: number;
     __cvMotion?: { log: Recorded[] };
   }
 }
@@ -347,6 +349,7 @@ export async function shellMotionProblems(page: Page, shell: 'desktop' | 'mobile
     await step('pressing a pocket key', () => tapPocketKey(page, 'help'));
     await step('running a command', () => typeLine(page, 'ls'));
     await blinkProblems(page, found);
+    await inspectorMotion(page, shell, found);
     return problems(found, pageLabel, variant);
   }
   await step('closing the CV window', () => page.click(control('cv', 'close')));
@@ -363,7 +366,42 @@ export async function shellMotionProblems(page: Page, shell: 'desktop' | 'mobile
   await blinkProblems(page, found);
   await step('opening the vim view', () => typeLine(page, 'cv'));
   await blinkProblems(page, found);
+  await inspectorMotion(page, shell, found);
   return problems(found, pageLabel, variant);
+}
+
+// Showing and leaving each spec view with reduced motion (007 FR-022,
+// SC-010): nothing moves or scales, nothing fades, and no view transition
+// starts.
+async function inspectorMotion(page: Page, shell: 'desktop' | 'mobile', found: Found[]): Promise<void> {
+  await page.evaluate(() => {
+    if (window.__cvTransitions !== undefined) return;
+    window.__cvTransitions = 0;
+    const start = document.startViewTransition?.bind(document);
+    if (start === undefined) return;
+    document.startViewTransition = ((update?: ViewTransitionUpdateCallback) => {
+      window.__cvTransitions! += 1;
+      return start(update);
+    }) as typeof document.startViewTransition;
+  });
+  for (const view of ['cv', 'terminal', 'about'] as const satisfies readonly InspectorView[]) {
+    await openView(page, view, shell);
+    await movedSince(page, `opening the ${view} view`, found);
+    const steps: [string, () => Promise<void>][] = [
+      ['showing specs', () => showSpecs(page, view, shell)],
+      ['leaving specs', () => leaveSpecs(page, view, shell)],
+    ];
+    for (const [action, run] of steps) {
+      await run();
+      await settle(page);
+      for (const { subject, properties } of await page.evaluate(() => window.__cvMotion!.log.slice(0))) {
+        if (properties.includes('opacity')) found.push({ type: 'moved', subject, detail: `opacity changed while ${action} with reduced motion` });
+      }
+      await movedSince(page, action, found);
+    }
+  }
+  const transitions = await page.evaluate(() => window.__cvTransitions ?? 0);
+  if (transitions > 0) found.push({ type: 'moved', subject: 'document', detail: `started ${transitions} view ${transitions === 1 ? 'transition' : 'transitions'} while showing or leaving specs with reduced motion` });
 }
 
 // The Terminal's cursors never blink (006 FR-032): no element in it runs an
@@ -404,5 +442,23 @@ export async function cursorBlinkProblems(page: Page, shell: 'desktop' | 'mobile
   if (idle === null || idle.blinking) found.push({ type: 'blinking', subject: 'span.cursor-block', detail: `still blinks ${(CURSOR_IDLE_MS + STOP_SLACK_MS) / 1000} s after the last key press` });
   else if (!idle.focused || !idle.filled) found.push({ type: 'cursor', subject: 'span.cursor-block', detail: 'is not filled once it stops blinking' });
   await line.fill('');
+  return problems(found, pageLabel, variant);
+}
+
+// ---- The inspector (007 FR-023) ---------------------------------------------
+
+// A spec view's controls, status chips and notes, each kept by its border
+// in forced colors, as the shell's windows are.
+const SPEC_EDGED = (view: InspectorView) => [`${INSPECTOR.specView(view)} button`, `${INSPECTOR.specView(view)} .status`, `${INSPECTOR.specView(view)} .spec-note`];
+
+// Forced colors in a state showing `view`'s specs: the page's own checks
+// (no background image, separators, underlined links, the focus outline)
+// under the state's variant, and the view's controls, chips and notes
+// edged. A note absent from the state is not flagged.
+export async function inspectorForcedColorsProblems(page: Page, view: InspectorView, pageLabel: string, variant: string): Promise<Problem[]> {
+  const found: Found[] = (await forcedColorsProblems(page, pageLabel)).map(({ type, subject, detail }) => ({ type, subject, detail }));
+  const [controls, ...rest] = SPEC_EDGED(view);
+  await edgeProblems(page, controls!, found);
+  for (const selector of rest) for (const { subject, edge } of await edges(page, selector)) if (edge === null) found.push({ type: 'invisible-edge', subject, detail: 'no border in forced colors' });
   return problems(found, pageLabel, variant);
 }

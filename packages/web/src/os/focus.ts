@@ -20,6 +20,12 @@ function selector(target: FocusTarget): string {
       return `#os .full-screen[data-view="${target.view}"] .app-title`;
     case 'home-icon':
       return `#os .home [data-view="${target.view}"]`;
+    // 007 contracts/shell.md: inside the view's window or full-screen view.
+    case 'spec-heading':
+    case 'show-specs': {
+      const element = target.kind === 'spec-heading' ? '.spec-heading' : '.show-specs';
+      return `#os .desktop .window[data-view="${target.view}"] ${element}, #os .full-screen[data-view="${target.view}"] ${element}`;
+    }
   }
 }
 

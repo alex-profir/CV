@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import config from '../../../vitest.config.ts';
 import { runCheck } from '../src/check.ts';
-import { coverageOf, readTestFile } from '../src/test-files.ts';
+import { coverageOf, coveringTests, readTestFile } from '../src/test-files.ts';
 import { makeProject } from './helpers/project.ts';
 
 // The distinct token texts of each coverage bucket, sorted.
@@ -474,5 +476,50 @@ describe('001-requirement-traceability-FR-012 001-requirement-traceability-FR-01
       `${at(6, '002')} unknown-reference 002-example-FR-008`,
       `${at(7, '002')} removed-reference 002-example-FR-002`,
     ]);
+  });
+});
+
+describe('007-requirement-inspector-FR-008: each test title, place and counting tests', () => {
+  const file = 'src/titles.test.ts';
+  const source = fs.readFileSync(path.join(import.meta.dirname, '__fixtures__/covering-tests/titles.test.ts'), 'utf8');
+  const { nodes, problem } = readTestFile(file, source);
+
+  test('title is the literal title, a template with its substitutions as written, or empty', () => {
+    expect(problem).toBeNull();
+    expect(nodes.map((node) => node.title)).toEqual([
+      '002-example-FR-001 group',
+      'plain title',
+      'for the ${shell} shell',
+      '',
+      '002-example-FR-003 skipped',
+      '002-example-FR-004 todo',
+      '002-example-FR-005 skipIf',
+      '002-example-FR-006 unrecognized',
+      '002-example-FR-007 skipped group',
+      'inside a skipped group 002-example-FR-008',
+      "it's 002-example-FR-009",
+    ]);
+  });
+
+  test("location is the call's start", () => {
+    expect(nodes.map((node) => `${node.location.line}:${node.location.column}`)).toEqual([
+      '1:1', '2:3', '3:3', '4:3', '5:3', '6:3', '7:3', '8:3', '10:1', '11:3', '13:1',
+    ]);
+    expect(nodes.every((node) => node.location.file === file)).toBe(true);
+  });
+
+  test('coveringTests gives each counting test with its own and its ancestors tokens', () => {
+    const covering = coveringTests(nodes).map(({ node, tokens }) => [node.title, tokens.map((token) => token.text).sort()]);
+    expect(covering).toEqual([
+      ['plain title', ['002-example-FR-001']],
+      ['for the ${shell} shell', ['002-example-FR-001']],
+      ['', ['002-example-FR-001', '002-example-FR-002']],
+      ["it's 002-example-FR-009", ['002-example-FR-009']],
+    ]);
+  });
+
+  test('coveringTests counts exactly what coverageOf counts', () => {
+    const fromCovering = coveringTests(nodes).flatMap(({ tokens }) => tokens.map((token) => token.text)).sort();
+    expect(fromCovering).toEqual(coverageOf(nodes).counting.map((token) => token.text).sort());
   });
 });

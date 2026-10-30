@@ -22,6 +22,12 @@
 // `<shell>/terminal-after-cv/<command>/<width>px` after the visit to the CV
 // page.
 //
+// The inspector (007 FR-033) is opened in the same offline pages too: each
+// app's and About this site's spec view, compared with the same view online
+// and checked for the note that its links need a connection. Its variants
+// are `<shell>/<view>-specs/<width>px` after the visit to the root and
+// `<shell>/<view>-specs-after-cv/<width>px` after the visit to the CV page.
+//
 // The part serves the site on a server of its own, so stopping it leaves the
 // check's other parts alone.
 import type { Browser, BrowserContext, Page } from 'playwright';
@@ -30,8 +36,9 @@ import type { SiteManifest } from '../../../../packages/web/src/routes.ts';
 import type { ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
 import { startServer } from '../server.ts';
-import { SHELL, SHELL_SIZES, TERMINAL, openCvApp, openTerminal, shellContext, stateVariant, typeLine, vimEntry, waitForShell } from '../shell-states.ts';
-import type { Shell } from '../shell-states.ts';
+import { siteText } from '../../../../packages/web/src/site-text.ts';
+import { INSPECTOR, SHELL, SHELL_SIZES, TERMINAL, openCvApp, openTerminal, openView, shellContext, showSpecs, stateVariant, typeLine, vimEntry, waitForShell } from '../shell-states.ts';
+import type { InspectorView, Shell } from '../shell-states.ts';
 import { cvAppFieldProblems } from './cv-app.ts';
 import { unservedFonts } from './fonts.ts';
 import { fieldProblems, mainSequence, unstyledDetail } from './no-script.ts';
@@ -48,13 +55,21 @@ const SHELLS = ['mobile', 'desktop'] as const;
 export const terminalOfflineVariants = (state: 'terminal' | 'terminal-after-cv'): string[] =>
   SHELLS.flatMap((shell) => TERMINAL_COMMANDS.map((name) => stateVariant(shell, `${state}/${name}`, SHELL_SIZES[shell].width)));
 
+const INSPECTOR_VIEWS: readonly InspectorView[] = ['cv', 'terminal', 'about'];
+
+// The inspector's variants after a visit, in the order they're given.
+export const inspectorOfflineVariants = (after: '' | '-after-cv'): string[] =>
+  SHELLS.flatMap((shell) => INSPECTOR_VIEWS.map((view) => stateVariant(shell, `${view}-specs${after}`, SHELL_SIZES[shell].width)));
+
 // The shell root's variants, in the order `offlineProblems` gives them:
 // after the visit to the root, then after the visit to the CV page, then
-// the Terminal's after each.
+// the Terminal's after each, then the inspector's after each.
 export const rootOfflineVariants = (): string[] => [
   ...['cv-app', 'cv-app-after-cv'].flatMap((state) => SHELLS.map((shell) => stateVariant(shell, state, SHELL_SIZES[shell].width))),
   ...terminalOfflineVariants('terminal'),
   ...terminalOfflineVariants('terminal-after-cv'),
+  ...inspectorOfflineVariants(''),
+  ...inspectorOfflineVariants('-after-cv'),
 ];
 
 export type OfflineTargets = {
@@ -265,10 +280,122 @@ async function terminalOffline(context: BrowserContext, url: string, shell: Shel
   return results;
 }
 
+// ---- The inspector (007 FR-033) ---------------------------------------------
+
+// A spec view as rows: its bar, heading, lede and build line, each group's
+// heading and count, and each requirement's text, tests and links, keyed;
+// the offline note apart.
+type SpecRows = { rows: [string, string][]; note: string | null };
+
+async function specRows(page: Page, view: InspectorView): Promise<SpecRows> {
+  return page.evaluate((selector) => {
+    const root = document.querySelector(selector)!;
+    const words = (element: Element | null) => (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    const rows: [string, string][] = [
+      ['the bar', words(root.querySelector('.spec-bar'))],
+      ['the heading', words(root.querySelector('.spec-heading'))],
+      ['the lede', words(root.querySelector('.spec-lede'))],
+      ['the build line', words(root.querySelector('.spec-build'))],
+    ];
+    for (const group of root.querySelectorAll('section.spec-group')) {
+      rows.push([group.getAttribute('data-feature') ?? 'a group', `${words(group.querySelector('h2'))} ${words(group.querySelector('.not-shown'))}`]);
+      for (const item of group.querySelectorAll('li.requirement')) {
+        const links = [...item.querySelectorAll('a')].map((link) => link.getAttribute('href')).join(' ');
+        rows.push([item.getAttribute('data-id') ?? 'a requirement', `${words(item)} ${links}`]);
+      }
+    }
+    const note = root.querySelector('.note-offline');
+    return { rows, note: note === null ? null : words(note) };
+  }, INSPECTOR.specView(view));
+}
+
+export type InspectorRows = Map<InspectorView, SpecRows>;
+
+// Each spec view's rows, in a page showing `shell`, each view's specs shown
+// in turn.
+async function inspectorRows(page: Page, shell: Shell): Promise<InspectorRows> {
+  const found: InspectorRows = new Map();
+  for (const view of INSPECTOR_VIEWS) {
+    await openView(page, view, shell);
+    await showSpecs(page, view, shell);
+    found.set(view, await specRows(page, view));
+  }
+  return found;
+}
+
+// Every spec view's rows online, in each shell, as the baseline.
+export async function onlineInspectorRows(browser: Browser, input: OfflineInput): Promise<Record<Shell, InspectorRows>> {
+  const server = await startServer({ siteDir: input.siteDir, manifest: input.manifest });
+  try {
+    const found = {} as Record<Shell, InspectorRows>;
+    for (const shell of SHELLS) {
+      const context = await browser.newContext({ serviceWorkers: 'block', ...shellContext({ shell, ...SHELL_SIZES[shell] }) });
+      try {
+        const page = await context.newPage();
+        await page.goto(`${server.url}/`, { waitUntil: 'load' });
+        await waitForShell(page);
+        found[shell] = await inspectorRows(page, shell);
+      } finally {
+        await context.close();
+      }
+    }
+    return found;
+  } finally {
+    await server.close();
+  }
+}
+
+// The root offline in `shell`, each spec view compared with the online run
+// and checked for the offline note, each under its own variant.
+async function inspectorOffline(context: BrowserContext, url: string, shell: Shell, after: '' | '-after-cv', online: InspectorRows, page: string): Promise<OfflineResult[]> {
+  const results: OfflineResult[] = [];
+  for (const view of INSPECTOR_VIEWS) {
+    const variant = stateVariant(shell, `${view}-specs${after}`, SHELL_SIZES[shell].width);
+    const problems: Problem[] = [];
+    const add = (type: string, detail: string) => problems.push({ part: 'offline', page, variant, type, subject: view, detail });
+    results.push({ page, variant, problems });
+    const tab = await context.newPage();
+    try {
+      await tab.setViewportSize(SHELL_SIZES[shell]);
+      try {
+        await tab.goto(`${url}/`, { waitUntil: 'load' });
+        await waitForShell(tab, SHELL_START_MS);
+        await openView(tab, view, shell);
+      } catch {
+        add('not-available', `the ${view} view did not open ${WHEN}`);
+        continue;
+      }
+      try {
+        await showSpecs(tab, view, shell);
+      } catch {
+        add('not-available', `the spec view showed no requirements ${WHEN}`);
+        continue;
+      }
+      const shown = await specRows(tab, view);
+      const expected = online.get(view)!;
+      const at = [...Array(Math.max(shown.rows.length, expected.rows.length)).keys()].find((index) => shown.rows[index]?.[0] !== expected.rows[index]?.[0] || shown.rows[index]?.[1] !== expected.rows[index]?.[1]);
+      if (at !== undefined) add('offline-mismatch', `the offline view differs from the online one at ${(shown.rows[at] ?? expected.rows[at])![0]}`);
+      if (shown.note !== siteText.inspector.offline) add('offline-mismatch', shown.note === null ? `shows no note that its links need a connection ${WHEN}` : `its offline note reads "${shown.note}"`);
+    } finally {
+      await tab.close();
+    }
+  }
+  return results;
+}
+
+// The inspector's results when no worker took control: one line per shell.
+function noWorkerInspector(shell: Shell, after: '' | '-after-cv', page: string, first: string): OfflineResult[] {
+  return INSPECTOR_VIEWS.map((view, index) => {
+    const variant = stateVariant(shell, `${view}-specs${after}`, SHELL_SIZES[shell].width);
+    return { page, variant, problems: index === 0 ? [{ part: 'offline', page, variant, type: 'no-service-worker', subject: first, detail: 'no service worker took control after the first visit' }] : [] };
+  });
+}
+
 // One visit to `first` online, in a fresh context, then the root offline in
-// both shells, its CV app and its Terminal.
-async function rootAfterVisit(browser: Browser, input: OfflineInput, first: string, state: string, online: Record<Shell, TerminalRows>): Promise<OfflineResult[]> {
+// both shells, its CV app, its Terminal and its spec views.
+async function rootAfterVisit(browser: Browser, input: OfflineInput, first: string, state: string, online: Record<Shell, TerminalRows>, onlineSpecs: Record<Shell, InspectorRows>): Promise<OfflineResult[]> {
   const terminal: OfflineResult[] = [];
+  const inspector: OfflineResult[] = [];
   const results = (['mobile', 'desktop'] as const).map((shell) => ({ shell, result: { page: input.rootPath, variant: stateVariant(shell, state, SHELL_SIZES[shell].width), problems: [] as Problem[] } }));
   const server = await startServer({ siteDir: input.siteDir, manifest: input.manifest });
   let serverOpen = true;
@@ -292,11 +419,12 @@ async function rootAfterVisit(browser: Browser, input: OfflineInput, first: stri
       await shellOffline(context, server.url, shell, input.fields, input.families, add);
     }
     for (const shell of SHELLS) terminal.push(...(controlled ? await terminalOffline(context, server.url, shell, 'terminal', online[shell], input.rootPath) : noWorker(shell, 'terminal', input.rootPath, first)));
+    for (const shell of SHELLS) inspector.push(...(controlled ? await inspectorOffline(context, server.url, shell, '', onlineSpecs[shell], input.rootPath) : noWorkerInspector(shell, '', input.rootPath, first)));
   } finally {
     await context.close();
     if (serverOpen) await server.close();
   }
-  return [...results.map(({ result }) => result), ...terminal];
+  return [...results.map(({ result }) => result), ...terminal, ...inspector];
 }
 
 // The Terminal's results when no worker took control: one line per shell.
@@ -312,7 +440,9 @@ const mainText = (page: Page) => page.evaluate(() => (document.querySelector('ma
 export async function offlineProblems(browser: Browser, input: OfflineInput): Promise<OfflineResult[]> {
   const { cvPath, rootPath, notFoundPath, fields, families, shellRoot = false } = input;
   const online = shellRoot ? await onlineTerminalRows(browser, input) : null;
+  const onlineSpecs = shellRoot ? await onlineInspectorRows(browser, input) : null;
   const terminalAfterCv: OfflineResult[] = [];
+  const inspectorAfterCv: OfflineResult[] = [];
   // The root is a target of the visit to the CV page only when it
   // redirects; the shell's page is opened in both shells instead.
   const targets = shellRoot ? [cvPath, notFoundPath] : [cvPath, rootPath, notFoundPath];
@@ -376,6 +506,7 @@ export async function offlineProblems(browser: Browser, input: OfflineInput): Pr
         else add('no-service-worker', cvPath, 'no service worker took control after the first visit');
       }
       for (const shell of SHELLS) terminalAfterCv.push(...(controlled ? await terminalOffline(context, server.url, shell, 'terminal-after-cv', online![shell], rootPath) : noWorker(shell, 'terminal-after-cv', rootPath, cvPath)));
+      for (const shell of SHELLS) inspectorAfterCv.push(...(controlled ? await inspectorOffline(context, server.url, shell, '-after-cv', onlineSpecs![shell], rootPath) : noWorkerInspector(shell, '-after-cv', rootPath, cvPath)));
     }
   } finally {
     await context.close();
@@ -384,7 +515,9 @@ export async function offlineProblems(browser: Browser, input: OfflineInput): Pr
   const pages = [...results].map(([page, problems]) => ({ page, variant: OFFLINE_VARIANT, problems }));
   if (!shellRoot) return pages;
   // In 004's order: the CV page, the root, the unknown path.
-  const [mobile, desktop, ...terminal] = await rootAfterVisit(browser, input, rootPath, 'cv-app', online!);
-  const root = [mobile!, desktop!, ...afterCv.map(({ result }) => result), ...terminal, ...terminalAfterCv];
+  const [mobile, desktop, ...rest] = await rootAfterVisit(browser, input, rootPath, 'cv-app', online!, onlineSpecs!);
+  const terminal = rest.slice(0, -inspectorOfflineVariants('').length);
+  const inspector = rest.slice(-inspectorOfflineVariants('').length);
+  const root = [mobile!, desktop!, ...afterCv.map(({ result }) => result), ...terminal, ...terminalAfterCv, ...inspector, ...inspectorAfterCv];
   return [pages[0]!, ...root, ...pages.slice(1)];
 }

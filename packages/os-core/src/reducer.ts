@@ -127,7 +127,10 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
         existing === undefined
           ? [{ view: action.view, geometry: placeWindow(action.view, state.windows, area, metrics), minimized: false, maximized: null, placement: 'set' as const }, ...state.windows]
           : raise(update(state.windows, action.view, (window) => (window.minimized ? { ...window, minimized: false } : window)), action.view);
-      return { ...state, windows, focused: action.view, effects: withEffects(focusOn({ kind: 'window-title', view: action.view })) };
+      // A new window shows its app (007 FR-004), even if the view was left
+      // showing its specs on mobile before a shell change.
+      const specs = existing === undefined ? withoutSpecs(state.specs, action.view) : state.specs;
+      return { ...state, windows, focused: action.view, specs, effects: withEffects(focusOn({ kind: 'window-title', view: action.view })) };
     }
 
     case 'focus': {
@@ -152,7 +155,7 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
     case 'close': {
       if (!onDesktop || windowOf(action.view) === undefined) return state;
       const after = frontShown(state.windows.filter((window) => window.view !== action.view));
-      return { ...state, ...after, effects: withEffects(focusAfterLeaving(action.view, after.focused)) };
+      return { ...state, ...after, specs: withoutSpecs(state.specs, action.view), effects: withEffects(focusAfterLeaving(action.view, after.focused)) };
     }
 
     case 'minimize': {
@@ -276,6 +279,26 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
       };
     }
 
+    case 'showSpecs':
+    case 'showApp': {
+      const showing = state.specs[action.view] !== undefined;
+      if (action.type === 'showSpecs' ? showing : !showing) return state;
+      // The view must be shown: a window on the desktop, or the full-screen
+      // view on a phone.
+      if (onDesktop) {
+        if (windowOf(action.view) === undefined) return state;
+      } else if (state.shell !== 'mobile' || state.mobile.open !== action.view) {
+        return state;
+      }
+      const specs = action.type === 'showSpecs' ? { ...state.specs, [action.view]: { appScroll: action.appScroll } } : withoutSpecs(state.specs, action.view);
+      const target: FocusTarget = action.type === 'showSpecs' ? { kind: 'spec-heading', view: action.view } : { kind: 'show-specs', view: action.view };
+      // On the desktop the window comes to the front, focused, as acting on a
+      // window does.
+      const windows = onDesktop ? raise(update(state.windows, action.view, (window) => (window.minimized ? { ...window, minimized: false } : window)), action.view) : state.windows;
+      const focused = onDesktop ? action.view : state.focused;
+      return { ...state, windows, focused, specs, effects: withEffects(focusOn(target)) };
+    }
+
     case 'effectsDone': {
       // The effects that were run, leaving any appended since.
       const count = action.count ?? state.effects.length;
@@ -285,6 +308,13 @@ function reduce(state: OsState, action: OsAction, context: ReducerContext): OsSt
     default:
       return state;
   }
+}
+
+// The entries without the view's.
+function withoutSpecs(specs: OsState['specs'], view: ViewId): OsState['specs'] {
+  if (specs[view] === undefined) return specs;
+  const { [view]: _removed, ...rest } = specs;
+  return rest;
 }
 
 function sameBox(a: Geometry, b: Geometry): boolean {

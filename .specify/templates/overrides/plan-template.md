@@ -63,7 +63,7 @@
 | VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | [ ] | |
 | IX | Original Design | No Apple icons, fonts, wallpapers or other Apple assets | [ ] | |
 | X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | [ ] | |
-| XI | Features and Amendments in Their Own PRs | A new feature ships in one PR; an amendment in one or more PRs of its own, each carrying its part of the spec amendment with its tests and design; each PR links spec.md and tasks.md | [ ] | |
+| XI | Features and Amendments in Pull Requests | A new feature ships in one PR, with any amendment of an older spec it makes, recorded in that spec and linked; any other amendment in one or more PRs of its own, each carrying its part of the spec amendment with its tests and design; each PR links spec.md and tasks.md | [ ] | |
 
 ## Requirement Traceability
 

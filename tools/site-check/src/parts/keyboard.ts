@@ -6,7 +6,8 @@ import zlib from 'node:zlib';
 import type { BrowserContext, Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
-import { SHELL, TERMINAL, settle } from '../shell-states.ts';
+import { INSPECTOR, SHELL, TERMINAL, settle } from '../shell-states.ts';
+import type { InspectorView } from '../shell-states.ts';
 
 export type Box = { x: number; y: number; width: number; height: number };
 
@@ -827,4 +828,95 @@ async function commandLineSteps(page: Page, step: Flow['step']): Promise<void> {
       return left === '' ? [] : [{ type: 'cancel', detail: `the command line still holds ${JSON.stringify(left)} after Ctrl+C` }];
     },
   });
+}
+
+// ---- The inspector (007 FR-032) ----------------------------------------------
+
+// The inspector's flow at 1440 × 900, by keys alone: the CV's "Show specs"
+// by its control, Back, "Show specs" from the app's menu, "What's this?"
+// opened and closed, Back, then the same for the Terminal and About this
+// site. Each step checks where focus lands (FR-017) and its indicator.
+export async function inspectorKeyboardProblems(page: Page, pageLabel: string, variant: string): Promise<Problem[]> {
+  const { problems, step } = flow(page, pageLabel, variant);
+  const I = INSPECTOR;
+  const name = (view: InspectorView) => (view === 'cv' ? 'CV' : view === 'terminal' ? 'Terminal' : 'About this site');
+  const heading = (view: InspectorView) => `${I.specView(view)} h1.spec-heading`;
+  const showing = (view: InspectorView) => async () => (await count(page, I.groups(view))) > 0;
+  const gone = (view: InspectorView) => async () => (await count(page, I.specView(view))) === 0;
+  // Presses `key` until focus is on `target`, at most `limit` times.
+  const pressTo = (key: string, target: string, limit = 60) => async () => {
+    for (let presses = 0; presses < limit && !(await focusOn(page, target)); presses += 1) await page.keyboard.press(key);
+  };
+  const show = (view: InspectorView) => step(`Show specs for ${name(view)}`, { keys: ['Enter'], done: showing(view), failed: { subject: 'Enter', detail: `Show specs did not show the ${name(view)}'s specs` }, target: heading(view), targetName: `the ${name(view)} spec view's heading` });
+  const leave = (view: InspectorView) =>
+    step(`Back to ${name(view)}`, {
+      act: async () => {
+        await pressTo('Shift+Tab', I.back(view), 3)();
+        await page.keyboard.press('Enter');
+      },
+      done: gone(view),
+      failed: { subject: 'Enter', detail: `Back to ${name(view)} did not show the app` },
+      target: I.showSpecs(view, 'desktop'),
+      targetName: `the ${name(view)} window's Show specs`,
+    });
+  const run = async (): Promise<void> => {
+    if (!(await step("reach the CV's Show specs", { act: async () => { await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur?.()); await pressTo('Tab', I.showSpecs('cv', 'desktop'))(); }, target: I.showSpecs('cv', 'desktop'), targetName: "the CV window's Show specs" }))) return;
+    if (!(await show('cv'))) return;
+    if (!(await leave('cv'))) return;
+    // From the app's menu: the menu bar, the app's menu, its Show specs.
+    const fromMenu = async () => {
+      await page.keyboard.press('Alt+Shift+M');
+      await until(() => focusIn(page, '#os .menu-bar'));
+      await pressTo('ArrowRight', SHELL.appMenuTitle, 5)();
+      await page.keyboard.press('Enter');
+      await until(() => visible(page, SHELL.appMenu));
+      for (let presses = 0; presses < 20; presses += 1) {
+        const label = await page.evaluate(() => (document.activeElement?.querySelector('.label')?.textContent ?? document.activeElement?.textContent ?? '').trim());
+        if (label === 'Show specs') break;
+        await page.keyboard.press('ArrowDown');
+      }
+      await page.keyboard.press('Enter');
+    };
+    if (!(await step('Show specs from the menu', { act: fromMenu, done: showing('cv'), failed: { subject: 'Alt+Shift+M', detail: "the CV menu's Show specs did not show the specs" }, target: heading('cv'), targetName: "the CV spec view's heading" }))) return;
+    const toggle = (open: boolean) =>
+      step(open ? "open What's this?" : "close What's this?", {
+        act: async () => {
+          await pressTo('Shift+Tab', I.whatsThis('cv'), 3)();
+          await page.keyboard.press('Enter');
+        },
+        done: async () => (await page.getAttribute(I.whatsThis('cv'), 'aria-expanded')) === String(open),
+        failed: { subject: 'Enter', detail: `What's this? did not ${open ? 'open' : 'close'}` },
+        target: I.whatsThis('cv'),
+        targetName: "What's this?",
+      });
+    if (!(await toggle(true))) return;
+    if (!(await toggle(false))) return;
+    if (!(await leave('cv'))) return;
+    // The Terminal, opened from the dock.
+    const openTerminal = async () => {
+      await page.keyboard.press('Alt+Shift+D');
+      await until(() => focusIn(page, '#os .dock'));
+      await pressTo('ArrowRight', SHELL.terminalDockItem, 5)();
+      await page.keyboard.press('Enter');
+    };
+    if (!(await step('open the Terminal', { act: openTerminal, done: () => visible(page, TERMINAL.commandLine), failed: { subject: 'Alt+Shift+D', detail: 'the dock did not open the Terminal' }, target: TERMINAL.commandLine, targetName: "the Terminal's command line", reveal: true }))) return;
+    if (!(await step("reach the Terminal's Show specs", { act: pressTo('Shift+Tab', I.showSpecs('terminal', 'desktop')), target: I.showSpecs('terminal', 'desktop'), targetName: "the Terminal window's Show specs" }))) return;
+    if (!(await show('terminal'))) return;
+    if (!(await leave('terminal'))) return;
+    // About this site, from the site menu.
+    const openAbout = async () => {
+      await page.keyboard.press('Alt+Shift+M');
+      await until(() => visible(page, SHELL.siteMenuTitle));
+      await page.keyboard.press('Enter');
+      await until(() => visible(page, SHELL.aboutItem));
+      await page.keyboard.press('Enter');
+      await until(() => visible(page, SHELL.aboutWindow));
+      await pressTo('Tab', I.showSpecs('about', 'desktop'))();
+    };
+    if (!(await step("reach About this site's Show specs", { act: openAbout, target: I.showSpecs('about', 'desktop'), targetName: "About this site's Show specs" }))) return;
+    if (!(await show('about'))) return;
+    await leave('about');
+  };
+  await run();
+  return problems;
 }

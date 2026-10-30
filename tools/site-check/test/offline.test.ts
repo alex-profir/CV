@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
-import { TERMINAL_COMMANDS, rootOfflineVariants, terminalOfflineVariants } from '../src/parts/offline.ts';
+import { TERMINAL_COMMANDS, inspectorOfflineVariants, rootOfflineVariants, terminalOfflineVariants } from '../src/parts/offline.ts';
 import { renderProblem } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture } from './helpers/sites.ts';
@@ -17,8 +17,12 @@ const OS_NOT_STORED = (copy: string) =>
 // The shell's worker left out of the precache list (006 FR-041).
 const SHELL_NOT_STORED = (copy: string) =>
   replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'const entries = PRECACHE.map(precacheEntry);', "const entries = PRECACHE.filter((path) => !/^\\/assets\\/shell-[^/]*\\.js$/.test(path)).map(precacheEntry);");
+const DATA_NOT_STORED = (copy: string) =>
+  replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'const entries = PRECACHE.map(precacheEntry);', "const entries = PRECACHE.filter((path) => !/^\\/assets\\/requirements-[^/]*\\.json$/.test(path)).map(precacheEntry);");
 
 const TERMINAL_VARIANTS = [...terminalOfflineVariants('terminal'), ...terminalOfflineVariants('terminal-after-cv')];
+
+const INSPECTOR_VARIANTS = [...inspectorOfflineVariants(''), ...inspectorOfflineVariants('-after-cv')];
 
 describe('004-cv-page-FR-053: offline, /cv, the root and an unknown path show their full content, styled, in the site fonts', () => {
   test('fonts-not-stored/ fails with missing-font, naming each family', async () => {
@@ -51,6 +55,7 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
       '/ mobile/cv-app-after-cv/375px pass',
       '/ desktop/cv-app-after-cv/1440px pass',
       ...TERMINAL_VARIANTS.map((variant) => `/ ${variant} pass`),
+      ...INSPECTOR_VARIANTS.map((variant) => `/ ${variant} pass`),
       '/missing-page 375px pass',
     ]);
   });
@@ -76,6 +81,7 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
       '/ mobile/cv-app-after-cv/375px error',
       '/ desktop/cv-app-after-cv/1440px error',
       ...TERMINAL_VARIANTS.map((variant) => `/ ${variant} error`),
+      ...INSPECTOR_VARIANTS.map((variant) => `/ ${variant} error`),
       '/missing-page 375px error',
     ]);
     const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
@@ -109,5 +115,23 @@ describe("006-terminal-FR-041: offline, the Terminal runs every command help lis
     }
     // The CV app needs no shell, and still opens.
     expect(report.problems.filter((problem) => problem.variant.includes('/cv-app'))).toEqual([]);
+  });
+});
+
+describe('007-requirement-inspector-FR-033: offline, every spec view shows in both shells after one visit, as it does online, with the offline note', () => {
+  test('the part opens the CV, Terminal and About views at 375 and 1440 px, after a visit to / and after a visit to /cv only', () => {
+    expect(INSPECTOR_VARIANTS).toEqual(
+      ['', '-after-cv'].flatMap((after) => [...['cv', 'terminal', 'about'].map((view) => `mobile/${view}-specs${after}/375px`), ...['cv', 'terminal', 'about'].map((view) => `desktop/${view}-specs${after}/1440px`)]),
+    );
+  });
+
+  test("a copy whose worker doesn't store the requirement data fails every spec view offline, naming the view, the shell and the width", async () => {
+    const report = await runCheck(seededCopy(DATA_NOT_STORED), { parts: ['offline'] });
+    const failed = report.results.filter((result) => result.status === 'fail').map((result) => result.variant);
+    expect(failed).toEqual(INSPECTOR_VARIANTS);
+    for (const problem of report.problems) {
+      expect(INSPECTOR_VARIANTS).toContain(problem.variant);
+      expect(problem.variant).toContain(`${problem.subject}-specs`);
+    }
   });
 });

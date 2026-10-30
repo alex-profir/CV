@@ -57,7 +57,8 @@ describe('005-os-shell-FR-014: the Window menu lists the open windows, and the f
   test("the focused window's menu holds its commands, Close among them", async () => {
     const page = await openShell({ width: 1440, height: 900 });
     await page.click('#menu-title-app');
-    expect(await items(page, 'app')).toEqual(['Open the CV as a page', 'Move…', 'Resize…', 'Minimize', 'Maximize', 'Close']);
+    // 007 adds Show specs after the app's own commands (007 contracts/shell.md).
+    expect(await items(page, 'app')).toEqual(['Open the CV as a page', 'Show specs', 'Move…', 'Resize…', 'Minimize', 'Maximize', 'Close']);
     await page.getByRole('menuitem', { name: 'Close' }).click();
     await expect.poll(() => page.locator('#os .window').count()).toBe(0);
   });
@@ -108,6 +109,7 @@ describe('005-os-shell-FR-029: menu commands show their shortcut and expose it',
       await page.click('#menu-title-app');
       expect(await commands(page, 'app'), platform).toEqual([
         ['Open the CV as a page', '', null],
+        ['Show specs', '', null],
         ['Move…', `${modifier}+Shift+P`, 'Alt+Shift+P'],
         ['Resize…', `${modifier}+Shift+S`, 'Alt+Shift+S'],
         ['Minimize', `${modifier}+Shift+H`, 'Alt+Shift+H'],

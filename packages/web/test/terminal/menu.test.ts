@@ -19,7 +19,8 @@ describe('006-terminal-FR-003: the Terminal has its own menu in the menu bar', (
     const page = await openTerminalPage('desktop');
     expect((await page.locator('#menu-title-app').textContent())?.trim()).toBe('Terminal');
     await page.click('#menu-title-app');
-    expect(await entries(page)).toEqual(['Clear output', '---', 'Move…', 'Resize…', '---', 'Minimize', 'Maximize', '---', 'Close']);
+    // 007 adds Show specs after Clear output, in its group (007 contracts/shell.md).
+    expect(await entries(page)).toEqual(['Clear output', 'Show specs', '---', 'Move…', 'Resize…', '---', 'Minimize', 'Maximize', '---', 'Close']);
     const clear = page.getByRole('menuitem', { name: 'Clear output' });
     expect(await clear.getAttribute('aria-keyshortcuts')).toBeNull();
     expect((await clear.locator('.keys').textContent())?.trim() ?? '').toBe('');
