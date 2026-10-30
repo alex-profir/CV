@@ -50,7 +50,7 @@ describe('006-terminal-FR-040: the terminal part runs every CV command, the JSON
     const report = await runCheck(realSiteProject(), { parts: ['terminal'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
     expect(report.results.map(({ variant, status }) => `${variant} ${status}`)).toEqual(
-      SHELLS.flatMap((shell) => [...CV_COMMANDS, 'json', 'files', 'shell'].map((name) => `${terminalVariant(shell, name, SHELL_SIZES[shell].width)} pass`)),
+      SHELLS.flatMap((shell) => [...CV_COMMANDS, 'json', 'files', 'shell', 'open-playground'].map((name) => `${terminalVariant(shell, name, SHELL_SIZES[shell].width)} pass`)),
     );
   });
 
@@ -229,5 +229,21 @@ describe('006-terminal-FR-013: specs lists every spec folder of the repository, 
     expect(await specs.locator('.out-specs a[href$="/specs/999-extra/spec.md"]').count()).toBe(1);
     const report = await runCheck(root, { parts: ['terminal'] });
     expect(report.problems.filter((problem) => problem.variant.includes('/files/')).map(renderProblem)).toEqual([]);
+  });
+});
+
+describe('008-typescript-playground-FR-087: the terminal part runs open playground in both shells', () => {
+  test('on the real build, open playground passes in each shell', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['terminal'] });
+    const open = report.results.filter(({ variant }) => variant.includes('/terminal/open-playground/'));
+    expect(open.map(({ variant, status }) => `${variant} ${status}`)).toEqual(variants('open-playground').map((variant) => `${variant} pass`));
+  });
+
+  test("a copy whose open rejects playground fails, naming the step and the shell", async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, 'packages/web/src/apps/terminal/engine/commands.ts', "if (name === 'cv' || name === 'playground' || name === 'about')", "if (name === 'cv' || name === 'about')"),
+    );
+    const report = await runCheck(root, { parts: ['terminal'] });
+    expect(report.problems.map(renderProblem)).toEqual(variants('open-playground').map((variant) => `terminal / ${variant} open-failed open playground: the Playground didn't open`));
   });
 });

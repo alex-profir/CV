@@ -55,10 +55,26 @@ describe('006-terminal-FR-014: open cv and open about ask the shell', () => {
     expect(await run('exit', context)).toMatchObject({ kind: 'os', action: { exit: true } });
   });
 
-  test('open with another name lists the names it takes, as controls', async () => {
+});
+
+describe('008-typescript-playground-FR-087: open also takes playground, and help says so (006-terminal-FR-008, 006-terminal-FR-014)', () => {
+  test('open playground asks the shell to open the Playground', async () => {
+    const context = contextFor('every-field');
+    expect(await run('open playground', context)).toMatchObject({ kind: 'os', action: { open: 'playground' } });
+    expect(await run('open Playground', context)).toMatchObject({ kind: 'os', action: { open: 'playground' } });
+  });
+
+  test('open with another name lists cv, playground and about, as controls', async () => {
     const block = output(await run('open settings', contextFor('every-field')));
-    expect(await textOf('open settings', contextFor('every-field'))).toBe('open takes cv or about.');
-    expect(controls(block)).toEqual(['open cv', 'open about']);
+    expect(await textOf('open settings', contextFor('every-field'))).toBe('open takes cv, playground or about.');
+    expect(controls(block)).toEqual(['open cv', 'open playground', 'open about']);
+  });
+
+  test("help's open <name> row and its own help name the Playground", async () => {
+    const context = contextFor('every-field');
+    const row = (await textOf('help', context)).split('\n').find((line) => line.startsWith('open '));
+    expect(row).toMatch(/^open <name>\s+Open cv, playground or about in the shell$/);
+    expect(await textOf('help open', context)).toContain('Opens the CV app with open cv, the Playground with open playground, or About this site with open about.');
   });
 });
 
