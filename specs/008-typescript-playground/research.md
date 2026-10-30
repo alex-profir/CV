@@ -316,7 +316,10 @@ FR-054. *LZ-string as the official Playground uses*: a package for what the brow
 ## R17. The sandbox
 
 **Decision**: each run gets a new `<iframe sandbox="allow-scripts">` with a `srcdoc` and no
-`allow-same-origin`, hidden inside the Playground's window. The `srcdoc` holds a meta policy,
+`allow-same-origin`, hidden in a host of its own appended once to `document.body`, never inside
+the Playground's window and never moved: removing or moving a frame ends its worker, and the
+window's content unmounts for Show specs and shell switches (FR-005, FR-061), which must not end
+a run. Stop, a new run, the window's close and `pagehide` remove it. The `srcdoc` holds a meta policy,
 `default-src 'none'; script-src 'sha256-<bootstrap>'; worker-src blob:; connect-src *`, and one
 inline bootstrap script. The page sends the bootstrap a `MessagePort`, a nonce and the worker's
 source (runtime plus code, R13, R18); the bootstrap makes a classic `Worker` from a `Blob` URL,
