@@ -139,9 +139,13 @@ class PlaygroundWorker extends TypeScriptWorker {
     return { code: withoutMapComment(code).replace(/^\s*export\s*\{\s*\};?\s*$/m, ''), map, imports, errors };
   }
 
-  // TypeScript's fixes, without any that adds an import (FR-082).
+  // TypeScript's fixes, without any that adds an import (FR-082). Monaco
+  // passes the editor's format options by their older names
+  // (`ConvertTabsToSpaces`, `IndentSize`), which TypeScript's fixes don't
+  // read, so they are given by today's names, as its formatting reads them.
   override async getCodeFixesAtPosition(fileName: string, start: number, end: number, errorCodes: number[], formatOptions: unknown): Promise<readonly any[]> {
-    const fixes = await super.getCodeFixesAtPosition(fileName, start, end, errorCodes, formatOptions);
+    const settings = Object.fromEntries(Object.entries(formatOptions as Record<string, unknown>).map(([name, value]) => [name.charAt(0).toLowerCase() + name.slice(1), value]));
+    const fixes = await super.getCodeFixesAtPosition(fileName, start, end, errorCodes, settings);
     return fixes.filter((fix: any) => fix.fixName !== 'import' && !fix.changes.some((change: any) => change.textChanges.some((edit: any) => /^\s*import\b/m.test(edit.newText))));
   }
 }

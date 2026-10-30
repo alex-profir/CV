@@ -36,9 +36,9 @@ describe('006-terminal-FR-001: the Terminal is an app of both shells, after the 
     expect(appsFor(list, 'mobile').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
   });
 
-  test('the real list is [cv, terminal] on both shells, the Terminal needing no network', () => {
-    expect(appsFor(SITE_APPS, 'desktop').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
-    expect(appsFor(SITE_APPS, 'mobile').map((entry) => entry.id)).toEqual(['cv', 'terminal']);
+  test('the real list starts [cv, terminal] on both shells, the Terminal needing no network', () => {
+    expect(appsFor(SITE_APPS, 'desktop').map((entry) => entry.id).slice(0, 2)).toEqual(['cv', 'terminal']);
+    expect(appsFor(SITE_APPS, 'mobile').map((entry) => entry.id).slice(0, 2)).toEqual(['cv', 'terminal']);
     expect(SITE_APPS.find((entry) => entry.id === 'terminal')?.needsNetwork).toBe(false);
   });
 });

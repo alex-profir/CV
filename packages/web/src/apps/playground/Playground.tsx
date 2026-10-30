@@ -34,6 +34,7 @@ function engineAssets(): { manifest: string; bytes: number } | null {
 // state to the session when it unmounts (FR-005).
 function Editor() {
   const element = useRef<HTMLDivElement>(null);
+  const checking = useSession((state) => state.checking);
   useEffect(() => {
     const engine = currentEngine();
     const host = element.current;
@@ -53,7 +54,7 @@ function Editor() {
   return (
     <div
       ref={element}
-      className="playground-editor"
+      className={checking ? 'playground-editor is-checking' : 'playground-editor'}
       data-req="008-typescript-playground-FR-015 008-typescript-playground-FR-016 008-typescript-playground-FR-017 008-typescript-playground-FR-018 008-typescript-playground-FR-062 008-typescript-playground-FR-063 008-typescript-playground-FR-081 008-typescript-playground-FR-082 008-typescript-playground-FR-083 008-typescript-playground-FR-084"
     />
   );
