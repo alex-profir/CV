@@ -226,3 +226,82 @@ Items 5 to 10 are *approved as designed*; 5 is left for the plan.
 - Notes: Approved on review of the exports in `cbfffca`, with two changes: the greeting is removed
   (item 2) and the standard commands' names in `help` run `help <name>` (item 4). Everything else
   is approved as designed, and the owner confirms the look is original as recorded above.
+
+## 2026-10-30 amendment
+
+**Status**: Awaiting the owner's review
+
+The spec's amendment of 2026-10-30 (Clarifications, Session 2026-10-30 (owner review of the
+shell); FR-026, FR-039, FR-058, FR-060, FR-064 to FR-066, FR-076 to FR-081) makes Tab complete,
+gives the pocket terminal a Tab key and lets the vim view edit files. The new states are drawn on
+the same Penpot page, **006 Terminal — Glass**, in the approved look, and exported at 1× as
+before. Penpot was reachable, so the interim provision on local mockups was not used.
+
+### New artifacts
+
+| Artifact | Files |
+|----------|-------|
+| Desktop at 1440 × 900, 6 new states: a second Tab listing the matches, vim's insert mode in a new file, `:w`, `W10` on a protected file, `E45`, `E37` | `exports/desktop-21-tab-list-1440.png` to `exports/desktop-26-vim-e37-1440.png` |
+| Phone at 375 × 812: the Tab key listing the matches, the keyboard open with the Tab key, vim's insert mode with the `Esc` key | `exports/phone-22-tab-key-list-375.png`, `exports/phone-23-keyboard-tab-key-375.png`, `exports/phone-24-vim-insert-esc-375.png` |
+| Phone at 320 × 568, where a vim message wraps: `E45` | `exports/phone-25-vim-e45-320.png` |
+| Tab and editing in vim: the insert cursor, the messages, the pocket keys, the proposed token and contrast checks | `exports/tab-vim-editing-1440.png` |
+| Wireframes of each new state, with keyboard and screen-reader notes, forced colors and site text | [wireframes.md](wireframes.md#states-added-by-the-amendment-of-2026-10-30) |
+| Notes, proposed token and contrast checks | [README.md](README.md#tab-and-editing-in-vim-2026-10-30) |
+
+### Re-exported artifacts
+
+| Export | What changed |
+|--------|--------------|
+| Every phone export with command keys: `phone-1`, `-2`, `-3`, `-5`, `-6`, `-8` to `-21` | `Tab ⇥` replaces `skills`; the keys read `help`, `about`, `work`, `projects`, `cv`, `ls`, `clear`, `Tab ⇥` (FR-078) |
+| `phone-4-keyboard-open-375.png` | The Tab key stays in a strip above the keyboard; the screen is 60 px shorter (FR-053, FR-078) |
+| `phone-7-vim-keys-375.png` | The vim keys in three rows with `i`, `u`, `:w` and a double `:q`, in the grille's place; the status line reads `[No Name]` (FR-066) |
+| `desktop-3a-vim-opened-by-cv-1440.png`, `desktop-3b-vim-fold-open-search-1440.png` | `cv`'s piped text is `[No Name]`, not `cv.json [RO]`; the opening message drops `[readonly]` (FR-058, FR-081) |
+| `desktop-3c-vim-key-help-1440.png` | The key help adds the editing, writing and leaving keys; the read-only note goes; the file above shows 3 lines (FR-060) |
+| `desktop-2-after-help-1440.png`, `desktop-8-maximized-1440.png` | `vim` reads `Edit a file in vim`; on desktop 8, `help`'s first line adds `Tab completes a command or path; Escape then Tab leaves the command line.` (FR-077) |
+| Every vim export | The status line's `[RO]`, `[+]` and pipe in haze instead of fog (contrast, below) |
+
+### Changed decisions
+
+- **Tab**: completes with text before the cursor; leaves on an empty line, after Escape, or with
+  Shift+Tab. Replaces "Tab always moves focus out".
+- **Pocket command keys**: `Tab ⇥` replaces `skills` (owner's choice, 2026-10-30). With the
+  keyboard open, the Tab key stays; every other key hides as before.
+- **Vim view**: edits files. Replaces "read only, with a site message for editing keys". Its
+  messages are vim's own, in vim's words and colors by kind.
+- **Insert cursor**: a 2 px bar (owner's choice, 2026-10-30).
+- **`cv`'s piped text**: `[No Name]`, as vim names text read from a pipe, and not read only.
+- **Contrast fix**: the status line's marks and pipe were fog, 3.8:1 on the status band; they
+  take haze, 5.8:1. This changes the approved vim exports too.
+
+### Decisions for the owner
+
+1. **New token**: `color.vim-warning`, referring to the existing `{color.base.amber}`, for vim's
+   warnings. Errors reuse `color.terminal-error`. See README.md.
+2. **`cv`'s piped text** is named `[No Name]` and isn't marked read only, as in vim, so `:w`
+   alone gives `E32: No file name` and `:w <path>` saves a copy. The other way is to keep the
+   approved `cv.json [RO]`; but then `:w` would refuse a file that looks named, with an error
+   about it having no name.
+3. **The contrast fix** above, on every vim export.
+4. **The vim keys** in three rows, `:q` twice as wide, the third row in the speaker grille's
+   place at 375 px. At 320 px the screen gives up the row.
+5. **Long vim messages** wrap onto a second line, and the text above gives up a row, rather than
+   vim's own "Press ENTER" prompt.
+6. **Tab's list** is output: bash's columns, folders marked as `ls` marks them, but no controls,
+   as FR-076 asks. `Display all [n] possibilities? (y or n)` is a plain haze line, with no board.
+7. **`help`'s wording** for FR-077: `Tab completes a command or path; Escape then Tab leaves the
+   command line.` (phone: `Tab ⇥ completes a command or path.`), and the command line's
+   description `Tab completes. Escape then Tab leaves.`
+
+### Original look (FR-031, SC-010)
+
+- [x] The new states use the site's own tokens. The insert bar, the `-- INSERT --` pill and the
+  messages follow vim's words and behaviour, not another terminal's or editor's look; the Tab
+  and `Esc` keys are the pocket terminal's own keys.
+
+### Sign-off
+
+- Reviewed mockup version: Penpot page **006 Terminal — Glass**, as exported to `exports/` on
+  2026-10-30 (commit pending)
+- Date:
+- Approved by:
+- Notes:

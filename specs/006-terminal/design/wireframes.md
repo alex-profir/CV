@@ -27,6 +27,9 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | `^ \| v` | The output's own scrollbar |
 | `+--  16 lines: "work": [ ····` | A closed fold in the vim view: a control that opens it |
 | `[NORMAL]` | The vim view's mode, in a mint pill at the start of its status line |
+| `[-- INSERT --]` | The vim view's mode pill in insert mode (FR-079) |
+| `▏` | The vim view's cursor in insert mode: a 2 px bar before the character it inserts at (FR-079) |
+| `[Tab ⇥]` | The pocket terminal's Tab key (FR-078) |
 
 ## Design values the spec leaves to the design
 
@@ -49,16 +52,19 @@ Everything else is site text, set by this design (FR-030). The full list is unde
 | Owner in `ls -l` | Protected files and folders are owned by `root`, read only (`-r--r--r--`, `dr-xr-xr-x`); the visitor's by `guest`, in haze, writable. Folder names keep their trailing slash | FR-049 |
 | Terminal menu | Titled `Terminal`. It holds `Clear output` (no shortcut), then 005's window commands with their shortcuts | FR-003, FR-019 |
 | Dock and home screen icon | An original glyph: a mint `❯` and a periwinkle `_` on a dark tile with a hairline edge. After the CV app | FR-001, FR-031 |
-| Command keys | 8 keys in this order: `help` (indigo, the way in), `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear`. At least 44 × 44 px: 52 px tall in portrait, 48 px below 375 px wide, at least 44 px in landscape | FR-051 |
+| Command keys | 8 keys in this order: `help` (indigo, the way in), `about`, `work`, `projects`, `cv`, `ls`, `clear`, `Tab ⇥`. At least 44 × 44 px: 52 px tall in portrait, 48 px below 375 px wide, at least 44 px in landscape. Amended 2026-10-30: `skills` was fifth and there was no Tab key | FR-051, FR-078 |
 | Pocket terminal layout | Height ≥ width: the screen above, the keys below in 4 columns. Width > height: the screen on the left, the keys on the right in 2 columns of 4. The case fills the space below the header with an 8 to 14 px margin, at most 560 px wide in portrait and 900 px in landscape, centered | FR-024, FR-052 |
 | Device it evokes | A small handheld terminal of the site's own design: a glass case, a power light, a recessed screen, raised keys, a speaker grille and the owner's name, from the CV document, engraved (drawn only where it fits). It copies no real device | FR-054 |
-| On-screen keyboard open | The keys hide and the screen grows to fill the space above the keyboard, so the command line and the newest output stay in view. When the keyboard closes, the keys come back | FR-053 |
+| On-screen keyboard open | The keys hide, except the Tab key, which stays alone at the right of a strip between the screen and the keyboard (`Esc` in its place in vim's insert mode). The screen grows to fill the space above the strip, so the command line and the newest output stay in view. When the keyboard closes, the keys come back. Amended 2026-10-30: every key hid | FR-053, FR-066, FR-078 |
 | Output color | Commands and CV text in snow and haze, dates and descriptions in fog, controls and links in periwinkle, section headings in lilac, the prompt mark in mint, "command not found", syntax errors, "Permission denied", "stopped" and the load error in rose, `^C` and the loading line in fog. Slate is never used for text | FR-031, FR-035 |
 | Vim view | Fills the Terminal window's content, or the pocket terminal's screen. A 4-character line-number gutter (3 on the phone), the text, then a 24 px status line and a 28 px message line (26 on the phone). Text 14 on 21 px, as the Terminal's. Long lines wrap at a space, continuations indented 2 past the line's own indent. Opens with each top-level section folded and the cursor on the first fold | FR-058, FR-061, FR-063 |
 | Vim view colors | Keys periwinkle, strings haze, numbers amber, `true`, `false` and `null` rose, punctuation and line numbers fog, the cursor line's number snow. Fold lines periwinkle on a faint band. Search matches on amber at 20%, the current one at 42% with an amber outline. The cursor a haze block with the character under it in night | FR-056, FR-062 |
-| Vim view status line | `NORMAL` (mint) or `HELP` (lilac) pill, the file name, `[RO]` and the pipe that opened it; on the right the file type, `line,column` and `Top`, `Bot`, `All` or a percentage | FR-058, FR-059 |
+| Vim view status line | `NORMAL` or `-- INSERT --` (mint) or `HELP` (lilac) pill, the file name in snow (`[No Name]` for piped text), then in haze `[RO]` for a protected file, `[+]` once the text differs from the file, and the pipe that opened it; on the right the file type, `line,column` and `Top`, `Bot`, `All` or a percentage. Amended 2026-10-30: always `[RO]`, and the marks and pipe were fog, 3.8:1 on the status band | FR-058, FR-059 |
 | Vim view controls for pointers | `:help` and `:q` chips at the right of the message line, fold lines, and on the phone the vim keys | FR-061, FR-064, FR-066 |
-| Vim keys on the pocket terminal | `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q` (mint, the way out), in the command keys' places; the case reads `cv-os pocket · vim keys` | FR-066 |
+| Vim keys on the pocket terminal | Three rows of four: `j`, `k`, `za`, `/`; `n`, `gg`, `G`, `i`; `u`, `:w`, and `:q` twice as wide (mint, the way out). The third row takes the speaker grille's place; at 320 px the screen gives it the room. In insert mode the keyboard opens and the strip holds `Esc` alone. The case reads `cv-os pocket · vim keys`. Amended 2026-10-30: 8 keys in two rows, with no `i`, `u`, `:w` or `Esc` | FR-066 |
+| Vim insert cursor | A 2 px haze bar (`border.thick`), the line's text height, before the character it inserts at. Normal mode keeps the block | FR-079 |
+| Vim messages | vim's own words: information haze, warnings such as `W10` amber (`color.vim-warning`), errors such as `E37`, `E45` and `E32` rose. A message longer than the line wraps onto a second line; the message line grows and the text gives up a row | FR-060, FR-081 |
+| Tab's list of matches | bash's layout: sorted, filled down the columns, each column as wide as the longest name plus 2, as many columns as fit. Folders bold periwinkle with a trailing slash, files snow, nothing underlined: output, not controls. Then the prompt and the line again | FR-076 |
 | Forced colors and reduced transparency | The glass, sheen and blur drop out. Forced colors: `Canvas` and `CanvasText`, a solid border, chips and keys outlined. The filled cursor is `Highlight` with a 1 px `Highlight` bottom edge, so it shows by more than its fill, and the letter under it `HighlightText`; the hollow cursor is a 2 px `Highlight` outline. A selection is the system's `Highlight` and `HighlightText`, as on any page. The command line still gets no border. Reduced transparency: the solid `color.shell-surface` | FR-033 |
 
 ## Desktop shell
@@ -200,8 +206,8 @@ first fold. The window's title reads `Terminal — vim`. Focus moves into the vi
 #  287 }                                                           #
 # ~                                                                #
 # ~                                                                #
-# [NORMAL] cv.json [RO]  cat cv.json | jq | vim -    json  3,1  Top#
-# "cv.json" [readonly] 287 lines · za or click opens a fold ‹:help› ‹:q›
+# [NORMAL] [No Name]  cat cv.json | jq | vim -     json  3,1  Top#
+# "[No Name]" 287 lines · za or click opens a fold      ‹:help› ‹:q› #
 #==================================================================#
 ```
 
@@ -209,6 +215,10 @@ first fold. The window's title reads `Terminal — vim`. Focus moves into the vi
   built (FR-055). Only top-level sections are folded.
 - `:q` brings the Terminal's output back as it was, with `cv` after its prompt and a new prompt
   below it, focus in the command line (FR-064).
+- The piped text has no file of its own, so the status line calls it `[No Name]`, as vim does,
+  then shows the pipe. It isn't read only: it can be edited, `:w` alone gives vim's
+  `E32: No file name`, and `:w <path>` writes it to a file the visitor may write (FR-080).
+  Amended 2026-10-30: it was named `cv.json` and marked `[RO]` and `[readonly]`.
 
 ### The vim view: a section open and a search (FR-060 to FR-063)
 
@@ -234,20 +244,22 @@ Export: `exports/desktop-3b-vim-fold-open-search-1440.png`.
 #   28         "[highlight ...................................     #
 #                ...........]",                                    #
 #   30         "[highlight ... ║REST║ ...]",                       #
-# [NORMAL] cv.json [RO]  cat cv.json | jq | vim -   json  26,86  9%#
+# [NORMAL] [No Name]  cat cv.json | jq | vim -    json  26,86  9%#
 # /REST   match 1 of 3 · n next · N previous            ‹:help› ‹:q› #
 #==================================================================#
 ```
 
 - `║REST║` marks a match on amber. `█` is the cursor, on the current match, which also has an
   amber outline, so it differs by more than color (FR-062).
-- `i`, `x`, `dd` or `:w` here leave the file as it is, and the message line reads
-  `cv.json is read only: nothing can be changed` (FR-060).
+- Editing works here as in any vim view (FR-079); as the text has no file, `:w` alone gives
+  `E32: No file name`. Amended 2026-10-30: `i`, `x`, `dd` and `:w` changed nothing and the
+  message line read `cv.json is read only: nothing can be changed`.
 
 ### The vim view: its key help (FR-064)
 
 `:help`, or its chip, splits the view: the file above, the keys below in a `HELP` window. `:q`
-closes the help first, then the view. Export: `exports/desktop-3c-vim-key-help-1440.png`.
+closes the help first, then the view. The help window is taller than before, so the file above
+shows 3 lines. Export: `exports/desktop-3c-vim-key-help-1440.png`.
 
 ```
 #==================================================================#
@@ -255,23 +267,35 @@ closes the help first, then the view. Export: `exports/desktop-3c-vim-key-help-1
 #    1 {                                                           #
 #    2   "$schema": "[schema URL]",                                #
 #    3 █--  17 lines: "basics": { ································ #
-#   20 +--  16 lines: "work": [ ·································· #
-#   ...                                                            #
-# cv.json [RO]                                           3,1   Top #
-#      KEYS FOR cv.json · the file is read only                    #
+# [No Name]                                              3,1   Top #
+#      KEYS FOR [No Name] · :w <path> writes it to a file          #
 #      Move    h j k l or arrows   w b word   0 $ line start, end  #
 #              gg G top, bottom   { } previous, next section       #
 #              PgUp PgDn                                           #
 #      Search  /text then Enter   n N next, previous match         #
 #      Folds   za open or close   zR open all   zM close all       #
 #      Lines   :12 go to line 12   :set nu / :set nonu             #
-#      Leave   :q back to the Terminal   Tab moves focus out       #
-#      i, a, o, x, dd and :w can't change the file. Folds and the  #
-#      cursor can be clicked or tapped too.                        #
+#      Insert  i a I A o O type text   Esc back to normal          #
+#      Edit    x dd dw D delete   cw cc C change   r replace       #
+#              J join   yy yw copy   p P paste   u undo            #
+#              :redo redo   . repeat                               #
+#      Write   :w write   :w path write to a path                  #
+#              :wq :x ZZ write and leave                           #
+#      Leave   :q back to the Terminal   :q! leave without writing #
+#              Tab moves focus out; in insert mode, Esc then Tab   #
+#      A count goes first: 3dd deletes three lines. On a Mac,      #
+#      Ctrl+R redoes too. Folds and the cursor can be clicked or   #
+#      tapped.                                                     #
 # [HELP] keys [RO]                                       1,1   All #
 # :help                                                      ‹:q›  #
 #==================================================================#
 ```
+
+- The heading names the view's file. After it: for `cv`'s piped text, `· :w <path> writes it to a
+  file`; for a protected file, `· read only: :w <path> keeps a copy`; for any other file, nothing.
+- Ctrl+R is named for the Mac only: other systems' browsers keep it for reloading (FR-079).
+- Amended 2026-10-30: the help had no editing keys, its heading said the file was read only, and
+  its note said `i, a, o, x, dd and :w can't change the file`.
 
 ### After an unknown command (FR-016)
 
@@ -437,7 +461,7 @@ command line opens the phone's keyboard. Export: `exports/phone-1-just-opened-37
 |  | |                           | |  |
 |  | +---------------------------+ |  |
 |  | [ help ][about][ work ][proj.]|  |
-|  | [skills][ cv  ][  ls  ][clear]|  |
+|  | [  cv  ][ ls  ][clear ][Tab ⇥]|  |
 |  |          ::::::::::           |  |
 |  |       [N A M E]               |  |
 |  +-------------------------------+  |
@@ -481,7 +505,7 @@ scrolls inside the screen and the keys stay. The export shows it scrolled to its
 |  | | ❯ █                       | |  |
 |  | +---------------------------+ |  |
 |  | [ help ][about][ work ][proj.]|  |
-|  | [skills][ cv  ][  ls  ][clear]|  |
+|  | [  cv  ][ ls  ][clear ][Tab ⇥]|  |
 +-------------------------------------+
 ```
 
@@ -509,6 +533,11 @@ The keys hide and the screen grows down to the keyboard, so the command line and
 output stay in view. When the keyboard closes, the keys come back. Export:
 `exports/phone-4-keyboard-open-375.png`.
 
+Amended 2026-10-30: the Tab key no longer hides. It stays alone in a strip above the keyboard,
+and the screen gives the strip 60 px (see
+[The pocket terminal's Tab key](#the-pocket-terminals-tab-key-fr-078)). The export is redrawn with
+it.
+
 ```
 +-------------------------------------+
 | ‹ Home          Terminal            |
@@ -525,6 +554,7 @@ output stay in view. When the keyboard closes, the keys come back. Export:
 |  | | (guest)(~)                | |  |
 |  | | ❯ proj█                   | |  |
 |  | +---------------------------+ |  |
+|  |                     [Tab ⇥]   |  |
 |  +-------------------------------+  |
 +-------------------------------------+
 |  (the phone's own keyboard)         |
@@ -552,11 +582,12 @@ output stay in view. When the keyboard closes, the keys come back. Export:
 |  | |   ... a fold per section  | |  |
 |  | |287 }                      | |  |
 |  | | ~                         | |  |
-|  | | [NORMAL] cv.json [RO] 3,1 | |  |
-|  | | "cv.json" 287 lines · tap | |  |
+|  | | [NORMAL] [No Name]    3,1 | |  |
+|  | | "[No Name]" 287 lines · t| |  |
 |  | +---------------------------+ |  |
 |  | [  j  ][  k  ][ za  ][  /  ]  |  |
-|  | [  n  ][ gg  ][  G  ][ :q  ]  |  |
+|  | [  n  ][ gg  ][  G  ][  i  ]  |  |
+|  | [  u  ][ :w  ][     :q     ]  |  |
 |  +-------------------------------+  |
 +-------------------------------------+
 ```
@@ -582,7 +613,7 @@ scrolls sideways. Export: `exports/phone-5-just-opened-320.png`.
 | | | ❯ █                    | | |
 | | +------------------------+ | |
 | | [help][about][work][proj.] | |
-| | [skills][cv][ ls ][clear]  | |
+| | [ cv ][ ls ][clear][Tab ⇥] | |
 | +----------------------------+ |
 +--------------------------------+
 ```
@@ -599,8 +630,8 @@ The screen on the left, the keys on the right in 2 columns of 4, each at least 4
 | | • cv-os pocket                                     | |
 | | +----------------------------------+ [help][about] | |
 | | | ‹help› ‹about› ‹work› ‹projects› | [work][proj.] | |
-| | | ‹cv›                             | [skls][ cv  ] | |
-| | | (guest)(~)                       | [ ls ][clear] | |
+| | | ‹cv›                             | [ cv ][ ls  ] | |
+| | | (guest)(~)                       | [clear][Tab⇥] | |
 | | | ❯ █                              |               | |
 | | +----------------------------------+               | |
 | +----------------------------------------------------+ |
@@ -860,6 +891,196 @@ know gets the reply of FR-016. Both are followed by a new prompt. Exports:
 - **The loading and error lines**: `CanvasText`; the `try again` chip is a `ButtonText` outline
   like every chip.
 
+## States added by the amendment of 2026-10-30
+
+These states follow the spec's amendment of 2026-10-30: Tab completes as bash's own completion
+does (FR-026, FR-076, FR-077), the pocket terminal gets a Tab key (FR-078), and the vim view edits
+files as vim does (FR-058, FR-060, FR-064 to FR-066, FR-079 to FR-081). They are drawn at
+1440 × 900 and 375 × 812, and the longest vim message at 320 × 568. The desktop frames show the
+Terminal window alone; the desktop around it is as when just opened.
+
+### A second Tab lists the matches (FR-076)
+
+The visitor made `notes/` and `todo`, typed `cat ~/` and pressed Tab twice. The first Tab adds
+nothing, as every name in `~` matches; the second lists them below the line, then the prompt and
+the line come back unchanged, the cursor at its end. Exports:
+`exports/desktop-21-tab-list-1440.png`, `exports/phone-22-tab-key-list-375.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — ~                           #
+# ‹help› ‹about› ‹work› ‹projects› ‹cv›                            #
+# (guest)(~) ◷ 18:27                                               #
+# ❯ mkdir notes && touch todo                                      #
+#                                                                  #
+# (guest)(~) ◷ 18:27                                               #
+# ❯ cat ~/                                                         #
+# about       cv.json     interests   notes/      readme      specs/      work/
+# contact     education/  languages   projects/   skills      todo #
+#                                                                  #
+# (guest)(~) ◷ 18:27                                               #
+# ❯ cat ~/█                                                        #
+#==================================================================#
+```
+
+- The list is bash's: sorted, filled down the columns, each column as wide as the longest name
+  plus 2, as many as fit (7 here, 3 on the phone). Folders are bold periwinkle with a trailing
+  slash, as `ls` marks them; files are snow. Nothing is underlined: the list is output, not
+  controls, and it scrolls and selects as output does.
+- One match completes at once: `cat ~/sk` gives `cat ~/skills ` with a space, `cd ~/wo` gives
+  `cd ~/work/`, and a first word completes against commands: `wo` gives `work `. No match
+  changes nothing and shows nothing.
+- More than 100 matches: a haze line `Display all [n] possibilities? (y or n)`; `y` lists them,
+  any other key brings the prompt back. It is one line of output, so it has no board.
+
+### The pocket terminal's Tab key (FR-078)
+
+`Tab ⇥` replaces `skills` as the last command key, so the keys stay two rows of four (owner's
+choice, 2026-10-30): `help`, `about`, `work`, `projects`, then `cv`, `ls`, `clear`, `Tab ⇥`.
+`skills` is still one tap away in `help` and `ls`. Every phone export with command keys is
+re-exported with it.
+
+With the phone's keyboard open the command keys hide as before (FR-053), except the Tab key: it
+stays alone at the right of a strip between the screen and the keyboard, so pressing it keeps the
+keyboard open. The screen gives the strip 60 px. Export:
+`exports/phone-23-keyboard-tab-key-375.png`.
+
+```
++-------------------------------------+
+| ‹ Home          Terminal            |
++-------------------------------------+
+|  +-------------------------------+  |
+|  | • cv-os pocket                |  |
+|  | +---------------------------+ |  |
+|  | | (guest)(~)                | |  |
+|  | | ❯ about                   | |  |
+|  | | [Name] ...                | |  |
+|  | | (guest)(~)                | |  |
+|  | | ❯ cat ~/skills █          | |  |
+|  | +---------------------------+ |  |
+|  |                     [Tab ⇥]   |  |
+|  +-------------------------------+  |
++-------------------------------------+
+|  (the phone's own keyboard)         |
++-------------------------------------+
+```
+
+- The line was `cat ~/sk`; one press completed it. A second press in a row lists the matches,
+  as the second Tab does.
+- The key is a button named `Tab, complete`, 75 × 52 px (66 × 48 below 375 px). Pressing it
+  leaves focus in the command line.
+- In landscape it is the last of the 2 columns of 4.
+
+### Insert mode (FR-079)
+
+`vim notes.txt` on a path that doesn't exist opens an empty, new file (FR-058, FR-080); `i`
+enters insert mode. Exports: `exports/desktop-22-vim-insert-1440.png`,
+`exports/phone-24-vim-insert-esc-375.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — vim                         #
+#    1 Questions for the interview:                                #
+#    2 - the team's stack and how it ships                         #
+#    3 - remote work▏                                              #
+# ~                                                                #
+# ~                                                                #
+# [-- INSERT --] notes.txt [+]                    text  3,14  All  #
+# "notes.txt" [New]                                   ‹:help› ‹:q› #
+#==================================================================#
+```
+
+- `▏` is the insert-mode cursor: a 2 px haze bar (`border.thick`), the line's text height, before
+  the character it inserts at (owner's choice, 2026-10-30). Normal mode keeps the approved block.
+- The mode pill reads `-- INSERT --`, as vim words it, in the same mint (FR-079). `[+]` follows
+  the name once the text differs from the file, and goes when it is written.
+- The message line keeps vim's opening line for a new file, `"[file]" [New]`, until the next
+  message.
+- On the phone, entering insert mode opens the phone's keyboard (FR-066). The vim keys hide and
+  the strip holds `Esc` alone, at the right, which returns to normal mode. A tap on the text
+  moves the cursor there.
+
+### Written with `:w` (FR-080)
+
+Escape, then `:w` and Enter. Export: `exports/desktop-23-vim-written-1440.png`.
+
+```
+# [NORMAL] notes.txt                              text  3,13  All  #
+# "notes.txt" [New] 3L, 79B written                   ‹:help› ‹:q› #
+```
+
+- vim's own message: the name, `[New]` for a file that didn't exist, then lines and bytes. `[+]`
+  goes. Leaving insert mode moves the cursor back one character, as in vim.
+- `:wq`, `:x` and `ZZ` write and close the view. The Terminal's output comes back with
+  `vim notes.txt` after its prompt, and `ls` lists `notes.txt` with the visitor's files.
+
+### A protected file: `W10`, `E45` and `E37` (FR-064, FR-081)
+
+`vim about` opens the built `about` file marked `[RO]`, as vim marks a file it may not write. It
+can still change on screen, and the first change gives vim's warning. `:w` then gives `E45`, and
+`:q` gives `E37` while the changes are unwritten; `:q!` leaves without them, and
+`:w ~/about-notes` keeps an edited copy. Exports: `exports/desktop-24-vim-readonly-warning-1440.png`,
+`exports/desktop-25-vim-e45-1440.png`, `exports/desktop-26-vim-e37-1440.png`, and at 320 px
+`exports/phone-25-vim-e45-320.png`.
+
+```
+#==================================================================#
+# [x] [-] [^]               Terminal — vim                         #
+#    1 [Name]                                                      #
+#    2 [label]                                                     #
+#    3 [city], [country]                                           #
+#    4 [summary ................................................]  #
+#    5 Ask about the stack and the team▏                           #
+# ~                                                                #
+# [-- INSERT --] about [RO] [+]                         5,33  All  #
+# W10: Warning: Changing a readonly file              ‹:help› ‹:q› #
+#==================================================================#
+```
+
+After Escape and `:w`, then after `:q`:
+
+```
+# [NORMAL] about [RO] [+]                               5,32  All  #
+# E45: 'readonly' option is set (add ! to override)  ‹:help› ‹:q› #
+
+# [NORMAL] about [RO] [+]                               5,32  All  #
+# E37: No write since last change (add ! to override) ‹:help› ‹:q› #
+```
+
+- Messages are vim's, in vim's words (FR-060): information in haze, the warning `W10` in amber
+  (`color.vim-warning`, new), errors in rose (`color.terminal-error`). The site's own "read only"
+  message is gone.
+- Other errors take the same rose line: `E32: No file name` for `:w` on `cv`'s piped text,
+  `"[path]" E212: Can't open file for writing` for a protected or missing folder and for `:w!` on
+  a protected file, `"[path]" E514: Write error (file system full?)` past the 1 MB limit, and
+  `E492: Not an editor command: [typed]` for an unknown `:` command.
+- A message longer than the line wraps onto a second line: the message line grows and the text
+  above gives up a row. At 320 px `E45` takes two lines.
+- The `:q` chip acts as `:q`: with unwritten changes it gives `E37` and the view stays.
+- The file's lines in the mockup are illustrative; the build shows the `about` file's own.
+
+### The vim keys on the pocket terminal (FR-066)
+
+Three rows of four: `j`, `k`, `za`, `/`, then `n`, `gg`, `G`, `i`, then `u`, `:w`, and `:q`
+twice as wide, mint, the way out. The third row takes the speaker grille's place, so the screen
+keeps its height at 375 px; at 320 px, with no grille, the screen gives up the row. In insert
+mode the keyboard opens and the strip shows `Esc`. Exports: `exports/phone-7-vim-keys-375.png`,
+`exports/phone-25-vim-e45-320.png`.
+
+```
+|  | [  j  ][  k  ][ za  ][  /  ]  |  |
+|  | [  n  ][ gg  ][  G  ][  i  ]  |  |
+|  | [  u  ][ :w  ][     :q     ]  |  |
+|  |       A L E X · P R O F I R   |  |
+```
+
+### Forced colors (FR-033)
+
+- **The insert bar**: `Highlight`, as the filled cursor is.
+- **The messages**: `CanvasText`, words unchanged; warning and error alike.
+- **The `-- INSERT --` pill**: as the `NORMAL` pill.
+- **The Tab and Esc keys**: outlined in `ButtonText`, as every key.
+
 ## Keyboard, focus and screen readers
 
 | Moment | Where focus is | What a screen reader hears |
@@ -867,10 +1088,14 @@ know gets the reply of FR-016. Both are followed by a new prompt. Exports:
 | The Terminal opens | The command line | "Terminal", then the command line's name, "Command" (FR-004, FR-027) |
 | Enter runs a command | Stays in the command line | The output once: in full up to 5 lines, else a summary such as "help: [n] commands", counting the standard commands too (FR-028) |
 | A command control is activated | Back to the command line | As if the command were typed (FR-015) |
-| Tab from the command line | The next control in the output, then out of the Terminal to the shell | Nothing is completed or inserted (FR-026) |
-| `cv`, or `vim` with a file | Into the vim view | The file's name, `read only`, its number of lines, and "Type :q to leave" (FR-065) |
+| Tab with text before the cursor | Stays in the command line | The line's new text after a completion, or the number of matches when a second Tab lists them; nothing when nothing matches (FR-076, FR-077) |
+| Tab on an empty command line, Escape then Tab, or Shift+Tab | Out of the command line: the next control in the output, then the shell (Shift+Tab: the one before) | Nothing from the Terminal. The command line's description says how: `Tab completes. Escape then Tab leaves.` (FR-026, FR-077). Amended 2026-10-30: Tab always left and never completed |
+| `cv`, or `vim` with a file | Into the vim view | The file's name, `read only` for a protected file or `new` for one that doesn't exist yet, its number of lines, and "Type :q to leave" (FR-065). Amended 2026-10-30: always `read only` |
 | `:q` in the vim view | Back to the command line | The Terminal's output, as it was |
-| Tab in the vim view | The next control: the `:help` and `:q` chips, then out to the shell | Nothing in the file changes |
+| Tab in the vim view, normal mode | The next control: the `:help` and `:q` chips, then out to the shell | Nothing in the file changes |
+| Insert mode | Stays in the view. Tab inserts a tab; Shift+Tab, or Escape then Tab, leave | What is typed and deleted, as in a text field; the mode once (FR-065) |
+| `:w`, a warning or an error in the vim view | Stays in the view; `:wq`, `:x` and `ZZ` return to the command line | The message line, once (FR-065) |
+| The pocket terminal's Tab key | Stays in the command line; the keyboard stays open | As Tab (FR-078) |
 | `exit`, or Close in the menu | The Terminal item in the dock (005 FR-023) | — |
 | Focus leaves the command line | Wherever it went; the cursor turns hollow | Nothing from the Terminal |
 | A click or tap on the screen, not on a link or a control | The command line; the cursor fills and blinks; nothing scrolls (FR-071) | The command line's name, "Command" |
@@ -900,13 +1125,14 @@ know gets the reply of FR-016. Both are followed by a new prompt. Exports:
 | Starter controls | `help`, `about`, `work`, `projects`, `cv` |
 | Prompt | `guest`, the path, and on desktop `◷ [hh:mm]`; then `❯` |
 | Command line's name | `Command` |
-| `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then each command and its description as listed in the desktop `help` frame, plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal`; then `Standard commands` and `as in bash. help <command> shows its options.`, then the standard commands' names |
+| Command line's description (FR-077) | `Tab completes. Escape then Tab leaves.` |
+| `help` | `Click a command to run it, or type it and press Enter.` (phone: `Tap a command to run it.`), then `Tab completes a command or path; Escape then Tab leaves the command line.` (phone: `Tab ⇥ completes a command or path.`) (FR-077, added 2026-10-30), then each command and its description as listed in the desktop `help` frame, with `vim`: `Edit a file in vim. - reads what is piped in` (amended 2026-10-30: `Read a file in vim. …`), plus `history`: `Commands run so far`, `clear`: `Clear the screen`, `exit`: `Close the Terminal`; then `Standard commands` and `as in bash. help <command> shows its options.`, then the standard commands' names |
 | Unknown command (FR-016) | `[typed]: command not found. Run help to see them all, or try:` and the suggestions. With none: `[typed]: command not found. Run help to see them all.` Amended 2026-10-29: `[typed] is not a command. …` |
 | `specs` | `Every feature is specified before it is built. [n] specs:` … `All specs, plans and history: [repository]` |
 | `cv` description in `help` | `The CV's JSON in vim: cat cv.json \| jq \| vim -` |
-| Vim view, opening | `"[file]" [readonly] [n] lines  ·  za or click opens a fold` (phone: `"[file]" [n] lines  ·  tap a fold`) |
-| Vim view, editing key or `:w` | `[file] is read only: nothing can be changed` |
-| Vim view, unknown `:` command | `:[typed] is not a command here. :help lists the keys.` |
+| Vim view, opening | vim's line for the file, then `  ·  za or click opens a fold` (phone: `  ·  tap a fold`): `"[file]" [n] lines` for a visitor's file, `"[file]" [readonly] [n] lines` for a protected one, `"[file]" [New]` for one that doesn't exist yet, `"[No Name]" [n] lines` for piped text. Amended 2026-10-30: always `[readonly]` |
+| Vim view, status line name | The file's path as typed, or `[No Name]` for piped text |
+| Vim view, messages (FR-060) | vim's own, in English, such as `"[file]" [New] [n]L, [n]B written`, `W10: Warning: Changing a readonly file`, `E37: No write since last change (add ! to override)`, `E45: 'readonly' option is set (add ! to override)`, `E32: No file name`, `"[path]" E212: Can't open file for writing`, `"[path]" E514: Write error (file system full?)`, `E492: Not an editor command: [typed]`. Amended 2026-10-30: `[file] is read only: nothing can be changed` and `:[typed] is not a command here. :help lists the keys.` |
 | Vim view, search | `/[text]   match [i] of [n]  ·  n next  ·  N previous`, or `/[text]   not found` |
 | Vim view, key help | As in the key help frame |
 | `jq` errors | jq's own messages, as jq prints them, for input that isn't JSON and for a filter it can't parse (FR-056). Amended 2026-10-29: `jq here only pretty-prints. …` went with the filter |
@@ -927,4 +1153,4 @@ know gets the reply of FR-016. Both are followed by a new prompt. Exports:
 | Wrong arguments (FR-017) | `[command] takes [what]. Usage: [usage]`, the usage as `help` shows it |
 | `open` with another name | `open takes cv or about.` with both as controls |
 | Pocket case | `cv-os pocket`, and `[name]` from the CV document, set in capitals and spaced out (decoration, hidden from screen readers) |
-| Key names | `help`, `about`, `work`, `projects`, `skills`, `cv`, `ls`, `clear`; in the vim view `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `:q`, named for screen readers `Down`, `Up`, `Open or close fold`, `Search`, `Next match`, `Top`, `Bottom`, `Quit` |
+| Key names | `help`, `about`, `work`, `projects`, `cv`, `ls`, `clear`, and `Tab ⇥`, named `Tab, complete`; in the vim view `j`, `k`, `za`, `/`, `n`, `gg`, `G`, `i`, `u`, `:w`, `:q`, named for screen readers `Down`, `Up`, `Open or close fold`, `Search`, `Next match`, `Top`, `Bottom`, `Insert`, `Undo`, `Write`, `Quit`; in insert mode `Esc`, named `Esc, back to normal mode`. Amended 2026-10-30: `skills` instead of `Tab ⇥`, and no `i`, `u`, `:w` or `Esc` |

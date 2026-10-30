@@ -34,13 +34,19 @@ describes each state.
 | Desktop, `rm` on a protected file, then `ls -l` | `exports/desktop-18-permission-denied-1440.png` |
 | Desktop, a pipe into `grep` and a `jq` filter | `exports/desktop-19-pipe-and-filter-1440.png` |
 | Desktop, a syntax error and "command not found" | `exports/desktop-20-syntax-error-not-found-1440.png` |
+| Desktop, a second Tab lists the matches | `exports/desktop-21-tab-list-1440.png` |
+| Desktop, vim: insert mode in a new file | `exports/desktop-22-vim-insert-1440.png` |
+| Desktop, vim: written with `:w` | `exports/desktop-23-vim-written-1440.png` |
+| Desktop, vim: a protected file changed, `W10` | `exports/desktop-24-vim-readonly-warning-1440.png` |
+| Desktop, vim: `:w` refused, `E45` | `exports/desktop-25-vim-e45-1440.png` |
+| Desktop, vim: `:q` with changes, `E37` | `exports/desktop-26-vim-e37-1440.png` |
 | Phone, just opened | `exports/phone-1-just-opened-375.png` |
 | Phone, after `help`, scrolled to its end: the standard commands | `exports/phone-2-after-help-375.png` |
 | Phone, after `ls` | `exports/phone-3-after-ls-375.png` |
-| Phone, the on-screen keyboard open | `exports/phone-4-keyboard-open-375.png` |
+| Phone, the on-screen keyboard open, the Tab key above it | `exports/phone-4-keyboard-open-375.png` |
 | Phone at 320 × 568, just opened | `exports/phone-5-just-opened-320.png` |
 | Phone in landscape at 568 × 320, just opened | `exports/phone-6-landscape-568.png` |
-| Phone, the vim view with its vim keys | `exports/phone-7-vim-keys-375.png` |
+| Phone, the vim view with its vim keys, three rows | `exports/phone-7-vim-keys-375.png` |
 | Phone, focus elsewhere (on Home): the hollow cursor | `exports/phone-8-cursor-unfocused-375.png` |
 | Phone, text selected in the command line | `exports/phone-9-line-selection-375.png` |
 | Phone, select all: the Terminal's text selected | `exports/phone-10-select-all-375.png` |
@@ -55,8 +61,13 @@ describes each state.
 | Phone at 320 × 568, after `help`, scrolled to its end | `exports/phone-19-after-help-320.png` |
 | Phone at 320 × 568, `rm` on a protected file, then `ls -l` | `exports/phone-20-permission-denied-320.png` |
 | Phone at 320 × 568, a pipe into `grep` and a `jq` filter | `exports/phone-21-pipe-and-filter-320.png` |
+| Phone, the Tab key: a second press lists the matches | `exports/phone-22-tab-key-list-375.png` |
+| Phone, the keyboard open: the Tab key stays | `exports/phone-23-keyboard-tab-key-375.png` |
+| Phone, vim: insert mode, the keyboard open, the `Esc` key | `exports/phone-24-vim-insert-esc-375.png` |
+| Phone at 320 × 568, vim: `E45` on a protected file, the message wrapping | `exports/phone-25-vim-e45-320.png` |
 | The glass recipe, the proposed tokens and the contrast checks | `exports/glass-recipe-1440.png` |
 | The cursor and the selection: states, proposed tokens and contrast checks | `exports/cursor-selection-1440.png` |
+| Tab and editing in vim: the insert cursor, the messages, the pocket keys, the proposed token and contrast checks | `exports/tab-vim-editing-1440.png` |
 
 ## The glass
 
@@ -260,3 +271,54 @@ enough for the selection, not for text. They take snow and haze instead.
   `sudo: command not found. Run help to see them all.` with the typed word in snow, "command not
   found" in rose and `help` as a control. The unknown-command reply of `desktop-4` takes the same
   form, `wrok: command not found. Run help to see them all, or try:`.
+
+## Tab and editing in vim (2026-10-30)
+
+The spec's amendment of 2026-10-30 makes Tab complete as bash does (FR-026, FR-076, FR-077), gives
+the pocket terminal a Tab key (FR-078), and lets the vim view edit files as vim does (FR-058,
+FR-060, FR-064 to FR-066, FR-079 to FR-081). The same Penpot page holds a board for each new
+state, and `exports/tab-vim-editing-1440.png` sums up the cursor, the messages and the keys.
+
+- **Tab's list**: bash's columns, sorted and filled down; folders bold periwinkle with a trailing
+  slash, files snow. Output, not controls: nothing is underlined.
+- **The pocket terminal's Tab key**: `Tab ⇥` takes `skills`' place as the last command key, so
+  the keys stay two rows of four (owner's choice). With the phone's keyboard open it stays alone
+  at the right of a strip above the keyboard; the screen gives the strip 60 px.
+- **The insert cursor**: a 2 px haze bar (`border.thick`), the line's text height, before the
+  character it inserts at (owner's choice). Normal mode keeps the approved block. The mode pill
+  reads `-- INSERT --` in the same mint.
+- **Messages**: vim's own words. Information haze, the warning `W10` amber, errors such as `E37`,
+  `E45` and `E32` rose. A message longer than the line wraps onto a second line.
+- **The status line**: `[RO]` only for a protected file, `[+]` once the text differs from the
+  file, `[No Name]` for `cv`'s piped text, which has no file of its own. Its marks and the pipe
+  move from fog to haze: fog is 3.8:1 on the status band, short of 4.5:1.
+- **The vim keys on the phone**: three rows of four, `j k za /`, `n gg G i`, `u :w` and a double
+  `:q`. The third row takes the speaker grille's place. In insert mode the keyboard opens and the
+  strip holds `Esc` alone.
+
+### Proposed token (2026-10-30)
+
+In the hand-written export's form, as above.
+
+| Token | Type | Set | Value |
+|-------|------|-----|-------|
+| `color.vim-warning` | color | light | `{color.base.amber}` |
+
+Errors reuse `color.terminal-error` (rose), the insert bar `color.terminal-cursor` (haze) and
+`border.thick`, the Tab and `Esc` keys the existing key tokens. No other new value is needed.
+
+### Contrast checks (2026-10-30)
+
+Against `#35363c`, the worst case review.md uses, or the vim status band over it (white 8% on
+`#35363c`, `#45464c`).
+
+| What | Colors | Ratio | Needs |
+|------|--------|-------|-------|
+| `W10` warning | amber on `#35363c` | 8.3:1 | 4.5:1 |
+| `E37`, `E45` and other errors | rose on `#35363c` | 6.4:1 | 4.5:1 |
+| Information, such as `written` | haze on `#35363c` | 7.4:1 | 4.5:1 |
+| The insert bar | haze on `#35363c` | 7.4:1 | 3:1 |
+| `-- INSERT --` in its pill | night on mint | 13.1:1 | 4.5:1 |
+| `[RO]`, `[+]` and the pipe on the status band | haze on `#45464c` | 5.8:1 | 4.5:1 |
+| The same, as approved before | fog on `#45464c` | 3.8:1 | 4.5:1 (fails; fixed above) |
+| Tab's list: folders, files | periwinkle, snow on `#35363c` | 6.0:1, 10.2:1 | 4.5:1 |
