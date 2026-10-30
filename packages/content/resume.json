@@ -4,7 +4,7 @@
     "name": "Alex Profir",
     "label": "Software Engineer",
     "email": "alexprofir512@gmail.com",
-    "summary": "I'm a full stack engineer with 8 years of experience building web and mobile products, from React and React Native apps to Node.js microservices. For the past year and a half I've worked through agentic coding and spec-driven development: I write the specs, orchestrate the agents and own the quality of what ships. On recent projects this cut end-to-end feature delivery from months to weeks. I care about usability and product quality, and I work closely with my team.",
+    "summary": "Full stack engineer. Web, mobile and backend, built with agents and specs.",
     "location": {
       "city": "Timișoara",
       "countryCode": "RO"
@@ -25,7 +25,7 @@
       "endDate": "2026-10",
       "summary": "Software developer building web and mobile applications and backend microservices on scalable cloud infrastructure, using spec-driven development and agentic coding.",
       "highlights": [
-        "Adopted spec-driven development and agentic coding, delivering features at least 2x faster per team lead reports.",
+        "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality.",
         "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop.",
         "Built notification and device management microservices to replace a monolith, and maintained the auth microservice with teammates.",
         "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
