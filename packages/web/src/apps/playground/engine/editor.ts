@@ -63,6 +63,9 @@ export const CODE_URI = Uri.parse('file:///playground.ts');
 // service, so their text is never checked as code.
 const OUTPUT_LANGUAGE = 'playground-output';
 
+// How long a check may stay out before it counts as lost.
+const CHECK_LIMIT_MS = 15_000;
+
 let set = false;
 
 // Monaco's workers, from the engine's own folder (research R3, R6).
@@ -116,7 +119,8 @@ export function createEditing(init: EngineInit) {
   const model = editor.getModel(CODE_URI) ?? editor.createModel(init.code, 'typescript', CODE_URI);
   model.updateOptions({ tabSize: 2, insertSpaces: true });
   let view: editor.IStandaloneCodeEditor | null = null;
-  let checking: Promise<void> | null = null;
+  let checking: symbol | null = null;
+  let optionsSet = JSON.stringify(compilerOptions(init.options));
   let again = false;
 
   model.onDidChangeContent(() => init.onChange(model.getVersionId()));
@@ -156,9 +160,11 @@ export function createEditing(init: EngineInit) {
     return (await get(model.uri)) as unknown as WorkerProxy;
   };
 
-  async function checkOnce(): Promise<void> {
+  // Whether a result came.
+  async function checkOnce(asked: symbol): Promise<boolean> {
     const result = await (await worker()).getCheck(CODE_URI.toString(), init.text.packages);
-    if (result === null || model.isDisposed()) return;
+    if (asked !== checking || model.isDisposed()) return true;
+    if (result === null) return false;
     if (result.version === model.getVersionId()) {
       editor.setModelMarkers(
         model,
@@ -167,23 +173,32 @@ export function createEditing(init: EngineInit) {
       );
     }
     init.onCheck(result);
+    return true;
   }
 
-  // One check at a time; a change while one is out queues one more (R7).
+  // One check at a time; a change while one is out queues one more (R7). A
+  // check on a worker that restarted may never settle, so one that takes too
+  // long is given up as lost, and one that was left behind is ignored.
   function check(): void {
     if (checking !== null) {
       again = true;
       return;
     }
-    checking = checkOnce()
-      .catch(() => undefined)
-      .finally(() => {
-        checking = null;
-        if (again) {
-          again = false;
-          check();
-        }
-      });
+    const mine = (checking = Symbol('check'));
+    const settled = (came: boolean) => {
+      if (checking !== mine) return;
+      clearTimeout(limit);
+      checking = null;
+      if (!came) init.onCheckLost();
+      if (again) {
+        again = false;
+        check();
+      }
+    };
+    const limit = setTimeout(() => settled(false), CHECK_LIMIT_MS);
+    void checkOnce(mine)
+      .catch(() => false)
+      .then(settled);
   }
 
   function mountEditor(element: HTMLElement, viewState: unknown | null, description: string): EditorView {
@@ -327,7 +342,14 @@ export function createEditing(init: EngineInit) {
   }
 
   function setOptions(options: ChangedOptions): void {
-    typescriptDefaults.setCompilerOptions(compilerOptions(options) as never);
+    // Setting them restarts the worker, so only when they differ, and a check
+    // out on the old worker gives way to one with the new options.
+    const key = JSON.stringify(compilerOptions(options));
+    if (key !== optionsSet) {
+      optionsSet = key;
+      typescriptDefaults.setCompilerOptions(compilerOptions(options) as never);
+      checking = null;
+    }
     check();
   }
 

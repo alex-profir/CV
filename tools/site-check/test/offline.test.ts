@@ -54,6 +54,7 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
       ...TERMINAL_VARIANTS.map((variant) => `/ ${variant} pass`),
       ...INSPECTOR_VARIANTS.map((variant) => `/ ${variant} pass`),
       '/missing-page 375px pass',
+      '/ desktop/playground-offline/1440px pass',
     ]);
   });
 
@@ -80,6 +81,7 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
       ...TERMINAL_VARIANTS.map((variant) => `/ ${variant} error`),
       ...INSPECTOR_VARIANTS.map((variant) => `/ ${variant} error`),
       '/missing-page 375px error',
+      '/ desktop/playground-offline/1440px pass',
     ]);
     const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
     expect(lines).toHaveLength(rootOfflineVariants().length);
@@ -119,5 +121,18 @@ describe('007-requirement-inspector-FR-033: offline, every spec view shows in bo
       expect(INSPECTOR_VARIANTS).toContain(problem.variant);
       expect(problem.variant).toContain(`${problem.subject}-specs`);
     }
+  });
+});
+
+describe('008-typescript-playground-FR-078: offline, the Playground says why it waits, downloads when it can, then works with no network', () => {
+  test('on the real build the sequence passes as its own variant', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['offline'] });
+    expect(report.results.filter((result) => result.variant === 'desktop/playground-offline/1440px').map(({ status, problems }) => [status, problems.map(renderProblem)])).toEqual([['pass', []]]);
+  });
+
+  test("a copy whose service worker doesn't answer /playground/ fails, naming the state", async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'else if (url.pathname.startsWith(ENGINE_PATH)) event.respondWith(engineFile(request));', 'else if (url.pathname.startsWith(ENGINE_PATH)) return;'));
+    const report = await runCheck(root, { parts: ['offline'] });
+    expect(report.problems.filter((problem) => problem.variant === 'desktop/playground-offline/1440px').map(renderProblem)).toEqual([expect.stringMatching(/^offline \/ desktop\/playground-offline\/1440px not-available stored editor: the editor did not show with the network off after one open$/)]);
   });
 });

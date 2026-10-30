@@ -3,14 +3,15 @@
 // order, and nothing here depends on the locale.
 import { compare } from '../../traceability/src/report.ts';
 
-// The check's parts, in the summary's order (research R11; 005, 006 and 007
-// contracts/cli.md Parts). `cv-app`, `terminal` and `inspector` run only
-// when the site root is a page.
+// The check's parts, in the summary's order (research R11; 005 to 008
+// contracts/cli.md Parts). `cv-app`, `terminal`, `inspector` and `playground`
+// run only when the site root is a page.
 export const PARTS = [
   'content',
   'cv-app',
   'terminal',
   'inspector',
+  'playground',
   'accessibility',
   'lighthouse',
   'no-script',
@@ -43,7 +44,9 @@ export type Part = (typeof PARTS)[number];
 // `desktop/inspector-keyboard/1440px`, and types `missing-requirement`,
 // `extra-requirement`, `out-of-order`, `wrong-count`, `text-mismatch`,
 // `tests-mismatch`, `link-mismatch`, `uncarried-element`, `state-lost` and
-// `focus-target`.
+// `focus-target`. The Playground (008 contracts/cli.md Variants) adds variants
+// `desktop/playground-<check>/1440px` and `mobile/playground-<check>/375px`,
+// `examples/<id>` being a check, and a type per thing it compares.
 export type Problem = {
   part: Part;
   page: string;
@@ -131,7 +134,7 @@ function resultLines(part: Part, results: readonly CheckResult[]): string[] {
     const labels = results.map((result) => `${result.page} ${result.variant}:`);
     const width = Math.max(0, ...labels.map((text) => text.length));
     return results.map((result, index) => {
-      const scores = result.status === 'error' || result.scores === undefined ? 'error' : Object.entries(result.scores).map(([category, { median }]) => `${category} ${median}`).join(', ');
+      const scores = result.status === 'error' || result.scores === undefined ? result.status : Object.entries(result.scores).map(([category, { median }]) => `${category} ${median}`).join(', ');
       return `${labels[index]!.padEnd(width)} ${scores}`;
     });
   }

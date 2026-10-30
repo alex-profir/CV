@@ -8,7 +8,9 @@ import { launchChromium } from '../src/browser.ts';
 import { runCheck } from '../src/check.ts';
 import { screenEmulationMetrics } from 'lighthouse/core/config/constants.js';
 import { lighthouseRuns, median } from '../src/parts/lighthouse.ts';
+import { renderProblem } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
+import { replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture, siteProject } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 300_000 });
@@ -96,4 +98,12 @@ describe('the CV icon is visible within 2.5 s on the mobile profile, on the root
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.y + box.height).toBeLessThanOrEqual(height);
   });
+});
+
+describe("the site root's first load leaves TypeScript alone (008 SC-009)", () => {
+  test('a copy whose first load requests a file under /playground/ fails, naming it', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/pages/ShellPage.tsx', '          <script key={src} type="module" src={src} />\n        ))}\n', '          <script key={src} type="module" src={src} />\n        ))}\n        <link rel="preload" as="fetch" href="/playground/x/files.json" />\n'));
+    const report = await runCheck(root, { parts: ['lighthouse'] });
+    expect(report.problems.filter((problem) => problem.variant === 'first-load').map(renderProblem)).toEqual([expect.stringMatching(/^lighthouse \/ first-load engine-on-first-load \/playground\/x\/files\.json: /)]);
+  }, 900_000);
 });

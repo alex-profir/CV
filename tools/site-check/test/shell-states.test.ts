@@ -316,6 +316,10 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
       'desktop/terminal-open/1440px',
       'mobile/pocket/375px',
       ...['desktop/%s-specs/1440px', 'mobile/%s-specs/375px'].flatMap((form) => ['cv', 'terminal', 'about'].map((view) => form.replace('%s', view))),
+      'desktop/playground-downloading/1440px',
+      'desktop/playground-running/1440px',
+      'desktop/playground-shared/1440px',
+      'mobile/playground-best-on-desktop/375px',
     ]);
     expect(report.problems).toEqual([]);
     expect(report.pages.find((page) => page.path === '/')).toEqual({ path: '/', status: 200, notFound: false });
@@ -323,7 +327,7 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
 
   test.skipIf(process.env.CI)('the report lists / under lighthouse on both profiles', { timeout: 600_000 }, async () => {
     const report = await runCheck(realSiteProject(), { parts: ['lighthouse'] });
-    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['mobile', 'desktop']);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['mobile', 'desktop', 'first-load']);
   });
 });
 

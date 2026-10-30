@@ -3,13 +3,17 @@
 // focuses it. With none, the site text says so.
 import { siteText } from '../../site-text.ts';
 import { currentEngine } from './controller.ts';
-import { ErrorMark, WarnMark } from './Glyphs.tsx';
+import { ErrorMark, OkMark, WarnMark } from './Glyphs.tsx';
 import type { Diagnostic } from './types.ts';
 
 const words = siteText.playground.panes;
 
 export function ErrorsList({ diagnostics }: { diagnostics: readonly Diagnostic[] }) {
-  if (diagnostics.length === 0) return <p className="empty">{words.noErrors}</p>;
+  if (diagnostics.length === 0) return (
+      <p className="empty">
+        <OkMark /> {words.noErrors}
+      </p>
+    );
   return (
     <ol className="diagnostics">
       {diagnostics.map((entry, index) => (

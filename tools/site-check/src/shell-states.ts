@@ -345,7 +345,7 @@ async function searchWord(page: Page): Promise<string> {
   return word;
 }
 
-const escaped = (text: string) => text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&');
+export const escaped = (text: string) => text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&');
 
 // A pocket key, by the text it shows.
 const pocketKey = (page: Page, key: string) => page.locator(TERMINAL.pocketKey).filter({ hasText: new RegExp(`^${escaped(key)}$`) });
@@ -657,12 +657,17 @@ export async function playgroundChecked(page: Page): Promise<void> {
   await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('…'), PLAYGROUND.check, { timeout: PLAYGROUND_WAIT_MS });
 }
 
-// Replaces the code as a paste does: select all, then the text as one
-// input. Then waits for its check.
+// Replaces the code by a paste: select all, then the clipboard. Typed text
+// would get the editor's auto-closing and indentation. Then waits for its
+// check.
 export async function putCode(page: Page, code: string): Promise<void> {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const key = await primaryKey(page);
   await page.click(`${PLAYGROUND.editor} .view-lines`);
-  await page.keyboard.press(`${await primaryKey(page)}+KeyA`);
-  await page.keyboard.insertText(code);
+  await page.keyboard.press(`${key}+KeyA`);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), code);
+  await page.keyboard.press(`${key}+KeyV`);
+  await page.waitForFunction(({ selector, line }) => [...document.querySelectorAll(`${selector} .view-line`)].some((element) => (element.textContent ?? '').replace(/\u00a0/g, ' ').startsWith(line)), { selector: PLAYGROUND.editor, line: code.split('\n')[0]!.slice(0, 40) }, { timeout: WAIT_MS });
   await playgroundChecked(page);
 }
 
