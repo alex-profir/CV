@@ -36,7 +36,7 @@ const loadedFolders = (page: Page) =>
   page.evaluate(() => [...new Set(performance.getEntriesByType('resource').map((entry) => /\/playground\/[^/]+(?=\/)/.exec(new URL(entry.name).pathname)?.[0]).filter((folder): folder is string => folder !== undefined))]);
 
 async function shellAt(url: string): Promise<Page> {
-  const page = await firstPage(url, { width: 1440, height: 900 });
+  const page = await firstPage(url, { width: 1440, height: 900, permissions: ['clipboard-read', 'clipboard-write'] });
   await waitForReady(page);
   await until(() => settled(page));
   return page;
