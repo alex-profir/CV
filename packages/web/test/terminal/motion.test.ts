@@ -150,7 +150,7 @@ describe('006-terminal-FR-032: the cursor’s blink, and nothing types out or mo
       await runGroup(page, 'while true; do :; done');
       await typeLine(page, 'clear');
       if (shell === 'mobile') {
-        for (const line of ['about', 'skills', 'ls']) {
+        for (const line of ['about', 'projects', 'ls']) {
           const key = page.locator(`#os .pocket-keys button.pocket-key[aria-label="${line}"]`);
           const rect = (await key.boundingBox())!;
           await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);

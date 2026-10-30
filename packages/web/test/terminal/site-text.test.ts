@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume } from '@cv/content';
 import fonts from '../../src/fonts/fonts.json' with { type: 'json' };
-import { siteText } from '../../src/site-text.ts';
+import { fill, siteText } from '../../src/site-text.ts';
 import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
 import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
 import { readSpecList } from '../../scripts/spec-list.ts';
@@ -131,7 +131,7 @@ describe('006-terminal-FR-030: the Terminal’s words are site text, CV text or 
     const typed = ['notes', 'todo', 'mine', 'typed', 'readme', 'text', 'cv.json'];
     const known = (text: string) => rest(typed.reduce((left, word) => left.split(word).join(' '), text)) === '';
     // A vim key's own text, one letter of site text.
-    const keyNames = new Set(siteText.terminal.pocket.vim.map((key) => key.key));
+    const keyNames = new Set(siteText.terminal.pocket.vim.flatMap((key) => [key.key, fill(siteText.terminal.pocket.vimKeyName, key)]));
     const unknown = (seen: string[]) => [...new Set(seen)].filter((text) => !keyNames.has(text) && !known(text));
 
     const page = await openTerminalPage('desktop');

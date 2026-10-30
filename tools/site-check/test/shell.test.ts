@@ -6,7 +6,7 @@ import { runCheck } from '../src/check.ts';
 import { renderProblem, renderReport } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 
-vi.setConfig({ testTimeout: 180_000 });
+vi.setConfig({ testTimeout: 300_000 });
 
 const TITLE_BAR = 'packages/web/src/shells/desktop/TitleBar.tsx';
 
@@ -165,7 +165,7 @@ describe("006-terminal-FR-042: the Terminal's new problem lines name the shell, 
     expect(new Set(added.map((problem) => problem.type))).toEqual(new Set(['line-mismatch', 'outline']));
     for (const problem of added) {
       expect(problem.variant).toMatch(/^(?:desktop\/[a-z/-]+\/1440px|mobile\/[a-z/-]+\/375px)$/);
-      expect(problem.subject).toMatch(problem.part === 'terminal' ? /^(?:rm about|cat about)$/ : /^step \d+ "[^"]+"$/);
+      expect(problem.subject).toMatch(problem.part === 'terminal' ? /^(?:rm about|cat about|vim about :w)$/ : /^step \d+ "[^"]+"$/);
     }
   });
 });

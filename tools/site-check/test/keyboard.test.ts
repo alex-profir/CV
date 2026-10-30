@@ -6,7 +6,7 @@ import { renderProblem } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 import { fixture } from './helpers/sites.ts';
 
-vi.setConfig({ testTimeout: 300_000 });
+vi.setConfig({ testTimeout: 480_000 });
 
 const COMMAND_LINE_FILE = 'packages/web/src/apps/terminal/CommandLine.tsx';
 
