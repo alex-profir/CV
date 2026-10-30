@@ -4,6 +4,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
+import { openShell, PHONE_USER_AGENT, settle } from '../helpers/shell.ts';
 import { EDITOR, editorText, menu, openPlaygroundPage, paneTab, PLAYGROUND, readLogs, run, RUNNER, running, setCode, showPane, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -74,5 +75,22 @@ describe('008-typescript-playground-FR-005: Show specs and Back keep the logs an
     expect(await frame!.evaluate((element) => element.isConnected && element.closest('section.playground') === null)).toBe(true);
     expect(await page.locator(RUNNER).count()).toBe(1);
     await stop(page);
+  });
+});
+
+describe('008-typescript-playground-FR-005: Show specs and Back from the phone\'s screen', () => {
+  test('at 375, Specs shows the specs and Back brings the "best on desktop" screen back', async () => {
+    const SCREEN = '#os .full-screen[data-view="playground"] section.playground-mobile';
+    const page = await openShell({ width: 375, height: 812, hasTouch: true, userAgent: PHONE_USER_AGENT });
+    await page.locator('#os .home .app-icon[data-view="playground"]').tap();
+    await page.waitForSelector(SCREEN);
+    await settle(page);
+    await page.locator('#os .full-screen[data-view="playground"] button.show-specs').tap();
+    await page.waitForSelector('#os section.spec-view[data-view="playground"]');
+    expect(await page.locator(SCREEN).count()).toBe(0);
+    await page.locator('#os section.spec-view[data-view="playground"] button.spec-back').tap();
+    await page.waitForSelector(SCREEN);
+    expect((await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(siteText.playground.mobile.app.heading);
+    expect(await page.locator('#os .full-screen[data-view="playground"] button.show-specs').isVisible()).toBe(true);
   });
 });
