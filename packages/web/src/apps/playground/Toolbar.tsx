@@ -1,11 +1,11 @@
 // The toolbar (contracts/playground.md): Run and Stop, then the tools
-// (Examples and Options here; Share comes with its story), and the run's
+// (Examples, Options and Share), and the run's
 // state at the right end, with a glyph that tells it by shape (FR-036,
 // FR-066).
 import { useEffect, useRef, useState } from 'react';
 import { siteText } from '../../site-text.ts';
-import { canStop, runCode, stopCode } from './controller.ts';
-import { ChevronGlyph, ErrorMark, ExamplesGlyph, OkMark, OptionsGlyph, RunGlyph, RunningMark, StopGlyph, StoppedMark, WarnMark } from './Glyphs.tsx';
+import { canStop, runCode, shareCode, stopCode } from './controller.ts';
+import { ChevronGlyph, ErrorMark, ExamplesGlyph, OkMark, OptionsGlyph, RunGlyph, RunningMark, ShareGlyph, StopGlyph, StoppedMark, WarnMark } from './Glyphs.tsx';
 import { closeExamplesPanel, EXAMPLES_PANEL_ID, openExamplesPanel } from './ExamplesPanel.tsx';
 import { closeOptionsPanel, openOptionsPanel } from './OptionsPanel.tsx';
 import { runStateText } from './running.ts';
@@ -102,6 +102,10 @@ export function Toolbar() {
       >
         <OptionsGlyph />
         <span>{words.options}</span>
+      </button>
+      <button type="button" className="button tool share" onClick={() => void shareCode()} data-req="008-typescript-playground-FR-052 008-typescript-playground-FR-055">
+        <ShareGlyph />
+        <span>{words.share}</span>
       </button>
       <RunState />
     </div>
