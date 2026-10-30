@@ -18,6 +18,8 @@ type Watch = {
   pseudo: { name: string; duration: string; easing: string; properties: string[] }[];
   moved: string[];
   changed: string[];
+  // Each transition's old and new snapshot opacity, frame by frame.
+  fades: { old: number; new: number }[][];
 };
 
 declare global {
@@ -28,16 +30,23 @@ declare global {
 
 // Counts view transitions, and every frame: records each running
 // animation on the swap's pseudo-elements, each box outside the scroller
-// that moves, and each opacity, transform or scale inside it that changes.
+// that moves, and each opacity, transform or scale inside it that changes,
+// and, while a transition runs, the opacity of its two snapshots.
 async function watch(page: Page, scroller: string): Promise<void> {
   await page.evaluate((target) => {
-    const state: Watch = { transitions: 0, pseudo: [], moved: [], changed: [] };
+    const state: Watch = { transitions: 0, pseudo: [], moved: [], changed: [], fades: [] };
+    let fade: { old: number; new: number }[] | null = null;
     window.__watch = state;
     const start = document.startViewTransition?.bind(document);
     if (start !== undefined) {
       document.startViewTransition = ((callback?: ViewTransitionUpdateCallback) => {
         state.transitions += 1;
-        return start(callback);
+        const transition = start(callback);
+        const frames: { old: number; new: number }[] = [];
+        state.fades.push(frames);
+        void transition.ready.then(() => (fade = frames), () => {});
+        void transition.finished.finally(() => (fade = null));
+        return transition;
       }) as typeof document.startViewTransition;
     }
     const inside = () => document.querySelector(target);
@@ -45,6 +54,10 @@ async function watch(page: Page, scroller: string): Promise<void> {
     const boxes = new Map<Element, string>();
     const styles = new Map<Element, string>();
     const sample = () => {
+      if (fade !== null) {
+        const opacity = (pseudo: string) => Number(getComputedStyle(document.documentElement, `::view-transition-${pseudo}(spec-swap)`).opacity);
+        fade.push({ old: opacity('old'), new: opacity('new') });
+      }
       for (const animation of document.getAnimations()) {
         const effect = animation.effect as KeyframeEffect | null;
         const pseudo = effect?.pseudoElement ?? '';
@@ -118,6 +131,18 @@ describe('007-requirement-inspector-FR-022: the view cross-fades, and with reduc
       // The scroller's own elements change no opacity, transform or scale:
       // the fade is on its snapshots.
       expect(seen.changed).toEqual([]);
+      // Until each transition ends, the old content only fades out and the
+      // new only fades in: neither springs back once its fade is over, which
+      // showed the old content through the new.
+      expect(seen.fades).toHaveLength(2);
+      for (const frames of seen.fades) {
+        expect(frames.length).toBeGreaterThan(0);
+        frames.slice(1).forEach((frame, index) => {
+          expect(frame.old, `old snapshot, frame ${index + 1}`).toBeLessThanOrEqual(frames[index]!.old);
+          expect(frame.new, `new snapshot, frame ${index + 1}`).toBeGreaterThanOrEqual(frames[index]!.new);
+        });
+        expect(frames.at(-1)!.old).toBeLessThan(0.05);
+      }
     });
 
     test(`${shell}: with reduced motion, no view transition starts and nothing in the scroller fades, moves or scales`, async () => {

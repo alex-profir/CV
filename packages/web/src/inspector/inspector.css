@@ -450,10 +450,15 @@
   animation: none;
 }
 
+/* The snapshots inherit the group's fill mode, which `animation: none` sets
+   to none, while the transition lasts as long as the root's longer
+   cross-fade. Without `both`, each snapshot springs back to full opacity
+   once its fade ends, and the old content shows through the new. */
 ::view-transition-old(spec-swap),
 ::view-transition-new(spec-swap) {
   animation-duration: var(--token-motion-duration-fast);
   animation-timing-function: var(--token-motion-easing-standard);
+  animation-fill-mode: both;
 }
 
 @media (prefers-reduced-motion: reduce) {
