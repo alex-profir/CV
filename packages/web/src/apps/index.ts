@@ -37,7 +37,10 @@ export type AppMenuItem = {
 // and the optional fields any app may give (006 contracts/shell.md):
 // `focusOnOpen`, a selector inside its content that takes focus in place of
 // its title; `WindowTitle`, its title bar's text in place of its name;
-// `menuItems`; and `onClose`, called once its window has closed.
+// `menuItems`; `onClose`, called once its window has closed; and, for an app
+// an address can open, `opensFromAddress`, which says whether this address is
+// one of its own, and `onOpenFromAddress`, called just before it opens so
+// (008 contracts/shell.md Opening from a link).
 export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   Icon: () => ReactNode;
   Content: (props: AppProps) => ReactNode;
@@ -45,6 +48,8 @@ export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   WindowTitle?: () => ReactNode;
   menuItems?: readonly AppMenuItem[];
   onClose?: () => void;
+  opensFromAddress?: (href: string) => boolean;
+  onOpenFromAddress?: (shell: 'desktop' | 'mobile') => void;
 };
 
 export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp, playgroundApp]);
