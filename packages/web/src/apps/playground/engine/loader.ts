@@ -4,7 +4,8 @@
 // progress into `playground-<engine-hash>`, writes the marker last, and
 // imports only a complete copy; offline or when the download fails, it opens
 // the newest older complete copy of the same contract, else waits for the
-// network or Retry (FR-007, FR-011, FR-013, FR-014).
+// network or Retry (FR-007, FR-011, FR-013, FR-014). A copy that won't open
+// counts as incomplete.
 import type { DownloadState, EngineManifest } from '../types.ts';
 import type { EngineModule } from './contract.ts';
 
@@ -21,9 +22,18 @@ export type LoaderEnv = {
   onLine: () => boolean;
   importModule: (url: string) => Promise<EngineModule>;
   linkStyle: (url: string) => Promise<void>;
-  // Resolves when the visitor presses Retry or the network comes back.
-  waitForRetry: (signal: AbortSignal) => Promise<void>;
+  // Resolves when the visitor presses Retry, the browser says the network is
+  // back, or `delayMs` has passed, if there is one.
+  waitForRetry: (signal: AbortSignal, delayMs: number | null) => Promise<void>;
 };
+
+// The offline state tries again by itself: the `online` event can come before
+// anything listens, or just before a fetch that still fails, or never (FR-011).
+// The wait grows, since a download that keeps failing part way costs megabytes.
+const RETRY_FIRST_MS = 5_000;
+const RETRY_MOST_MS = 60_000;
+
+export const retryDelay = (attempt: number): number => Math.min(RETRY_FIRST_MS * 2 ** attempt, RETRY_MOST_MS);
 
 const CACHE_PREFIX = 'playground-';
 
@@ -52,12 +62,52 @@ export function requestRetry(): void {
   for (const resume of waiters) resume();
 }
 
+// Until Retry, the `online` event or the delay, whichever comes first.
+export function waitForNetwork(signal: AbortSignal, delayMs: number | null, target: Pick<EventTarget, 'addEventListener' | 'removeEventListener'> = window): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = delayMs === null ? null : setTimeout(() => done(), delayMs);
+    const leave = () => {
+      target.removeEventListener('online', done);
+      signal.removeEventListener('abort', stop);
+      retryWaiters.delete(done);
+      if (timer !== null) clearTimeout(timer);
+    };
+    const done = () => {
+      leave();
+      resolve();
+    };
+    const stop = () => {
+      leave();
+      reject(signal.reason);
+    };
+    target.addEventListener('online', done);
+    signal.addEventListener('abort', stop, { once: true });
+    retryWaiters.add(done);
+  });
+}
+
+// How many times each entry has failed: the browser remembers a module that
+// failed for its URL, so opening it again needs another (T184).
+const failedImports = new Map<string, number>();
+
+const importable = (url: string): string => {
+  const failed = failedImports.get(url) ?? 0;
+  return failed === 0 ? url : `${url}?retry=${failed}`;
+};
+
 function browserEnv(): LoaderEnv {
   return {
     fetch: (url, init) => fetch(url, init),
     caches: typeof caches === 'undefined' ? undefined : caches,
     onLine: () => navigator.onLine !== false,
-    importModule: (url) => import(/* @vite-ignore */ url) as Promise<EngineModule>,
+    importModule: async (url) => {
+      try {
+        return (await import(/* @vite-ignore */ importable(url))) as EngineModule;
+      } catch (error) {
+        failedImports.set(url, (failedImports.get(url) ?? 0) + 1);
+        throw error;
+      }
+    },
     linkStyle: (url) =>
       new Promise((resolve, reject) => {
         if (document.querySelector(`link[data-playground-style="${url}"]`) !== null) return resolve();
@@ -69,23 +119,7 @@ function browserEnv(): LoaderEnv {
         link.onerror = () => reject(new Error(`the engine's style sheet ${url} failed to load`));
         document.head.append(link);
       }),
-    waitForRetry: (signal) =>
-      new Promise((resolve, reject) => {
-        const done = () => {
-          window.removeEventListener('online', done);
-          signal.removeEventListener('abort', stop);
-          retryWaiters.delete(done);
-          resolve();
-        };
-        const stop = () => {
-          window.removeEventListener('online', done);
-          retryWaiters.delete(done);
-          reject(signal.reason);
-        };
-        window.addEventListener('online', done);
-        signal.addEventListener('abort', stop, { once: true });
-        retryWaiters.add(done);
-      }),
+    waitForRetry: (signal, delayMs) => waitForNetwork(signal, delayMs),
   };
 }
 
@@ -100,14 +134,39 @@ async function completeIn(cache: Cache, folder: string): Promise<EngineManifest 
   }
 }
 
+// The marker goes, so the copy counts as incomplete.
+async function forgetMarker(cache: Cache, folder: string): Promise<void> {
+  try {
+    await cache.delete(markerOf(folder));
+  } catch {
+    // The next open tries it again.
+  }
+}
+
+// The stored copy the loaded engine came from, when the engine then won't
+// start: it counts as incomplete, and its entry opens under a new URL.
+export async function forgetCopy(manifest: EngineManifest, env: Pick<LoaderEnv, 'caches'> = browserEnv()): Promise<void> {
+  failedImports.set(manifest.entry, (failedImports.get(manifest.entry) ?? 0) + 1);
+  if (env.caches === undefined) return;
+  try {
+    await forgetMarker(await env.caches.open(`${CACHE_PREFIX}${manifest.version}`), `/playground/${manifest.version}`);
+  } catch {
+    // Nothing stored to forget.
+  }
+}
+
+type Copy = { manifest: EngineManifest; cache: Cache; folder: string };
+
 // The newest complete copy other than `hash` whose contract is ours.
-async function olderCopy(env: LoaderEnv, hash: string): Promise<EngineManifest | null> {
+async function olderCopy(env: LoaderEnv, hash: string): Promise<Copy | null> {
   if (env.caches === undefined) return null;
   try {
     const names = (await env.caches.keys()).filter((name) => name.startsWith(CACHE_PREFIX) && name !== `${CACHE_PREFIX}${hash}`).reverse();
     for (const name of names) {
-      const manifest = await completeIn(await env.caches.open(name), `/playground/${name.slice(CACHE_PREFIX.length)}`);
-      if (manifest !== null && manifest.api === ENGINE_API) return manifest;
+      const cache = await env.caches.open(name);
+      const folder = `/playground/${name.slice(CACHE_PREFIX.length)}`;
+      const manifest = await completeIn(cache, folder);
+      if (manifest !== null && manifest.api === ENGINE_API) return { manifest, cache, folder };
     }
   } catch {
     return null;
@@ -160,12 +219,14 @@ async function readCounted(response: Response, onBytes: (bytes: number) => void,
 
 class DownloadFailed extends Error {}
 
+class OpenFailed extends Error {}
+
 // Downloads every file of the manifest, into the cache when there is one.
 async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache | null, events: LoaderEvents, signal: AbortSignal): Promise<void> {
   let received = 0;
   const total = manifest.total;
   let step = stepOf(0, total);
-  events.onState({ kind: 'downloading', received, total, announcedStep: step });
+  let shown = false;
   for (const file of manifest.files) {
     let response: Response;
     try {
@@ -175,6 +236,12 @@ async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache |
       throw new DownloadFailed(String(error));
     }
     if (!response.ok) throw new DownloadFailed(`${file.path} answered ${response.status}`);
+    // Only once something answers, so the offline state's tries don't flicker
+    // or announce a download that isn't happening.
+    if (!shown) {
+      shown = true;
+      events.onState({ kind: 'downloading', received, total, announcedStep: step });
+    }
     let body: Blob;
     try {
       body = await readCounted(
@@ -206,12 +273,19 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
   if (cache !== null) {
     const stored = await completeIn(cache, folder).catch(() => null);
     if (stored !== null) {
-      const loaded = await open(env, stored, true, events);
-      await removeOthers(env, hash);
-      return loaded;
+      try {
+        const loaded = await open(env, stored, true, events);
+        await removeOthers(env, hash);
+        return loaded;
+      } catch {
+        if (signal.aborted) aborted(signal);
+        await forgetMarker(cache, folder);
+      }
     }
   }
   let stopped = false;
+  let openFailed = false;
+  let attempts = 0;
   for (;;) {
     if (signal.aborted) aborted(signal);
     let manifest: EngineManifest | null = null;
@@ -244,18 +318,35 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
             kept = false;
           }
         }
-        const loaded = await open(env, manifest, kept, events);
+        let loaded: Loaded;
+        try {
+          loaded = await open(env, manifest, kept, events);
+        } catch (error) {
+          if (cache !== null) await forgetMarker(cache, folder);
+          throw new OpenFailed(String(error));
+        }
         if (kept) await removeOthers(env, hash);
         return loaded;
       } catch (error) {
         if (signal.aborted) aborted(signal);
-        if (!(error instanceof DownloadFailed)) throw error;
+        if (error instanceof OpenFailed) openFailed = true;
+        else if (!(error instanceof DownloadFailed)) throw error;
         stopped = true;
       }
     }
     const older = await olderCopy(env, hash);
-    if (older !== null) return open(env, older, true, events);
+    if (older !== null) {
+      try {
+        return await open(env, older.manifest, true, events);
+      } catch {
+        if (signal.aborted) aborted(signal);
+        await forgetMarker(older.cache, older.folder);
+      }
+    }
     events.onState({ kind: 'offline', total: manifest?.total ?? totalBytes, stopped });
-    await env.waitForRetry(signal);
+    // A copy that arrived whole and won't open won't by trying again alone.
+    await env.waitForRetry(signal, openFailed ? null : retryDelay(attempts));
+    attempts += 1;
+    openFailed = false;
   }
 }

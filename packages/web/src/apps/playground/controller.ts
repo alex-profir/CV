@@ -14,7 +14,7 @@ import { welcome } from './examples/welcome.ts';
 import type { Example } from './examples/types.ts';
 import { createKeeper, readKept, removeKept, worthKeeping, writeKept } from './kept.ts';
 import type { EditorView, Engine, EngineCommand } from './engine/contract.ts';
-import { loadEngine, requestRetry } from './engine/loader.ts';
+import { forgetCopy, loadEngine, requestRetry } from './engine/loader.ts';
 import { runGoing, startRun, stopRun } from './running.ts';
 import { session } from './session.ts';
 import type { PlaygroundSession } from './session.ts';
@@ -99,13 +99,18 @@ export function dismissMessage(): void {
   else showMessage(next.kind, next.text, next.actions, next.values);
 }
 
-// Kept code (FR-019): read once when the Playground first mounts in a visit.
-let keptRead = false;
+// Kept code (FR-019): read once when the Playground first mounts in a visit,
+// and held until an engine has it, so a start that fails and is tried again
+// doesn't lose it.
+let keptStart: { code: string; options: ChangedOptions } | null = null;
 
 function readKeptOnce(): { code: string; options: ChangedOptions } {
+  if (engine !== null) return { code: engine.getCode(), options: session.get().options };
+  return (keptStart ??= readKeptNow());
+}
+
+function readKeptNow(): { code: string; options: ChangedOptions } {
   const start = startingExample();
-  if (keptRead) return { code: engine?.getCode() ?? start.code, options: session.get().options };
-  keptRead = true;
   const kept = readKept();
   if (kept.kind === 'no-storage') {
     session.update({ keeping: 'no-storage' });
@@ -123,7 +128,9 @@ function keepNow(): void {
   if (engine === null) return;
   const { options } = session.get();
   const code = engine.getCode();
-  if (!worthKeeping(code, options, startingExample().code)) return;
+  // Back to the starting example with the defaults, nothing is kept: what was
+  // kept before would come back on a reload (FR-019).
+  if (!worthKeeping(code, options, startingExample().code)) return removeKept();
   if (session.get().keeping === 'no-storage' || writeKept(code, options) === 'no-storage') {
     session.update({ keeping: 'no-storage' });
     if (!toldCantKeep) {
@@ -184,10 +191,14 @@ function announceDownload(previous: DownloadState, next: DownloadState): void {
 
 export type StartInput = { manifest: string; bytes: number; mac: boolean };
 
+// A start that failed once the loader had finished: Retry starts over.
+let startAgain: (() => void) | null = null;
+
 // The first desktop open of a visit: download or open the stored engine,
 // then the editor (FR-007, FR-008).
 export function startEngine(input: StartInput): void {
   if (engine !== null || loading !== null) return;
+  startAgain = null;
   mac = input.mac;
   starting = welcome(mac);
   addEventListener('pagehide', onPageHide);
@@ -207,9 +218,9 @@ export function startEngine(input: StartInput): void {
     },
     controller.signal,
   )
-    .then(async ({ module, kept }) => {
+    .then(async ({ module, kept, manifest }) => {
       const { code, options } = readKeptOnce();
-      const created = await module.createEngine({
+      const creating = module.createEngine({
         code,
         options,
         cvTypes,
@@ -223,6 +234,10 @@ export function startEngine(input: StartInput): void {
         onCommand: (id) => commandHandler(id),
         onCursor: (cursor) => session.update({ cursor }),
         onTabFocus: (on) => session.update({ tabMovesFocus: on }),
+      });
+      const created = await creating.catch(async (error: unknown) => {
+        await forgetCopy(manifest);
+        throw error;
       });
       if (controller.signal.aborted) {
         created.dispose();
@@ -238,11 +253,19 @@ export function startEngine(input: StartInput): void {
     })
     .catch(() => {
       if (loading === controller) loading = null;
-      if (!controller.signal.aborted) session.update({ download: { kind: 'idle' } });
+      if (controller.signal.aborted) return;
+      // The engine won't open, as a stopped download can't: the same state
+      // and the same Retry (FR-011).
+      session.update({ download: { kind: 'offline', total: input.bytes, stopped: true } });
+      announce(words.announce.downloadFailed);
+      startAgain = () => startEngine(input);
     });
 }
 
-export const retryDownload = () => requestRetry();
+export function retryDownload(): void {
+  if (startAgain !== null) startAgain();
+  else requestRetry();
+}
 
 // The window closed (FR-046): a download in progress stops; the code is kept.
 export function closePlayground(): void {
@@ -373,13 +396,16 @@ function openPendingLink(): void {
     showMessage('info', had ? 'sharedReplaced' : 'sharedOpened', had ? ['undo', 'run'] : ['run']);
     if (link.unknown.length > 0) following = { kind: 'info', text: 'unknownOptions', actions: [], values: { n: link.unknown.length, names: link.unknown.join(', ') } };
   } else if (link.kind === 'broken') {
-    // The starting example with the defaults is never kept, so kept code stays.
+    // The starting example is shown, not chosen, so kept code stays (FR-056).
     replaceCode(startingExample().code, {});
+    keeper.cancel();
     undoable = false;
     session.update({ example: startingExample().id });
     showMessage('error', 'brokenLink');
   }
   history.replaceState(history.state, '', '/');
+  // The address no longer holds it: the same link pasted again is a new one.
+  addressRead = null;
   requestAnimationFrame(focusEditor);
 }
 
@@ -388,17 +414,17 @@ function receiveLink(link: PlaygroundSession['pendingLink']): void {
   openPendingLink();
 }
 
-// The link the page was opened with, read once a visit and only on the
-// desktop (contracts/shell.md Opening from a link): Os.tsx calls it on
-// load, and the Playground's desktop content when it first mounts, so a
-// link opened on a phone opens once the shell widens (FR-061). The phone's
-// screen never decodes it (contracts/share-link.md Mobile).
-let addressRead = false;
+// The link in the address, read once each and only on the desktop
+// (contracts/shell.md Opening from a link): Os.tsx calls it on load and when
+// the fragment changes, and the Playground's desktop content when it first
+// mounts, so a link opened on a phone opens once the shell widens (FR-061).
+// The phone's screen never decodes it (contracts/share-link.md Mobile).
+let addressRead: string | null = null;
 
 export function readAddressLink(): void {
-  if (addressRead) return;
-  addressRead = true;
   const href = location.href;
+  if (href === addressRead) return;
+  addressRead = href;
   if (holdsLink(href)) void readLink(href).then(receiveLink);
 }
 

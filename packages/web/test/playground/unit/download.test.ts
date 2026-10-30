@@ -1,13 +1,16 @@
 // The engine's loader and its download state (data-model.md Download state,
 // research R4), with fake Cache Storage and network.
 import { describe, expect, test } from 'vitest';
-import { loadEngine, requestRetry, stepOf } from '../../../src/apps/playground/engine/loader.ts';
+import { forgetCopy, loadEngine, requestRetry, retryDelay, stepOf, waitForNetwork } from '../../../src/apps/playground/engine/loader.ts';
 import type { LoaderEnv } from '../../../src/apps/playground/engine/loader.ts';
 import type { DownloadState, EngineManifest } from '../../../src/apps/playground/types.ts';
 
 class FakeCache {
   entries = new Map<string, Response>();
   failPut = false;
+  async delete(key: string): Promise<boolean> {
+    return this.entries.delete(key);
+  }
   async match(key: string): Promise<Response | undefined> {
     const response = this.entries.get(key);
     return response?.clone();
@@ -176,6 +179,139 @@ describe('008-typescript-playground-FR-011: offline, and a download that stops, 
 
   test('requestRetry resumes a waiting download in the browser environment', () => {
     expect(() => requestRetry()).not.toThrow();
+  });
+});
+
+describe('008-typescript-playground-FR-011: the download restarts by itself whenever the network returns', () => {
+  // The browser's wait, on an event target of the test's, with short delays.
+  const netEnv = (caches: FakeCaches, current: EngineManifest, net: Net, target: EventTarget) => {
+    const fake = env(caches, [current], net);
+    fake.waitForRetry = (signal, delayMs) => waitForNetwork(signal, delayMs === null ? null : 5, target);
+    return fake;
+  };
+
+  test('with `online` fired before anything listened, it starts on the next try', async () => {
+    const current = manifestFor('aaaa');
+    const net: Net = { online: false, requests: [] };
+    const target = new EventTarget();
+    const { states, events } = record();
+    net.online = true;
+    target.dispatchEvent(new Event('online'));
+    net.online = false;
+    const loading = loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, netEnv(new FakeCaches(), current, net, target));
+    await new Promise((resolve) => setTimeout(resolve, 12));
+    net.online = true;
+    await loading;
+    expect(states.at(-1)).toMatchObject({ kind: 'ready' });
+  });
+
+  test('with the fetch just after `online` failing, it tries again with no second event', async () => {
+    const current = manifestFor('aaaa');
+    let failures = 2;
+    const net: Net = { online: true, requests: [], fail: () => failures-- > 0 };
+    const target = new EventTarget();
+    const { states, events } = record();
+    const loading = loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, netEnv(new FakeCaches(), current, net, target));
+    target.dispatchEvent(new Event('online'));
+    await loading;
+    expect(states).toContainEqual({ kind: 'offline', total: 1000, stopped: false });
+    expect(states.at(-1)).toMatchObject({ kind: 'ready' });
+  });
+
+  test('with navigator.onLine true all along and no event, it starts when the requests do', async () => {
+    const current = manifestFor('aaaa');
+    let down = true;
+    const net: Net = { online: true, requests: [], fail: () => down };
+    const { states, events } = record();
+    const loading = loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, netEnv(new FakeCaches(), current, net, new EventTarget()));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(states.at(-1)).toEqual({ kind: 'offline', total: 1000, stopped: false });
+    // Each try that reaches nothing says nothing about a download.
+    expect(states.some((state) => state.kind === 'downloading')).toBe(false);
+    down = false;
+    await loading;
+    expect(states.at(-1)).toMatchObject({ kind: 'ready' });
+  });
+
+  test('the wait grows to a limit, and Retry and an abort end it', async () => {
+    expect([0, 1, 2, 3, 4, 5, 20].map(retryDelay)).toEqual([5_000, 10_000, 20_000, 40_000, 60_000, 60_000, 60_000]);
+    const waiting = waitForNetwork(new AbortController().signal, null, new EventTarget());
+    requestRetry();
+    await waiting;
+    const controller = new AbortController();
+    const stopped = waitForNetwork(controller.signal, null, new EventTarget());
+    controller.abort(new Error('closed'));
+    await expect(stopped).rejects.toThrow('closed');
+  });
+});
+
+describe('008-typescript-playground-FR-011: a copy that won\'t open shows the stopped state and counts as incomplete', () => {
+  const failingImports = (fake: LoaderEnv & { imported: string[] }, times: number) => {
+    const real = fake.importModule;
+    let left = times;
+    fake.importModule = async (url) => {
+      if (left-- > 0) throw new Error('the module failed');
+      return real(url);
+    };
+  };
+
+  test('a whole download that won\'t open: stopped, no marker, and Retry alone starts over', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    const fake = env(caches, [current], { online: true, requests: [] });
+    failingImports(fake, 1);
+    const delays: (number | null)[] = [];
+    const { states, events } = record();
+    fake.waitForRetry = async (_signal, delayMs) => {
+      delays.push(delayMs);
+      expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(false);
+    };
+    const loaded = await loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, fake);
+    expect(states).toContainEqual({ kind: 'offline', total: 1000, stopped: true });
+    expect(delays).toEqual([null]);
+    expect(loaded.kept).toBe(true);
+    expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(true);
+  });
+
+  test('a stored copy that won\'t open is downloaded again', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    const net: Net = { online: true, requests: [] };
+    await loadEngine('/playground/aaaa/files.json', 1000, record().events, new AbortController().signal, env(caches, [current], net));
+    net.requests.length = 0;
+    const fake = env(caches, [current], net);
+    failingImports(fake, 1);
+    const { states, events } = record();
+    await loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, fake);
+    expect(net.requests).toContain(current.entry);
+    expect(states.some((state) => state.kind === 'downloading')).toBe(true);
+    expect(states.at(-1)).toMatchObject({ kind: 'ready', kept: true });
+  });
+
+  test('an older copy that won\'t open is forgotten, and the wait goes on', async () => {
+    const caches = new FakeCaches();
+    const older = manifestFor('bbbb');
+    const net: Net = { online: true, requests: [] };
+    await loadEngine('/playground/bbbb/files.json', 1000, record().events, new AbortController().signal, env(caches, [older], net));
+    net.online = false;
+    const fake = env(caches, [older], net);
+    failingImports(fake, 1);
+    const { states, events } = record();
+    fake.waitForRetry = async () => {
+      net.online = true;
+      throw new Error('stop here');
+    };
+    await expect(loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, fake)).rejects.toThrow('stop here');
+    expect(states.at(-1)).toMatchObject({ kind: 'offline' });
+    expect((await caches.open('playground-bbbb')).entries.has('/playground/bbbb/complete')).toBe(false);
+  });
+
+  test('forgetCopy, for an engine that won\'t start, takes the marker away', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    await loadEngine('/playground/aaaa/files.json', 1000, record().events, new AbortController().signal, env(caches, [current], { online: true, requests: [] }));
+    await forgetCopy(current, { caches: caches as unknown as CacheStorage });
+    expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(false);
   });
 });
 
