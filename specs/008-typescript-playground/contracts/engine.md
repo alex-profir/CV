@@ -98,7 +98,8 @@ scripts, which come from its folder.
 
 The offline state tries again by itself after 5 s, doubling to at most 60 s, as well as on `online`
 and Retry, because the `online` event can be missed, spent on a fetch that still fails, or never
-fire. `downloading` shows only once a file answers, so these tries neither flicker nor announce.
+fire. The first try shows `downloading` at once; later tries show it only once a file answers, so
+they neither flicker nor announce.
 An entry or style that fails to open, or a `createEngine` that rejects, removes the copy's marker
 and shows `offline { stopped: true }`. Only Retry or `online` tries that again, since a whole copy
 that won't open won't by waiting. Retry imports the entry under a new URL (`?retry=<n>`).
