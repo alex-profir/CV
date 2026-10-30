@@ -35,6 +35,9 @@ function loadEngine(manifestPath: string, totalBytes: number, events: LoaderEven
   closed). Every failure becomes the `offline` state and a wait for Retry or `online`.
 - Never imports a copy that isn't complete (FR-007, FR-011), and never loads anything from another
   site (FR-010).
+- With no complete copy of the current hash but an older complete one of the same `api`, it opens
+  the older at once and resolves, and online stores the new copy behind it with no state shown; the
+  next open uses the new copy and deletes the others (FR-008, FR-013).
 
 ## The module
 
@@ -85,8 +88,8 @@ type OutputView = { setText(text: string): void; layout(): void; dispose(): void
   warning and widget colors, the code font, the gutter's width and the inset before the code (after
   the gutter, above the first line, and in the output panes), every one read from the token output by the interface; the engine has no design value
   of its own (FR-068).
-- `EngineText` holds the packages message (R11), the editor's name and description, and the labels
-  the engine adds to the palette (Run, Keys).
+- `EngineText` holds the packages message (R11), the editor's name and description, the output
+  panes' names, and the labels the engine adds to the palette (Run, Keys).
 
 ## Not in the contract
 

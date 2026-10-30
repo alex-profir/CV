@@ -48,7 +48,8 @@ function Editor() {
     host.querySelector('textarea')?.setAttribute('data-focus-home', '');
     setEditorView(view);
     const window = host.closest('.window, .full-screen');
-    if (window !== null && window.contains(document.activeElement)) view.focus();
+    // A popup opened during the download keeps focus until it closes.
+    if (window !== null && window.contains(document.activeElement) && session.get().popup === 'none') view.focus();
     return () => {
       session.update({ viewState: view.saveViewState() });
       setEditorView(null);
@@ -76,7 +77,6 @@ function Workspace() {
         <div className="playground-side">{panel === 'options' ? <OptionsPanel /> : <Panes />}</div>
       </div>
       <StatusBar />
-      <Popups />
     </>
   );
 }
@@ -128,7 +128,10 @@ export function Playground({ resume }: { resume: Resume }) {
       aria-label={words.label}
       data-req="008-typescript-playground-FR-003 008-typescript-playground-FR-068 008-typescript-playground-FR-071 008-typescript-playground-FR-072 008-typescript-playground-FR-074"
     >
-      <Contained>{ready ? <Workspace /> : <Loading />}</Contained>
+      <Contained>
+        {ready ? <Workspace /> : <Loading />}
+        <Popups />
+      </Contained>
     </section>
   );
 }

@@ -2,10 +2,10 @@
 // data-model.md Download state), in the `os` script: the one module there
 // that reaches the engine, by URL at run time. It downloads every file with
 // progress into `playground-<engine-hash>`, writes the marker last, and
-// imports only a complete copy; offline or when the download fails, it opens
-// the newest older complete copy of the same contract, else waits for the
-// network or Retry (FR-007, FR-011, FR-013, FR-014). A copy that won't open
-// counts as incomplete.
+// imports only a complete copy. With only an older complete copy of the same
+// contract, it opens that at once and stores the new one behind it, for the
+// next open; with none, it waits for the network or Retry (FR-007, FR-008,
+// FR-011, FR-013, FR-014). A copy that won't open counts as incomplete.
 import type { DownloadState, EngineManifest } from '../types.ts';
 import type { EngineModule } from './contract.ts';
 
@@ -263,6 +263,22 @@ async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache |
   }
 }
 
+// The new copy, downloaded with nothing shown while an older one runs, and
+// used from the next open, which also removes the older one (FR-013). A failure
+// changes nothing: the next open tries again.
+async function storeBehind(env: LoaderEnv, manifestPath: string, cache: Cache | null, folder: string, signal: AbortSignal): Promise<void> {
+  if (cache === null || !env.onLine()) return;
+  try {
+    const response = await env.fetch(manifestPath, { cache: 'reload', signal });
+    if (!response.ok) return;
+    const manifest = (await response.json()) as EngineManifest;
+    await download(env, manifest, cache, { onState: () => undefined }, signal, true);
+    await cache.put(markerOf(folder), new Response(JSON.stringify(manifest), { headers: { 'content-type': 'application/json' } }));
+  } catch {
+    // Part of a copy, with no marker, is never used.
+  }
+}
+
 export async function loadEngine(manifestPath: string, totalBytes: number, events: LoaderEvents, signal: AbortSignal, env: LoaderEnv = browserEnv()): Promise<Loaded> {
   const { folder, hash } = folderOf(manifestPath);
   events.onState({ kind: 'checking' });
@@ -283,6 +299,17 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
         if (signal.aborted) aborted(signal);
         await forgetMarker(cache, folder);
       }
+    }
+  }
+  const waiting = await olderCopy(env, hash);
+  if (waiting !== null) {
+    try {
+      const loaded = await open(env, waiting.manifest, true, events);
+      void storeBehind(env, manifestPath, cache, folder, signal);
+      return loaded;
+    } catch {
+      if (signal.aborted) aborted(signal);
+      await forgetMarker(waiting.cache, waiting.folder);
     }
   }
   let stopped = false;
