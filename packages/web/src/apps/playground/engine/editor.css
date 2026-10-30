@@ -143,3 +143,106 @@
 .playground .action-widget :is(.codicon-lightbulb, .codicon-light-bulb, .codicon-lightbulb-autofix) {
   color: var(--token-color-code-warning);
 }
+
+/* The design's glyphs in place of Monaco's icon font (research R22): the
+   lightbulb, close, and the error, warning and info marks, each drawn in
+   `glyphs/` and shown as a mask over the icon's own color, so each keeps
+   the color its widget gives it. */
+.playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close, .codicon-error, .codicon-warning, .codicon-info)::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  background-color: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  vertical-align: middle;
+}
+
+.playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix)::before {
+  mask-image: url("./glyphs/lightbulb.svg");
+}
+
+.playground :is(.codicon-close, .codicon-widget-close)::before {
+  mask-image: url("./glyphs/close.svg");
+}
+
+.playground :is(.codicon-error, .codicon-warning, .codicon-info)::before {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+}
+
+.playground .codicon-error::before {
+  mask-image: url("./glyphs/error.svg");
+}
+
+.playground .codicon-warning::before {
+  mask-image: url("./glyphs/warning.svg");
+}
+
+.playground .codicon-info::before {
+  mask-image: url("./glyphs/info.svg");
+}
+
+.playground .codicon-error {
+  color: var(--token-color-code-error);
+}
+
+.playground .codicon-warning {
+  color: var(--token-color-code-warning);
+}
+
+.playground .codicon-info {
+  color: var(--token-color-code-info);
+}
+
+/* A suggestion's kind as the design's letter on a wash, in the color of
+   what it names, in place of Monaco's symbol icons. */
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon.codicon {
+  display: grid;
+  place-items: center;
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  border-radius: var(--token-space-1);
+  background: var(--token-color-base-wash);
+  color: var(--token-color-code-property);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-font-size-label);
+  font-weight: var(--token-font-weight-semibold);
+  line-height: var(--token-space-4);
+}
+
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-property, .codicon-symbol-field)::before { content: "P"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-method::before { content: "M"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-function, .codicon-symbol-constructor)::before { content: "F"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-variable, .codicon-symbol-constant)::before { content: "V"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-class::before { content: "C"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-interface::before { content: "I"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-enum, .codicon-symbol-enum-member)::before { content: "E"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-type-parameter::before { content: "T"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-module::before { content: "N"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-keyword::before { content: "K"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-snippet::before { content: "S"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-text::before { content: "W"; }
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-method, .codicon-symbol-function, .codicon-symbol-constructor) {
+  color: var(--token-color-code-function);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-class, .codicon-symbol-interface, .codicon-symbol-enum, .codicon-symbol-enum-member, .codicon-symbol-type-parameter, .codicon-symbol-module) {
+  color: var(--token-color-code-type);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-keyword, .codicon-symbol-snippet) {
+  color: var(--token-color-code-keyword);
+}
+
+/* With forced colors, backgrounds give way to the system's, so the masked
+   glyphs take the text color and the letters lose their wash (FR-070). */
+@media (forced-colors: active) {
+  .playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close, .codicon-error, .codicon-warning, .codicon-info)::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}
