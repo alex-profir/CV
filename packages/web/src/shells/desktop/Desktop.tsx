@@ -53,8 +53,10 @@ export function Desktop(props: ShellProps & { active: boolean }) {
   }, [active, dispatch]);
 
   // The shortcuts (FR-025 to FR-029): one listener, added and removed with
-  // the shell. A shortcut whose window it needs isn't there does nothing,
-  // and lets the key through.
+  // the shell, in the capture phase so a shortcut reaches the shell before
+  // an editor or a text field sees the key, and no character is typed
+  // (FR-062, 008 FR-084). A shortcut whose window it needs isn't there does
+  // nothing, and lets the key through.
   const latest = useRef(state);
   latest.current = state;
   useEffect(() => {
@@ -68,6 +70,7 @@ export function Desktop(props: ShellProps & { active: boolean }) {
       if (shortcut.needs !== 'none' && (focused === null || window === undefined)) return;
       if (shortcut.needs === 'restored-window' && window?.maximized != null) return;
       event.preventDefault();
+      event.stopPropagation();
       switch (shortcut.id) {
         case 'menu-bar':
           return focusMenuBar();
@@ -77,10 +80,6 @@ export function Desktop(props: ShellProps & { active: boolean }) {
           return dispatch({ type: 'next' });
         case 'close':
           return dispatch({ type: 'close', view: focused! });
-        case 'minimize':
-          return dispatch({ type: 'minimize', view: focused! });
-        case 'maximize':
-          return dispatch({ type: 'toggleMaximize', view: focused! });
         case 'move':
           return dispatch({ type: 'sessionStart', kind: 'move' });
         case 'resize':
@@ -89,8 +88,8 @@ export function Desktop(props: ShellProps & { active: boolean }) {
           return undefined;
       }
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [active, mac, dispatch]);
 
   return (

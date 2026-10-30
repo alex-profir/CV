@@ -294,8 +294,6 @@ export const siteText = deepFreeze({
       dock: 'Go to the dock',
       'next-window': 'Next window',
       close: 'Close window',
-      minimize: 'Minimize window',
-      maximize: 'Maximize or restore window',
       move: 'Move window',
       resize: 'Resize window',
     },

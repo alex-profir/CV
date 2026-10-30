@@ -21,7 +21,7 @@ const normal = (keys: string) =>
 
 const key = (overrides: Partial<KeyEventLike>): KeyEventLike => ({ key: 'w', code: 'KeyW', altKey: true, shiftKey: true, ctrlKey: false, metaKey: false, ...overrides });
 
-describe('005-os-shell-FR-029: the eight shortcuts use Alt and Shift, clash with no browser or screen reader, and show as the platform writes them', () => {
+describe('005-os-shell-FR-029: the six shortcuts use Alt and Shift, clash with no browser or screen reader, and show as the platform writes them', () => {
   test('the reserved list names its source for every entry', () => {
     expect(fixture.reserved.length).toBeGreaterThan(0);
     const products = new Set(fixture.reserved.map((entry) => entry.by));
@@ -29,14 +29,12 @@ describe('005-os-shell-FR-029: the eight shortcuts use Alt and Shift, clash with
     for (const entry of fixture.reserved) expect(entry.source, entry.keys).toMatch(/^https:\/\//);
   });
 
-  test('the eight are in data-model.md order, each with Alt and Shift and no Ctrl or Meta, and none is reserved', () => {
+  test('the six are in data-model.md order, each with Alt and Shift and no Ctrl or Meta, and none is reserved', () => {
     expect(SHORTCUTS.map((shortcut) => [shortcut.id, shortcut.letter, shortcut.needs])).toEqual([
       ['menu-bar', 'M', 'none'],
       ['dock', 'D', 'none'],
       ['next-window', 'N', 'none'],
       ['close', 'W', 'window'],
-      ['minimize', 'H', 'window'],
-      ['maximize', 'F', 'window'],
       ['move', 'P', 'restored-window'],
       ['resize', 'S', 'restored-window'],
     ]);
@@ -74,5 +72,25 @@ describe('005-os-shell-FR-029: the eight shortcuts use Alt and Shift, clash with
     const close = SHORTCUTS.find((shortcut) => shortcut.id === 'close')!;
     expect(shortcutLabel(close, false)).toBe('Alt+Shift+W');
     expect(shortcutLabel(close, true)).toBe('Option+Shift+W');
+  });
+});
+
+describe('005-os-shell-FR-063 005-os-shell-FR-065 008-typescript-playground-FR-086: minimizing and maximizing have no shortcut', () => {
+  test('six entries stay, in order, and none of them is reserved', () => {
+    expect(SHORTCUTS.map((shortcut) => [shortcut.id, shortcut.letter])).toEqual([
+      ['menu-bar', 'M'],
+      ['dock', 'D'],
+      ['next-window', 'N'],
+      ['close', 'W'],
+      ['move', 'P'],
+      ['resize', 'S'],
+    ]);
+    const reserved = new Set(fixture.reserved.map((entry) => normal(entry.keys)));
+    for (const shortcut of SHORTCUTS) expect(reserved.has(normal(shortcutLabel(shortcut, false))), shortcut.id).toBe(false);
+  });
+
+  test.each(['H', 'F'])('Alt+Shift+%s is nothing, off a Mac by key and on a Mac by code', (letter) => {
+    expect(matchShortcut(key({ key: letter, code: `Key${letter}` }), false)).toBeNull();
+    expect(matchShortcut(key({ key: '?', code: `Key${letter}` }), true)).toBeNull();
   });
 });

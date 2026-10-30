@@ -424,6 +424,24 @@ const MOVE = { subject: 'Alt+Shift+P', detail: 'the move pad did not open' };
 
 const RESIZE = { subject: 'Alt+Shift+S', detail: 'the resize pad did not open' };
 
+// How long a key that should change nothing has to show it did.
+const NO_CHANGE_WAIT_MS = 400;
+
+// Chooses a command in the focused window's own menu, by keys.
+async function ownMenuCommand(page: Page, command: string): Promise<void> {
+  await page.keyboard.press('Alt+Shift+M');
+  await until(() => focusIn(page, '#os .menu-bar'));
+  for (let presses = 0; presses < 5 && !(await focusOn(page, SHELL.appMenuTitle)); presses += 1) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await until(() => visible(page, SHELL.appMenu));
+  for (let presses = 0; presses < 20; presses += 1) {
+    const label = await page.evaluate(() => (document.activeElement?.querySelector('.label')?.textContent ?? document.activeElement?.textContent ?? '').trim());
+    if (label === command) break;
+    await page.keyboard.press('ArrowDown');
+  }
+  await page.keyboard.press('Enter');
+}
+
 export async function desktopKeyboardProblems(page: Page, pageLabel: string, variant: string): Promise<Problem[]> {
   const { problems, step } = flow(page, pageLabel, variant);
   const S = SHELL;
@@ -512,11 +530,20 @@ export async function desktopKeyboardProblems(page: Page, pageLabel: string, var
       }))
     )
       return;
-    if (!(await step('minimize the CV window', { keys: ['Alt+Shift+H'], done: async () => !(await visible(page, S.cvWindow)), failed: { subject: 'Alt+Shift+H', detail: 'the CV window was not minimized' }, target: S.aboutTitle, targetName: aboutName }))) return;
+    // Neither has a shortcut (005 FR-063, FR-065, 008 FR-086): the keys change
+    // nothing, and the window's menu does both.
+    const noChange = (keys: string) => async () => {
+      await page.keyboard.press(keys);
+      await page.waitForTimeout(NO_CHANGE_WAIT_MS);
+    };
+    const unchanged = async () => (await visible(page, S.cvWindow)) && (await count(page, `${S.cvWindow}[data-maximized]`)) === 0;
+    if (!(await step('Alt+Shift+H does nothing', { act: noChange('Alt+Shift+H'), done: unchanged, failed: { subject: 'Alt+Shift+H', detail: 'step "Alt+Shift+H does nothing": the CV window changed' }, target: S.cvTitle, targetName: cvName, indicator: false }))) return;
+    if (!(await step('Alt+Shift+F does nothing', { act: noChange('Alt+Shift+F'), done: unchanged, failed: { subject: 'Alt+Shift+F', detail: 'step "Alt+Shift+F does nothing": the CV window changed' }, target: S.cvTitle, targetName: cvName, indicator: false }))) return;
+    if (!(await step('minimize the CV window', { act: () => ownMenuCommand(page, 'Minimize'), done: async () => !(await visible(page, S.cvWindow)), failed: { subject: 'Minimize', detail: 'the CV window was not minimized' }, target: S.aboutTitle, targetName: aboutName }))) return;
     if (!(await step('go to the dock', { keys: ['Alt+Shift+D'], done: () => focusIn(page, '#os .dock'), failed: { subject: 'Alt+Shift+D', detail: 'focus did not move to the dock' }, target: S.cvDockItem, targetName: 'the CV dock item' }))) return;
     if (!(await step('restore the CV window', { keys: ['Enter'], done: () => visible(page, S.cvWindow), failed: { subject: 'Enter', detail: 'the CV dock item did not restore the CV window' }, target: S.cvTitle, targetName: cvName }))) return;
-    if (!(await step('maximize the CV window', { keys: ['Alt+Shift+F'], done: async () => (await count(page, `${S.cvWindow}[data-maximized]`)) === 1, failed: { subject: 'Alt+Shift+F', detail: 'the CV window was not maximized' }, target: S.cvTitle, targetName: cvName }))) return;
-    if (!(await step('restore its size', { keys: ['Alt+Shift+F'], done: async () => (await count(page, `${S.cvWindow}[data-maximized]`)) === 0, failed: { subject: 'Alt+Shift+F', detail: 'the CV window was not restored from maximized' }, target: S.cvTitle, targetName: cvName }))) return;
+    if (!(await step('maximize the CV window', { act: () => ownMenuCommand(page, 'Maximize'), done: async () => (await count(page, `${S.cvWindow}[data-maximized]`)) === 1, failed: { subject: 'Maximize', detail: 'the CV window was not maximized' }, target: S.appMenuTitle, targetName: "the CV menu's title" }))) return;
+    if (!(await step('restore its size', { act: () => ownMenuCommand(page, 'Restore'), done: async () => (await count(page, `${S.cvWindow}[data-maximized]`)) === 0, failed: { subject: 'Restore', detail: 'the CV window was not restored from maximized' }, target: S.appMenuTitle, targetName: "the CV menu's title" }))) return;
     if (!(await step('close the CV window', { keys: ['Alt+Shift+W'], done: async () => (await count(page, S.cvWindow)) === 0, failed: { subject: 'Alt+Shift+W', detail: 'the CV window did not close' }, target: S.aboutTitle, targetName: aboutName }))) return;
     await step('close About this site', { keys: ['Alt+Shift+W'], done: async () => (await count(page, S.aboutWindow)) === 0, failed: { subject: 'Alt+Shift+W', detail: 'About this site did not close' }, target: S.siteMenuTitle, targetName: "the site menu's title" });
   };
@@ -638,20 +665,7 @@ export async function inspectorKeyboardProblems(page: Page, pageLabel: string, v
     if (!(await show('cv'))) return;
     if (!(await leave('cv'))) return;
     // From the app's menu: the menu bar, the app's menu, its Show specs.
-    const fromMenu = async () => {
-      await page.keyboard.press('Alt+Shift+M');
-      await until(() => focusIn(page, '#os .menu-bar'));
-      await pressTo('ArrowRight', SHELL.appMenuTitle, 5)();
-      await page.keyboard.press('Enter');
-      await until(() => visible(page, SHELL.appMenu));
-      for (let presses = 0; presses < 20; presses += 1) {
-        const label = await page.evaluate(() => (document.activeElement?.querySelector('.label')?.textContent ?? document.activeElement?.textContent ?? '').trim());
-        if (label === 'Show specs') break;
-        await page.keyboard.press('ArrowDown');
-      }
-      await page.keyboard.press('Enter');
-    };
-    if (!(await step('Show specs from the menu', { act: fromMenu, done: showing('cv'), failed: { subject: 'Alt+Shift+M', detail: "the CV menu's Show specs did not show the specs" }, target: heading('cv'), targetName: "the CV spec view's heading" }))) return;
+    if (!(await step('Show specs from the menu', { act: () => ownMenuCommand(page, 'Show specs'), done: showing('cv'), failed: { subject: 'Alt+Shift+M', detail: "the CV menu's Show specs did not show the specs" }, target: heading('cv'), targetName: "the CV spec view's heading" }))) return;
     const toggle = (open: boolean) =>
       step(open ? "open What's this?" : "close What's this?", {
         act: async () => {
