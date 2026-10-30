@@ -296,6 +296,33 @@ describe('006-terminal-FR-021: an open editor is kept with the session', () => {
     expect(await buffer(page)).toEqual(['one']);
   });
 
+  test('minimize and restore keep insert mode', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('i');
+    await page.locator('.terminal textarea.vim-insert').waitFor();
+    await page.getByRole('button', { name: 'Minimize Terminal' }).click();
+    await settle(page);
+    await page.locator(DOCK_ITEM).click();
+    await page.locator('.terminal textarea.vim-insert').waitFor();
+    expect(await status(page)).toContain('-- INSERT --');
+  });
+
+  test('on a phone, Home and opening the Terminal again keep the changes, the cursor and undo', async () => {
+    const page = await openTerminalPage('mobile');
+    await edited(page);
+    const before = await status(page);
+    await page.getByRole('button', { name: 'Home' }).tap();
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await page.locator('#os .home .app-icon[data-view="terminal"]').tap();
+    await vimView(page).waitFor();
+    expect(await status(page)).toBe(before);
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('u');
+    expect(await buffer(page)).toEqual(['one']);
+  });
+
   test('a 1440 → 375 → 1440 resize keeps them', async () => {
     const page = await openTerminalPage('desktop');
     await edited(page);
@@ -311,8 +338,10 @@ describe('006-terminal-FR-021: an open editor is kept with the session', () => {
     const page = await openTerminalPage('desktop');
     await edited(page);
     await page.getByRole('button', { name: 'Close Terminal' }).click();
-    await page.locator('#os .dock-item[data-app="terminal"]').click();
-    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    // Opening it again during the closing animation keeps the window (005 R13).
+    await expect.poll(() => page.locator(WINDOW).count()).toBe(0);
+    await settle(page);
+    await openTerminal(page, 'desktop');
     expect(await vimView(page).count()).toBe(0);
     await typeLine(page, 'cat todo');
     expect(await page.locator('.terminal section.run').last().textContent()).toContain('No such file');
