@@ -4,7 +4,8 @@
 import { useRef } from 'react';
 import { siteText } from '../../site-text.ts';
 import { OptionsGlyph } from './Glyphs.tsx';
-import { session, useSession } from './session.ts';
+import { closeOptionsPanel, openOptionsPanel } from './OptionsPanel.tsx';
+import { useSession } from './session.ts';
 
 const words = siteText.playground.tools;
 
@@ -21,7 +22,7 @@ export function Toolbar() {
         type="button"
         className="button tool options"
         aria-pressed={panel === 'options'}
-        onClick={() => session.update({ panel: panel === 'options' ? 'none' : 'options' })}
+        onClick={panel === 'options' ? closeOptionsPanel : openOptionsPanel}
         data-req="008-typescript-playground-FR-024 008-typescript-playground-FR-025 008-typescript-playground-FR-026"
       >
         <OptionsGlyph />

@@ -19,8 +19,10 @@ function strings(value: unknown): string[] {
 
 // Printable ASCII and the few typographic characters the design uses,
 // including the shell's ellipsis (005 `Move…`) and the arrow between the
-// inspector's chain labels (007 contracts/inspector.md).
-const ENGLISH = /^[\x20-\x7E–—·’↗…›]*$/u;
+// inspector's chain labels (007 contracts/inspector.md), and the
+// Playground's marks for no errors and for errors (008 wireframes, The
+// editor with errors).
+const ENGLISH = /^[\x20-\x7E–—·’↗…›✓⊗]*$/u;
 
 describe('004-cv-page-FR-006: site text is English, set by the design, and holds no CV fact', () => {
   test('every site text string uses only English characters', () => {

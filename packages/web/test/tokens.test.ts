@@ -96,14 +96,25 @@ function readByMetrics(): Set<string> {
   return new Set(EXPORT_TOKENS.map((token) => token.name).filter((name) => named.has(name)));
 }
 
+// The tokens the Playground's editor theme reads in script, all through
+// `theme-values.ts` (008 research R22): Monaco's theme needs its colors and
+// sizes as values, so each is named there as a string.
+const THEME_FILE = 'packages/web/src/apps/playground/theme-values.ts';
+
+function readByEditorTheme(): Set<string> {
+  const source = fs.readFileSync(path.join(REPO_ROOT, THEME_FILE), 'utf8');
+  const named = new Set([...source.matchAll(/\b(?:px|value)\('([^']+)'\)/g)].map((match) => match[1]!));
+  return new Set(EXPORT_TOKENS.map((token) => token.name).filter((name) => named.has(name)));
+}
+
 // Every token the site reads, directly or through a reference.
 function readTokens(): Set<string> {
   const css = builtCss();
-  return withReferences(new Set([...readByCss(css), ...readAsMedia(css), ...readByMetrics(), ...fonts.families.map((entry) => entry.token)]));
+  return withReferences(new Set([...readByCss(css), ...readAsMedia(css), ...readByMetrics(), ...readByEditorTheme(), ...fonts.families.map((entry) => entry.token)]));
 }
 
 describe('004-cv-page-FR-043: the export holds the approved tokens, and the site reads every one', () => {
-  test('every token in the export is read: in the built CSS, by the shell metrics, through a token that refers to it, or in fonts.json', () => {
+  test('every token in the export is read: in the built CSS, by the shell metrics or the editor theme (008), through a token that refers to it, or in fonts.json', () => {
     const read = readTokens();
     expect(EXPORT_TOKENS.length).toBeGreaterThan(0);
     expect(EXPORT_TOKENS.map((token) => token.name).filter((name) => !read.has(name))).toEqual([]);

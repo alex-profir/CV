@@ -224,7 +224,8 @@ export function engineManifest(site: BuiltSite): EngineManifest {
 
 // The text a Monaco view shows, its rendered lines in order, with the
 // non-breaking spaces it draws read as spaces. Only lines on screen are
-// rendered, so it suits short code.
+// rendered, so it suits short code. The error message the editor shows
+// after the cursor's line is left out: it isn't code.
 export function viewText(page: Page, selector: string): Promise<string> {
   return page
     .locator(`${selector} .view-lines`)
@@ -232,6 +233,11 @@ export function viewText(page: Page, selector: string): Promise<string> {
     .evaluate((lines) =>
       [...lines.querySelectorAll<HTMLElement>('.view-line')]
         .sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top))
+        .map((line) => {
+          const copy = line.cloneNode(true) as HTMLElement;
+          for (const message of copy.querySelectorAll('.playground-inline-message')) message.remove();
+          return copy;
+        })
         .map((line) => (line.textContent ?? '').replace(/ /g, ' '))
         .join('\n'),
     );

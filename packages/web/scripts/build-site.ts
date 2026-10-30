@@ -181,7 +181,27 @@ async function buildEngine(): Promise<BuiltEngine> {
   if (entry === undefined) throw new Error("the engine build has no entry in Vite's manifest");
   const style = entry.css?.[0];
   if (style === undefined || entry.css!.length !== 1) throw new Error('the engine build gives no single style sheet');
+  const stylePath = path.join(dir, style);
+  fs.writeFileSync(stylePath, withSiteStyleRules(fs.readFileSync(stylePath, 'utf8')));
   return { dir, files: listFiles(dir), entry: entry.file, style };
+}
+
+// Monaco's style sheet under the rules every built style sheet keeps (004
+// FR-012, 005's layout rules): no `order` and no reversed flex direction,
+// which would show boxes out of their reading order (they place the fixes
+// menu's details and toggles and a hover's actions, which then follow the
+// DOM), and the icon font shown with `swap`.
+export function withSiteStyleRules(css: string): string {
+  return css
+    .replace(/(?<=[;{])order:[^;}]*;?/g, '')
+    .replace(/(?<=[;{])flex-(?:direction|wrap|flow):[^;}]*-reverse[^;}]*;?/g, '')
+    .replace(/font-display:\s*block/g, 'font-display:swap');
+}
+
+// The style sheet's `url(./file)` as a path on the site, as every built
+// address is (004 FR-010).
+function withSitePaths(css: string, folder: string): string {
+  return css.replace(/url\(\s*(["']?)\.\/([^)"']+)\1\s*\)/g, (_, quote: string, file: string) => `url(${quote}${folder}/${file}${quote})`);
 }
 
 // Moves the built engine to `<siteDir>/playground/<engine-hash>/` with its
@@ -194,6 +214,8 @@ function placeEngine(engine: BuiltEngine, siteDir: string): EngineAssets {
   const target = path.join(siteDir, ENGINE_DIR, hash);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.cpSync(engine.dir, target, { recursive: true });
+  const stylePath = path.join(target, engine.style);
+  fs.writeFileSync(stylePath, withSitePaths(fs.readFileSync(stylePath, 'utf8'), folder));
   const files = engine.files.map((file) => ({ path: `${folder}/${file}`, bytes: fs.statSync(path.join(target, file)).size }));
   const total = files.reduce((sum, file) => sum + file.bytes, 0);
   const manifest = { api: ENGINE_API, version: hash, typescript: typescriptVersion, entry: `${folder}/${engine.entry}`, style: `${folder}/${engine.style}`, files, total };

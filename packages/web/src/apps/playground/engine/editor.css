@@ -4,3 +4,142 @@
 .playground-output .monaco-editor {
   --vscode-font-family: var(--token-typography-small-font-family);
 }
+
+/* The message of the cursor's line's first mark, after the line (FR-016). */
+.playground-editor .playground-inline-message {
+  margin-inline-start: var(--token-space-4);
+  color: var(--token-color-code-error);
+}
+
+.playground-editor .playground-inline-message.is-warning {
+  color: var(--token-color-code-warning);
+}
+
+/* While a check is out, the marks and the message stay as they were,
+   dimmed under the popups' scrim color, as the panes are (FR-016). */
+.playground-editor.is-checking :is(.squiggly-error, .squiggly-warning)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--token-color-playground-scrim);
+}
+
+.playground-editor.is-checking .playground-inline-message {
+  background: var(--token-color-playground-scrim);
+}
+
+/* Monaco's widgets as the design's raised panels (research R22, wireframes
+   Hover, Suggestions, Peek, Rename, Quick fixes, Command palette): the
+   hairline border, the menu radius and shadow, the raised surface, and the
+   body font, with the selected row in the code's selection color and the
+   Playground's primary color as its border. */
+.playground-editor .monaco-editor :is(.monaco-hover, .suggest-widget, .parameter-hints-widget, .rename-box, .quick-input-widget, .find-widget),
+.playground .action-widget {
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-menu);
+  background: var(--token-color-playground-raised);
+  box-shadow: var(--token-shadow-menu);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+}
+
+.playground-editor .monaco-editor .monaco-hover {
+  max-inline-size: var(--token-size-playground-popover);
+}
+
+/* The type in code, the documentation under a hairline. */
+.playground-editor .monaco-editor .monaco-hover :is(code, .code) {
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .monaco-hover .hover-row:not(:first-child) {
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground-editor .monaco-editor .suggest-widget {
+  inline-size: calc(var(--token-size-playground-popover) - var(--token-space-16));
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list-row,
+.playground .action-widget .monaco-list-row,
+.playground-editor .monaco-editor .quick-input-widget .monaco-list-row {
+  border: var(--token-border-thin) solid transparent;
+  border-radius: var(--token-radius-small);
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list-row.focused,
+.playground .action-widget .monaco-list-row.focused,
+.playground-editor .monaco-editor .quick-input-widget .monaco-list-row.focused {
+  border-color: var(--token-color-playground-primary);
+  background: var(--token-color-code-selection);
+  color: var(--token-color-shell-text);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-highlighted-label .highlight,
+.playground-editor .monaco-editor .quick-input-widget .monaco-highlighted-label .highlight {
+  color: var(--token-color-code-function);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.playground-editor .monaco-editor .suggest-widget :is(.details-label, .type-label) {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.playground-editor .monaco-editor .suggest-details-container {
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+/* Peek: framed above and below in the primary color, on the panel. */
+.playground-editor .monaco-editor .peekview-widget {
+  border-block: var(--token-border-thick) solid var(--token-color-playground-primary);
+  background: var(--token-color-playground-panel);
+}
+
+.playground-editor .monaco-editor .peekview-widget .head {
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+}
+
+.playground-editor .monaco-editor .peekview-widget .head .peekview-title .dirname {
+  color: var(--token-color-shell-text-secondary);
+}
+
+/* Rename and the palette's field: the code's surface, framed in the
+   primary color with the shell's focus ring. */
+.playground-editor .monaco-editor .rename-box .rename-input,
+.playground-editor .monaco-editor .quick-input-widget .monaco-inputbox {
+  border: var(--token-border-thin) solid var(--token-color-playground-primary);
+  border-radius: var(--token-space-1);
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-border-thin);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-code-text);
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .quick-input-widget {
+  inline-size: var(--token-size-playground-dialog);
+}
+
+.playground-editor .monaco-editor .quick-input-widget .quick-input-list .monaco-keybinding-key {
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-space-1);
+  background: none;
+  box-shadow: none;
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* The lightbulb, in the gutter, in the warning color. */
+.playground-editor .monaco-editor :is(.lightBulbWidget, .glyph-margin-widgets [class*="codicon-gutter-lightbulb"]) {
+  color: var(--token-color-code-warning);
+}
+
+.playground .action-widget :is(.codicon-lightbulb, .codicon-light-bulb, .codicon-lightbulb-autofix) {
+  color: var(--token-color-code-warning);
+}

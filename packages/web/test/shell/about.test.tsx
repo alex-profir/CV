@@ -35,7 +35,7 @@ describe('005-os-shell-FR-038: About this site says what the site is and links t
     const page = await openShell({ width: 1440, height: 900 });
     await openAboutWindow(page);
     expect(await page.locator(ABOUT).getAttribute('aria-current')).toBe('true');
-    expect(await page.locator('#os .dock-item').evaluateAll((items) => items.map((item) => item.getAttribute('data-app')))).toEqual(['cv', 'terminal']);
+    expect(await page.locator('#os .dock-item').evaluateAll((items) => items.map((item) => item.getAttribute('data-app')))).toEqual(['cv', 'terminal', 'playground']);
     await page.click('#menu-title-window');
     expect(await page.getByRole('menuitemradio', { name: 'About this site' }).count()).toBe(1);
     await page.keyboard.press('Escape');
