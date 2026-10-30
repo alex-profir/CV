@@ -178,7 +178,7 @@
         "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
         "Built notification and device management microservices using spec-driven development, replacing the monolith that held all the logic",
         "Implemented and maintained the auth microservice with teammates using spec-driven development",
-        "Delivered features at roughly 5x the previous speed with spec-driven, agentic development",
+        "Delivered features at least 2x faster with spec-driven, agentic development, per team lead reports",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
         "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
         "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
