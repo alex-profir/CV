@@ -253,6 +253,15 @@ export function createEditing(init: EngineInit) {
     created.onDidLayoutChange(fitGutter);
     const input = created.getDomNode()?.querySelector('textarea');
     input?.setAttribute('aria-describedby', describedBy);
+    // Keys a browser keeps (R12, FR-084): Ctrl+Shift+P opens Firefox's private
+    // window, Ctrl+L the address bar in every browser. And VoiceOver keeps
+    // Ctrl+Option with the arrows on a Mac.
+    editor.addKeybindingRules([
+      { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP, command: '-editor.action.quickCommand' },
+      { keybinding: KeyMod.CtrlCmd | KeyCode.KeyL, command: '-expandLineSelection' },
+      { keybinding: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.LeftArrow, command: '-cursorWordPartLeft' },
+      { keybinding: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.RightArrow, command: '-cursorWordPartRight' },
+    ]);
     created.addAction({ id: 'playground.run', label: init.text.runCommand, keybindings: [KeyMod.CtrlCmd | KeyCode.Enter], run: () => init.onCommand('playground.run') });
     created.addAction({ id: 'playground.keys', label: init.text.keysCommand, keybindings: [KeyMod.Alt | KeyCode.F1], run: () => init.onCommand('playground.keys') });
     if (viewState !== null) created.restoreViewState(viewState as editor.ICodeEditorViewState);

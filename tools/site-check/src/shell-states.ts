@@ -91,6 +91,7 @@ export const PLAYGROUND_DESKTOP_STATES = [
   'playground-broken-link',
   'playground-shared-opened',
   'playground-reset',
+  'playground-keys',
   'playground-specs',
   'playground-narrow',
 ] as const;
@@ -959,6 +960,10 @@ async function drivePlayground(page: Page, shell: Shell, state: string): Promise
     case 'playground-reset':
       await page.click(SHELL.appMenuTitle);
       await page.getByRole('menuitem', { name: siteText.playground.menu.reset, exact: true }).click();
+      return shown(page, PLAYGROUND.popup);
+    case 'playground-keys':
+      await page.click(SHELL.appMenuTitle);
+      await page.getByRole('menuitem', { name: siteText.playground.menu.keys, exact: true }).click();
       return shown(page, PLAYGROUND.popup);
     case 'playground-specs':
       await page.click(`${PLAYGROUND.window} button.show-specs`);

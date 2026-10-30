@@ -43,6 +43,7 @@ export const playgroundApp: App = {
       run: () => requestAnimationFrame(() => currentEngine()?.runCommand('editor.action.quickCommand')),
       'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-085',
     },
+    { key: 'keys', label: words.keys, run: () => session.update({ popup: 'keys' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-085' },
     { key: 'reset', label: words.reset, separatorBefore: true, separatorAfter: true, disabled: () => currentEngine() === null, run: () => session.update({ popup: 'reset' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-080' },
   ],
   onClose: closePlayground,

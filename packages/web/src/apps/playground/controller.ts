@@ -33,6 +33,7 @@ let undoable = false;
 let messageIds = 0;
 let commandHandler: (id: EngineCommand) => void = (id) => {
   if (id === 'playground.run') runCode();
+  else session.update({ popup: 'keys' });
 };
 // The CV document, from the app's props, for the code's `cv` (research R10).
 let cvDocument: unknown = null;
