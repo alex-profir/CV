@@ -132,6 +132,26 @@ describe('008-typescript-playground-FR-052: Share copies a link with the code an
     await expect.poll(() => page.evaluate(() => (window as unknown as { shared: unknown[] }).shared)).toEqual([{ url: link }]);
   });
 
+  test('Share with… that fails shows the link to copy by hand; a cancel shows nothing new', async () => {
+    for (const [reason, field] of [['NotAllowedError', true], ['AbortError', false]] as const) {
+      const page = await freshProfile({
+        beforeGoto: async (target) => void (await target.addInitScript((thrown) => {
+          Object.defineProperty(Navigator.prototype, 'share', { configurable: true, value: () => Promise.reject(new DOMException('Not shared', thrown)) });
+          Object.defineProperty(Navigator.prototype, 'canShare', { configurable: true, value: () => true });
+        }, reason)),
+      });
+      await openPlayground(page);
+      await waitReady(page);
+      await share(page);
+      await page.locator(`${MESSAGE} button.text-button`).click();
+      if (field) await page.waitForSelector(`${MESSAGE} input.message-link`);
+      else {
+        await page.waitForTimeout(300);
+        expect(await page.locator(`${MESSAGE} input.message-link`).count()).toBe(0);
+      }
+    }
+  });
+
   test('when the clipboard refuses, the link shows selected in a read-only field', async () => {
     const page = await freshProfile({
       beforeGoto: async (target) => void (await target.addInitScript(() => {

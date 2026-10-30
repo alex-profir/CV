@@ -57,8 +57,12 @@ export function BestOnDesktop() {
   async function share(): Promise<void> {
     const made = await phoneLink();
     if ('link' in made && canShare(made.link)) {
-      await navigator.share({ url: made.link }).catch(() => undefined);
-      return;
+      // A cancel says nothing; any other failure copies instead (FR-058).
+      const failed = await navigator.share({ url: made.link }).then(
+        () => false,
+        (error: unknown) => !(error instanceof DOMException && error.name === 'AbortError'),
+      );
+      if (!failed) return;
     }
     await copy();
   }

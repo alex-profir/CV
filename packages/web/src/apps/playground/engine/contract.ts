@@ -44,6 +44,8 @@ export type EngineText = {
   packages: string;
   runCommand: string;
   keysCommand: string;
+  javascriptName: string;
+  declarationsName: string;
 };
 
 export type EngineCommand = 'playground.run' | 'playground.keys';

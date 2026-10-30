@@ -94,6 +94,30 @@ describe('008-typescript-playground-FR-058: on a phone the Playground shows the 
     await expect.poll(() => page.evaluate(() => (window as unknown as { shared: unknown[] }).shared)).toEqual([{ url: `${origin}/#playground` }]);
   });
 
+  for (const [name, failure, copied] of [
+    ['a failure copies the link instead', 'NotAllowedError', true],
+    ['a cancel does nothing more', 'AbortError', false],
+  ] as const) {
+    test(`Share link, when the device's sharing fails: ${name}`, async () => {
+      const { page } = await phone({
+        beforeGoto: async (target) =>
+          void (await target.addInitScript((thrown) => {
+            Object.defineProperty(Navigator.prototype, 'share', { configurable: true, value: () => Promise.reject(new DOMException('Not shared', thrown)) });
+            Object.defineProperty(Navigator.prototype, 'canShare', { configurable: true, value: () => true });
+          }, failure)),
+      });
+      await openFromHome(page);
+      await page.evaluate(() => navigator.clipboard.writeText('before'));
+      await page.locator(`${SCREEN} button.share-link`).tap();
+      const origin = new URL(page.url()).origin;
+      if (copied) await expect.poll(() => clipboard(page)).toBe(`${origin}/#playground`);
+      else {
+        await page.waitForTimeout(300);
+        expect(await clipboard(page)).toBe('before');
+      }
+    });
+  }
+
   test("without the device's sharing, Share link copies the link and says so; Copy link copies it too", async () => {
     const { page } = await phone({
       beforeGoto: async (target) =>

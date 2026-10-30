@@ -317,7 +317,7 @@ export function createEditing(init: EngineInit) {
       theme: THEME,
       readOnly: true,
       domReadOnly: true,
-      ariaLabel: kind,
+      ariaLabel: kind === 'javascript' ? init.text.javascriptName : init.text.declarationsName,
       lineNumbers: 'off',
       minimap: { enabled: false },
       automaticLayout: true,

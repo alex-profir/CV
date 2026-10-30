@@ -28,7 +28,7 @@ let engine: Engine | null = null;
 let loading: AbortController | null = null;
 let mac = false;
 let starting: Example | null = null;
-// The code before the last replacement, for Undo.
+// Whether the last edit was a replacement, which Undo takes back.
 let undoable = false;
 let messageIds = 0;
 let commandHandler: (id: EngineCommand) => void = (id) => {
@@ -172,7 +172,11 @@ const onCheckLost = () => checker.lost();
 function onChange(version: number): void {
   checker.changed(version);
   keeper.changed();
-  undoable = false;
+  // Undo would now take back the edit, not the replacement the message names.
+  if (undoable) {
+    undoable = false;
+    session.update(({ message }) => (message === null ? {} : { message: { ...message, actions: message.actions.filter((action) => action !== 'undo') } }));
+  }
   const { example } = session.get();
   if (example !== null && engine !== null) {
     const shown = example === startingExample().id ? startingExample().code : null;
@@ -226,7 +230,7 @@ export function startEngine(input: StartInput): void {
         cvTypes,
         globalsTypes: GLOBALS_TYPES,
         theme: editorTheme(),
-        text: { editorName: words.editor.name, packages: words.editor.packages, runCommand: words.editor.runCommand, keysCommand: words.editor.keysCommand },
+        text: { editorName: words.editor.name, packages: words.editor.packages, runCommand: words.editor.runCommand, keysCommand: words.editor.keysCommand, javascriptName: words.panes.javascript, declarationsName: words.panes.declarations },
         mac,
         onChange,
         onCheck,
@@ -308,8 +312,6 @@ export function undoReplacement(): void {
   dismissMessage();
 }
 
-export const canUndo = () => undoable;
-
 // The examples for the visitor's system (FR-028).
 export const exampleList = (): readonly Example[] => examples(mac);
 
@@ -365,9 +367,16 @@ export async function shareCode(): Promise<void> {
   showMessage('done', 'linkCopied', canShareWith(result.link) ? ['share-with'] : [], { n: Object.keys(options).length });
 }
 
+const isCancel = (error: unknown) => error instanceof DOMException && error.name === 'AbortError';
+
 // Share with… (FR-052): the device's own sharing, with the link alone.
 export function shareWith(): void {
-  if (sharedLink !== null) void navigator.share({ url: sharedLink }).catch(() => undefined);
+  const link = sharedLink;
+  if (link === null) return;
+  void navigator.share({ url: link }).catch((error: unknown) => {
+    // A cancel says nothing; any other failure leaves the link to copy by hand.
+    if (!isCancel(error)) showMessage('info', 'linkField', [], undefined, link);
+  });
 }
 
 // Copy the code (FR-055).

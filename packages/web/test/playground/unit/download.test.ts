@@ -344,6 +344,48 @@ describe('008-typescript-playground-FR-013: an older complete copy is used when 
     expect(caches.stores.has('playground-old1')).toBe(true);
   });
 
+  test('online, an older complete copy opens at once with no download shown; the new one is stored behind it and used from the next open', async () => {
+    const caches = new FakeCaches();
+    const old = manifestFor('old1', 1, '5.8.0');
+    const stored = await caches.open('playground-old1');
+    for (const file of old.files) await stored.put(file.path, new Response('x'));
+    await stored.put('/playground/old1/complete', new Response(JSON.stringify(old)));
+    const next = manifestFor('new1', 1, '5.9.3');
+    const net: Net = { online: true, requests: [] };
+    const { states, events } = record();
+    const fake = env(caches, [next], net);
+    const loaded = await loadEngine('/playground/new1/files.json', 1000, events, new AbortController().signal, fake);
+    expect(loaded.manifest.version).toBe('old1');
+    expect(states.map((state) => state.kind)).toEqual(['checking', 'ready']);
+    expect(states.at(-1)).toEqual({ kind: 'ready', typescript: '5.8.0', kept: true });
+    expect(fake.imported).toEqual([old.entry]);
+    await expect.poll(() => caches.stores.get('playground-new1')?.entries.has('/playground/new1/complete')).toBe(true);
+    expect(states.map((state) => state.kind)).toEqual(['checking', 'ready']);
+    expect(caches.stores.has('playground-old1')).toBe(true);
+
+    const second = record();
+    const again = env(caches, [next], { online: true, requests: [] });
+    await loadEngine('/playground/new1/files.json', 1000, second.events, new AbortController().signal, again);
+    expect(again.imported).toEqual([next.entry]);
+    expect(second.states.at(-1)).toEqual({ kind: 'ready', typescript: '5.9.3', kept: true });
+    expect(caches.stores.has('playground-old1')).toBe(false);
+  });
+
+  test('a new copy that fails behind an older one leaves no marker, and the older keeps working', async () => {
+    const caches = new FakeCaches();
+    const old = manifestFor('old1');
+    const stored = await caches.open('playground-old1');
+    await stored.put('/playground/old1/complete', new Response(JSON.stringify(old)));
+    const next = manifestFor('new1');
+    const net: Net = { online: true, requests: [], fail: (url) => url === next.files[1]!.path };
+    const loaded = await loadEngine('/playground/new1/files.json', 1000, record().events, new AbortController().signal, env(caches, [next], net));
+    expect(loaded.manifest.version).toBe('old1');
+    await expect.poll(() => net.requests).toContain(next.files[1]!.path);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(caches.stores.get('playground-new1')?.entries.has('/playground/new1/complete')).toBe(false);
+    expect(caches.stores.has('playground-old1')).toBe(true);
+  });
+
   test('once the current copy is complete, every other playground- cache is deleted', async () => {
     const caches = new FakeCaches();
     await caches.open('playground-old1');
