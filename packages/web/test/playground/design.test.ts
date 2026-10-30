@@ -71,26 +71,32 @@ describe('008-typescript-playground-FR-068: the Playground matches the approved 
     expect(tab.color).toBe(await computedColor(page, token('color.shell-text')));
   });
 
-  test('the editor: the mono font at 13 px on 20 px lines, a 48 px gutter, on the code surface', async () => {
+  test('the editor: the mono font at 13 px on 20 px lines, a 48 px gutter and the code 8 px after it, on the code surface', async () => {
     const page = await openPlaygroundPage();
     const lines = await style(page, `${EDITOR} .view-lines`);
     expect(lines.font).toContain(token('font.family.mono').split(',')[0]!);
     expect(lines.size).toBe(token('font.size.small'));
     expect(Number.parseFloat(lines.line)).toBe(px('size.code-line'));
     const gutter = await page.locator(`${EDITOR} .monaco-editor`).evaluate((element) => element.querySelector('.view-lines')!.getBoundingClientRect().left - element.getBoundingClientRect().left);
-    expect(gutter).toBe(px('size.playground-gutter'));
+    expect(gutter).toBe(px('size.playground-gutter') + px('space.2'));
     expect((await style(page, `${EDITOR} .monaco-editor-background`)).background).toBe(await computedColor(page, token('color.code.surface')));
   });
 
-  test('the syntax colors by token class: keywords, types, strings, numbers, comments in italics, punctuation and other code', async () => {
+  test('the syntax colors by token class: keywords, types, functions, properties, strings, numbers, comments in italics, punctuation and other code', async () => {
     const page = await openPlaygroundPage();
-    const code = "interface Job { title: string }\nconst years = 8; // years\nconst job: Job = { title: 'Engineer' };";
+    const code = "interface Job { title: string }\nconst years = 8; // years\nconst job: Job = { title: 'Engineer' };\nfunction twice(n: number) { return n * 2; }\ntwice(job.title.length);";
     await setCode(page, code);
     await waitForCode(page, code.split('\n')[0]!);
     await waitChecked(page);
-    const colored = await page.locator(`${EDITOR} .view-line span span`).evaluateAll((list) =>
-      list.map((span) => ({ text: (span.textContent ?? '').replace(/ /g, ' ').trim(), color: getComputedStyle(span).color, italic: getComputedStyle(span).fontStyle === 'italic' })),
-    );
+    const read = () =>
+      page.locator(`${EDITOR} .view-line span span`).evaluateAll((list) =>
+        list.map((span) => ({ text: (span.textContent ?? '').replace(/\u00a0/g, ' ').trim(), color: getComputedStyle(span).color, italic: getComputedStyle(span).fontStyle === 'italic' })),
+      );
+    // Functions and properties take their colors once TypeScript has said
+    // what the names are.
+    const functionColor = await computedColor(page, token('color.code.function'));
+    await expect.poll(async () => (await read()).filter((span) => span.text === 'twice').map((span) => span.color)).toEqual([functionColor, functionColor]);
+    const colored = await read();
     const colorOf = (text: string) => colored.find((span) => span.text === text);
     const expected: [string, CssVarTokenName][] = [
       ['interface', 'color.code.keyword'],
@@ -101,9 +107,39 @@ describe('008-typescript-playground-FR-068: the Playground matches the approved 
       ['// years', 'color.code.comment'],
       ['{', 'color.code.punctuation'],
       ['years', 'color.code.text'],
+      ['title', 'color.code.property'],
+      ['length', 'color.code.property'],
     ];
     for (const [text, name] of expected) expect(colorOf(text)?.color, text).toBe(await computedColor(page, token(name)));
     expect(colorOf('// years')?.italic).toBe(true);
+  });
+
+  test("the editor's icons are the design's: suggestion kinds as letters, the lightbulb as its glyph, not Monaco's icon font", async () => {
+    const page = await openPlaygroundPage();
+    const code = 'interface Job { title: string; years: number }\nconst job: Job = {};\njob.';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    const mod = (await page.evaluate(() => /Macintosh|Mac OS X/.test(navigator.userAgent))) ? 'Meta' : 'Control';
+    await page.locator(`${EDITOR} .view-lines`).click();
+    await page.keyboard.press(`${mod}+ArrowDown`);
+    await page.keyboard.press('End');
+    await page.keyboard.press('Control+Space');
+    await page.waitForSelector(`${EDITOR} .suggest-widget.visible .suggest-icon`);
+    const kinds = await page.locator(`${EDITOR} .suggest-widget .suggest-icon`).evaluateAll((list) => list.map((icon) => ({ content: getComputedStyle(icon, '::before').content, font: getComputedStyle(icon, '::before').fontFamily })));
+    expect(kinds.length).toBeGreaterThan(0);
+    for (const kind of kinds) {
+      expect(kind.content).toMatch(/^"[A-Z]"$/);
+      expect(kind.font).toBe(token('font.family.mono'));
+    }
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Control+KeyG');
+    await page.keyboard.type('2:7');
+    await page.keyboard.press('Enter');
+    const bulb = page.locator(`${EDITOR} [class*="codicon-gutter-lightbulb"], ${EDITOR} [class*="codicon-light-bulb"]`).first();
+    await bulb.waitFor({ timeout: 10_000 });
+    const glyph = await bulb.evaluate((icon) => ({ content: getComputedStyle(icon, '::before').content, mask: getComputedStyle(icon, '::before').maskImage }));
+    expect(glyph).toEqual({ content: '""', mask: expect.stringContaining('lightbulb') });
   });
 
   test('the popups and the raised widgets: the raised color, the chrome border and the body font', async () => {
