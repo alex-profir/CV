@@ -351,6 +351,24 @@ reducer's effect.
 window's surface, not the approved cross-fade); keeping the outgoing content mounted for 150 ms
 over the new one (two Terminals reading one session for that time, R3).
 
+**Revised 2026-10-30** (found by the owner with 006's amendment, fixed in its pull request): a view
+transition fades two flat images of the scroller. Chrome draws them well, but Safari and Firefox
+draw them without the Terminal window's glass blur behind the content, and without the scroller's
+scroll bar, so for the length of the fade the content behind the glass shows sharp and the CV
+window loses its scroll bar, and both snap back at the end. A view transition can't be told to
+keep them. Earlier, in every browser, the images sprang back to full opacity after their 150 ms,
+until the page's own 250 ms cross-fade ended, so the old content flickered through the new.
+
+**Decision, as revised**: no view transition. Just before the swap, `crossFade` lays a copy of the
+scroller over it: `cloneNode(true)`, without `id` or `data-req`, `inert` and `aria-hidden`, at the
+scroller's place and size and scrolled as far, marked `data-spec-swap`. The swap runs in
+`flushSync`, then the copy fades from 1 to 0 and the scroller's new children from 0 to 1, with
+`element.animate` over `motion.duration.fast` with `motion.easing.standard`, and the copy is
+removed. It is a still copy of the DOM, not a second mounted app, so no session is read twice
+(R3). Both layers are live, so the blur and the scroll bar stay drawn in every browser. With
+reduced motion `swap` runs at once, as before. A second swap of the same scroller ends the first
+one's fade at once.
+
 ## R12. Offline and uncommitted notes
 
 **Decision**: the offline note shows while `navigator.onLine` is `false`, and follows the `online`

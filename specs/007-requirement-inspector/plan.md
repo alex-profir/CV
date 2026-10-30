@@ -38,8 +38,9 @@ Technical approach (details in [research.md](./research.md)):
   wait for it, and a version activated mid-visit can't take it away (R9).
 - **No markup from specs.** A requirement's text is parsed at build time into a small inline tree
   (code, emphasis, links, requirement references) and rendered as React text (R7).
-- **A cross-fade** through the View Transitions API, scoped to the one view's content, and none
-  with reduced motion (R11).
+- **A cross-fade** of the one view's content, its old content a still, inert copy fading out over
+  the new, and none with reduced motion (R11). Revised 2026-10-30: it was a view transition, which
+  Safari and Firefox draw without the glass blur and the scroll bar.
 - **Checks.** A new site check part, `inspector`, compares every view with the repository, sweeps
   every `data-req` in every driven state, and proves Back restores the app. The accessibility,
   keyboard, offline, other-sites, layout, modes and fonts parts cover the new states (R15).
@@ -76,8 +77,8 @@ cache `cv-<version>` holds the data file with the rest of the site.
   the interim provision on deferred manual checks (R17).
 
 **Target Platform**: as 005: the current and previous major versions of Chrome, Edge, Firefox and
-Safari, on desktop and phone. All of them have the View Transitions API; where it is missing the
-swap still works, with no fade (R11). Build and checks on Node.js 26, macOS and Linux (GitHub
+Safari, on desktop and phone. The cross-fade needs only `element.animate`, which all of them have
+(R11, revised 2026-10-30). Build and checks on Node.js 26, macOS and Linux (GitHub
 Actions `ubuntu-latest`).
 
 **Project Type**: a static web site. A feature of the existing shell page, a build-time data
@@ -133,7 +134,7 @@ shows the post-design state.
 | VII | Recruiter First | No added steps before the CV; `/cv` stays server-rendered | Pass | First load is unchanged but for the control in the title bar, which covers nothing; no hint, badge or tooltip appears (FR-005). The data isn't fetched until the shell is ready (FR-015). `/cv` is untouched (FR-025) |
 | VIII | Accessible and Fast | WCAG 2.2 AA, desktop keyboard operation, reduced motion, Lighthouse 90+ planned and verifiable | Pass | axe in every FR-024 state of both shells, the keyboard flow of FR-032, forced colors, reduced motion, zoom and text spacing run on every pull request (R15). Focus moves to the view's heading and back to the control (R14). With reduced motion, no fade (R11). Lighthouse 90+ on `/` and `/cv` stays a merge check, with the render time marked **Verify** (R10, R16). Screen readers by hand (quickstart 6), possibly in the final testing phase (R17) |
 | IX | Original Design | No Apple icons, fonts, wallpapers or other Apple assets | Pass | The sheet, question, offline and commit glyphs, the chips and the layout are the design's own, as committed SVG components and CSS. Fonts are the site's OFL families. The owner's review records the look as original (design/review.md, FR-021) |
-| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | No new package and no agent skill. The View Transitions API is a browser standard. Each abstraction is listed below with the simpler alternative it rejected |
+| X | Simple and Vetted | Every new dependency, skill and abstraction listed below with a reason | Pass | No new package and no agent skill. The Web Animations API is a browser standard. Each abstraction is listed below with the simpler alternative it rejected |
 | XI | One Feature, One PR | Feature ships in one PR linking spec.md and tasks.md | Pass | One pull request from `007-requirement-inspector`, after 006's has merged, holding the design README's `docs:` rename, 001's additive exports, the `os-core` change, the tokens, the inspector, the build changes and the check changes. It links spec.md and tasks.md |
 
 ## Requirement Traceability
@@ -169,7 +170,7 @@ shells" means at 1440 × 900 and at 375 × 812 with touch. UI targets follow
 | 007-requirement-inspector-FR-019 | insp `mobile.test.ts`: at 375 by touch, tap `Specs`, open "What's this?", follow a link's `href`, tap Back; the same with an external keyboard; every inspector control and link is at least 24 × 24 px; `Specs` fills the header's 52 px height and is at least 44 px wide. Manual: phone screen readers (quickstart 6) | mobile `button.show-specs` |
 | 007-requirement-inspector-FR-020 | insp `layout.test.ts`: in a 400 px wide window, at 320 × 568, 812 × 375 and 1440 × 900, and with a fixture requirement holding a 120-character word and a long test path, no horizontal scroll; two columns from 480 px of content, stacked below; the view scrolls inside its window while `.spec-bar` stays at the top | `section.spec-view` |
 | 007-requirement-inspector-FR-021 | insp `design.test.ts`: computed colors, fonts and sizes are token values; `Show specs` is 24 px tall, 10 px from the window's right edge; the top bar is 40 px on desktop and 48 px on mobile; padding is 40 px from 700 px of width and 24 px below, 20 px on mobile; reading width 760 px; the glyphs are the committed SVG components. web `self-check.test.ts`: `npm run token-check` passes with no skip marker. Manual: design/review.md | Non-UI |
-| 007-requirement-inspector-FR-022 | insp `motion.test.ts`: without reduced motion, a view transition runs whose animations last `motion.duration.fast`, change only opacity, and leave every box outside the view unchanged; with reduced motion, no view transition starts and sampled frames show no change of opacity, `transform` or `scale` | Non-UI |
+| 007-requirement-inspector-FR-022 | insp `motion.test.ts`: without reduced motion, no view transition starts; an inert copy of the old content covers the scroller and only fades out while the new content only fades in, each over `motion.duration.fast` with `motion.easing.standard` and changing only opacity; the scroll bar stays; every box outside the view is unchanged; with reduced motion, nothing fades and sampled frames show no change of `transform` or `scale` (revised 2026-10-30) | Non-UI |
 | 007-requirement-inspector-FR-023 | insp `modes.test.ts`: with forced colors, headings, links (underlined), the status chips (solid and dashed borders, filled and hollow dots), the notes, `Show specs`, Back and "What's this?" have visible borders or text; no element relies on a background image or color alone | Non-UI |
 | 007-requirement-inspector-FR-024 | insp `accessibility.test.ts`: axe (WCAG 2.2 A and AA tags) finds nothing in the spec views of the CV, the Terminal and About, with "What's this?" open, and with the Terminal's view beside the CV, in both shells; at 200% zoom, text-only 200%, 400% on a 1280 px window and with text spacing, no clipping or overlap | `section.spec-view` |
 | 007-requirement-inspector-FR-025 | insp `cv-page.test.ts`: `/cv`'s HTML holds no `show-specs`, `spec-view` or `data-requirements`, and loads only the registration script; 004's tests pass unchanged | Non-UI |
@@ -197,7 +198,7 @@ Success criteria without an FR of their own:
 
 ## Dependencies, Skills & Abstractions
 
-No new package and no agent skill. Git and the View Transitions API are a tool and a browser
+No new package and no agent skill. Git and the Web Animations API are a tool and a browser
 standard already present.
 
 | Item | Kind | Reason | Simpler alternative rejected because | Vendor-maintained |
@@ -210,7 +211,7 @@ standard already present.
 | Data file and loader (`assets/requirements-<hash>.json`, `src/inspector/data.ts`) | abstraction | The data reaches the browser without delaying the shell and survives a mid-visit update (R9) | In the `os` script or the HTML: delays hydration (FR-015). Fetched on first use: can vanish after an update (005 FR-053) | N/A |
 | Spec view components (`src/inspector/`) | abstraction | One view for every app and About, in both shells (R4, R14) | Per-app views: three copies of the same structure | N/A |
 | View model (`src/inspector/derive.ts`) | abstraction | Groups, order and counts in one pure function the view and the site check share (FR-006) | Grouping in the component: the check would have to repeat it | N/A |
-| Cross-fade (`src/inspector/transition.ts`) | abstraction | The design's cross-fade, scoped to one view, none with reduced motion (R11) | A fade-in only: not the approved look. Keeping both mounted: two Terminals on one session | N/A |
+| Cross-fade (`src/inspector/transition.ts`) | abstraction | The design's cross-fade, scoped to one view, none with reduced motion (R11) | A fade-in only: not the approved look. Keeping both mounted: two Terminals on one session. A view transition (until 2026-10-30): Safari and Firefox lose the blur and the scroll bar while it runs | N/A |
 | Link forms (`src/format/repository.ts`) | abstraction | Every repository link built in one place, with GitHub's `?plain=1` for Markdown lines (R8) | Links written in each component: four copies of the same pattern | N/A |
 | Git copy in `repoCopy` (`packages/web/test/helpers/copy.ts`) | abstraction (tests only) | Copies built in tests need a commit, and some need uncommitted changes (R8) | An environment override for the commit: local builds would differ from CI, against FR-034 | N/A |
 | Inspector test helper (`packages/web/test/helpers/inspector.ts`) | abstraction (tests only) | Shows and leaves a view in a shell, reads its groups and requirements, for every inspector browser test | Repeating those steps in about twenty test files | N/A |
