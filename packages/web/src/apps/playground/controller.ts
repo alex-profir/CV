@@ -9,11 +9,13 @@ import { createChecker } from './checker.ts';
 import { GLOBALS_TYPES } from './globals-types.ts';
 import { changedOptions, settle } from './compiler-options.ts';
 import type { ChangedOptions } from './compiler-options.ts';
+import { examples } from './examples/index.ts';
 import { welcome } from './examples/welcome.ts';
 import type { Example } from './examples/types.ts';
 import { createKeeper, readKept, removeKept, worthKeeping, writeKept } from './kept.ts';
 import type { EditorView, Engine, EngineCommand } from './engine/contract.ts';
 import { loadEngine, requestRetry } from './engine/loader.ts';
+import { runGoing, startRun, stopRun } from './running.ts';
 import { session } from './session.ts';
 import { editorTheme } from './theme-values.ts';
 import type { CheckResult, DownloadState, Message, MessageAction, MessageKey } from './types.ts';
@@ -27,7 +29,11 @@ let starting: Example | null = null;
 // The code before the last replacement, for Undo.
 let undoable = false;
 let messageIds = 0;
-let commandHandler: (id: EngineCommand) => void = () => undefined;
+let commandHandler: (id: EngineCommand) => void = (id) => {
+  if (id === 'playground.run') runCode();
+};
+// The CV document, from the app's props, for the code's `cv` (research R10).
+let cvDocument: unknown = null;
 const engineListeners = new Set<() => void>();
 
 export const currentEngine = (): Engine | null => engine;
@@ -54,6 +60,22 @@ export const startingExample = (): Example => (starting ??= welcome(mac));
 export function setCommandHandler(handler: (id: EngineCommand) => void): void {
   commandHandler = handler;
 }
+
+export function setCvDocument(resume: unknown): void {
+  cvDocument = resume;
+}
+
+// Run (FR-032): the code as it is now, with a copy of the CV document; Run
+// during a run ends the first, then starts.
+export function runCode(): void {
+  if (engine === null) return;
+  startRun(engine, structuredClone(cvDocument));
+}
+
+// Stop (FR-038).
+export const stopCode = () => stopRun();
+
+export const canStop = () => runGoing();
 
 // The one message under the toolbar; a new one replaces it (data-model.md
 // Message).
@@ -207,6 +229,7 @@ export const retryDownload = () => requestRetry();
 
 // The window closed (FR-046): a download in progress stops; the code is kept.
 export function closePlayground(): void {
+  stopRun(true);
   keeper.flush();
   if (loading !== null) {
     loading.abort();
@@ -218,6 +241,7 @@ export function closePlayground(): void {
 
 // The page goes: the code is kept now (R15).
 export function onPageHide(): void {
+  stopRun(true);
   keeper.flush();
 }
 
@@ -245,8 +269,22 @@ export function undoReplacement(): void {
 
 export const canUndo = () => undoable;
 
+// The examples for the visitor's system (FR-028).
+export const exampleList = (): readonly Example[] => examples(mac);
+
+// An example replaces the code and its options as one undoable edit, and
+// says so with Undo (FR-027).
+export function chooseExample(example: Example): void {
+  if (engine === null) return;
+  replaceCode(example.code, example.options ?? {});
+  session.update({ example: example.id, panel: 'none' });
+  showMessage('info', 'exampleReplaced', ['undo'], { title: example.title });
+  requestAnimationFrame(focusEditor);
+}
+
 // Reset (FR-080): Welcome and the defaults come back; the code is no longer kept.
 export function resetPlayground(): void {
+  stopRun();
   replaceCode(startingExample().code, {});
   keeper.cancel();
   removeKept();

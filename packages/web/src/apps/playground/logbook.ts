@@ -1,8 +1,9 @@
 // The page's log book (data-model.md Log book, FR-044, FR-064): at most the
 // latest 1,000 entries, oldest first, with a count of those dropped.
+import { LOG_LIMITS } from './limits.ts';
 import type { LogBook, LogEntry } from './types.ts';
 
-export const LOG_LIMIT = 1000;
+export const LOG_LIMIT = LOG_LIMITS.entries;
 
 export const emptyLogBook = (): LogBook => ({ entries: [], dropped: 0, newSinceAnnounce: 0 });
 

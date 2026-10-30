@@ -140,7 +140,7 @@ export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName
   const appItems = focused === null ? [] : (apps.find((app) => app.id === focused)?.menuItems ?? []);
   const itemEntries: MenuEntry[] = appItems.flatMap((item): MenuEntry[] => [
     ...(item.separatorBefore === true ? [{ kind: 'separator' as const, key: `before-${item.key}` }] : []),
-    { kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, keys: item.shortcut, disabled: item.disabled?.() === true, 'data-req': item['data-req'] },
+    { kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, keys: typeof item.shortcut === 'function' ? item.shortcut() : item.shortcut, disabled: item.disabled?.() === true, 'data-req': item['data-req'] },
     ...(item.separatorAfter === true ? [{ kind: 'separator' as const, key: `after-${item.key}` }] : []),
   ]);
   // "Show specs", or "Back to [view]" while it shows them, after the app's

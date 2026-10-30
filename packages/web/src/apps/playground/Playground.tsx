@@ -5,7 +5,9 @@
 // specs or a shell switch loses nothing (FR-005, FR-061).
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { siteText } from '../../site-text.ts';
-import { currentEngine, onEngine, setEditorView, startEngine } from './controller.ts';
+import type { Resume } from '@cv/content';
+import { currentEngine, onEngine, setCvDocument, setEditorView, startEngine } from './controller.ts';
+import { ExamplesPanel } from './ExamplesPanel.tsx';
 import { Loading } from './Loading.tsx';
 import { Message } from './Message.tsx';
 import { OptionsPanel } from './OptionsPanel.tsx';
@@ -65,6 +67,7 @@ function Workspace() {
   return (
     <>
       <Toolbar />
+      {panel === 'examples' && <ExamplesPanel />}
       <Message />
       <div className="playground-body">
         <Editor />
@@ -76,8 +79,10 @@ function Workspace() {
   );
 }
 
-export function Playground() {
+export function Playground({ resume }: { resume: Resume }) {
   const ready = useSyncExternalStore(onEngine, engineReady, engineReady);
+  // The code's `cv` is a copy of this document at each run (research R10).
+  useEffect(() => setCvDocument(resume), [resume]);
   useEffect(() => {
     const assets = engineAssets();
     if (assets !== null) startEngine({ ...assets, mac: onMac() });
