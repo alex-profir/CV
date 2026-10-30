@@ -142,6 +142,23 @@ describe('006-terminal-FR-039 and SC-016: the flow proves Tab, the ways out and 
   });
 });
 
+describe('005-os-shell-FR-063 005-os-shell-FR-065: the keyboard flow minimizes and maximizes by the window menu, and the two keys change nothing', () => {
+  test('on the real build the flow passes', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toContain('desktop/keyboard/1440px pass');
+  });
+
+  test('a copy where Alt+Shift+H still minimizes fails, naming the step', async () => {
+    const root = seededCopy((copy) => {
+      replaceIn(copy, 'packages/os-core/src/shortcuts.ts', "  { id: 'close', letter: 'W', needs: 'window' },\n", "  { id: 'close', letter: 'W', needs: 'window' },\n  { id: 'minimize', letter: 'H', needs: 'window' },\n");
+      replaceIn(copy, 'packages/web/src/shells/desktop/Desktop.tsx', "        case 'move':\n", "        case 'minimize':\n          return dispatch({ type: 'minimize', view: focused! });\n        case 'move':\n");
+    });
+    const report = await runCheck(root, { parts: ['keyboard'] });
+    expect(report.problems.map(renderProblem)).toEqual(expect.arrayContaining([expect.stringMatching(/^keyboard \/ \S+ shortcut Alt\+Shift\+H: step "Alt\+Shift\+H does nothing": the CV window changed$/)]));
+  });
+});
+
 const FOCUS_FILE = 'packages/web/src/os/focus.ts';
 
 const INSPECTOR_VARIANT = 'desktop/inspector-keyboard/1440px';

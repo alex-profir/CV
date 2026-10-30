@@ -172,8 +172,8 @@ export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName
           { kind: 'action', key: 'move', label: own.move, shortcut: shortcut('move'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'move' }) },
           { kind: 'action', key: 'resize', label: own.resize, shortcut: shortcut('resize'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'resize' }) },
           { kind: 'separator', key: 'after-resize' },
-          { kind: 'action', key: 'minimize', label: own.minimize, shortcut: shortcut('minimize'), onChoose: () => dispatch({ type: 'minimize', view: focused }) },
-          { kind: 'action', key: 'maximize', label: maximized ? own.restore : own.maximize, shortcut: shortcut('maximize'), onChoose: () => dispatch({ type: 'toggleMaximize', view: focused }) },
+          { kind: 'action', key: 'minimize', label: own.minimize, onChoose: () => dispatch({ type: 'minimize', view: focused }) },
+          { kind: 'action', key: 'maximize', label: maximized ? own.restore : own.maximize, onChoose: () => dispatch({ type: 'toggleMaximize', view: focused }) },
           { kind: 'separator', key: 'after-maximize' },
           { kind: 'action', key: 'close', label: own.close, shortcut: shortcut('close'), onChoose: () => dispatch({ type: 'close', view: focused }) },
         ];
