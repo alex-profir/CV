@@ -974,8 +974,13 @@
     border-block-end-color: Highlight;
   }
 
+  /* The scrim drops out; the popup keeps its border. */
   .playground-scrim {
-    background: Canvas;
+    background: none;
+  }
+
+  .playground-toolbar .divider {
+    border-inline-start: var(--token-border-thin) solid CanvasText;
   }
 
   .playground-popup,
