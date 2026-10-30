@@ -5,6 +5,12 @@
 // register every editor contribution and its services, which must happen
 // before `monaco-editor/editor` starts the editor's services, or a
 // contribution finds its service missing.
+// These two register services, and must come first. The TypeScript language's
+// registration starts Monaco's services as it loads, and a service registered
+// after that is unknown: the code lens and drop contributions, which the
+// language features' own imports bring in, would throw on every editor start.
+import 'monaco-editor/editor/contrib/codelens/browser/codeLensCache';
+import 'monaco-editor/editor/common/services/treeViewsDndService';
 import { getTypeScriptWorker, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register';
 import 'monaco-editor/languages/definitions/typescript/register';
 import { KeyCode, KeyMod, MarkerSeverity, Uri, editor, languages } from 'monaco-editor/editor';

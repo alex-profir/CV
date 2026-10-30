@@ -296,7 +296,7 @@ One new package; no agent skill.
 | Check timing (`apps/playground/checker.ts`) | abstraction | The 250 ms pause, the queued check, stale results, the 300 ms "still checking" and lost checks (FR-016, R7), testable with fake timers in the fast suite | Inline in the controller: its imports need the site and the browser, so these rules could only be tested in a browser, slowly and by timing | N/A |
 | Compiler options table (`apps/playground/compiler-options.ts`) | abstraction | The option names, values and defaults, without words, read by the engine as well as the interface (FR-024 to FR-026, R9) | One table in `options.ts`: its descriptions are site text, which would pull the site's words into the engine's separate bundle | N/A |
 | Editor theme values (`apps/playground/theme-values.ts`) | abstraction | Reads the editor's theme from the token output in the `os` script and passes it to the engine, which holds no design value (Constitution IV, R22) | Reading tokens in `engine/theme.ts`: the engine's bundle would carry its own copy of the token output, a second source that an update could leave behind | N/A |
-| Three-engine run (`tools/local-verify/src/engines.js`, `npm run test:engines`) | abstraction (tests only) | Runs the tests that depend on a browser's engine, sandbox, memory and keys again in Firefox and WebKit, as the local full run's `engines` check (R25) | Vitest's browser matrix for every test: only these depend on the engine, and the rest would multiply a full run's half hour by three. Doing it by hand: skipped in time | N/A |
+| Three-engine run (`tools/local-verify/src/engines.js`, `npm run test:engines`) | abstraction (tests only) | Runs the tests that depend on a browser's engine, sandbox, memory and keys again in Firefox and WebKit, as the local full run's `engines` check (R25); and the timing test alone, where other browsers can't decide its result (SC-001, T190) | Vitest's browser matrix for every test: only these depend on the engine, and the rest would multiply a full run's half hour by three. Doing it by hand: skipped in time | N/A |
 | `App` `opensFromAddress`, `onOpenFromAddress` (`apps/index.ts`) | abstraction (change) | An app says which addresses open it, so the shell names none (Constitution V, T180) | `Os.tsx` importing the Playground's `holdsLink` and `readAddressLink`: the shell would name an app, and a second such app would mean a second import | N/A |
 
 ## Project Structure
@@ -375,7 +375,7 @@ packages/
 
 tools/
 ├── traceability/src/files.ts        # FAST_TEST_GLOBS + packages/web/test/playground/unit
-├── local-verify/src/engines.js      # npm run test:engines: Firefox and WebKit
+├── local-verify/src/engines.js      # npm run test:engines: Firefox and WebKit; timing alone
 └── site-check/
     ├── src/shell-states.ts          # + the Playground's states
     ├── src/parts/playground.ts      # new

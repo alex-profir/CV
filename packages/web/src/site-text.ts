@@ -421,6 +421,7 @@ export const siteText = deepFreeze({
       nothingRan: 'Nothing ran: {option} is on and the code has errors.',
       prompt: "{name} isn't available in the Playground, so it returned null.",
       confirm: "{name} isn't available in the Playground, so it returned false.",
+      closed: 'The code closed its own worker with close(), so the run ended.',
       more: '… {n} more',
       circular: '[circular]',
       deep: '[…]',

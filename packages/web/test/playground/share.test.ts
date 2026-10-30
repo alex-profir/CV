@@ -182,6 +182,28 @@ describe('008-typescript-playground-FR-053: a shared link opens the Playground i
     expect(await page.locator(`${TOOLBAR} p.run-state`).textContent()).toBe('');
   });
 
+  test('a link pasted into a tab already on the site opens the same way, closed or already open, and never runs', async () => {
+    const page = await freshProfile();
+    const first = 'console.log("pasted while closed");';
+    await page.evaluate((hash) => void (location.hash = hash), new URL(`http://site${pathFrom(JSON.stringify({ c: first }))}`).hash);
+    await waitForCode(page, first);
+    expect(await frontWindow(page)).toBe('playground');
+    expect(await messageText(page)).toBe(messages.sharedOpened);
+    expect(new URL(page.url()).hash).toBe('');
+    const second = 'console.log("pasted while open");';
+    const hash = new URL(`http://site${pathFrom(JSON.stringify({ c: second }))}`).hash;
+    await page.evaluate((value) => void (location.hash = value), hash);
+    await waitForCode(page, second);
+    expect(new URL(page.url()).hash).toBe('');
+    // The same link again is a new one.
+    await setCode(page, first);
+    await waitForCode(page, first);
+    await page.evaluate((value) => void (location.hash = value), hash);
+    await waitForCode(page, second);
+    expect(await page.locator(RUNNER).count()).toBe(0);
+    expect(await readLogs(page)).toEqual([]);
+  });
+
   test('Run in the message runs it; a reload shows the code with the visitor\'s edits', async () => {
     const code = 'console.log("ran");';
     const page = await openAt(pathFrom(JSON.stringify({ c: code })));

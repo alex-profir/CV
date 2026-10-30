@@ -61,6 +61,10 @@ called just before it opens. `Os.tsx`, on hydration, opens the first app in the 
   rule. The link goes into the Playground's session as `pendingLink`.
 - **Mobile**: after `hydrated`, `Os.tsx` dispatches `mobileOpen` for the app; the full-screen view
   shows the shared-link screen.
+- **A link pasted into a tab already on the site** changes only the fragment, with no load. `Os.tsx`
+  listens for `hashchange` and does the same as on hydration, in the current shell: the desktop
+  reads the new link as above, and runs nothing; a phone's screen shows the shared-link words, or
+  switches to them if it is already open (FR-053, FR-060).
 
 No other first load changes (FR-002): with no `#playground` fragment, the desktop shows only the CV
 window and the phone its home screen.

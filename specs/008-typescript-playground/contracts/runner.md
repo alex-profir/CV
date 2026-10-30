@@ -87,6 +87,9 @@ rendering stays in the Playground's window, with a Try again that clears the log
 | `importScripts`, `import(…)` of a URL | Blocked by the frame's policy: nothing is fetched (FR-042) |
 | `Worker`, `SharedWorker` | Not offered (R18) |
 
+`close()`, on the scope and its prototypes, logs the `closed` note and ends the run before closing
+the worker, so a closed worker doesn't read as blocked (T188).
+
 ## Lines
 
 The runtime reports a thrown error's position in the worker script; the host subtracts the
