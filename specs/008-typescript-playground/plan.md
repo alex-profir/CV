@@ -280,6 +280,7 @@ One new package; no agent skill.
 | Service worker: `/playground/` from any cache, left out of the precache | abstraction (change) | Serves the stored engine offline (FR-008, R4) | The loader serving files from the cache itself: workers and module imports need URLs | N/A |
 | Our TypeScript worker (`engine/ts.worker.ts`) | abstraction | One call for the panes and marks, the packages message, no import fixes, the runnable emit (R6, R11, R13) | Monaco's adapter alone: can't share results with the panes or add the packages message | N/A |
 | The runner: host, bootstrap and runtime (`engine/runner/`) | abstraction | Runs code apart from the site, never freezing it, with pending counts, the heartbeat and Stop (FR-032 to FR-051, R17 to R19) | Running in the page: freezes the site and reaches its storage. A worker on the site's origin: reaches its caches | N/A |
+| Message checks (`runner/messages.ts`) | abstraction | Everything from the worker is untrusted: only entries the runtime could make reach the page's render (FR-039, FR-040, T182) | Inline in `host.ts`: it imports the bundled scripts, so the checks couldn't run in the fast suite. Trusting the nonce: code in the worker can't be fully kept from it, and one forged message emptied `#os` | N/A |
 | Source-map decoder (`engine/source-map.ts`) | abstraction | Maps a thrown error to the visitor's line (FR-035, R13) | A source-map package: a dependency for some 60 lines of VLQ decoding | N/A |
 | Value formatter and log book (`runner/format.ts`, `logbook.ts`) | abstraction | FR-034 and FR-044's readable values and limits, text only (R18) | `JSON.stringify`: fails on circular values, maps, functions | N/A |
 | Session store (`apps/playground/session.ts`) | abstraction | State that survives unmounting, specs and shell switches (FR-005, FR-061, R2) | Component state: lost on every unmount | N/A |
@@ -366,7 +367,7 @@ packages/
     │           ├── engine.ts                # the engine's entry (separate build)
     │           ├── editor.ts  theme.ts  editor.css  glyphs/
     │           ├── ts.worker.ts  source-map.ts
-    │           └── runner/  host.ts  bootstrap.ts  runtime.ts  format.ts
+    │           └── runner/  host.ts  bootstrap.ts  runtime.ts  format.ts  messages.ts
     └── test/
         ├── helpers/playground.ts  helpers/other-site.ts
         ├── size.test.ts

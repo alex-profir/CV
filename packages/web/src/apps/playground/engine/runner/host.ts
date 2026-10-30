@@ -9,6 +9,7 @@
 import { bootstrap, policy, runtime } from 'virtual:playground-runner';
 import type { RunEvents, RunHandle } from '../contract.ts';
 import { mapPosition } from '../source-map.ts';
+import { isCount, isPlace, isWorkerEntry, workerEntries } from './messages.ts';
 import type { LogEntry, RunOutcome } from '../../types.ts';
 
 export const HEARTBEAT_MS = 250;
@@ -32,22 +33,23 @@ function runnerHost(): HTMLElement {
 
 export type Runnable = { code: string; map: string };
 
+// The worker runs the visitor's code, so every field is checked before use.
 type FromWorker = {
   nonce?: unknown;
-  started?: boolean;
-  pong?: boolean;
-  n?: number;
-  logs?: boolean;
-  entries?: LogEntry[];
-  dropped?: number;
-  cleared?: boolean;
-  pending?: boolean;
-  timers?: number;
-  requests?: number;
-  uncaught?: boolean;
-  entry?: LogEntry;
-  at?: { line: number; column: number } | null;
-  end?: boolean;
+  started?: unknown;
+  pong?: unknown;
+  n?: unknown;
+  logs?: unknown;
+  entries?: unknown;
+  dropped?: unknown;
+  cleared?: unknown;
+  pending?: unknown;
+  timers?: unknown;
+  requests?: unknown;
+  uncaught?: unknown;
+  entry?: unknown;
+  at?: unknown;
+  end?: unknown;
 };
 
 // Starts the code in a new frame. `startedAt` is when Run was pressed, which
@@ -119,8 +121,8 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
 
   // An uncaught error's line in the code, from its place in the worker's
   // script; none when it maps to nothing (FR-035).
-  function withLine(entry: LogEntry, at: FromWorker['at']): LogEntry {
-    if (at === null || at === undefined || at.line <= PRELUDE_LINES) return entry;
+  function withLine(entry: LogEntry, at: unknown): LogEntry {
+    if (!isPlace(at) || at.line <= PRELUDE_LINES) return entry;
     const mapped = mapPosition(runnable.map, at.line - PRELUDE_LINES, at.column);
     return mapped === null ? entry : { ...entry, line: mapped.line };
   }
@@ -128,14 +130,14 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
   port.onmessage = (event: MessageEvent<FromWorker>) => {
     const data = event.data;
     if (over || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
-    if (data.pong === true && typeof data.n === 'number') answered(data.n);
+    if (data.pong === true && isCount(data.n)) answered(data.n);
     else if (data.started === true) {
       events.onStarted({ errors });
       beat();
       heartbeat = setInterval(beat, HEARTBEAT_MS);
-    } else if (data.logs === true) events.onLogs({ entries: data.entries ?? [], dropped: data.dropped ?? 0, ...(data.cleared === true ? { cleared: true } : {}) });
-    else if (data.pending === true) events.onPending({ timers: data.timers ?? 0, requests: data.requests ?? 0 });
-    else if (data.uncaught === true && data.entry !== undefined) {
+    } else if (data.logs === true) events.onLogs({ entries: workerEntries(data.entries), dropped: isCount(data.dropped) ? data.dropped : 0, ...(data.cleared === true ? { cleared: true } : {}) });
+    else if (data.pending === true) events.onPending({ timers: isCount(data.timers) ? data.timers : 0, requests: isCount(data.requests) ? data.requests : 0 });
+    else if (data.uncaught === true && isWorkerEntry(data.entry)) {
       uncaught += 1;
       events.onLogs({ entries: [withLine(data.entry, data.at)], dropped: 0 });
     } else if (data.end === true) finish({ kind: uncaught > 0 ? 'errors' : 'finished', ms: elapsed(), uncaught });
