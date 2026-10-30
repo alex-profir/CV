@@ -43,6 +43,13 @@ export const ShareGlyph = () => (
   </Glyph>
 );
 
+export const CopyGlyph = () => (
+  <Glyph className="glyph" viewBox="0 0 16 16">
+    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+    <path d="M10.5 3.5v-1h-8v8h1" />
+  </Glyph>
+);
+
 export const ChevronGlyph = () => (
   <Glyph className="glyph chevron" viewBox="0 0 16 16">
     <path d="M4.5 6.5 8 10l3.5-3.5" />

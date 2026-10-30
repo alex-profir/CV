@@ -6,7 +6,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { siteText } from '../../site-text.ts';
 import type { Resume } from '@cv/content';
-import { currentEngine, onEngine, setCvDocument, setEditorView, startEngine } from './controller.ts';
+import { currentEngine, onEngine, readAddressLink, setCvDocument, setEditorView, startEngine } from './controller.ts';
 import { ExamplesPanel } from './ExamplesPanel.tsx';
 import { Loading } from './Loading.tsx';
 import { Message } from './Message.tsx';
@@ -84,6 +84,8 @@ export function Playground({ resume }: { resume: Resume }) {
   // The code's `cv` is a copy of this document at each run (research R10).
   useEffect(() => setCvDocument(resume), [resume]);
   useEffect(() => {
+    // A link opened on a phone opens once the shell widens (FR-061).
+    readAddressLink();
     const assets = engineAssets();
     if (assets !== null) startEngine({ ...assets, mac: onMac() });
   }, []);

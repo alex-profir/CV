@@ -85,7 +85,7 @@
 
 /* ---- Glyphs and marks ---------------------------------------------------- */
 
-.playground .glyph {
+:is(.playground, .playground-mobile) .glyph {
   inline-size: var(--token-size-control-dot);
   block-size: var(--token-size-control-dot);
   flex: none;
@@ -852,15 +852,18 @@
 
 .playground-mobile {
   display: grid;
-  justify-items: center;
-  align-content: center;
+  place-items: center;
   min-block-size: 100%;
   padding: var(--token-space-6) var(--token-space-5);
   box-sizing: border-box;
+}
+
+.playground-mobile-card {
+  max-inline-size: var(--token-size-playground-loading);
   text-align: center;
 }
 
-.playground-mobile > .app-glyph {
+.playground-mobile-card > .app-glyph {
   inline-size: var(--token-size-app-icon);
   block-size: var(--token-size-app-icon);
 }
@@ -874,9 +877,69 @@
 }
 
 .playground-mobile p {
-  max-inline-size: var(--token-size-playground-loading);
   margin: 0;
   color: var(--token-color-shell-text-soft);
+}
+
+.playground-mobile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--token-space-2);
+  margin-block: var(--token-space-6) var(--token-space-3);
+}
+
+/* Full width and the home screen's target height (FR-067). */
+.playground-mobile .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--token-space-1-5);
+  inline-size: 100%;
+  min-block-size: var(--token-size-home-target);
+  padding-inline: var(--token-space-2-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-text);
+  font: inherit;
+  font-size: var(--token-font-size-body);
+  font-weight: var(--token-font-weight-medium);
+}
+
+.playground-mobile .button.primary {
+  border-color: var(--token-color-playground-primary);
+  background: var(--token-color-playground-primary);
+  color: var(--token-color-playground-primary-text);
+}
+
+.playground-mobile .playground-mobile-note {
+  font-size: var(--token-font-size-small);
+  color: var(--token-color-shell-text-secondary);
+}
+
+/* In landscape, the icon on the left and the rest beside it, the buttons
+   side by side (wireframes, Phone screen). */
+@media (orientation: landscape) {
+  .playground-mobile-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--token-space-5);
+    max-inline-size: calc(var(--token-size-playground-loading) * 1.6);
+    text-align: start;
+  }
+
+  .playground-mobile-card > .app-glyph {
+    grid-row: span 4;
+  }
+
+  .playground-mobile h2 {
+    margin-block-start: 0;
+  }
+
+  .playground-mobile-actions {
+    flex-direction: row;
+    margin-block: var(--token-space-4) var(--token-space-2);
+  }
 }
 
 /* ---- Forced colors (003 FR-056) ----------------------------------------- */
