@@ -72,7 +72,9 @@ run's nonce; a message without it is ignored.
 | `alert(x)` | An `alert` entry; returns `undefined` (FR-043) |
 | `prompt(…)`, `confirm(…)` | A note that they aren't available; return `null` and `false` (FR-043) |
 | `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `requestAnimationFrame` | As usual, counted while pending (FR-036, FR-037) |
-| `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` | As usual, to any site, with no cookies of the site; counted while pending or open (FR-041) |
+| `fetch`, `XMLHttpRequest`, `EventSource` | As usual, to any site, but with no cookies or other credentials whatever the code asks: `fetch` forces `credentials: 'omit'` (a `Request` too), `withCredentials` is always false, and `EventSource`'s option is dropped. The wrappers replace the originals where the code could reach them (the scope and its prototypes, the original constructor). Counted while pending or open (FR-041) |
+| `WebSocket` | As usual; can't be limited this way, so it relies on the sandbox alone (FR-041). Counted while open |
+| The browser's own promises | `Response`, `Request` and `Blob` reads, `crypto.subtle`, `caches`, `indexedDB.databases`, `WebAssembly`'s compiling and `createImageBitmap` count as pending, as they settle in a later task (FR-037) |
 | `cv` | The run's copy of the CV document (FR-029) |
 | `localStorage`, `indexedDB`, `caches`, `document`, `window` | Missing or throwing: the frame's origin is opaque and a worker has no DOM (FR-039) |
 | `importScripts`, `import(…)` of a URL | Blocked by the frame's policy: nothing is fetched (FR-042) |

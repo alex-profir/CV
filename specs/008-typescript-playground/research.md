@@ -333,8 +333,12 @@ What this gives (FR-039 to FR-041):
   run, since a new iframe is made for each.
 - No navigation or new windows (`allow-top-navigation` and `allow-popups` aren't given), and the
   worker has no DOM.
-- Requests to any site, with `Origin: null` and no cookies (`connect-src *`); script loads from
-  anywhere are blocked by `script-src`, so packages fetch nothing (FR-042).
+- Requests to any site, with `Origin: null` (`connect-src *`); script loads from anywhere are
+  blocked by `script-src`, so packages fetch nothing (FR-042). The sandbox alone doesn't keep
+  cookies off: T025 found that with `credentials: 'include'`, Firefox and WebKit send the site's
+  cookie to another port on its host. So the runtime forces credentials off on `fetch`,
+  `XMLHttpRequest` and `EventSource` (FR-041 as amended 2026-10-30, T177); WebSocket relies on the
+  sandbox alone.
 - Its own thread: a loop in the worker can't block the page, so the shell, the editor and Stop keep
   responding (FR-040, SC-005).
 - It needs no network: `srcdoc` and a `blob:` worker, so it runs offline (FR-073). A sandboxed
@@ -656,16 +660,16 @@ F8 and `Shift+F8`, and Monaco's hover on `Cmd+K Cmd+I`, are read through Monaco'
   an endless loop within 1 s (SC-003).
 - **Close, reload, leaving** (FR-046): the window's `onClose` and the page's `pagehide` stop the
   run the same way; nothing of a run outlives its iframe.
-- **A crash or out of memory** (FR-045): a worker `error` event with no message, the iframe's
+- **A crash or out of memory** (FR-045, amended 2026-10-30), where the page lives on: a worker `error` event with no message, the iframe's
   `load` of a blank document, or the heartbeat lost while the bootstrap still answers mean the
   worker died: the run ends `crashed`, the logs say it stopped unexpectedly, or ran out of memory
   when the error says so, and the next run makes a new frame. A single huge allocation throws a
   catchable `RangeError`, logged as any error.
-- **Verify, first in implementation**: in Chromium, Firefox and WebKit, code that grows memory
-  until it fails ends only the run. Firefox ends the script and keeps the process; Chrome may lose
-  the whole tab if its sandboxed frame shares the page's process. If any target browser loses
-  the page, implementation stops and the owner is asked to amend FR-045 (for example, "ends the
-  run where the browser allows it"), since no page code can catch a process crash.
+- **Verified in implementation (T025, T089), and FR-045 amended 2026-10-30**: Chromium loses the
+  whole page when a run exhausts memory (its renderer crashes at about 3.8 GB), and no page code
+  can catch a process crash. So the owner amended FR-045 and FR-040: the page may crash when the
+  browser ends it, and the run's note and a working next run are required wherever the page lives
+  on. Firefox and WebKit reached the tests' 6 GB cap with no failure, the page still answering.
 
 ## R25. Checks
 
