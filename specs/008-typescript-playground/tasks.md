@@ -274,7 +274,7 @@ The design change comes first, in `docs:` commits, before any code (Constitution
 - [X] T028 Rebuild 005's interim mockup pages in `specs/005-os-shell/design/mockup/` that draw the window menu or About this site with the shortcuts, with the mockup's own build script, and export their PNGs again at the same widths. Commit as `docs(005): re-export the window menu and About without the two shortcuts (008)`.
   - Done 2026-10-30: 005's mockup has no build script; its pages are written by hand, so `desktop-window-own-menu.html` (no key beside Minimize and Maximize), `desktop-two-windows.html` and `desktop-window-menu.html` (About's six shortcuts) were edited, and their PNGs exported again at 1440 × 900, 1×, as its README says (the built site on 4173, the repository on 8005, Playwright's Chromium).
 - [ ] T029 Owner action: the owner reviews T027 and T028 and adds a dated sign-off line for the amendment to `specs/005-os-shell/design/review.md`, naming 008 FR-086 and the mockup commit. No code task in this phase starts before it (Constitution II). Record the date and commit here.
-  - BLOCKED: owner action. The owner reviews `f5143a1` (wireframes) and the T028 re-export commit, and signs `specs/005-os-shell/design/review.md`. T030 to T037 wait on it.
+  - BLOCKED: owner action. The owner reviews `f5143a1` (wireframes) and `f06573b` (the re-export), and signs `specs/005-os-shell/design/review.md`. T030 to T037 wait on it.
 - [ ] T030 [P] Update `packages/os-core/test/shortcuts.test.ts`, covers 005-os-shell-FR-063, 005-os-shell-FR-065 and 008-typescript-playground-FR-086: `SHORTCUTS` holds six entries, `menu-bar` M, `dock` D, `next-window` N, `close` W, `move` P, `resize` S, in that order; `matchShortcut` gives `null` for `Alt+Shift+H` and `Alt+Shift+F`, off a Mac by `key` and on a Mac by `code`; the reserved-keys fixture still holds none of the six.
   - BLOCKED: waits on the owner's sign-off of the 005 design amendment (T029, Constitution II).
 - [ ] T031 [P] Add a `describe` to `packages/web/test/shell/amendment.test.ts`, covers 008-typescript-playground-FR-086: `specs/005-os-shell/spec.md` records the 2026-10-29 session and marks FR-063 and FR-065 Amended, keeping the controls and menu commands; `specs/005-os-shell/design/wireframes.md` and `review.md` carry the dated amendment lines naming 008; `specs/005-os-shell/tasks.md` marks the shortcut tasks superseded by 008 (T037).
@@ -335,6 +335,23 @@ suggestions appear, the JavaScript, Declarations and Errors panes match TypeScri
 - [ ] T058 [P] [US1] Write `packages/web/test/playground/performance.test.ts` (SC-001, SC-002): with CDP throttling to 10 Mbit/s, the editor is usable within 15 s of the first open, and within 2 s on a later open online and offline; with 300 lines of code, errors within 1 s of a pause, and a type and suggestions within 500 ms, in 95 of 100 tries. On CI's shared runner the test logs the times without asserting them, as 007's T082 does; locally it asserts.
 
 ### Implementation for User Story 1
+
+> **In progress (2026-10-30)**: written but not yet run as tests: T038 `app.test.ts`, T039
+> `first-load.test.ts`, the unit tests of T046 (`unit/check.test.ts`) and T049 (`unit/kept.test.ts`,
+> both passing). Written and seen working in a Chromium smoke run of the real build (download, editor
+> focused, Welcome with no errors, panes, status bar `TypeScript 5.9.3`), no browser test yet:
+> T059 `PlaygroundIcon.tsx`; T060 `app.tsx` (Compiler options…, Command palette `F1`, Reset…; Keys…
+> waits on T071), `AppMenuItem` gains `shortcut`, `disabled`, `separatorBefore` and `separatorAfter`
+> (the design puts a separator before Show specs); T061 `Playground.tsx`, `Loading.tsx`
+> (`PlaygroundApp.tsx` was not needed: `app.tsx` picks `Playground` or `BestOnDesktop`); T066
+> `Panes.tsx`, `ErrorsPane.tsx`; T067 `Toolbar.tsx`, `OptionsPanel.tsx`; T068 `StatusBar.tsx`; T069
+> `Message.tsx`; the reset popup of T073 in `Popups.tsx`; T075 `playground.css`; T076's view state
+> in `Playground.tsx`. Also `Glyphs.tsx`, `text.ts`, `globals-types.ts`. Engine fixes: the globals lib
+> is `file:///playground-globals.d.ts` (as `playground.d.ts` it clashed with the code's own declaration
+> output); `editor.ts` imports Monaco's TypeScript features before `monaco-editor/editor`, else two
+> contributions miss their services. `cvTypesPlugin` moved into `vite.config.ts` and
+> `vitest.config.ts`, since the SSR build and the tests import the app too. None of T059 to T076 is
+> ticked until its tests pass.
 
 - [ ] T059 [P] [US1] Create `packages/web/src/apps/playground/PlaygroundIcon.tsx`: the design's tile (braces around a play mark, night glyph on an amber-to-rose tile with the design's corners), inline SVG, `aria-hidden="true"`, colors from `var(--token-color-icon-playground-…)`, `data-req="008-typescript-playground-FR-001"` as the Terminal's icon carries its own.
 - [ ] T060 [US1] Declare the app (contracts/shell.md App declaration): `packages/web/src/apps/playground/app.tsx` with `id`, `name`, `shells: ['desktop', 'mobile']`, `needsNetwork: false`, `Icon`, `Content`, `focusOnOpen: '.playground [data-focus-home]'`, `menuItems` and `onClose`; `APPS` in `packages/web/src/apps/index.ts` becomes `[cvApp, terminalApp, playgroundApp]`; `AppMenuItem` gains `shortcut`, `disabled` and `separatorBefore`, which `packages/web/src/shells/desktop/MenuBar.tsx` reads (the key shown beside the item with `aria-keyshortcuts`, `aria-disabled` when disabled, a separator above). US1's menu items: Compiler options…, Command palette (`F1`), Keys…, Reset…. T038 passes.

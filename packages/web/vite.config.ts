@@ -5,6 +5,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { containerBreakpoints } from './scripts/container-breakpoints.ts';
+import { cvTypesPlugin } from './scripts/cv-types.ts';
 import { cvFonts, fontAssetName } from './scripts/fonts-plugin.ts';
 import { shellLicenses } from './scripts/shell-licenses.ts';
 import { specListPlugin } from './scripts/spec-list.ts';
@@ -28,7 +29,8 @@ export default defineConfig({
   // A successful build prints nothing on stdout: the site check's report
   // owns it.
   logLevel: 'warn',
-  plugins: [cvFonts(), specListPlugin()],
+  // `virtual:cv-types`: the CV's type for the Playground (008 research R10).
+  plugins: [cvFonts(), specListPlugin(), cvTypesPlugin()],
   oxc: {
     jsx: { runtime: 'automatic', importSource: 'react' },
   },

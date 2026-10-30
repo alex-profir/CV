@@ -35,3 +35,7 @@ declare module '*?worker' {
   const WorkerConstructor: new (options?: { name?: string }) => Worker;
   export default WorkerConstructor;
 }
+
+declare module 'monaco-editor/languages/features/typescript/lib/lib' {
+  export const libFileMap: Record<string, string>;
+}

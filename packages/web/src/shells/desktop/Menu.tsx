@@ -11,7 +11,7 @@ import { Arrow } from '../../cv/Arrow.tsx';
 import { CheckGlyph } from '../../os/icons/CheckGlyph.tsx';
 
 export type MenuEntry =
-  | { kind: 'action'; key: string; label: string; onChoose: () => void; shortcut?: Shortcut; disabled?: boolean; checked?: boolean; note?: string; 'data-req'?: string | undefined }
+  | { kind: 'action'; key: string; label: string; onChoose: () => void; shortcut?: Shortcut; keys?: string | undefined; disabled?: boolean; checked?: boolean; note?: string; 'data-req'?: string | undefined }
   | { kind: 'link'; key: string; label: string; href: string; external?: boolean }
   | { kind: 'separator'; key: string };
 
@@ -66,8 +66,10 @@ export function menuKeyDown(event: ReactKeyboardEvent<HTMLElement>, { close, sid
   }
 }
 
-function Keys({ shortcut, mac }: { shortcut: Shortcut | undefined; mac: boolean }): ReactNode {
-  return shortcut === undefined ? <span className="keys" /> : <span className="keys">{shortcutLabel(shortcut, mac)}</span>;
+// The shell's own shortcut, or an app's key (`keys`, such as `F1`).
+function Keys({ shortcut, keys, mac }: { shortcut: Shortcut | undefined; keys: string | undefined; mac: boolean }): ReactNode {
+  if (shortcut !== undefined) return <span className="keys">{shortcutLabel(shortcut, mac)}</span>;
+  return <span className="keys">{keys}</span>;
 }
 
 export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEntry[]; mac: boolean; onChosen: () => void }) {
@@ -91,7 +93,7 @@ export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEn
         role={radio ? 'menuitemradio' : 'menuitem'}
         aria-checked={radio ? entry.checked : undefined}
         aria-disabled={entry.disabled === true ? 'true' : undefined}
-        aria-keyshortcuts={entry.shortcut === undefined ? undefined : shortcutLabel(entry.shortcut, false)}
+        aria-keyshortcuts={entry.shortcut === undefined ? entry.keys : shortcutLabel(entry.shortcut, false)}
         tabIndex={-1}
         data-req={entry['data-req']}
         onPointerMove={focusUnderPointer}
@@ -106,7 +108,7 @@ export function MenuItems({ entries, mac, onChosen }: { entries: readonly MenuEn
           {entry.label}
           {entry.note !== undefined && <span className="note"> {entry.note}</span>}
         </span>
-        <Keys shortcut={entry.shortcut} mac={mac} />
+        <Keys shortcut={entry.shortcut} keys={entry.keys} mac={mac} />
       </button>
     );
   });

@@ -35,7 +35,6 @@ import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
-import { cvTypesPlugin } from './cv-types.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
 import { buildRequirementData } from './requirements/index.ts';
 import { checkSpecList } from './spec-list.ts';
@@ -128,7 +127,6 @@ function absoluteReact(): Plugin {
 function clientConfig(siteDir: string): UserConfig {
   return mergeConfig(viteConfig, {
     configFile: false,
-    plugins: [cvTypesPlugin()],
     build: { outDir: siteDir, emptyOutDir: true },
   });
 }
