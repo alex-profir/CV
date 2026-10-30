@@ -34,7 +34,7 @@ const KEY = `${KEYS} button.pocket-key`;
 const SCREEN = '.terminal .terminal-screen';
 const CONTROLS = 'button.command-chip, button.command-inline';
 
-const TAB_KEY = 'Tab ⇥';
+const TAB_KEY = 'Tab';
 const TAB_NAME = 'Tab, complete';
 const COMMAND_KEYS = ['help', 'about', 'work', 'projects', 'cv', 'ls', 'clear'];
 const VIM_KEYS = ['j', 'k', 'za', '/', 'n', 'gg', 'G', 'i', 'u', ':w', ':q'];
@@ -179,6 +179,8 @@ describe('006-terminal-FR-051: 8 command keys', () => {
     const list = await keys(page);
     expect(list.map((each) => each.text)).toEqual([...COMMAND_KEYS, TAB_KEY]);
     expect(list.map((each) => each.name)).toEqual([...COMMAND_KEYS, TAB_NAME]);
+    // `⇥` is drawn, as the site's fonts don't promise it (research R16).
+    expect(await page.locator(`${KEY}[aria-label="${TAB_NAME}"] svg[aria-hidden="true"]`).count()).toBe(1);
     for (const each of list) {
       expect(each.tag, each.text).toBe('button');
       expect(each.width, each.text).toBeGreaterThanOrEqual(44);

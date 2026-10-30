@@ -143,6 +143,14 @@
   touch-action: manipulation;
 }
 
+.tab-mark {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  margin-inline-start: var(--token-space-1);
+  stroke-width: var(--token-border-thin);
+  vertical-align: middle;
+}
+
 .pocket-key:active {
   background: var(--token-color-terminal-heading);
   color: var(--token-color-terminal-user-text);

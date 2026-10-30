@@ -6,7 +6,7 @@ import zlib from 'node:zlib';
 import type { BrowserContext, Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
-import { INSPECTOR, SHELL, TERMINAL, settle } from '../shell-states.ts';
+import { INSPECTOR, SHELL, TERMINAL, openTerminal, settle, shown, typeLine, vimEntry, vimKeys, waitForShell } from '../shell-states.ts';
 import type { InspectorView } from '../shell-states.ts';
 
 export type Box = { x: number; y: number; width: number; height: number };
@@ -828,6 +828,137 @@ async function commandLineSteps(page: Page, step: Flow['step']): Promise<void> {
       return left === '' ? [] : [{ type: 'cancel', detail: `the command line still holds ${JSON.stringify(left)} after Ctrl+C` }];
     },
   });
+  await tabAndVimSteps(page, step, inLine);
+}
+
+// ---- Tab and the editor (006 FR-039, SC-016; contracts/cli.md `keyboard`,
+// added 2026-10-30) ----------------------------------------------------------
+
+const TYPED = 'ship it';
+
+// Whether the next Tab reaches the browser, and where it goes.
+const nextTabTaken = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<boolean>((resolve) => {
+        window.addEventListener('keydown', (event) => event.key === 'Tab' && resolve(event.defaultPrevented), { once: true });
+      }),
+  );
+
+// A state with focus in the command line or the vim view, on a fresh page.
+const LEAVING: { name: string; element: string; reach: (page: Page) => Promise<void> }[] = [
+  { name: 'an empty line', element: TERMINAL.commandLine, reach: async (page) => page.locator(TERMINAL.commandLine).focus() },
+  {
+    name: 'a typed line',
+    element: TERMINAL.commandLine,
+    reach: async (page) => {
+      await page.locator(TERMINAL.commandLine).focus();
+      await page.keyboard.type('ls');
+    },
+  },
+  {
+    name: 'the vim text',
+    element: TERMINAL.vimText,
+    reach: async (page) => {
+      await typeLine(page, 'vim todo');
+      await shown(page, TERMINAL.vimText);
+      await page.locator(TERMINAL.vimText).focus();
+    },
+  },
+  {
+    name: 'insert mode',
+    element: TERMINAL.vimInsert,
+    reach: async (page) => {
+      await typeLine(page, 'vim todo');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['i']);
+      await shown(page, TERMINAL.vimInsert);
+    },
+  },
+];
+
+// SC-016: from each state, Escape then Tab, and Shift+Tab, take focus out in
+// at most two keys and one, and the next Tab isn't taken (research R50).
+async function leavingProblems(page: Page): Promise<Found[]> {
+  const found: Found[] = [];
+  for (const state of LEAVING) {
+    for (const keys of [['Escape', 'Tab'], ['Shift+Tab']]) {
+      const fresh = await page.context().newPage();
+      try {
+        await fresh.goto(page.url(), { waitUntil: 'load' });
+        await waitForShell(fresh);
+        await openTerminal(fresh, 'desktop');
+        await state.reach(fresh);
+        await settle(fresh);
+        for (const key of keys) await fresh.keyboard.press(key);
+        const said = keys.join(' then ');
+        if (await focusOn(fresh, state.element)) {
+          found.push({ type: 'trapped', detail: `${said} left focus in ${state.name}` });
+          continue;
+        }
+        const taken = nextTabTaken(fresh);
+        await fresh.keyboard.press('Tab');
+        if (await taken) found.push({ type: 'trapped', detail: `after ${said} from ${state.name}, the next Tab was taken` });
+      } finally {
+        await fresh.close();
+      }
+    }
+  }
+  return found;
+}
+
+// After Ctrl+C: Tab completes, the ways out of the command line and of insert
+// mode leave it, and a line typed in vim reaches its file by `:wq`.
+async function tabAndVimSteps(page: Page, step: Flow['step'], inLine: (label: string, options: Omit<StepOptions, 'target' | 'targetName'> & { also?: () => Promise<Found[]> }) => Promise<boolean>): Promise<void> {
+  const T = TERMINAL;
+  const value = () => page.locator(T.commandLine).inputValue();
+  const out = (label: string, keys: string[], from: string, what: string, also: () => Promise<Found[]> = async () => []) =>
+    step(label, {
+      keys,
+      target: '#os',
+      targetName: 'the next control',
+      inside: true,
+      indicator: false,
+      check: async () => ((await focusOn(page, from)) ? [{ type: 'trapped', detail: `focus stayed in ${what}` }] : await also()),
+    });
+  const clear = async () => {
+    await page.locator(T.commandLine).focus();
+    await page.locator(T.commandLine).fill('');
+  };
+  if (
+    !(await inLine('Tab completes', {
+      act: async () => {
+        await page.keyboard.type('ab');
+        await page.keyboard.press('Tab');
+      },
+      also: async () => ((await until(async () => (await value()) === 'about ')) ? [] : [{ type: 'line-key', detail: `Tab left the line as ${JSON.stringify(await value())}, expected "about "` }]),
+    }))
+  )
+    return;
+  if (!(await out('Escape then Tab', ['Escape', 'Tab'], T.commandLine, 'the command line', async () => ((await value()) === 'about ' ? [] : [{ type: 'line-key', detail: `Escape then Tab changed the line to ${JSON.stringify(await value())}` }])))) return;
+  await clear();
+  if (!(await out('Tab on an empty line', ['Tab'], T.commandLine, 'the command line'))) return;
+  await page.locator(T.commandLine).focus();
+  if (!(await step('vim todo', { act: () => page.keyboard.type('vim todo\n'), done: () => visible(page, T.vimText), failed: { subject: 'vim todo', detail: 'the vim view did not open' }, target: T.vimText, targetName: "the vim view's text", indicator: false }))) return;
+  if (!(await step('i enters insert mode', { keys: ['i'], done: () => visible(page, T.vimInsert), failed: { subject: 'i', detail: 'i did not open the text area' }, target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await step('type a line', { act: () => page.keyboard.type(TYPED), target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await out('Shift+Tab in insert mode', ['Shift+Tab'], T.vimInsert, 'insert mode'))) return;
+  if (!(await step('back in insert mode', { act: async () => page.locator(T.vimInsert).focus(), target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await step('Escape to normal mode', { keys: ['Escape'], target: T.vimText, targetName: "the vim view's text", indicator: false }))) return;
+  if (!(await step(':wq', { act: () => vimEntry(page, ':', 'wq'), done: () => visible(page, T.commandLine), failed: { subject: ':wq', detail: ':wq did not close the view' }, target: T.commandLine, targetName: "the Terminal's command line", indicator: false }))) return;
+  const before = await count(page, T.run);
+  await inLine('cat the file', {
+    act: async () => {
+      await page.keyboard.type('cat todo');
+      await page.keyboard.press('Enter');
+    },
+    also: async () => {
+      const added = await until(async () => (await count(page, T.run)) > before && (await count(page, T.busyRun)) === 0);
+      const output = added ? await page.locator(T.run).last().locator('.run-output').textContent() : null;
+      return output?.trim() === TYPED ? [] : [{ type: 'not-written', detail: `cat todo prints ${JSON.stringify(output?.trim() ?? '')} after :wq, where it should print "${TYPED}"` }];
+    },
+  });
+  await inLine('Escape then Tab, and Shift+Tab, from every state', { also: () => leavingProblems(page) });
 }
 
 // ---- The inspector (007 FR-032) ----------------------------------------------

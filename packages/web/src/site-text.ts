@@ -109,7 +109,7 @@ export const siteText = deepFreeze({
     },
     // `help`'s lead, before the table.
     helpLead: { desktop: 'Click a command to run it, or type it and press Enter.', phone: 'Tap a command to run it.' },
-    helpTab: { desktop: 'Tab completes a command or path; Escape then Tab leaves the command line.', phone: 'Tab ⇥ completes a command or path.' },
+    helpTab: { desktop: 'Tab completes a command or path; Escape then Tab leaves the command line.', phone: 'Tab completes a command or path.' },
     // What a command takes, by its kind of arguments, for the usage reply.
     takes: {
       none: 'no arguments',
@@ -240,7 +240,7 @@ export const siteText = deepFreeze({
       // name starts with the key's own text (WCAG 2.5.3).
       vimKeyName: '{key}, {name}',
       commands: ['help', 'about', 'work', 'projects', 'cv', 'ls', 'clear'],
-      tabKey: { key: 'Tab ⇥', name: 'Tab, complete' },
+      tabKey: { key: 'Tab', name: 'Tab, complete' },
       escKey: { key: 'Esc', name: 'Esc, back to normal mode' },
       vim: [
         { key: 'j', name: 'Down' },

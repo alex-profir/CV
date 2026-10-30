@@ -84,3 +84,69 @@ describe('performance (SC-002)', () => {
     expect(slower(times, limit)).toEqual({});
   });
 });
+
+describe('006-terminal-FR-079: Tab and typing in the editor are quick', () => {
+  test('at 1440 px, the line after Tab changes within 100 ms of the key, over a folder of a few dozen names', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('mkdir h && touch h/name{1..36}');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
+    await page.locator(COMMAND_LINE).fill('cat h/');
+    // Waits for the line's change, from the key's own event.
+    const timing = page.evaluate(
+      (selector) =>
+        new Promise<number>((resolve) => {
+          const input = document.querySelector<HTMLInputElement>(selector)!;
+          let start = 0;
+          input.addEventListener('keydown', (event) => {
+            if (event.key === 'Tab') start = performance.now();
+          });
+          input.addEventListener('input', () => resolve(performance.now() - start), { once: true });
+        }),
+      COMMAND_LINE,
+    );
+    await page.keyboard.press('Tab');
+    const spent = await timing;
+    expect(spent).toBeLessThanOrEqual(100);
+  });
+
+  test('in insert mode on cv’s JSON each key is drawn within the next frame, and only the changed line is drawn again', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('cv');
+    await page.keyboard.press('Enter');
+    await vimView(page).waitFor();
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('z');
+    await page.keyboard.press('R');
+    await page.keyboard.press('i');
+    await page.locator('.terminal textarea.vim-insert').waitFor();
+    const result = await page.evaluate(
+      () =>
+        new Promise<{ frames: number; changed: number }>((resolve) => {
+          const text = document.querySelector('.terminal .vim-text')!;
+          const area = document.querySelector<HTMLTextAreaElement>('.terminal textarea.vim-insert')!;
+          const changed = new Set<Element>();
+          const observer = new MutationObserver((records) => {
+            for (const record of records) {
+              const line = (record.target instanceof Element ? record.target : record.target.parentElement)?.closest('.vim-line');
+              if (line) changed.add(line);
+            }
+          });
+          observer.observe(text, { childList: true, subtree: true, characterData: true });
+          area.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: 'x', bubbles: true, cancelable: true }));
+          let frames = 0;
+          const look = () => {
+            frames += 1;
+            observer.disconnect();
+            resolve({ frames, changed: changed.size });
+          };
+          requestAnimationFrame(look);
+        }),
+    );
+    expect(result.frames).toBe(1);
+    expect(result.changed).toBeLessThanOrEqual(1);
+    expect(await page.locator('.terminal .vim-line:has(.vim-insert-bar) .vim-code').textContent()).toContain('x');
+  });
+});

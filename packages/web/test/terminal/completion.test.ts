@@ -182,7 +182,7 @@ describe('006-terminal-FR-077: a completion is heard once, and the command line 
   test('help’s lead holds the desktop sentence at 1440 and the phone’s at 375', async () => {
     for (const [shell, sentence] of [
       ['desktop', 'Tab completes a command or path; Escape then Tab leaves the command line.'],
-      ['mobile', 'Tab ⇥ completes a command or path.'],
+      ['mobile', 'Tab completes a command or path.'],
     ] as const) {
       const page = await openTerminalPage(shell);
       const help = await runGroup(page, 'help');

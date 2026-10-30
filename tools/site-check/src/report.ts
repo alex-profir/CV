@@ -43,7 +43,8 @@ export type Part = (typeof PARTS)[number];
 // and types `line-mismatch`, `not-stopped` and `unresponsive` (`terminal`,
 // naming the line), `cursor`, `outline`, `line-key`, `select-all` and
 // `cancel` (`keyboard`, naming the step), and `no-blink` (`modes`). The
-// inspector (007 data-model.md Check results) adds variants
+// amendment of 2026-10-30 adds `not-written` (`keyboard`, naming the step); a
+// way out that fails is `trapped`, naming the step. The inspector (007 data-model.md Check results) adds variants
 // `<shell>/<view>-specs/<width>px`, `<shell>/elements/<width>px` and
 // `desktop/inspector-keyboard/1440px`, and types `missing-requirement`,
 // `extra-requirement`, `out-of-order`, `wrong-count`, `text-mismatch`,

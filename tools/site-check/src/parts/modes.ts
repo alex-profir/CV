@@ -229,6 +229,8 @@ async function terminalForcedColors(page: Page, shell: 'desktop' | 'mobile', fou
   const focused = await cursorStyle(page);
   if (focused === null || !focused.focused || !focused.filled) found.push({ type: 'invisible', subject: 'span.cursor-block', detail: 'the filled cursor is not shown in forced colors' });
   else if (focused.blinking) found.push({ type: 'blinking', subject: 'span.cursor-block', detail: 'blinks in forced colors' });
+  // With a line typed Tab completes, so Escape first (FR-026).
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Tab');
   const hollow = await cursorStyle(page);
   if (hollow === null || hollow.focused || !hollow.outlined) found.push({ type: 'invisible', subject: 'span.cursor-block', detail: 'the hollow cursor has no outline in forced colors' });

@@ -11,6 +11,7 @@ import type { KeyboardEvent, MouseEvent, SyntheticEvent } from 'react';
 import type { AppProps } from '../index.ts';
 import { fill, siteText } from '../../site-text.ts';
 import { focusCommandLine, tabComplete } from './CommandLine.tsx';
+import { TabMark } from './glyphs/TabMark.tsx';
 import { session } from './session.ts';
 import { runInShell, Terminal } from './Terminal.tsx';
 import { useOnScreenKeyboard } from './useOnScreenKeyboard.ts';
@@ -84,6 +85,7 @@ export function Pocket(props: AppProps) {
   const tabKey = (props: { tabIndex?: number; onFocus?: () => void }) => (
     <button key={words.tabKey.key} type="button" className="pocket-key" aria-label={words.tabKey.name} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={complete} data-req="006-terminal-FR-078" {...props}>
       {words.tabKey.key}
+      <TabMark />
     </button>
   );
 

@@ -13,7 +13,7 @@ import { SHOWN_FIELDS } from '../../../../packages/web/src/supported.ts';
 import { CV_COMMANDS, terminalFields } from '../expected.ts';
 import type { CvCommand, ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
-import { ENDLESS_LINE, TERMINAL, openTerminal, runCommand, settle, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
+import { ENDLESS_LINE, TERMINAL, openTerminal, runCommand, settle, shown as waitShown, stateVariant, typeLine, vimEntry, vimKeys } from '../shell-states.ts';
 import type { Shell } from '../shell-states.ts';
 import { elementSequence, fieldProblems } from './no-script.ts';
 
@@ -309,7 +309,44 @@ export async function shellLineProblems(page: Page, shell: Shell, resume: Resume
   }
   const after = await rowsOf(page, 'cat about');
   if (!sameRows(after, about)) found.push(lineProblem('cat about', `prints ${printed(after)} after echo and rm, where it printed ${printed(about)} before`));
+  found.push(...(await vimWriteProblems(page)));
   found.push(...(await endlessProblems(page, shell)));
+  return found;
+}
+
+// What the vim view writes (contracts/cli.md, added 2026-10-30): a typed line
+// reaches the file, and a protected file stays as it was.
+async function vimWriteProblems(page: Page): Promise<Found[]> {
+  const found: Found[] = [];
+  const open = async (line: string) => {
+    await typeLine(page, line);
+    await waitShown(page, TERMINAL.vimText);
+    await settle(page);
+  };
+  const back = () => page.locator(TERMINAL.commandLine).waitFor({ timeout: WAIT_MS });
+  const message = async () => (await page.locator(TERMINAL.vimMessage).textContent()) ?? '';
+  const text = 'a line of notes';
+  await open('vim notes');
+  await vimKeys(page, ['i']);
+  await waitShown(page, TERMINAL.vimInsert);
+  await page.keyboard.type(text);
+  await page.keyboard.press('Escape');
+  await vimEntry(page, ':', 'wq');
+  await back();
+  const written = await rowsOf(page, 'cat notes');
+  if (!sameRows(written, [text])) found.push(lineProblem('cat notes', `prints ${printed(written)} after :wq, where it should print "${text}"`));
+  await runCommand(page, 'rm notes');
+  const about = await rowsOf(page, 'cat about');
+  await open('vim about');
+  await vimKeys(page, ['x']);
+  await vimEntry(page, ':', 'w');
+  await settle(page);
+  const said = await message();
+  if (!said.startsWith('E45')) found.push(lineProblem('vim about :w', `${said.includes('written') ? 'wrote about' : `shows ${JSON.stringify(said)}`}, where it should show E45`));
+  await vimEntry(page, ':', 'q!');
+  await back();
+  const after = await rowsOf(page, 'cat about');
+  if (!sameRows(after, about)) found.push(lineProblem('cat about', `prints ${printed(after)} after vim's :q!, where it printed ${printed(about)} before`));
   return found;
 }
 

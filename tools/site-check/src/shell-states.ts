@@ -32,6 +32,10 @@ export const TERMINAL_DESKTOP_STATES = [
   'terminal-load-failed',
   'terminal-stopped',
   'terminal-selected-all',
+  // The amendment's (006 contracts/cli.md States, added 2026-10-30).
+  'terminal-tab-list',
+  'terminal-vim-insert',
+  'terminal-vim-readonly',
 ] as const;
 
 export const TERMINAL_MOBILE_STATES = [
@@ -48,6 +52,8 @@ export const TERMINAL_MOBILE_STATES = [
   'pocket-vim-search',
   'pocket-vim-help',
   'pocket-stopped',
+  'pocket-tab-key',
+  'pocket-vim-insert',
 ] as const;
 
 // The inspector's states (007 contracts/cli.md States) follow the
@@ -145,6 +151,10 @@ export const TERMINAL = Object.freeze({
   vimChip: '#os .terminal section.vim .vim-chips button.command-chip',
   pocket: '#os .pocket',
   pocketKey: '#os .pocket-keys button.pocket-key',
+  pocketStrip: '#os .pocket-strip',
+  completionList: '#os .terminal div.completion-list',
+  vimInsert: '#os .terminal textarea.vim-insert',
+  vimMessage: '#os .terminal .vim-message-text',
   // The amendment's: the screen, the cursor, the shell worker's states, a
   // stopped line and help's standard group (006 FR-008, FR-069, FR-070).
   screen: '#os .terminal .terminal-screen',
@@ -213,7 +223,7 @@ export async function settle(page: Page): Promise<void> {
   });
 }
 
-const shown = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'visible', timeout: WAIT_MS });
+export const shown = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'visible', timeout: WAIT_MS });
 
 const gone = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'hidden', timeout: WAIT_MS });
 
@@ -486,6 +496,45 @@ async function driveTerminal(page: Page, shell: Shell, state: string): Promise<v
       await page.locator(TERMINAL.commandLine).tap();
       await runCommand(page, ENDLESS_LINE);
       return stoppedRun(page);
+    case 'terminal-tab-list':
+      await runCommand(page, 'mkdir notes && touch todo');
+      await page.locator(TERMINAL.commandLine).focus();
+      await page.keyboard.type('cat ~/');
+      await page.keyboard.press('Tab');
+      await settle(page);
+      await page.keyboard.press('Tab');
+      return shown(page, TERMINAL.completionList);
+    case 'terminal-vim-insert':
+      await typeLine(page, 'vim notes.txt');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['i']);
+      await shown(page, TERMINAL.vimInsert);
+      return void (await page.keyboard.type('a line'));
+    case 'terminal-vim-readonly':
+      await typeLine(page, 'vim about');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['o']);
+      await shown(page, TERMINAL.vimInsert);
+      await page.keyboard.type('word');
+      await page.keyboard.press('Escape');
+      await vimEntry(page, ':', 'w');
+      return void (await page.locator(TERMINAL.vimMessage).filter({ hasText: /^E45/ }).waitFor({ timeout: WAIT_MS }));
+    case 'pocket-tab-key':
+      await page.locator(TERMINAL.commandLine).tap();
+      await page.keyboard.type('cat ~/');
+      await tapPocketKey(page, 'Tab');
+      await settle(page);
+      await tapPocketKey(page, 'Tab');
+      await shown(page, TERMINAL.completionList);
+      await page.setViewportSize({ width: SHELL_SIZES.mobile.width, height: SHELL_SIZES.mobile.height - 300 });
+      return void (await page.waitForSelector(TERMINAL.pocketStrip, { timeout: WAIT_MS }));
+    case 'pocket-vim-insert':
+      await typeLine(page, 'vim notes.txt');
+      await shown(page, TERMINAL.vimText);
+      await tapPocketKey(page, 'i');
+      await shown(page, TERMINAL.vimInsert);
+      await page.setViewportSize({ width: SHELL_SIZES.mobile.width, height: SHELL_SIZES.mobile.height - 300 });
+      return void (await page.waitForSelector(TERMINAL.pocketStrip, { timeout: WAIT_MS }));
   }
   throw new Error(`no way to reach ${shell}/${state}`);
 }

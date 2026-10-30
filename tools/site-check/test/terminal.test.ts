@@ -125,6 +125,21 @@ describe("006-terminal-FR-040: the terminal part types the shell's lines in both
     }
   });
 
+  test('006-terminal-FR-040: a copy where :w writes a protected file fails, naming the line', async () => {
+    const root = seededCopy((copy) => {
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/site-commands.ts', 'readonly: shell.fs.isProtected(path), new: false', 'readonly: false, new: false');
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/adapter.ts', "if (stat?.isDirectory === true || fs.refusesWrite(path)) return refuse('cant-open');", "if (stat?.isDirectory === true) return refuse('cant-open');");
+    });
+    const lines = (await runCheck(root, { parts: ['terminal'] })).problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch vim about :w: .+, where it should show E45$`)));
+  });
+
+  test('006-terminal-FR-040: a copy where :wq loses the typed line fails, naming the shell and cat notes', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force)', "void write(next.write.path, '', next.write.force)"));
+    const lines = (await runCheck(root, { parts: ['terminal'] })).problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch cat notes: prints .+ after :wq, where it should print "a line of notes"$`)));
+  });
+
   test("a copy where jq '.work[0].name' cv.json prints nothing fails, naming the line and the CV's name", async () => {
     const report = await runCheck(seededCopy(silent('jq ')), { parts: ['terminal'] });
     const lines = report.problems.map(renderProblem);

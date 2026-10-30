@@ -115,6 +115,32 @@ describe("006-terminal-FR-039 and SC-015: the flow's new steps check the cursor,
   });
 });
 
+describe('006-terminal-FR-039 and SC-016: the flow proves Tab, the ways out and the editor', () => {
+  const COMMAND_LINE = 'packages/web/src/apps/terminal/CommandLine.tsx';
+  const VIM_VIEW = 'packages/web/src/apps/terminal/VimView.tsx';
+  const problems = async (root: string) => (await runCheck(root, { parts: ['keyboard'] })).problems.filter((problem) => problem.variant === TERMINAL_VARIANT).map(renderProblem);
+
+  test('a copy where Tab is taken after Escape fails, naming the step', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, COMMAND_LINE, 'if (!plain || event.shiftKey || escaped.current) {', 'if (!plain || event.shiftKey) {'));
+    expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('trapped', 'Escape then Tab', 'focus stayed in the command line')));
+  });
+
+  test('a copy where Tab on an empty line is taken fails, naming the step', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, COMMAND_LINE, "if (typed.trim() === '') return;\n      event.preventDefault();", 'event.preventDefault();'));
+    expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('trapped', 'Tab on an empty line', 'focus stayed in the command line')));
+  });
+
+  test('a copy where Shift+Tab is taken in insert mode fails, naming the step', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, VIM_VIEW, 'const insertKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {', "const insertKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {\n    if (event.key === 'Tab' && event.shiftKey) {\n      event.preventDefault();\n      return;\n    }"));
+    expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('trapped', 'Shift\\+Tab in insert mode', 'focus stayed in insert mode')));
+  });
+
+  test('a copy where :wq writes nothing fails, naming the step', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force)', "void write(next.write.path, '', next.write.force)"));
+    expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('not-written', 'cat the file', 'cat todo prints .+ after :wq, where it should print "ship it"')));
+  });
+});
+
 const FOCUS_FILE = 'packages/web/src/os/focus.ts';
 
 const INSPECTOR_VARIANT = 'desktop/inspector-keyboard/1440px';

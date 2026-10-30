@@ -102,6 +102,11 @@ const TERMINAL_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
     return { inside, help: text.includes('help'), focused: await lineFocused(page) };
   },
   'mobile/pocket-stopped': stoppedRun,
+  'desktop/terminal-tab-list': async (page) => ({ list: await shown(page, TERMINAL.completionList), line: await page.locator(TERMINAL.commandLine).inputValue() }),
+  'desktop/terminal-vim-insert': async (page) => ({ mode: await page.locator(`${TERMINAL.vim} .vim-mode`).textContent(), focused: await page.locator(TERMINAL.vimInsert).evaluate((area) => area === document.activeElement) }),
+  'desktop/terminal-vim-readonly': async (page) => ({ marks: (await page.locator(`${TERMINAL.vim} :is(.vim-ro, .vim-modified)`).allTextContents()).join(' '), message: (await page.locator(TERMINAL.vimMessage).textContent())?.slice(0, 3) }),
+  'mobile/pocket-tab-key': async (page) => ({ list: await shown(page, TERMINAL.completionList), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
+  'mobile/pocket-vim-insert': async (page) => ({ mode: await page.locator(`${TERMINAL.vim} .vim-mode`).textContent(), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
 };
 
 const TERMINAL_EXPECTED: Record<string, unknown> = {
@@ -139,6 +144,11 @@ const TERMINAL_EXPECTED: Record<string, unknown> = {
   'desktop/terminal-stopped': { run: ENDLESS_LINE, stopped: STOPPED, state: 'ready' },
   'desktop/terminal-selected-all': { inside: true, help: true, focused: true },
   'mobile/pocket-stopped': { run: ENDLESS_LINE, stopped: STOPPED, state: 'ready' },
+  'desktop/terminal-tab-list': { list: true, line: 'cat ~/' },
+  'desktop/terminal-vim-insert': { mode: '-- INSERT --', focused: true },
+  'desktop/terminal-vim-readonly': { marks: '[RO] [+]', message: 'E45' },
+  'mobile/pocket-tab-key': { list: true, key: 'Tab' },
+  'mobile/pocket-vim-insert': { mode: '-- INSERT --', key: 'Esc' },
 };
 
 // The inspector's states (007 contracts/cli.md States): which spec view
@@ -266,6 +276,11 @@ describe('005-os-shell-FR-048: the checks measure the root in every shell state'
 
 // The states contracts/cli.md adds on 2026-10-29.
 const AMENDMENT_STATES = [
+  'desktop/terminal-tab-list/1440px',
+  'desktop/terminal-vim-insert/1440px',
+  'desktop/terminal-vim-readonly/1440px',
+  'mobile/pocket-tab-key/375px',
+  'mobile/pocket-vim-insert/375px',
   'desktop/terminal-unfocused/1440px',
   'desktop/terminal-help-standard/1440px',
   'desktop/terminal-loading/1440px',
@@ -276,7 +291,7 @@ const AMENDMENT_STATES = [
 ];
 
 describe("006-terminal-FR-038: the checks measure the Terminal in every state of contracts/cli.md", () => {
-  test('the driver lists 21 desktop states at 1440 × 900 and 13 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
+  test('the driver lists 24 desktop states at 1440 × 900 and 15 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
     expect(TERMINAL_STATES.map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
       ...[
         'terminal-open',
@@ -300,10 +315,13 @@ describe("006-terminal-FR-038: the checks measure the Terminal in every state of
         'terminal-load-failed',
         'terminal-stopped',
         'terminal-selected-all',
+        'terminal-tab-list',
+        'terminal-vim-insert',
+        'terminal-vim-readonly',
       ].map((state) => `desktop/${state}/1440px 900`),
       'mobile/pocket/375px 812',
       'mobile/pocket-landscape/812px 375',
-      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help', 'pocket-stopped'].map(
+      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help', 'pocket-stopped', 'pocket-tab-key', 'pocket-vim-insert'].map(
         (state) => `mobile/${state}/375px 812`,
       ),
     ]);
