@@ -67,9 +67,11 @@ engine is stored in the profile.
 
 | Variant | Part |
 |---------|------|
-| `desktop/playground-<check>/1440px` | `playground`: `download`, `version`, `examples/<id>`, `run`, `interval`, `stop`, `stuck`, `timer-60s`, `dialogs`, `sandbox`, `limits`, `kept`, `reset`, `share`, `broken-link`, `too-long`, `specs` |
+| `desktop/playground-<check>/1440px` | `playground`: `download`, `version`, `editing` (errors, a type, suggestions, a definition, every use, renaming, a quick fix, formatting, the palette and the shell's keys), `panes`, `examples/<id>`, `run`, `interval`, `stop`, `stuck`, `timer-60s`, `dialogs`, `sandbox`, `limits`, `kept`, `reset`, `share`, `broken-link`, `too-long`, `specs` |
 | `mobile/playground-<check>/375px` | `playground`: `icon`, `shared-link` |
-| `<shell>/<state>/<width>px` with a state above | `accessibility`, `fonts`, `layout`, `modes` |
+| `<shell>/<state>/<width>px` with a state above | `accessibility`, `fonts`, `layout`, `modes`, `other-sites` |
+| `desktop/playground-reduced-motion/1440px` | `modes`: one sequence through the download, a run and the popup |
+| `first-load` | `lighthouse`: the root's first load, with no scores |
 | `desktop/playground-keyboard/1440px` | `keyboard` |
 | `desktop/playground-offline/1440px` | `offline` |
 

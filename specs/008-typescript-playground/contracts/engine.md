@@ -54,6 +54,7 @@ type EngineInit = {
   mac: boolean;
   onChange(version: number): void;     // the model changed (for R7's pause and for keeping)
   onCheck(result: CheckResult): void;  // R7
+  onCheckLost(): void;  // a check that was out brought no result, as when a change of the options restarts the worker
   onCommand(id: 'playground.run' | 'playground.keys'): void;  // Run's key, accessibility help (R12)
 };
 

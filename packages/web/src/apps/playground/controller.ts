@@ -159,6 +159,8 @@ function onCheck(result: CheckResult): void {
   }
 }
 
+const onCheckLost = () => checker.lost();
+
 function onChange(version: number): void {
   checker.changed(version);
   keeper.changed();
@@ -216,6 +218,7 @@ export function startEngine(input: StartInput): void {
         mac,
         onChange,
         onCheck,
+        onCheckLost,
         onCommand: (id) => commandHandler(id),
         onCursor: (cursor) => session.update({ cursor }),
         onTabFocus: (on) => session.update({ tabMovesFocus: on }),

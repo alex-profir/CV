@@ -89,7 +89,11 @@ const INSPECTOR_VARIANT = new RegExp(
   `^(?:desktop|mobile)/(?:${INSPECTOR_SHELL_STATES.map(({ state }) => state).join('|')}|(?:cv|terminal|about)-specs(?:-after-cv)?|(?:cv-specs|terminal-app-specs|about-specs)-(?:200%-zoom|400%-zoom|text-spacing)|elements|inspector-keyboard)/\\d+px$`,
 );
 
-const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant);
+// The Playground's variants (008 contracts/cli.md Variants): its checks and
+// its states, with their conditions.
+const PLAYGROUND_VARIANT = /^(?:desktop|mobile)\/playground-[a-z0-9%/-]+\/\d+px$/;
+
+const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant) || PLAYGROUND_VARIANT.test(variant);
 
 const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
 
@@ -109,7 +113,7 @@ describe('005-os-shell-FR-060: the shell checks run in the same one command as t
     expect(renderReport(second)).toBe(renderReport(first));
     expect(first.problems.map(renderProblem)).toEqual([]);
     expect(first.result).toBe('pass');
-  }, 600_000);
+  }, 1_500_000);
 
   test('problem lines on / name the shell, the state and the width', async () => {
     const copy = seededCopy((repo) => replaceIn(repo, 'packages/web/src/shells/desktop/TitleBar.tsx', 'className="control control-close" aria-label={fill(siteText.desktop.controls.close, { window: name })}', 'className="control control-close"'));
@@ -147,14 +151,14 @@ describe("006-terminal-FR-042: the Terminal's checks run in the same command, na
     expect(renderReport(second)).toBe(renderReport(first));
     expect(first.problems.map(renderProblem)).toEqual([]);
     expect(first.result).toBe('pass');
-  }, 600_000);
+  }, 1_500_000);
 });
 
 describe("007-requirement-inspector-FR-034: the inspector's checks run in the same command, name what failed, and repeat", () => {
   test("the local command is the CI step, and the parts run in contracts/cli.md's order, inspector after terminal", () => {
     expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
     expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
-    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
+    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
   });
 
   test('every inspector problem line names the view, the shell, the width and the requirement or its spec, and an untracked file changes no result', { timeout: 600_000 }, async () => {
@@ -322,4 +326,22 @@ describe('seeded sample (SC-009)', () => {
     expect(result.status).toBe(1);
     expect(maskScores(result.stdout)).toBe(expected);
   }, 300_000);
+});
+
+describe('008-typescript-playground-FR-079: the Playground\'s checks run in the same command and name what failed, and repeat', () => {
+  test("the parts run in contracts/cli.md's order, playground after inspector, and the local command is the CI step", () => {
+    expect(PARTS.indexOf('playground')).toBe(PARTS.indexOf('inspector') + 1);
+    expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
+    expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
+  });
+
+  test('every problem line names the part, the check, the width and the example, and two runs give the same result', { timeout: 600_000 }, async () => {
+    const copy = seededCopy((repo) => replaceIn(repo, 'packages/web/src/apps/playground/examples/generics.ts', 'function first<T>(items: readonly T[]): T | undefined {', 'const wrong: number = "one";\nfunction first<T>(items: readonly T[]): T | undefined {'));
+    const first = await runCheck(copy, { parts: ['playground'], playgroundChecks: ['examples'] });
+    const lines = first.problems.map(renderProblem);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line).toMatch(/^playground \/ desktop\/playground-examples\/generics\/1440px [a-z-]+ Generics: /);
+    const second = await runCheck(copy, { parts: ['playground'], playgroundChecks: ['examples'] });
+    expect(second.problems.map(renderProblem)).toEqual(lines);
+  });
 });

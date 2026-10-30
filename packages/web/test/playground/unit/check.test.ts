@@ -1,6 +1,6 @@
 // When the code is checked (research R7), with fake timers.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { CHECKING_AFTER_MS, CHECK_PAUSE_MS, createChecker } from '../../../src/apps/playground/checker.ts';
+import { CHECKING_AFTER_MS, CHECK_PAUSE_MS, LOST_CHECK_RETRIES, createChecker } from '../../../src/apps/playground/checker.ts';
 
 function setUp() {
   const asked: number[] = [];
@@ -42,6 +42,23 @@ describe('008-typescript-playground-FR-016: errors are checked once typing pause
     expect(asked).toEqual([1, 3]);
     checker.result(3);
     expect(asked).toEqual([1, 3]);
+  });
+
+  test('a check that brings no result is asked again, a few times in a row, and a later change still checks', () => {
+    const { checker, asked, change } = setUp();
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    expect(asked).toEqual([1]);
+    checker.lost();
+    expect(asked).toEqual([1, 1]);
+    expect(checker.result(1)).toBe(true);
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    for (let lost = 0; lost < LOST_CHECK_RETRIES + 1; lost += 1) checker.lost();
+    expect(asked).toEqual([1, 1, 2, 2, 2, 2]);
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    expect(asked.at(-1)).toBe(3);
   });
 
   test('a result for an older version is dropped; the current one is kept', () => {
