@@ -78,7 +78,7 @@ const ROOT_VARIANT = new RegExp(`^(?:desktop|mobile)/(?:${ROOT_STATES.join('|')}
 // or with a layout condition; a command's output, online or offline after
 // each visit; the files and the JSON; and the keyboard flow.
 const TERMINAL_VARIANT = new RegExp(
-  `^(?:desktop|mobile)/(?:(?:${TERMINAL_STATES.map(({ state }) => state).join('|')})(?:-(?:narrow-window|200%-zoom|400%-zoom|text-spacing))?|(?:terminal|terminal-after-cv)/[a-z]+(?:\\.json)?|terminal-keyboard)/\\d+px$`,
+  `^(?:desktop|mobile)/(?:(?:${TERMINAL_STATES.map(({ state }) => state).join('|')})(?:-(?:narrow-window|200%-zoom|400%-zoom|text-spacing))?|(?:terminal|terminal-after-cv)/[a-z-]+(?:\\.json)?|terminal-keyboard)/\\d+px$`,
 );
 
 // The inspector's variants (007 contracts/cli.md Variants): its states,

@@ -24,7 +24,7 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
   test('on the real build the keyboard part passes both flows on the root', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
-    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass', 'desktop/terminal-keyboard/1440px pass', 'desktop/inspector-keyboard/1440px pass']);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/keyboard/1440px pass', 'mobile/keyboard/375px pass', 'desktop/terminal-keyboard/1440px pass', 'desktop/inspector-keyboard/1440px pass', 'desktop/playground-keyboard/1440px pass']);
   });
 
   test('a copy whose menu items show nothing when focused fails keyboard with no-focus-indicator at the site menu step', async () => {
@@ -49,8 +49,9 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
   test("a copy with the close shortcut's handler removed fails keyboard with shortcut Alt+Shift+W", async () => {
     const root = seededCopy((copy) => replaceIn(copy, DESKTOP, "        case 'close':\n          return dispatch({ type: 'close', view: focused! });\n", ''));
     const report = await runCheck(root, { parts: ['keyboard'] });
-    // The Terminal's flow (006) closes the CV window the same way first.
-    expect(report.problems.map(renderProblem)).toEqual(['keyboard / desktop/keyboard/1440px shortcut Alt+Shift+W: the CV window did not close', 'keyboard / desktop/terminal-keyboard/1440px shortcut Alt+Shift+W: the CV window did not close']);
+    // The Terminal's flow (006) closes the CV window the same way first, and
+    // the Playground's flow (008) ends with its own window.
+    expect(report.problems.map(renderProblem)).toEqual(['keyboard / desktop/keyboard/1440px shortcut Alt+Shift+W: the CV window did not close', 'keyboard / desktop/terminal-keyboard/1440px shortcut Alt+Shift+W: the CV window did not close', 'keyboard / desktop/playground-keyboard/1440px shortcut Alt+Shift+W: the window did not close']);
   });
 
   test("a copy that sends a minimized window's focus to body fails keyboard with focus-target, naming the step", async () => {
@@ -59,7 +60,7 @@ describe('005-os-shell-FR-057: the keyboard check runs the desktop and mobile fl
     );
     const report = await runCheck(root, { parts: ['keyboard'] });
     const lines = report.problems.map(renderProblem);
-    expect(lines).toContainEqual(expect.stringMatching(/^keyboard \/ desktop\/keyboard\/1440px focus-target step \d+ "minimize the CV window": focus went to body, expected the About this site window's title$/));
+    expect(lines).toContainEqual(expect.stringMatching(/^keyboard \/ desktop\/keyboard\/1440px focus-target step \d+ "minimize the CV window": focus went to button#menu-title-app[^,]*, expected the About this site window's title$/));
     expect(report.problems.every((problem) => problem.type === 'focus-target' || problem.type === 'no-focus-indicator')).toBe(true);
   });
 

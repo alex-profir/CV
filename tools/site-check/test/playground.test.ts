@@ -56,6 +56,7 @@ describe('008-typescript-playground-FR-075: the Playground part checks every pro
   test("a copy whose code can read the site's storage fails, naming the check and what it read", async () => {
     const root = seededCopy((copy) => replaceIn(copy, `${SOURCE}/engine/runner/host.ts`, "frame.setAttribute('sandbox', 'allow-scripts');", "frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');"));
     const lines = (await runCheck(root, { parts: ['playground'], playgroundChecks: ['sandbox'] })).problems.map(renderProblem);
-    expect(lines).toContain("playground / desktop/playground-sandbox/1440px sandbox request: the request to another site carries the site's cookies");
+    // The runtime keeps the cookie off now (FR-041 as amended); the origin still shows.
+    expect(lines).toContainEqual(expect.stringMatching(/^playground \/ desktop\/playground-sandbox\/1440px sandbox request: the request to another site says Origin http/));
   });
 });
