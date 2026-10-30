@@ -83,6 +83,17 @@
   Terminal's `open playground` come with this feature? → A: Yes. 006 is amended in this feature's
   pull request (FR-087), and FR-006, removed, is replaced by it.
 
+### Session 2026-10-30
+
+- Q: In Chromium, code that uses up memory crashes the whole page, and no page code can catch it
+  (research R24). What should FR-045 require? → A: Be realistic. When the browser itself ends the
+  page, because of memory or anything else the site can't control, the page may crash. FR-045 and
+  FR-040 hold wherever the page lives on.
+- Q: Firefox and WebKit send the site's cookies with a credentialed request from the sandbox to
+  another origin on the site's host, so FR-041 holds there only because the site sets no cookies.
+  Should the Playground enforce it? → A: Yes. The Playground's runtime makes `fetch`,
+  `XMLHttpRequest` and `EventSource` send no credentials, whatever the code asks (FR-041).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Write TypeScript and see its types (Priority: P1)
@@ -490,8 +501,9 @@ fails with a clear message and that the pull request can't merge.
   earlier ones were dropped. The site and the editor stay responsive (FR-044).
 - **One huge log entry**, such as a string of millions of characters: cut to 10,000 characters with
   a note (FR-044).
-- **Code that uses all the memory it can**: the run ends, the logs say it ran out of memory, and the
-  site and the next run work (FR-045).
+- **Code that uses all the memory it can**: where the page lives on, the run ends, the logs say it
+  ran out of memory, and the site and the next run work. Where the browser ends the page itself, as
+  Chromium does, the page crashes, which the site can't prevent (FR-045).
 - **Values that are hard to show**: circular objects show the circular part marked, functions and
   classes by name, and very deep objects shortened with a note (FR-034).
 - **Text in the logs that looks like markup or a link**: shown as text, never as part of the page
@@ -776,10 +788,13 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   the page's address. It MUST NOT be able to open windows, navigate, or show anything anywhere but
   the logs, and nothing it stores MUST outlast its run.
 - **FR-040**: Whatever the code does, such as blocking, looping, using memory or printing, the shell,
-  every other window, and the Playground's editor and Stop control MUST keep responding.
+  every other window, and the Playground's editor and Stop control MUST keep responding, unless the
+  browser ends the page itself (FR-045).
 - **FR-041**: Running code MUST be able to make requests to any site it names, as code in a browser
   can, and nothing more of the site: its requests MUST carry none of the site's stored data or
-  cookies. A pending request MUST count as work left to do (FR-036) and never as blocking (FR-048).
+  cookies. The Playground MUST make `fetch`, `XMLHttpRequest` and `EventSource` send no cookies or
+  other credentials, whatever the code asks, so this holds in every browser even if the site sets
+  cookies later. WebSocket can't be limited this way and relies on the sandbox alone. A pending request MUST count as work left to do (FR-036) and never as blocking (FR-048).
   With no network, or when the other site refuses, a request MUST fail as it would in any
   JavaScript, and the code can log the error.
 - **FR-042**: Code MUST NOT be able to import packages. An `import` of a package or a `require` MUST
@@ -791,8 +806,10 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-044**: The logs MUST keep at most the latest 1,000 entries and say how many earlier entries
   were dropped. An entry longer than 10,000 characters MUST be cut, with a note. Code that prints
   as fast as it can MUST NOT make the site or the editor stop responding (FR-040).
-- **FR-045**: When a run runs out of memory or stops unexpectedly, it MUST end, and the logs MUST
-  say what happened. The site MUST keep working, and the next run MUST work.
+- **FR-045**: When a run runs out of memory or stops unexpectedly and the page lives on, the run MUST
+  end, and the logs MUST say what happened. The site MUST keep working, and the next run MUST work.
+  When the browser ends the page itself, because of the run's memory or anything else the site
+  can't control, the page MAY crash: the Playground isn't required to prevent or catch that.
 - **FR-046**: Closing the Playground's window, reloading the page or leaving the site MUST end any
   run. Nothing of a run MUST go on after its window is closed.
 - **FR-047**: Everything the code prints MUST show as text: nothing it prints can add markup, links,
