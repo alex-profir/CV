@@ -111,10 +111,12 @@ FR-010.
 - **The service worker**: `/playground/` paths are answered from any cache with
   `caches.match(request)`, then the network; `activate` deletes only `cv-` caches, as today, so a
   Playground copy outlives a site update (FR-013). The precache list leaves them out (FR-009).
-- **Several versions** (FR-013): the loader uses the current hash's complete copy; failing that,
-  offline or when the download fails, the newest complete `playground-*` copy whose manifest `api`
-  equals the interface's (contracts/engine.md). Once the current copy is complete, the others are
-  deleted. An open Playground keeps the engine it loaded until the page goes.
+- **Several versions** (FR-008, FR-013): the loader uses the current hash's complete copy; failing
+  that, the newest complete `playground-*` copy whose manifest `api` equals the interface's
+  (contracts/engine.md), opened at once, online too, so a site update never holds the editor behind
+  a download. Online, the new copy is then stored behind it with nothing shown, and used from the
+  next open, which deletes the others. An open Playground keeps the engine it loaded until the page
+  goes.
 - **Can't keep** (FR-014): `caches` missing, `caches.open` or `put` throwing (a private window,
   storage off, a full quota): the loader imports the entry straight from the network (the
   service worker then answers from the network), and the message `cantKeepTypeScript` shows.

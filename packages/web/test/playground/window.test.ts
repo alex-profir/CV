@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { box, drag, frontWindow, openShell, PHONE_USER_AGENT, settle } from '../helpers/shell.ts';
-import { onMac, openPlayground, openPlaygroundPage, PLAYGROUND, running, setCode, waitChecked } from '../helpers/playground.ts';
+import { freshProfile, holdEngine, LOADING, menu, onMac, openPlayground, openPlaygroundPage, PLAYGROUND, POPUP, running, setCode, waitChecked, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -130,5 +130,37 @@ describe('008-typescript-playground-FR-003: the Playground opens in a window lik
     expect(await page.getByRole('menuitem', { name: menu.stop, exact: true }).getAttribute('aria-disabled')).toBeNull();
     await page.getByRole('menuitem', { name: menu.stop, exact: true }).click();
     await expect.poll(() => running(page)).toBe(false);
+  });
+
+  test('while TypeScript downloads, Keys… shows over the download and stays until closed, and Options is off', async () => {
+    const page = await freshProfile();
+    const held = await holdEngine(page);
+    await openPlayground(page);
+    await page.waitForSelector(LOADING);
+    await page.click('#menu-title-app');
+    const options = page.locator('#os .menu[role="menu"]:visible .menu-item', { hasText: siteText.playground.menu.options });
+    expect(await options.getAttribute('aria-disabled')).toBe('true');
+    await page.keyboard.press('Escape');
+    await menu(page, siteText.playground.menu.keys);
+    const popup = page.locator(POPUP);
+    await popup.waitFor();
+    await expect.poll(() => page.evaluate((selector) => document.activeElement === document.querySelector(`${selector} .popup-head button`), POPUP)).toBe(true);
+    held.release();
+    await waitReady(page);
+    // Still open, and focus stayed in it, rather than the editor taking it.
+    expect(await popup.isVisible()).toBe(true);
+    expect(await page.evaluate((selector) => document.querySelector(selector)?.contains(document.activeElement), POPUP)).toBe(true);
+    await page.keyboard.press('Escape');
+    await popup.waitFor({ state: 'detached' });
+  });
+
+  test('a download with no popup asked for shows none when the editor arrives', async () => {
+    const page = await freshProfile();
+    const held = await holdEngine(page);
+    await openPlayground(page);
+    await page.waitForSelector(LOADING);
+    held.release();
+    await waitReady(page);
+    expect(await page.locator(POPUP).count()).toBe(0);
   });
 });

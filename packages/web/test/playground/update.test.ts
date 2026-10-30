@@ -35,6 +35,9 @@ function rebuiltEngine(): BuiltSite {
 const loadedFolders = (page: Page) =>
   page.evaluate(() => [...new Set(performance.getEntriesByType('resource').map((entry) => /\/playground\/[^/]+(?=\/)/.exec(new URL(entry.name).pathname)?.[0]).filter((folder): folder is string => folder !== undefined))]);
 
+// The copy that opened, by the style sheet the loader linked for it.
+const openedStyle = (page: Page) => page.locator('link[data-playground-style]').getAttribute('href');
+
 async function shellAt(url: string): Promise<Page> {
   const page = await firstPage(url, { width: 1440, height: 900, permissions: ['clipboard-read', 'clipboard-write'] });
   await waitForReady(page);
@@ -74,13 +77,21 @@ describe('008-typescript-playground-FR-013: a site update keeps the stored engin
     expect(await loadedFolders(page)).not.toContain(nextFolder);
     expect(await cacheNames(page)).toContain(cacheOf(oldFolder));
 
-    // Online again, a new visit downloads the new engine; once it is whole
-    // the old copy is deleted.
+    // Online again, a new visit opens the stored copy at once, with no
+    // download shown, and stores the new engine behind it.
     await page.context().setOffline(false);
     await reloadShell(page);
     await openPlayground(page);
-    await waitReady(page, 60_000);
-    expect(await loadedFolders(page)).toContain(nextFolder);
+    await waitReady(page, 20_000);
+    expect(await openedStyle(page)).toContain(oldFolder);
+    await expect.poll(() => page.evaluate((marker) => caches.match(marker).then((found) => found !== undefined), `${nextFolder}/complete`), { timeout: 60_000 }).toBe(true);
+    expect(await cacheNames(page)).toContain(cacheOf(oldFolder));
+
+    // The next open uses it, with no download; the old copy then goes.
+    await reloadShell(page);
+    await openPlayground(page);
+    await waitReady(page, 20_000);
+    expect(await openedStyle(page)).toContain(nextFolder);
     await expect.poll(() => cacheNames(page), { timeout: 20_000 }).not.toContain(cacheOf(oldFolder));
     expect(await cacheNames(page)).toContain(cacheOf(nextFolder));
   });

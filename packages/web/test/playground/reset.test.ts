@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
-import { editorText, menu, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, POPUP, run, RUNNER, running, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { editorText, focusEditor, menu, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, POPUP, run, RUNNER, running, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -79,5 +79,16 @@ describe('008-typescript-playground-FR-080: Reset puts the starting example and 
     await page.keyboard.press('Escape');
     await expect.poll(() => page.locator(POPUP).count()).toBe(0);
     expect(await editorText(page)).toBe(CODE);
+  });
+
+  test('the first edit after Reset takes Undo off the message', async () => {
+    const page = await openPlaygroundPage();
+    await menu(page, siteText.playground.menu.reset);
+    await page.locator(`${POPUP} button.danger`).click();
+    const undo = page.locator(MESSAGE).getByRole('button', { name: siteText.playground.messages.actions.undo });
+    await undo.waitFor();
+    await focusEditor(page);
+    await page.keyboard.type('x');
+    await undo.waitFor({ state: 'detached' });
   });
 });

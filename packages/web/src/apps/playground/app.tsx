@@ -33,7 +33,7 @@ export const playgroundApp: App = {
     { key: 'run', label: words.run, shortcut: runKey, disabled: () => currentEngine() === null, run: runCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-032' },
     { key: 'stop', label: words.stop, disabled: () => !canStop(), run: stopCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-038' },
     { key: 'examples', label: words.examples, separatorBefore: true, disabled: () => currentEngine() === null, run: openExamplesPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-027' },
-    { key: 'options', label: words.options, run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
+    { key: 'options', label: words.options, disabled: () => currentEngine() === null, run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
     { key: 'share', label: words.share, disabled: () => currentEngine() === null, run: () => void shareCode(), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-052' },
     {
       key: 'palette',

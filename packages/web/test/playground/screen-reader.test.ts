@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, setCode, showPane, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -25,6 +25,14 @@ const liveText = (page: Page) =>
   );
 
 describe('008-typescript-playground-FR-063: the editor is named, read line by line, and tells errors, types and suggestions', () => {
+  test('the output panes are named in site text, not by code words', async () => {
+    const page = await openPlaygroundPage();
+    for (const [pane, name] of [['javascript', siteText.playground.panes.javascript], ['declarations', siteText.playground.panes.declarations]] as const) {
+      const shown = await showPane(page, pane);
+      await expect.poll(() => shown.locator('textarea').first().getAttribute('aria-label')).toBe(name);
+    }
+  });
+
   test("the editor's input is named Code editor and described, in screen-reader mode", async () => {
     const page = await openPlaygroundPage();
     const input = page.locator(INPUT).first();

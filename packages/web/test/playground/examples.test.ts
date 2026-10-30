@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { examples } from '../../src/apps/playground/examples/index.ts';
-import { chooseExample, editorText, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, readErrors, readLogs, run, RUN_STATE, setCode, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { chooseExample, editorText, focusEditor, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, readErrors, readLogs, run, RUN_STATE, setCode, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 600_000 });
 
@@ -47,6 +47,19 @@ describe('008-typescript-playground-FR-027: the examples panel lists the example
     await page.keyboard.press('Escape');
     await page.locator(MESSAGE).getByRole('button', { name: siteText.playground.messages.actions.undo }).click();
     await expect.poll(() => editorText(page)).toBe(mine);
+  });
+
+  test('the first edit after an example takes Undo off the message', async () => {
+    const page = await openPlaygroundPage();
+    const example = examples(await onMac(page)).find((entry) => entry.id === 'generics')!;
+    await chooseExample(page, example.title);
+    await waitForCode(page, firstLine(example.code));
+    const undo = page.locator(MESSAGE).getByRole('button', { name: siteText.playground.messages.actions.undo });
+    await undo.waitFor();
+    await focusEditor(page);
+    await page.keyboard.type('x');
+    await undo.waitFor({ state: 'detached' });
+    expect((await page.locator(MESSAGE).textContent())?.trim()).toContain(fill(siteText.playground.messages.exampleReplaced, { title: example.title }));
   });
 
   test('from a fresh open, Examples, an example and Run are three actions (SC-014)', async () => {
