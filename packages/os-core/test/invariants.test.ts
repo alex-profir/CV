@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { initialState } from '../src/index.ts';
 import type { Area, Edge, OsAction, OsState, ViewId } from '../src/index.ts';
 import { APPS, CONTEXT, METRICS, THREE_APPS, THREE_CONTEXT, desktop, run } from './helpers.ts';
+import { FOUR_APPS, FOUR_CONTEXT } from './__fixtures__/four-apps.ts';
 
 // Mulberry32: a small seeded pseudo-random generator.
 function generator(seed: number): () => number {
@@ -20,6 +21,7 @@ function generator(seed: number): () => number {
 
 const VIEWS: ViewId[] = ['cv', 'about'];
 const THREE_VIEWS: ViewId[] = ['cv', 'terminal', 'about'];
+const FOUR_VIEWS: ViewId[] = ['cv', 'terminal', 'playground', 'about'];
 const EDGES: Edge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
 function randomAction(random: () => number, state: OsState, views: readonly ViewId[] = VIEWS, withSpecs = false): OsAction {
@@ -180,5 +182,25 @@ describe('007-requirement-inspector-FR-004: the invariants hold with showSpecs a
       }
     }
     expect(shown).toBeGreaterThan(1000);
+  });
+});
+
+describe('008-typescript-playground-FR-003: the invariants hold with four views', () => {
+  test('500 generated sequences of 40 actions over four views, the spec actions included, keep every invariant', () => {
+    const random = generator(20261030);
+    for (let sequence = 0; sequence < 500; sequence += 1) {
+      const area: Area = { width: Math.round(400 + random() * 2160), height: Math.round(300 + random() * 1036) };
+      let state = run(initialState(FOUR_APPS, METRICS), [{ type: 'hydrated', shell: random() < 0.8 ? 'desktop' : 'mobile', area }], FOUR_CONTEXT);
+      const actions: OsAction[] = [];
+      for (let step = 0; step < 40; step += 1) {
+        const action = randomAction(random, state, FOUR_VIEWS, true);
+        actions.push(action);
+        try {
+          state = run(state, [action], FOUR_CONTEXT);
+        } catch (error) {
+          throw new Error(`sequence ${sequence}, step ${step}: ${(error as Error).message}\nactions: ${JSON.stringify(actions)}`, { cause: error });
+        }
+      }
+    }
   });
 });

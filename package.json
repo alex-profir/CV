@@ -11,6 +11,7 @@
     "traceability": "node --permission --allow-fs-read=. --allow-addons tools/traceability/src/main.js",
     "test": "vitest run",
     "test:fast": "vitest run --project fast",
+    "test:engines": "node tools/local-verify/src/engines.js",
     "typecheck": "tsc --noEmit && tsc --noEmit -p packages/web/src/sw/tsconfig.json",
     "content-check": "node --permission --allow-fs-read=. tools/content-check/src/main.js",
     "content-shape": "node tools/content-check/src/generate-shape.ts",

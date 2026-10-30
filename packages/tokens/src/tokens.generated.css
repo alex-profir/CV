@@ -4,6 +4,7 @@
   --token-border-thick: 2px;
   --token-border-thin: 1px;
   --token-breakpoint-desktop-width: 1024px;
+  --token-breakpoint-playground-stack: 720px;
   --token-breakpoint-pocket-narrow: 375px;
   --token-breakpoint-spec-two-column: 480px;
   --token-breakpoint-spec-wide: 700px;
@@ -25,6 +26,7 @@
   --token-color-base-indigo: #3730a3;
   --token-color-base-ink: #121212;
   --token-color-base-lilac: #818cf8;
+  --token-color-base-lilac-wash: #818cf840;
   --token-color-base-mint: #5eead4;
   --token-color-base-mist: #d6d6ce;
   --token-color-base-night: #0c0d12;
@@ -33,6 +35,7 @@
   --token-color-base-rim: #ffffff33;
   --token-color-base-rim-soft: #ffffff29;
   --token-color-base-rose: #fda4af;
+  --token-color-base-rose-wash: #fda4af29;
   --token-color-base-shade: #00000073;
   --token-color-base-shade-strong: #000000a6;
   --token-color-base-sheen: #ffffff1f;
@@ -49,6 +52,26 @@
   --token-color-chrome-border: #ffffff1a;
   --token-color-chrome-solid: #20212a;
   --token-color-chrome-text: #ececf2;
+  --token-color-code-caret: #5eead4;
+  --token-color-code-comment: #a3a3b0;
+  --token-color-code-current-line: #ffffff0d;
+  --token-color-code-error: #fda4af;
+  --token-color-code-error-band: #fda4af29;
+  --token-color-code-function: #a5b4fc;
+  --token-color-code-info: #a5b4fc;
+  --token-color-code-keyword: #818cf8;
+  --token-color-code-line-number: #a3a3b0;
+  --token-color-code-line-number-current: #ececf2;
+  --token-color-code-number: #fcd34d;
+  --token-color-code-occurrence: #fcd34d33;
+  --token-color-code-property: #c9cad6;
+  --token-color-code-punctuation: #a3a3b0;
+  --token-color-code-selection: #818cf840;
+  --token-color-code-string: #fda4af;
+  --token-color-code-surface: #1b1c24;
+  --token-color-code-text: #ececf2;
+  --token-color-code-type: #5eead4;
+  --token-color-code-warning: #fcd34d;
   --token-color-control: #737482;
   --token-color-control-focused: #c9cad6;
   --token-color-control-glyph: #1b1c24;
@@ -60,8 +83,18 @@
   --token-color-ghost: #a5b4fc;
   --token-color-icon-bottom: #3730a3;
   --token-color-icon-glyph: #ffffff;
+  --token-color-icon-playground-bottom: #fda4af;
+  --token-color-icon-playground-glyph: #0c0d12;
+  --token-color-icon-playground-top: #fcd34d;
   --token-color-icon-top: #818cf8;
   --token-color-link-underline: #3730a3;
+  --token-color-playground-danger: #fda4af;
+  --token-color-playground-danger-text: #0c0d12;
+  --token-color-playground-panel: #20212a;
+  --token-color-playground-primary: #a5b4fc;
+  --token-color-playground-primary-text: #0c0d12;
+  --token-color-playground-raised: #262732;
+  --token-color-playground-scrim: #00000073;
   --token-color-pocket-key-accent: #3730a3;
   --token-color-rule-strong: #121212;
   --token-color-rule-subtle: #d6d6ce;
@@ -186,6 +219,7 @@
   --token-shadow-window-focused: 0px 30px 90px 0px #000000a6;
   --token-size-app-icon: 64px;
   --token-size-chrome-blur: 24px;
+  --token-size-code-line: 20px;
   --token-size-control: 24px;
   --token-size-control-dot: 14px;
   --token-size-control-glyph: 10px;
@@ -201,6 +235,18 @@
   --token-size-open-mark: 6px;
   --token-size-pad-button: 36px;
   --token-size-page: 1180px;
+  --token-size-playground-dialog: 440px;
+  --token-size-playground-gutter: 48px;
+  --token-size-playground-loading: 420px;
+  --token-size-playground-popover: 380px;
+  --token-size-playground-progress: 6px;
+  --token-size-playground-side: 400px;
+  --token-size-playground-stacked-side: 240px;
+  --token-size-playground-status: 28px;
+  --token-size-playground-toolbar: 44px;
+  --token-size-playground-window-height: 648px;
+  --token-size-playground-window-offset: 64px;
+  --token-size-playground-window-width: 1040px;
   --token-size-pocket-key: 52px;
   --token-size-pocket-key-narrow: 48px;
   --token-size-pocket-max-width: 560px;
@@ -378,6 +424,7 @@
 }
 
 @custom-media --token-breakpoint-desktop-width (width >= 1024px);
+@custom-media --token-breakpoint-playground-stack (width >= 720px);
 @custom-media --token-breakpoint-pocket-narrow (width >= 375px);
 @custom-media --token-breakpoint-spec-two-column (width >= 480px);
 @custom-media --token-breakpoint-spec-wide (width >= 700px);

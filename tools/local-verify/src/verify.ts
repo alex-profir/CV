@@ -26,6 +26,8 @@ export type RunCommand = (command: string, args: string[], options: { cwd: strin
 // R14, rule 3). main.js supplies it.
 export type Prerequisites = {
   hasChromium: () => boolean | Promise<boolean>;
+  // Playwright's Firefox and WebKit, for the `engines` check (008 R25).
+  hasOtherEngines?: () => boolean | Promise<boolean>;
   nodeVersion?: string;
 };
 
@@ -75,6 +77,7 @@ async function missingPrerequisites(root: string, prerequisites: Prerequisites):
   }
   if (!dependenciesInstalled(root)) missing.push('local full run needs the locked dependencies installed: run npm ci');
   if (!(await prerequisites.hasChromium())) missing.push('site check needs Chromium: run npx playwright install chromium');
+  if (prerequisites.hasOtherEngines !== undefined && !(await prerequisites.hasOtherEngines())) missing.push('browser tests in other engines need Firefox and WebKit: run npx playwright install firefox webkit');
   return missing;
 }
 
