@@ -236,6 +236,7 @@ then every CV command it lists, and compare each output with the CV document and
   - covers 006-terminal-FR-058: `vim cv.json` and `cat cv.json | vim -` return `open-vim` with the JSON rows and folds; `vim nowhere`, `vim -` with nothing piped and `vim` alone give their replies without `open-vim`;
   - covers 006-terminal-FR-059: `cv`'s result equals running `cat cv.json | jq | vim -`, with that pipe on the source; `help` describes `cv` with that pipe;
   - covers 006-terminal-FR-014: `open cv` and `open about` return the `os` action; `open settings` gives `open takes cv or about.` with both as controls.
+    - Superseded 2026-10-29 by 008-typescript-playground FR-087: open also accepts playground (`open settings` now gives `open takes cv, playground or about.`, 008 T126).
 - [X] T028 [P] [US1] Write the first cases of `packages/web/test/terminal/engine/files.test.ts`, covers 006-terminal-FR-045: `resolve` handles relative names, `.`, `..`, `~`, `~/x`, `/x` and capitals from the home folder; `..` and `../..` at home stay home; `formatPath([])` is `~`. `cat cv.json` shows `cvJson` as a text block (covers 006-terminal-FR-055).
 - [X] T029 [P] [US1] Extend `packages/os-core/test/apps.test.ts`, covers 006-terminal-FR-001: `appsFor` on a `[cv, terminal]` declaration list with both shells returns `[cv, terminal]` in order for `desktop` and `mobile`.
 - [X] T030 [P] [US1] Write `packages/web/test/terminal/open.test.ts`:

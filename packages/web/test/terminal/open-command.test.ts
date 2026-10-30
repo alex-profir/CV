@@ -61,6 +61,40 @@ describe('006-terminal-FR-014: open cv and open about open them as the shell doe
   });
 });
 
+const PLAYGROUND = '#os .window[data-view="playground"]';
+
+describe('008-typescript-playground-FR-087: open playground opens the Playground as the dock does (006-terminal-FR-014)', () => {
+  test('at 1440, open playground opens it in front and focused, and again brings it to the front', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, 'open playground');
+    await page.locator(PLAYGROUND).waitFor();
+    await settle(page);
+    expect(await frontWindow(page)).toBe('playground');
+    expect(await page.locator(PLAYGROUND).getAttribute('aria-current')).toBe('true');
+    await expect.poll(() => page.evaluate((selector) => document.activeElement?.closest(selector) !== null, PLAYGROUND)).toBe(true);
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await settle(page);
+    expect(await frontWindow(page)).toBe('terminal');
+    const before = (await box(page, PLAYGROUND))!;
+    await runGroup(page, 'open playground');
+    await settle(page);
+    expect(await frontWindow(page)).toBe('playground');
+    expect(await page.locator(PLAYGROUND).count()).toBe(1);
+    expect(await box(page, PLAYGROUND)).toEqual(before);
+  });
+
+  test('at 375 px, open playground shows the "best on desktop" screen full screen', async () => {
+    const page = await openTerminalPage('mobile');
+    await typeLine(page, 'open playground');
+    const view = page.locator('#os .full-screen[data-view="playground"]');
+    await view.waitFor();
+    await settle(page);
+    expect(await view.boundingBox()).toEqual({ x: 0, y: 0, width: 375, height: 812 });
+    expect(await view.locator('section.playground-mobile').count()).toBe(1);
+    expect(await page.locator('#os .full-screen[data-view="terminal"]').isVisible()).toBe(false);
+  });
+});
+
 describe('006-terminal-FR-014: exit closes the Terminal as its close control does', () => {
   test('as the only window, exit closes it and focus lands on its dock item', async () => {
     const page = await openShell(SHELL_PAGE.desktop);
