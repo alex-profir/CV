@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-27
 
-**Status**: Draft
+**Status**: Approved
 
 **Amended**: 2026-10-29, after the owner's review of the built Terminal: a real bash-like shell
 and a terminal's cursor, focus and keys, and, from the design review that day, no greeting and
@@ -13,7 +13,7 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
 
 **Amended**: 2026-10-30, after the owner tried the shell: Tab completes as in bash, with a way
 out, and vim edits files (see Clarifications, Session 2026-10-30 (owner review of the shell)).
-Back to Draft until the owner approves this amendment.
+The amendment approved by the owner 2026-10-30.
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
