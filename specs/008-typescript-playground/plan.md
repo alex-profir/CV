@@ -290,6 +290,13 @@ One new package; no agent skill.
 | `AppMenuItem` `shortcut`, `disabled`, `separatorBefore` | abstraction (change) | The Playground's menu as the design draws it (FR-003, FR-085) | Hard-coding the Playground in `MenuBar.tsx`: the shell would name an app | N/A |
 | Playground test helper (`test/helpers/playground.ts`) and a second-site test server | abstraction (tests only) | Opens, types, runs and reads logs for some forty test files; the other site of FR-041 (R25) | Repeating those steps in every file | N/A |
 | Site check part `playground` (`tools/site-check/src/parts/playground.ts`) | abstraction | FR-075's check on the real build (R25) | Folding it into `terminal`: a different app with its own states | N/A |
+| Playground controller (`apps/playground/controller.ts`) | abstraction | The engine once loaded, its checks, kept code, links and messages, alive for the visit so the content can unmount and mount again (FR-005, FR-061, R2) | Doing this in `Playground.tsx`'s effects: an unmount for Show specs or a shell switch would lose the editor's model and any download in progress | N/A |
+| Run state (`apps/playground/running.ts`) | abstraction | A run's state, logs, the stuck popup and the announcements on the page's side, outside React, so a run goes on while the content is unmounted and the popup waits for the window (FR-005, FR-050, FR-061) | Folding it into the controller: one file with two lifetimes' worth of timers, and a run's transitions couldn't be read on their own. In the runner's host: the host is in the engine bundle, and the interface must read the state before the engine loads | N/A |
+| Check timing (`apps/playground/checker.ts`) | abstraction | The 250 ms pause, the queued check, stale results, the 300 ms "still checking" and lost checks (FR-016, R7), testable with fake timers in the fast suite | Inline in the controller: its imports need the site and the browser, so these rules could only be tested in a browser, slowly and by timing | N/A |
+| Compiler options table (`apps/playground/compiler-options.ts`) | abstraction | The option names, values and defaults, without words, read by the engine as well as the interface (FR-024 to FR-026, R9) | One table in `options.ts`: its descriptions are site text, which would pull the site's words into the engine's separate bundle | N/A |
+| Editor theme values (`apps/playground/theme-values.ts`) | abstraction | Reads the editor's theme from the token output in the `os` script and passes it to the engine, which holds no design value (Constitution IV, R22) | Reading tokens in `engine/theme.ts`: the engine's bundle would carry its own copy of the token output, a second source that an update could leave behind | N/A |
+| Three-engine run (`tools/local-verify/src/engines.js`, `npm run test:engines`) | abstraction (tests only) | Runs the tests that depend on a browser's engine, sandbox, memory and keys again in Firefox and WebKit, as the local full run's `engines` check (R25) | Vitest's browser matrix for every test: only these depend on the engine, and the rest would multiply a full run's half hour by three. Doing it by hand: skipped in time | N/A |
+| `App` `opensFromAddress`, `onOpenFromAddress` (`apps/index.ts`) | abstraction (change) | An app says which addresses open it, so the shell names none (Constitution V, T180) | `Os.tsx` importing the Playground's `holdsLink` and `readAddressLink`: the shell would name an app, and a second such app would mean a second import | N/A |
 
 ## Project Structure
 
@@ -345,11 +352,13 @@ packages/
     │   ├── apps/index.ts            # APPS + playgroundApp; AppMenuItem, AppOs
     │   ├── apps/terminal/engine/commands.ts   # open playground (FR-087)
     │   └── apps/playground/
-    │       ├── app.tsx  PlaygroundIcon.tsx  PlaygroundApp.tsx
+    │       ├── app.tsx  PlaygroundIcon.tsx  Glyphs.tsx
     │       ├── Playground.tsx  Toolbar.tsx  Message.tsx  Panes.tsx  ErrorsPane.tsx  LogsPane.tsx
     │       ├── OptionsPanel.tsx  ExamplesPanel.tsx  StatusBar.tsx  Loading.tsx  Popups.tsx
     │       ├── BestOnDesktop.tsx            # the mobile screen
-    │       ├── session.ts  options.ts  keys.ts  share.ts  kept.ts  logbook.ts
+    │       ├── controller.ts  running.ts  checker.ts   # the work outside React
+    │       ├── session.ts  options.ts  compiler-options.ts  keys.ts  share.ts  kept.ts  logbook.ts
+    │       ├── theme-values.ts  globals-types.ts  limits.ts  text.ts  types.ts
     │       ├── examples/                    # eleven examples (R20)
     │       ├── playground.css
     │       └── engine/
@@ -365,6 +374,7 @@ packages/
 
 tools/
 ├── traceability/src/files.ts        # FAST_TEST_GLOBS + packages/web/test/playground/unit
+├── local-verify/src/engines.js      # npm run test:engines: Firefox and WebKit
 └── site-check/
     ├── src/shell-states.ts          # + the Playground's states
     ├── src/parts/playground.ts      # new
