@@ -98,8 +98,7 @@ async function readShared(value: string): Promise<{ code: string; options: Chang
 
 // What the address holds (contracts/share-link.md Reading a link).
 export async function readLink(href: string): Promise<ReadLink> {
-  const hash = href.indexOf('#');
-  const fragment = hash < 0 ? '' : href.slice(hash + 1);
+  const fragment = fragmentOf(href);
   if (fragment === FRAGMENT) return { kind: 'app' };
   if (!fragment.startsWith(`${FRAGMENT}=`)) return { kind: 'none' };
   try {
@@ -110,10 +109,20 @@ export async function readLink(href: string): Promise<ReadLink> {
   }
 }
 
+const fragmentOf = (href: string) => {
+  const hash = href.indexOf('#');
+  return hash < 0 ? '' : href.slice(hash + 1);
+};
+
 // Whether the address holds a link for the Playground, read at once, before
 // the code is decoded.
 export function holdsLink(href: string): boolean {
-  const hash = href.indexOf('#');
-  const fragment = hash < 0 ? '' : href.slice(hash + 1);
+  const fragment = fragmentOf(href);
   return fragment === FRAGMENT || fragment.startsWith(`${FRAGMENT}=`);
 }
+
+// Whether it holds shared code, sound or not, rather than the app alone.
+export const holdsCode = (href: string): boolean => fragmentOf(href).startsWith(`${FRAGMENT}=`);
+
+// The link that opens the Playground with what it holds (FR-059).
+export const appLink = (origin: string): string => `${origin}/#${FRAGMENT}`;

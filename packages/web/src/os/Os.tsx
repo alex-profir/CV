@@ -9,8 +9,8 @@ import type { Resume, SiteData } from '@cv/content';
 import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
 import type { App } from '../apps/index.ts';
-import { receiveLink } from '../apps/playground/controller.ts';
-import { holdsLink, readLink } from '../apps/playground/share.ts';
+import { readAddressLink } from '../apps/playground/controller.ts';
+import { holdsLink } from '../apps/playground/share.ts';
 import { shellTitle } from '../format/meta.ts';
 import { startLoading } from '../inspector/data.ts';
 import { crossFade, viewScroller } from '../inspector/transition.ts';
@@ -120,12 +120,12 @@ export function Os({ resume, siteData, apps }: OsProps) {
     const early = window.osEarlyView;
     delete window.osEarlyView;
     // A shared link opens the Playground: in front of the CV window on the
-    // desktop, full screen on a phone; the Playground's session holds the
-    // link until it opens (contracts/shell.md Opening from a link).
-    const href = location.href;
-    if (holdsLink(href)) {
+    // desktop, where its session holds the link until the editor is ready,
+    // and full screen on a phone, which shows the link's screen
+    // (contracts/shell.md Opening from a link).
+    if (holdsLink(location.href)) {
+      if (state.shell === 'desktop') readAddressLink();
       dispatch(state.shell === 'desktop' ? { type: 'open', view: 'playground' } : { type: 'mobileOpen', view: 'playground' });
-      void readLink(href).then(receiveLink);
     } else if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
   }, [state.shell, state.mobile.open]);
 

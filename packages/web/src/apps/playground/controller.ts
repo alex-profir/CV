@@ -18,7 +18,7 @@ import { loadEngine, requestRetry } from './engine/loader.ts';
 import { runGoing, startRun, stopRun } from './running.ts';
 import { session } from './session.ts';
 import type { PlaygroundSession } from './session.ts';
-import { LINK_LIMIT, makeLink } from './share.ts';
+import { appLink, holdsCode, holdsLink, LINK_LIMIT, makeLink, readLink } from './share.ts';
 import { editorTheme } from './theme-values.ts';
 import type { CheckResult, DownloadState, Message, MessageAction, MessageKey } from './types.ts';
 
@@ -379,8 +379,35 @@ function openPendingLink(): void {
   requestAnimationFrame(focusEditor);
 }
 
-// Os.tsx puts a link read on load here (contracts/shell.md Opening from a link).
-export function receiveLink(link: PlaygroundSession['pendingLink']): void {
+function receiveLink(link: PlaygroundSession['pendingLink']): void {
   session.update({ pendingLink: link });
   openPendingLink();
+}
+
+// The link the page was opened with, read once a visit and only on the
+// desktop (contracts/shell.md Opening from a link): Os.tsx calls it on
+// load, and the Playground's desktop content when it first mounts, so a
+// link opened on a phone opens once the shell widens (FR-061). The phone's
+// screen never decodes it (contracts/share-link.md Mobile).
+let addressRead = false;
+
+export function readAddressLink(): void {
+  if (addressRead) return;
+  addressRead = true;
+  const href = location.href;
+  if (holdsLink(href)) void readLink(href).then(receiveLink);
+}
+
+// The link the phone's screen passes on (FR-059): the shared link it was
+// opened with, unchanged; the visitor's code, as Share makes it; or the
+// Playground with the starting example.
+export async function phoneLink(): Promise<{ link: string } | { tooLong: number; code: string }> {
+  const href = location.href;
+  if (holdsCode(href)) return { link: href };
+  const held = engine !== null ? { code: engine.getCode(), options: session.get().options } : readKept();
+  if ('code' in held && worthKeeping(held.code, held.options, startingExample().code)) {
+    const made = await makeLink(location.origin, held.code, held.options);
+    return 'tooLong' in made ? { ...made, code: held.code } : made;
+  }
+  return { link: appLink(location.origin) };
 }
