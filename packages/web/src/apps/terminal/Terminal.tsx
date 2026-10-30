@@ -227,7 +227,7 @@ export function Terminal({ os }: AppProps) {
       ) : (
         <VimView state={state.vim} shell={os.shell} send={sendVim} />
       )}
-      <div className="terminal-status visually-hidden" role="status" data-req="006-terminal-FR-028">
+      <div className="terminal-status visually-hidden" role="status" data-req="006-terminal-FR-028 006-terminal-FR-077">
         {state.announcement !== null && <span key={state.announcement.id}>{state.announcement.text}</span>}
       </div>
     </div>

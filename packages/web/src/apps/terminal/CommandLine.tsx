@@ -81,6 +81,8 @@ export async function tabComplete(input: HTMLInputElement) {
   const cursor = input.selectionStart ?? line.length;
   if (line.slice(0, cursor).trim() === '') return;
   const second = tabbed !== null && tabbed.line === line && tabbed.cursor === cursor;
+  // Noted now, so a second Tab ahead of the first's answer still counts.
+  tabbed = { line, cursor };
   const answer = await session.complete(line, cursor);
   if (answer === null || input.value !== line || (input.selectionStart ?? line.length) !== cursor) return;
   if (answer.insert !== '') {
@@ -89,7 +91,6 @@ export async function tabComplete(input: HTMLInputElement) {
     session.announce(input.value);
     return;
   }
-  tabbed = { line, cursor };
   if (!second || answer.matches.length < 2) return;
   tabbed = null;
   if (answer.matches.length < COMPLETION_QUERY) session.showList(line, answer.matches);
@@ -339,10 +340,14 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
       <label className="visually-hidden" htmlFor="terminal-command-line">
         {siteText.terminal.commandLine}
       </label>
+      <span className="visually-hidden" id="terminal-command-hint">
+        {siteText.terminal.commandLineHint}
+      </span>
       <span className="command-field">
         <input
           ref={inputRef}
           id="terminal-command-line"
+          aria-describedby="terminal-command-hint"
           className="command-line"
           type="text"
           value={draft}
@@ -373,7 +378,7 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
             escaped.current = false;
             forgetTab();
           }}
-          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075 006-terminal-FR-076"
+          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075 006-terminal-FR-076 006-terminal-FR-077"
         />
         <span className="cursor-mirror" aria-hidden="true" data-focused={focused ? '' : undefined} data-blinking={focused && blinking ? '' : undefined} data-req="006-terminal-FR-032 006-terminal-FR-072 006-terminal-FR-074">
           {parts(draft, start, end, at).map((part, index) =>

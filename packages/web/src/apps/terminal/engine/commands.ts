@@ -78,13 +78,14 @@ const plain =
 // as controls, and its description (FR-008, FR-015); then the standard
 // group, each name a control running `help <name>` (research R32).
 export function helpBlock(context: RunContext): Block {
-  const { commands, helpLead, standard } = context.text.terminal;
+  const { commands, helpLead, helpTab, standard } = context.text.terminal;
   const rows = COMMANDS.map((row): Block[] => {
     const { args, description } = commands[row.name];
     const names: Node[] = [command(row.name, 'inline'), ...(args === '' ? [] : [text(` ${args}`, 'dim')]), ...row.aliases.flatMap((alias) => [text('  '), command(alias, 'inline')])];
     return [names, [text(description, 'secondary')]];
   });
-  const block: Node[] = [line(text(context.shell === 'mobile' ? helpLead.phone : helpLead.desktop, 'secondary')), { kind: 'rows', rows, req: 'help' }];
+  const form = context.shell === 'mobile' ? 'phone' : 'desktop';
+  const block: Node[] = [line(text(helpLead[form], 'secondary')), line(text(helpTab[form], 'secondary')), { kind: 'rows', rows, req: 'help' }];
   if (context.standard.length === 0) return block;
   return [
     ...block,

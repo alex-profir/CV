@@ -3,8 +3,9 @@
 // arrives after another key dropped, and undo taking a completion back.
 import type { Page } from 'playwright';
 import { describe, expect, test, vi } from 'vitest';
+import { axNodes } from '../helpers/ax.ts';
 import { openShell } from '../helpers/shell.ts';
-import { COMMAND_LINE, commandLineFocused, linesRun, openTerminalLoading, openTerminalPage, SHELL_PAGE, typeLine } from '../helpers/terminal.ts';
+import { COMMAND_LINE, commandLineFocused, linesRun, openTerminalLoading, openTerminalPage, runGroup, SHELL_PAGE, typeLine } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -100,5 +101,66 @@ describe('006-terminal-FR-076: Tab completes as bash does', () => {
     expect(await value(page)).toBe('ab');
     expect(await commandLineFocused(page)).toBe(true);
     await release();
+  });
+});
+
+describe('006-terminal-FR-077: a completion is heard once, and the command line says how Tab works', () => {
+  const STATUS = '.terminal .terminal-status[role="status"]';
+  const status = (page: Page) => page.locator(STATUS).evaluate((element) => ({ text: element.textContent ?? '', children: element.children.length }));
+
+  test('the line’s new text once; the count and none of the names for a list; the question’s text; nothing for no match', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.keyboard.type('ab');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => value(page)).toBe('about ');
+    expect(await status(page)).toEqual({ text: 'about ', children: 1 });
+
+    await page.locator(COMMAND_LINE).fill('zzz');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(200);
+    expect(await status(page)).toEqual({ text: 'about ', children: 1 });
+
+    await page.locator(COMMAND_LINE).fill('cat ~/');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => page.locator('.terminal section.run').count()).toBe(0);
+    await page.keyboard.press('Tab');
+    await page.locator('.terminal div.completion-list').waitFor();
+    const count = await page.locator('.terminal div.completion-list span').count();
+    expect(await status(page)).toEqual({ text: `${count} possibilities`, children: 1 });
+
+    await page.locator(COMMAND_LINE).fill('mkdir h && touch h/f{1..100}');
+    await page.keyboard.press('Enter');
+    await linesRun(page);
+    await page.locator(COMMAND_LINE).fill('cat h/');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => value(page)).toBe('cat h/f');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(200);
+    await page.keyboard.press('Tab');
+    await expect.poll(async () => (await status(page)).text).toBe('Display all 100 possibilities? (y or n)');
+    expect((await status(page)).children).toBe(1);
+    await page.keyboard.press('n');
+  });
+
+  test('the command line is described by a visually hidden element holding the design’s words', async () => {
+    const page = await openTerminalPage('desktop');
+    const [line] = await axNodes(page, COMMAND_LINE);
+    expect(line!.description).toBe('Tab completes. Escape then Tab leaves.');
+    const id = await page.locator(COMMAND_LINE).getAttribute('aria-describedby');
+    const hidden = await page.locator(`[id="${id}"]`).evaluate((element) => ({ classes: element.className, width: element.getBoundingClientRect().width }));
+    expect(hidden.classes).toContain('visually-hidden');
+    expect(hidden.width).toBeLessThanOrEqual(1);
+  });
+
+  test('help’s lead holds the desktop sentence at 1440 and the phone’s at 375', async () => {
+    for (const [shell, sentence] of [
+      ['desktop', 'Tab completes a command or path; Escape then Tab leaves the command line.'],
+      ['mobile', 'Tab ⇥ completes a command or path.'],
+    ] as const) {
+      const page = await openTerminalPage(shell);
+      const help = await runGroup(page, 'help');
+      expect(await help.locator('.run-output').textContent(), shell).toContain(sentence);
+    }
   });
 });

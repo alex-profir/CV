@@ -51,6 +51,14 @@ describe("006-terminal-FR-008: help lists every command and alias, and there is 
     expect((await textOf('help', contextFor('every-field', { shell: 'mobile' }))).split('\n')[0]).toBe(siteText.terminal.helpLead.phone);
   });
 
+  test("006-terminal-FR-008: help's block leads with the Tab sentence for its shell, before the table", async () => {
+    const lead = (await textOf('help', contextFor('every-field'))).split('\n');
+    expect(lead[1]).toBe(siteText.terminal.helpTab.desktop);
+    expect(lead[2]).toContain('help');
+    const phone = (await textOf('help', contextFor('every-field', { shell: 'mobile' }))).split('\n');
+    expect(phone[1]).toBe(siteText.terminal.helpTab.phone);
+  });
+
   test('200 generated words not in the table name no site command', () => {
     const random = generator(20261028);
     const known = new Set(COMMANDS.flatMap((command) => [command.name, ...command.aliases]));

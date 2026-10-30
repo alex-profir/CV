@@ -10,7 +10,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { openShell } from '../helpers/shell.ts';
-import { COMMAND_LINE, openTerminal, runCount, runGroup, SHELL_PAGE } from '../helpers/terminal.ts';
+import { COMMAND_LINE, openTerminal, runCount, runGroup, SHELL_PAGE, vimView } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -160,9 +160,11 @@ describe.each<Platform>(['Linux', 'Windows'])('006-terminal-FR-074: the field’
 describe('006-terminal-FR-026: no key a browser or screen reader keeps is taken', () => {
   // The keys the Terminal never takes, on each platform (research R37).
   const RESERVED: Record<Platform, readonly string[]> = {
-    macOS: ['Meta+L', 'Meta+W', 'Meta+T', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Tab', 'Shift+Tab', 'Control+Alt+ArrowRight'],
-    Windows: ['Control+W', 'Control+L', 'Control+U', 'Control+K', 'Control+E', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Tab', 'Shift+Tab'],
-    Linux: ['Control+W', 'Control+L', 'Control+U', 'Control+K', 'Control+E', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Tab', 'Shift+Tab'],
+    // Tab with text typed completes (keyboard.test.ts sets its rules); Shift+Tab
+    // and every modified Tab don't.
+    macOS: ['Meta+L', 'Meta+W', 'Meta+T', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Shift+Tab', 'Control+Tab', 'Alt+Tab', 'Meta+Tab', 'Control+Alt+ArrowRight'],
+    Windows: ['Control+W', 'Control+L', 'Control+U', 'Control+K', 'Control+E', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Shift+Tab', 'Control+Tab', 'Alt+Tab', 'Meta+Tab'],
+    Linux: ['Control+W', 'Control+L', 'Control+U', 'Control+K', 'Control+E', 'Alt+Shift+N', 'Alt+Shift+W', 'Alt+Shift+M', 'Shift+Tab', 'Control+Tab', 'Alt+Tab', 'Meta+Tab'],
   };
 
   for (const platform of ['macOS', 'Windows', 'Linux'] as const) {
@@ -200,6 +202,65 @@ describe('006-terminal-FR-026: no key a browser or screen reader keeps is taken'
           await watchLine();
         }
       }
+    });
+
+    test(`on ${platform}, Tab on an empty line reaches the browser`, async () => {
+      const page = await terminalOn(platform);
+      await page.locator(COMMAND_LINE).focus();
+      await page.evaluate(() => {
+        const store = window as unknown as { tabTaken: boolean | null };
+        store.tabTaken = null;
+        document.getElementById('os')!.addEventListener('keydown', (event) => {
+          if (event.key === 'Tab') store.tabTaken = event.defaultPrevented;
+        });
+      });
+      await page.keyboard.press('Tab');
+      expect(await page.evaluate(() => (window as unknown as { tabTaken: boolean | null }).tabTaken)).toBe(false);
+    });
+
+    // The keys whose `keydown` the page prevented, read on the window, after
+    // the page's own handlers have run.
+    const takenBy = async (page: Page, keys: readonly string[], focus: () => Promise<void>) => {
+      const taken: string[] = [];
+      for (const key of keys) {
+        await focus();
+        await page.evaluate(() => {
+          const store = window as unknown as { prevented: boolean };
+          store.prevented = false;
+          window.addEventListener('keydown', (event) => (store.prevented = event.defaultPrevented), { once: true });
+        });
+        await page.keyboard.press(key).catch(() => undefined);
+        if (await page.evaluate(() => (window as unknown as { prevented: boolean }).prevented)) taken.push(key);
+      }
+      return taken;
+    };
+
+    test(`006-terminal-FR-079: on ${platform}, the vim view takes Ctrl+R only on macOS, and insert mode no browser key`, async () => {
+      const page = await terminalOn(platform);
+      await typed(page, 'vim todo');
+      await page.keyboard.press('Enter');
+      await vimView(page).waitFor();
+      const text = page.locator('.terminal .vim-text');
+      // A reload would lose the page, so the key's default is stopped after the check.
+      await page.evaluate(() => {
+        const store = window as unknown as { redo: boolean | null };
+        store.redo = null;
+        window.addEventListener('keydown', (event) => {
+          if (event.ctrlKey && event.key === 'r') {
+            store.redo = event.defaultPrevented;
+            event.preventDefault();
+          }
+        });
+      });
+      await text.focus();
+      await page.keyboard.press('Control+r');
+      expect(await page.evaluate(() => (window as unknown as { redo: boolean | null }).redo)).toBe(platform === 'macOS');
+      await text.focus();
+      await page.keyboard.press('i');
+      const area = page.locator('.terminal textarea.vim-insert');
+      await area.waitFor();
+      const keys = platform === 'macOS' ? ['Meta+L', 'Meta+W', 'Meta+T'] : ['Control+W', 'Control+L', 'Control+T'];
+      expect(await takenBy(page, keys, () => area.focus())).toEqual([]);
     });
   }
 });

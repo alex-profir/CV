@@ -10,7 +10,7 @@ import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
 import { axNodes } from '../helpers/ax.ts';
 import { REPO_ROOT } from '../helpers/copy.ts';
 import { openShell } from '../helpers/shell.ts';
-import { COMMAND_LINE, commandLineFocused, linesRun, openTerminalLoading, openTerminalPage, runGroup, SHELL_PAGE, typedLines } from '../helpers/terminal.ts';
+import { COMMAND_LINE, commandLineFocused, linesRun, openTerminalLoading, openTerminalPage, runGroup, SHELL_PAGE, typedLines, typeLine, vimEntry, vimView } from '../helpers/terminal.ts';
 import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
 import { siteText } from '../../src/site-text.ts';
 
@@ -95,6 +95,58 @@ describe('006-terminal-FR-028: the shell’s events are announced once', () => {
     await page.keyboard.press('Control+C');
     await expect.poll(() => status(page)).toEqual({ text: siteText.terminal.announce.cancelled, children: 1 });
     expect(await commandLineFocused(page)).toBe(true);
+  });
+});
+
+describe('006-terminal-FR-065 and 006-terminal-FR-028: the vim editor to a screen reader', () => {
+  const INSERT = '.terminal textarea.vim-insert';
+  const VIM_TEXT = '.terminal .vim-text';
+  const openVim = async (line: string) => {
+    const page = await openTerminalPage('desktop');
+    await typeLine(page, line);
+    await vimView(page).waitFor();
+    return page;
+  };
+
+  test('in insert mode the text area is a text field named after the file and described by the status line; the mode is announced once each way', async () => {
+    const page = await openVim('vim notes.txt');
+    await page.locator(VIM_TEXT).focus();
+    await page.keyboard.press('i');
+    await page.locator(INSERT).waitFor();
+    await expect.poll(() => status(page)).toEqual({ text: '-- INSERT --', children: 1 });
+    const [field] = await axNodes(page, INSERT);
+    expect(field!.role).toBe('textbox');
+    expect(field!.name).toBe('notes.txt, new');
+    expect(field!.description).toContain('-- INSERT --');
+    expect(await page.evaluate((selector) => document.activeElement?.matches(selector), INSERT)).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => status(page)).toEqual({ text: 'NORMAL', children: 1 });
+    expect(await page.evaluate((selector) => document.activeElement?.matches(selector), VIM_TEXT)).toBe(true);
+  });
+
+  test('a protected file’s field says read only; W10, E45, E37 and a written message are each announced once, and focus stays', async () => {
+    const page = await openVim('vim about');
+    await expect.poll(async () => (await status(page)).text).toMatch(/^about, read only, \d+ lines\. Type :q to leave\.$/);
+    await page.locator(VIM_TEXT).focus();
+    await page.keyboard.press('i');
+    await page.locator(INSERT).waitFor();
+    expect((await axNodes(page, INSERT))[0]!.name).toBe('about, read only');
+    await page.keyboard.press('Escape');
+    await page.keyboard.type('x');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.W10);
+    await vimEntry(page, ':', 'w');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.E45);
+    await vimEntry(page, ':', 'q');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.E37);
+    await vimEntry(page, ':', 'w ~/about-copy');
+    await expect.poll(async () => (await status(page)).text).toContain('written');
+    expect((await status(page)).children).toBe(1);
+    expect(await vimView(page).count()).toBe(1);
+  });
+
+  test('opening a new file announces it new with 0 lines', async () => {
+    const page = await openVim('vim notes.txt');
+    await expect.poll(async () => (await status(page)).text).toBe('notes.txt, new, 0 lines. Type :q to leave.');
   });
 });
 
