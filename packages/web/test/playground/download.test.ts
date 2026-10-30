@@ -7,7 +7,7 @@ import type { Page, Route } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { megabytes } from '../../src/apps/playground/text.ts';
 import { builtSite } from '../helpers/site.ts';
-import { settle } from '../helpers/shell.ts';
+import { settle, waitForReady } from '../helpers/shell.ts';
 import { EDITOR, engineManifest, freshProfile, holdEngine, LOADING, openPlayground, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
@@ -113,5 +113,61 @@ describe('008-typescript-playground-FR-008: TypeScript downloads once, and is ke
     await timed('reload offline');
     expect(answered).toEqual([]);
     expect(await page.locator(`${EDITOR} .monaco-editor`).count()).toBe(1);
+  });
+});
+
+describe('008-typescript-playground-FR-011: an engine that won\'t open shows the stopped state, and Retry starts over', () => {
+  const words = siteText.playground.loading;
+  const RETRY = `${LOADING} button.playground-retry`;
+  // Answers the engine's entry with this script until released.
+  async function brokenEntry(page: Page, script: string): Promise<() => void> {
+    const manifest = engineManifest(builtSite());
+    let broken = true;
+    await page.route(`**${manifest.entry}*`, async (route: Route) => {
+      if (broken) await route.fulfill({ status: 200, contentType: 'text/javascript', body: script });
+      else await route.continue();
+    });
+    return () => {
+      broken = false;
+    };
+  }
+
+  test.each([
+    ['fails to import', 'throw new Error("broken engine");'],
+    ['fails to start', 'export const api = 1; export async function createEngine() { throw new Error("broken engine"); }'],
+  ])('an engine that %s: "The download stopped" with Retry, no marker, and Retry opens the editor', async (_name, script) => {
+    const page = await freshProfile();
+    await page.evaluate(() => localStorage.setItem('cv-playground', JSON.stringify({ format: 1, code: 'console.log("kept through the failure");', options: {} })));
+    const release = await brokenEntry(page, script);
+    await openPlayground(page);
+    await page.waitForSelector(RETRY, { timeout: 60_000 });
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.stopped);
+    expect(await markerKept(page, engineFolder())).toBe(false);
+    release();
+    await page.locator(RETRY).click();
+    await waitReady(page);
+    await expect.poll(() => page.locator(EDITOR).textContent()).toContain('kept');
+    expect(await page.evaluate(() => localStorage.getItem('cv-playground'))).toContain('kept through the failure');
+  });
+
+  test('a stored copy that won\'t open is downloaded again, and the editor opens', async () => {
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+    const { entry } = engineManifest(builtSite());
+    await page.evaluate(
+      async ({ path, name }) => {
+        const cache = await caches.open(name);
+        await cache.put(path, new Response('throw new Error("broken copy");', { headers: { 'content-type': 'text/javascript' } }));
+      },
+      { path: entry, name: `playground-${/\/playground\/([^/]+)$/.exec(engineFolder())![1]}` },
+    );
+    await page.reload();
+    await waitForReady(page);
+    await settle(page);
+    await openPlayground(page);
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
   });
 });
