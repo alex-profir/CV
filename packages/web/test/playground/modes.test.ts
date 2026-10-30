@@ -7,7 +7,7 @@ import type { Page } from 'playwright';
 import { forcedColorsProblems } from '../../../../tools/site-check/src/parts/modes.ts';
 import { siteText } from '../../src/site-text.ts';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, menu, onMac, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, running, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, focusEditor, menu, onMac, openPlaygroundPage, outputText, PLAYGROUND, POPUP, readLogs, run, running, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -146,6 +146,9 @@ describe('008-typescript-playground-FR-070: with forced colors every mark, level
 
   test('the examples panel, suggestions and the quick fixes: the chosen row keeps its 2 px border', async () => {
     const page = await forcedPage();
+    // Until the first check returns, the JavaScript pane is an empty surface,
+    // which the check would read as a separator with no border.
+    await expect.poll(() => outputText(page, 'javascript')).not.toBe('');
     await page.locator(`${TOOLBAR} button.examples`).click();
     await expectBordered(page, `${PLAYGROUND} .example[aria-current="true"]`, 'the current example', 2);
     expect(await problems(page), 'the examples panel').toEqual([]);
