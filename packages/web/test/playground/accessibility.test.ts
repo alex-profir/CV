@@ -248,6 +248,15 @@ const DESKTOP: State[] = [
     },
   },
   {
+    name: 'playground-keys',
+    reach: async () => {
+      const page = await openPlaygroundPage();
+      await menu(page, words.menu.keys);
+      await page.waitForSelector(POPUP);
+      return page;
+    },
+  },
+  {
     name: 'playground-specs',
     reach: async () => {
       const page = await openPlaygroundPage();

@@ -823,6 +823,81 @@
   padding-inline: var(--token-space-4);
 }
 
+/* The list of keys (FR-085), in the design's two columns. */
+.playground-popup.keys {
+  inline-size: calc(var(--token-size-playground-dialog) * 2);
+  max-block-size: 100%;
+  overflow: auto;
+}
+
+.playground-popup .popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.playground-popup .popup-head h2 {
+  margin: 0;
+}
+
+.playground-popup.keys p {
+  margin-block: var(--token-space-2) var(--token-space-3);
+}
+
+.playground-popup .key-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  column-gap: var(--token-space-6);
+}
+
+.playground-popup .key-table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--token-font-size-small);
+}
+
+.playground-popup .key-table th {
+  padding: var(--token-space-1) var(--token-space-2) var(--token-space-1) 0;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  font-weight: var(--token-font-weight-regular);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-align: start;
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+.playground-popup .key-table td {
+  padding: var(--token-space-1) var(--token-space-2) var(--token-space-1) 0;
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.playground-popup .key-table td:last-child {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.playground-popup .key-note {
+  display: block;
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
+.playground-popup kbd {
+  padding: 0 var(--token-space-1-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-space-1);
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  white-space: nowrap;
+}
+
+.playground-popup.keys .popup-foot {
+  margin-block: var(--token-space-3) 0;
+  font-size: var(--token-font-size-label);
+}
+
 /* ---- Downloading and offline (FR-007, FR-011) --------------------------- */
 
 .playground.is-loading {

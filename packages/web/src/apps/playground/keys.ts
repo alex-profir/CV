@@ -11,7 +11,7 @@ export type KeyCommand = {
   vsCode: { mac: string[]; other: string[] };
   differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code';
   // The key a browser or screen reader keeps, for the note.
-  kept?: string;
+  kept?: { mac: string; other: string };
 };
 
 export type KeyCommandId = keyof typeof siteText.playground.keyLabels;
@@ -24,7 +24,7 @@ const same = (mac: string[], other: string[]) => ({ keys: { mac, other }, vsCode
 // In the list's order.
 export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze([
   { id: 'playground.run', keys: { mac: ['Cmd+Enter'], other: ['Ctrl+Enter'] }, vsCode: { mac: [], other: [] }, differs: 'not-vs-code' },
-  { id: 'editor.action.quickCommand', keys: { mac: ['F1'], other: ['F1'] }, vsCode: { mac: ['F1', 'Shift+Cmd+P'], other: ['F1', 'Ctrl+Shift+P'] }, differs: 'browser', kept: 'Ctrl+Shift+P' },
+  { id: 'editor.action.quickCommand', keys: { mac: ['F1'], other: ['F1'] }, vsCode: { mac: ['F1', 'Shift+Cmd+P'], other: ['F1', 'Ctrl+Shift+P'] }, differs: 'browser', kept: { mac: 'Shift+Cmd+P', other: 'Ctrl+Shift+P' } },
   { id: 'editor.action.triggerSuggest', ...same(['Ctrl+Space', 'Option+Escape'], ['Ctrl+Space']) },
   { id: 'editor.action.triggerParameterHints', ...same(['Shift+Cmd+Space'], ['Ctrl+Shift+Space']) },
   { id: 'editor.action.showHover', ...same(['Cmd+K Cmd+I'], ['Ctrl+K Ctrl+I']) },
