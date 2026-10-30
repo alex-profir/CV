@@ -641,7 +641,17 @@
   padding-block: var(--token-space-1);
 }
 
+/* The 24 px target around the 16 px box (FR-067); the bottom margin gives
+   its height back to the row, so the row is as the design draws it. */
+.options-panel .option-box {
+  display: block;
+  inline-size: var(--token-size-target);
+  block-size: var(--token-size-target);
+  margin-block-end: calc(var(--token-size-target) * -1 + var(--token-space-4) + var(--token-space-0-5));
+}
+
 .options-panel .option input {
+  display: block;
   inline-size: var(--token-space-4);
   block-size: var(--token-space-4);
   margin: var(--token-space-0-5) 0 0;

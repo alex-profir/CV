@@ -100,7 +100,7 @@ function tick(): void {
       session.update({ logs: announced(logs) });
     }
     if (run.outcome === null && announcedTimers !== run.pending.timers && run.state !== 'starting') {
-      if (announcedTimers !== null) announce(fill(counted(words.announce.timers, run.pending.timers), { n: run.pending.timers }));
+      if (announcedTimers !== null) announce(run.pending.timers === 0 ? words.announce.timers.none : fill(counted(words.announce.timers, run.pending.timers), { n: run.pending.timers }));
       announcedTimers = run.pending.timers;
     }
   }
