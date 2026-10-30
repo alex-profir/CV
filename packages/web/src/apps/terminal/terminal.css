@@ -531,7 +531,7 @@
   color: inherit;
   font: inherit;
   text-align: start;
-  text-indent: inherit;
+  text-indent: 0;
   white-space: inherit;
   cursor: pointer;
 }

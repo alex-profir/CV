@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { RefObject } from 'react';
 
-const TYPING = 'input.command-line, input.vim-entry';
+const TYPING = 'input.command-line, input.vim-entry, textarea.vim-insert';
 
 export function useOnScreenKeyboard(root: RefObject<HTMLElement | null>): boolean {
   const [open, setOpen] = useState(false);

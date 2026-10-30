@@ -34,10 +34,12 @@ const KEY = `${KEYS} button.pocket-key`;
 const SCREEN = '.terminal .terminal-screen';
 const CONTROLS = 'button.command-chip, button.command-inline';
 
-const COMMAND_KEYS = ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'];
-const VIM_KEYS = ['j', 'k', 'za', '/', 'n', 'gg', 'G', ':q'];
+const TAB_KEY = 'Tab ⇥';
+const TAB_NAME = 'Tab, complete';
+const COMMAND_KEYS = ['help', 'about', 'work', 'projects', 'cv', 'ls', 'clear'];
+const VIM_KEYS = ['j', 'k', 'za', '/', 'n', 'gg', 'G', 'i', 'u', ':w', ':q'];
 // Each named by its key, then what it does (WCAG 2.5.3).
-const VIM_NAMES = ['j, Down', 'k, Up', 'za, Open or close fold', '/, Search', 'n, Next match', 'gg, Top', 'G, Bottom', ':q, Quit'];
+const VIM_NAMES = ['j, Down', 'k, Up', 'za, Open or close fold', '/, Search', 'n, Next match', 'gg, Top', 'G, Bottom', 'i, Insert', 'u, Undo', ':w, Write', ':q, Quit'];
 
 const phone = (width = 375, height = 812, url?: string) => openShell({ ...SHELL_PAGE.mobile, width, height, ...(url === undefined ? {} : { url }) });
 
@@ -175,8 +177,8 @@ describe('006-terminal-FR-051: 8 command keys', () => {
   test('in the design’s order, each a button named by its command, at least 44 × 44 px, each running it', async () => {
     const page = await openPocket();
     const list = await keys(page);
-    expect(list.map((each) => each.text)).toEqual(COMMAND_KEYS);
-    expect(list.map((each) => each.name)).toEqual(COMMAND_KEYS);
+    expect(list.map((each) => each.text)).toEqual([...COMMAND_KEYS, TAB_KEY]);
+    expect(list.map((each) => each.name)).toEqual([...COMMAND_KEYS, TAB_NAME]);
     for (const each of list) {
       expect(each.tag, each.text).toBe('button');
       expect(each.width, each.text).toBeGreaterThanOrEqual(44);
@@ -198,11 +200,11 @@ describe('006-terminal-FR-051: 8 command keys', () => {
     await page.keyboard.press('ArrowRight');
     expect(await focused()).toBe('about');
     await page.keyboard.press('End');
-    expect(await focused()).toBe('clear');
+    expect(await focused()).toBe(TAB_NAME);
     await page.keyboard.press('ArrowRight');
     expect(await focused()).toBe('help');
     await page.keyboard.press('ArrowLeft');
-    expect(await focused()).toBe('clear');
+    expect(await focused()).toBe(TAB_NAME);
     await page.keyboard.press('Home');
     expect(await focused()).toBe('help');
     await page.keyboard.press('Tab');
@@ -457,8 +459,161 @@ describe('006-terminal-FR-063: in the pocket, long lines wrap under their line',
   });
 });
 
+const typeInLine = async (page: Page, text: string) => {
+  await page.locator(COMMAND_LINE).tap();
+  await page.keyboard.type(text);
+};
+const lineValue = (page: Page) => page.locator(COMMAND_LINE).inputValue();
+const tabKey = (page: Page) => page.locator(`${KEY}[aria-label="${TAB_NAME}"]`);
+const STRIP = `${POCKET} div.pocket-strip`;
+
+describe('006-terminal-FR-078: the Tab key completes as Tab does', () => {
+  test('tapped with text typed it completes, focus stays in the command line and its pointerdown is prevented', async () => {
+    const page = await openPocket();
+    await typeInLine(page, 'cat ~/sk');
+    await page.evaluate(() => {
+      const store = window as unknown as { kept: boolean | null };
+      store.kept = null;
+      window.addEventListener('pointerdown', (event) => (store.kept = event.defaultPrevented));
+    });
+    await tabKey(page).tap();
+    await expect.poll(() => lineValue(page)).toBe('cat ~/skills ');
+    expect(await commandLineFocused(page)).toBe(true);
+    expect(await page.evaluate(() => (window as unknown as { kept: boolean | null }).kept)).toBe(true);
+  });
+
+  test('tapped twice in a row it lists the matches; with nothing typed nothing changes', async () => {
+    const page = await openPocket();
+    await tabKey(page).tap();
+    await settle(page);
+    expect(await runCount(page)).toBe(0);
+    expect(await lineValue(page)).toBe('');
+    await typeInLine(page, 'cat ~/');
+    await tabKey(page).tap();
+    await settle(page);
+    await tabKey(page).tap();
+    await page.locator('.terminal div.completion-list').waitFor();
+    expect(await lineValue(page)).toBe('cat ~/');
+    expect(await commandLineFocused(page)).toBe(true);
+  });
+
+  test('reached with the arrow keys and pressed with Enter, it completes and focus returns to the command line', async () => {
+    const page = await openPocket();
+    await typeInLine(page, 'cat ~/sk');
+    await page.locator(KEY).first().focus();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => lineValue(page)).toBe('cat ~/skills ');
+    expect(await commandLineFocused(page)).toBe(true);
+  });
+
+  test('skills is still reached in 2 taps, through help', async () => {
+    const page = await openPocket();
+    await tapRun(page, key(page, 'help'), 'help');
+    await tapRun(page, page.locator('.terminal section.run').last().locator('.run-output button[aria-label="skills"]'), 'skills');
+  });
+});
+
+describe('006-terminal-FR-053: the strip holds the Tab key with the keyboard open', () => {
+  test('a page 300 px shorter hides the other keys and shows a 60 px strip with the Tab key alone at its right; restoring brings the keys back', async () => {
+    const page = await openPocket();
+    await typeInLine(page, 'cat ~/sk');
+    await page.setViewportSize({ width: 375, height: 512 });
+    await expect.poll(() => page.locator(POCKET).getAttribute('data-keyboard')).toBe('');
+    await settle(page);
+    expect(await page.locator(KEYS).isHidden()).toBe(true);
+    const strip = (await box(page, STRIP))!;
+    expect(Math.abs(strip.height - 60)).toBeLessThanOrEqual(1);
+    const inStrip = page.locator(`${STRIP} button.pocket-key`);
+    expect(await inStrip.count()).toBe(1);
+    expect(await inStrip.getAttribute('aria-label')).toBe(TAB_NAME);
+    const right = (await inStrip.boundingBox())!;
+    expect(Math.abs(right.x + right.width - (strip.x + strip.width))).toBeLessThanOrEqual(1);
+    expect(right.width).toBeGreaterThanOrEqual(44);
+    expect(right.height).toBeGreaterThanOrEqual(44);
+    await inStrip.tap();
+    await expect.poll(() => lineValue(page)).toBe('cat ~/skills ');
+    expect(await commandLineFocused(page)).toBe(true);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect.poll(() => page.locator(POCKET).getAttribute('data-keyboard')).toBeNull();
+    expect(await page.locator(STRIP).count()).toBe(0);
+    expect(await page.locator(KEYS).isVisible()).toBe(true);
+  });
+});
+
 describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', () => {
-  test('j, k, za, /, n, gg, G and :q, named Down to Quit, at least 44 × 44, acting on the view; after :q the command keys are back', async () => {
+  const openNotes = async (page: Page) => {
+    await typeInLine(page, 'vim notes.txt');
+    await page.keyboard.press('Enter');
+    await vimView(page).waitFor();
+    await settle(page);
+  };
+  const vimKey = (page: Page, name: string) => page.locator(`${KEY}[aria-label$=", ${name}"]`);
+  const shownCode = (page: Page) => page.locator('.terminal .vim-code').allTextContents();
+
+  test('i focuses the text area inside the tap’s handler; the strip’s Esc returns to normal mode; u undoes; :w writes; :q gives the command keys back', async () => {
+    const page = await openPocket();
+    await openNotes(page);
+    // Read in the click's own task, as a phone needs to open its keyboard.
+    await page.evaluate(() => {
+      const store = window as unknown as { inHandler: boolean | null };
+      store.inHandler = null;
+      window.addEventListener('click', () => (store.inHandler = document.activeElement?.matches('textarea.vim-insert') ?? false));
+    });
+    await vimKey(page, 'Insert').tap();
+    expect(await page.evaluate(() => (window as unknown as { inHandler: boolean | null }).inHandler)).toBe(true);
+    await page.setViewportSize({ width: 375, height: 512 });
+    await expect.poll(() => page.locator(POCKET).getAttribute('data-keyboard')).toBe('');
+    const esc = page.locator(`${STRIP} button.pocket-key`);
+    expect(await esc.getAttribute('aria-label')).toBe('Esc, back to normal mode');
+    await page.keyboard.type('one');
+    await esc.tap();
+    await page.locator('.terminal textarea.vim-insert').waitFor({ state: 'detached' });
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect.poll(() => page.locator(POCKET).getAttribute('data-keyboard')).toBeNull();
+    expect(await shownCode(page)).toEqual(['one']);
+    await vimKey(page, 'Undo').tap();
+    await expect.poll(async () => (await shownCode(page)).join('').trim()).toBe('');
+    await vimKey(page, 'Insert').tap();
+    await page.keyboard.type('two');
+    // A vim key from insert mode is a normal mode key.
+    await vimKey(page, 'Write').tap();
+    await expect.poll(() => page.locator('.terminal .vim-message-text').textContent()).toContain('written');
+    await vimKey(page, 'Quit').tap();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    expect((await keys(page)).map((each) => each.text)).toEqual([...COMMAND_KEYS, TAB_KEY]);
+    const cat = await runGroup(page, 'cat notes.txt');
+    expect(await cat.locator('.run-output p.out-line').allTextContents()).toEqual(['two']);
+  });
+
+  test('a tap on the text moves the cursor there', async () => {
+    const page = await openPocket();
+    await openNotes(page);
+    await vimKey(page, 'Insert').tap();
+    await page.keyboard.type('hello world');
+    await vimKey(page, 'Down').tap();
+    await page.locator('.terminal textarea.vim-insert').waitFor({ state: 'detached' });
+    const code = (await page.locator('.terminal .vim-code').first().boundingBox())!;
+    await page.touchscreen.tap(code.x + 2, code.y + code.height / 2);
+    await expect.poll(async () => page.locator('.terminal .vim-position').textContent()).toBe('1,1');
+  });
+
+  test('at 320 × 568 the third row fits with no horizontal scroll', async () => {
+    const page = await openPocket(320, 568);
+    await key(page, 'cv').tap();
+    await vimView(page).waitFor();
+    await settle(page);
+    for (const each of await keys(page)) {
+      expect(each.width, each.text).toBeGreaterThanOrEqual(44);
+      expect(each.height, each.text).toBeGreaterThanOrEqual(44);
+    }
+    expect(await noSideScroll(page)).toBeLessThanOrEqual(0);
+    const lastKey = (await page.locator(KEY).last().boundingBox())!;
+    expect(lastKey.x + lastKey.width).toBeLessThanOrEqual(320);
+    expect(lastKey.y + lastKey.height).toBeLessThanOrEqual(568);
+  });
+
+  test('j, k, za, /, n, gg, G, i, u, :w and :q, named Down to Quit, at least 44 × 44, :q twice as wide, acting on the view; after :q the command keys are back', async () => {
     const page = await openPocket();
     await key(page, 'cv').tap();
     await vimView(page).waitFor();
@@ -470,6 +625,7 @@ describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', ()
       expect(each.width, each.text).toBeGreaterThanOrEqual(44);
       expect(each.height, each.text).toBeGreaterThanOrEqual(44);
     }
+    expect(Math.abs(list.at(-1)!.width - 2 * list[0]!.width)).toBeLessThanOrEqual(10);
     expect(await page.locator(KEYS).getAttribute('aria-label')).toBe('Vim keys');
     const cursor = async () => ((await page.locator('.terminal .vim-status .vim-position').textContent()) ?? '').split(',')[0]?.trim();
     // The view opens on its first fold line.
@@ -492,7 +648,7 @@ describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', ()
     await page.keyboard.press('Escape');
     await page.locator(`${KEY}[aria-label$=", Quit"]`).tap();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
-    expect((await keys(page)).map((each) => each.text)).toEqual(COMMAND_KEYS);
+    expect((await keys(page)).map((each) => each.text)).toEqual([...COMMAND_KEYS, TAB_KEY]);
   });
 
   test('with a / search open, the :q key still quits, and the command keys are back', async () => {
@@ -505,7 +661,7 @@ describe('006-terminal-FR-066: with the vim view open, the keys are vim’s', ()
     await page.locator(`${KEY}[aria-label$=", Quit"]`).tap();
     await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
     expect(await vimView(page).count()).toBe(0);
-    expect((await keys(page)).map((each) => each.text)).toEqual(COMMAND_KEYS);
+    expect((await keys(page)).map((each) => each.text)).toEqual([...COMMAND_KEYS, TAB_KEY]);
   });
 
   test('a tap on a fold line opens and closes its fold', async () => {

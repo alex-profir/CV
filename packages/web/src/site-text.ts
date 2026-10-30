@@ -239,14 +239,9 @@ export const siteText = deepFreeze({
       // A vim key's name: the key it shows, then what it does, so the
       // name starts with the key's own text (WCAG 2.5.3).
       vimKeyName: '{key}, {name}',
-      commands: ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'],
+      commands: ['help', 'about', 'work', 'projects', 'cv', 'ls', 'clear'],
       tabKey: { key: 'Tab ⇥', name: 'Tab, complete' },
       escKey: { key: 'Esc', name: 'Esc, back to normal mode' },
-      vimEditKeys: [
-        { key: 'i', name: 'Insert' },
-        { key: 'u', name: 'Undo' },
-        { key: ':w', name: 'Write' },
-      ],
       vim: [
         { key: 'j', name: 'Down' },
         { key: 'k', name: 'Up' },
@@ -255,6 +250,9 @@ export const siteText = deepFreeze({
         { key: 'n', name: 'Next match' },
         { key: 'gg', name: 'Top' },
         { key: 'G', name: 'Bottom' },
+        { key: 'i', name: 'Insert' },
+        { key: 'u', name: 'Undo' },
+        { key: ':w', name: 'Write' },
         { key: ':q', name: 'Quit' },
       ],
     },
