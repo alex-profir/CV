@@ -20,29 +20,29 @@ function realRun(): Run {
   return run;
 }
 
-const NINE_MINUTES = 540_000;
-
-// 006 adds the Terminal's checks within 005's budget plus 4 minutes, with
-// the shell's lines and states its amendment adds (FR-042).
-const TERMINAL_BUDGET_MS = 480_000 + 240_000;
-
-const THIRTEEN_MINUTES = 780_000;
+// 006 adds the Terminal's checks within 005's budget plus 3 minutes.
+const TERMINAL_BUDGET_MS = 480_000 + 180_000;
 
 // 007 adds the inspector's checks within 006's budget plus 3 minutes.
 const INSPECTOR_BUDGET_MS = TERMINAL_BUDGET_MS + 180_000;
 
-const FIFTEEN_MINUTES = 900_000;
+// 008 adds the Playground's checks within 007's budget plus 3 minutes, and 005's
+// whole check follows this chain (005 SC-010, amended 2026-10-30).
+const PLAYGROUND_BUDGET_MS = INSPECTOR_BUDGET_MS + 180_000;
+
+// Whichever test comes first waits for the one run.
+const RUN_TIMEOUT = 1_200_000;
 
 describe('performance (SC-009, SC-010)', () => {
-  test.skipIf(process.env.CI)('npm run site-check on the real repository exits 0 in under 480,000 ms', { timeout: NINE_MINUTES }, () => {
+  test.skipIf(process.env.CI)('npm run site-check on the real repository exits 0 within the latest budget, 1,020,000 ms', { timeout: RUN_TIMEOUT }, () => {
     const { status, stdout, elapsed } = realRun();
     expect(status, stdout).toBe(0);
-    expect(elapsed).toBeLessThan(480_000);
+    expect(elapsed).toBeLessThan(PLAYGROUND_BUDGET_MS);
   });
 });
 
 describe("006-terminal-FR-042: the Terminal's checks keep the site check within its time", () => {
-  test.skipIf(process.env.CI)('npm run site-check, with the terminal part and the Terminal in every other part, exits 0 within 720,000 ms', { timeout: THIRTEEN_MINUTES }, () => {
+  test.skipIf(process.env.CI)('npm run site-check, with the terminal part and the Terminal in every other part, exits 0 within 660,000 ms', { timeout: RUN_TIMEOUT }, () => {
     const { status, stdout, elapsed } = realRun();
     expect(status, stdout).toBe(0);
     expect(stdout).toMatch(/^ {2}terminal +pass /m);
@@ -51,7 +51,7 @@ describe("006-terminal-FR-042: the Terminal's checks keep the site check within 
 });
 
 describe("007-requirement-inspector-FR-034: the inspector's checks keep the site check within its time", () => {
-  test.skipIf(process.env.CI)('npm run site-check, with the inspector part and the inspector in every other part, exits 0 within 840,000 ms', { timeout: FIFTEEN_MINUTES }, () => {
+  test.skipIf(process.env.CI)('npm run site-check, with the inspector part and the inspector in every other part, exits 0 within 840,000 ms', { timeout: RUN_TIMEOUT }, () => {
     const { status, stdout, elapsed } = realRun();
     expect(status, stdout).toBe(0);
     expect(stdout).toMatch(/^ {2}inspector +pass /m);
@@ -59,8 +59,17 @@ describe("007-requirement-inspector-FR-034: the inspector's checks keep the site
   });
 });
 
+describe("008-typescript-playground-FR-088: the Playground's checks keep the site check within its time", () => {
+  test.skipIf(process.env.CI)('npm run site-check, with the playground part and the Playground in every other part, exits 0 within 1,020,000 ms', { timeout: RUN_TIMEOUT }, () => {
+    const { status, stdout, elapsed } = realRun();
+    expect(status, stdout).toBe(0);
+    expect(stdout).toMatch(/^ {2}playground +pass /m);
+    expect(elapsed).toBeLessThan(PLAYGROUND_BUDGET_MS);
+  });
+});
+
 describe('004-cv-page-FR-058: stdout holds only the report', () => {
-  test.skipIf(process.env.CI)('npm run --silent site-check on the real repository prints nothing before the report', { timeout: NINE_MINUTES }, () => {
+  test.skipIf(process.env.CI)('npm run --silent site-check on the real repository prints nothing before the report', { timeout: RUN_TIMEOUT }, () => {
     const { status, stdout } = realRun();
     expect(status === 0 || status === 1).toBe(true);
     expect(stdout).toMatch(/^(?:Site check: |[a-z-]+ (?:\/\S*|-) \S+ \S+ )/);

@@ -99,6 +99,10 @@
   code, or the starting example when there is none (FR-059).
 - Q: FR-016 requires marks within 1 second every time, while SC-002 allows 95% of attempts. Which
   holds? → A: SC-002's: within 1 second in 95% of attempts, in FR-016 too.
+- Q: The site check is past 001's 6-minute `site` job and 005's 8 minutes. What gives way? → A: The
+  limits, through dated amendments. The `site` job gets 20 minutes (001 SC-008). The site check gets
+  a budget of 1,020 s, 007's plus 3 minutes (FR-088), and 005's whole-check time follows the latest
+  budget (005 SC-010).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -968,6 +972,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
 - **FR-079**: The checks of this spec MUST run in the same one command and on the same pull requests
   as 004's and 005's, give the same result locally and on the pull request, and name the state, the
   width and, for examples, the example in every failure.
+- **FR-088**: With the Playground's checks in it, `npm run site-check` MUST exit 0 within 1,020 s on
+  the owner's machine, 007's budget plus 3 minutes, as 006 and 007 set theirs.
 
 ### Key Entities
 

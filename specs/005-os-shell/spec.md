@@ -11,6 +11,10 @@ playground's editor (008) can keep VS Code's Format Document key (see Clarificat
 2026-10-29, and 008-typescript-playground FR-086). Approved 2026-10-23; the amendment approved by
 the owner 2026-10-29.
 
+**Amended**: 2026-10-30 by 008-typescript-playground: SC-010's time for the whole site check follows
+the latest feature's budget (see Clarifications, Session 2026-10-30). Approved by the owner
+2026-10-30.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -81,6 +85,12 @@ the owner 2026-10-29.
   key, `Shift+Alt+F`, is the Maximize shortcut. Which keeps it? → A: Format Document. The shell
   drops its Maximize and Minimize shortcuts, which aren't needed. The minimize and maximize
   controls and the window's menu commands stay (FR-063, FR-065).
+
+### Session 2026-10-30 (amended by 008-typescript-playground)
+
+- Q: The site check, with every later feature's parts, takes longer than SC-010's 8 minutes, while
+  006, 007 and 008 each have a budget of their own. Which holds? → A: The chain. The whole check
+  stays within the latest feature's budget, now 008's 1,020 s (SC-010).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -862,7 +872,8 @@ and on mobile it is one tap away. Without scripts the root links to `/cv`
 - **SC-010**: When this feature is merged, every requirement in this spec is covered by at least
   one test, the content check (002) and the token check (003) pass with no exception added for
   the shells, and the local run of every check gives the same result as the pull-request run,
-  in under 8 minutes on the owner's machine with no internet connection.
+  within the latest feature's budget on the owner's machine with no internet connection. Amended
+  2026-10-30 by 008-typescript-playground: it said in under 8 minutes.
 - **SC-011**: The owner's design review records that no icon, glyph, wallpaper, font or window
   control in either shell comes from or traces an Apple asset.
 
