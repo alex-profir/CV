@@ -49,5 +49,6 @@ export function editorTheme(): EditorTheme {
     fontSize: px('font.size.small'),
     lineHeight: px('size.code-line'),
     gutter: px('size.playground-gutter'),
+    inset: px('space.2'),
   };
 }

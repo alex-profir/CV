@@ -67,6 +67,10 @@ export function defineTheme(theme: EditorTheme): void {
       'peekViewResult.background': c.panel,
       'peekViewTitle.background': c.raised,
       'focusBorder': c.focus,
+      // Brackets in the punctuation color, as the design colors them, not
+      // in Monaco's colors by depth.
+      ...Object.fromEntries([1, 2, 3, 4, 5, 6].map((depth) => [`editorBracketHighlight.foreground${depth}`, c.punctuation])),
+      'editorBracketHighlight.unexpectedBracket.foreground': c.error,
       'editorBracketMatch.border': c.lineNumber,
       'editorBracketMatch.background': c.currentLine,
       'scrollbarSlider.background': c.currentLine,
