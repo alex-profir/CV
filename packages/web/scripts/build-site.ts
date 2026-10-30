@@ -36,6 +36,8 @@ import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
+import { bundleRunner, runnerPlugin } from './runner-scripts.ts';
+import type { RunnerScripts } from './runner-scripts.ts';
 import { buildRequirementData } from './requirements/index.ts';
 import { checkSpecList } from './spec-list.ts';
 import type { SiteManifest } from '../src/routes.ts';
@@ -157,14 +159,14 @@ function withoutMonacoOwnWorker(): Plugin {
 // The engine's own build (research R3): an ES module entry whose exports are
 // kept, in one script with one style sheet, its workers through `?worker` as
 // classic scripts, its styles through Lightning CSS as the site's are.
-function engineConfig(outDir: string): UserConfig & { configFile: false } {
+function engineConfig(outDir: string, runner: RunnerScripts): UserConfig & { configFile: false } {
   return {
     root: WEB_ROOT,
     configFile: false,
     base: './',
     publicDir: false,
     logLevel: 'warn',
-    plugins: [withoutMonacoOwnWorker()],
+    plugins: [withoutMonacoOwnWorker(), runnerPlugin(runner)],
     oxc: viteConfig.oxc,
     css: viteConfig.css,
     worker: { format: 'iife', rolldownOptions: { output: HASHED_NAMES, checks: { pluginTimings: false } } },
@@ -185,10 +187,12 @@ function engineConfig(outDir: string): UserConfig & { configFile: false } {
 
 type BuiltEngine = { dir: string; files: string[]; entry: string; style: string };
 
-// Step 2: the engine, built into a temporary directory.
+// Step 2: the engine, built into a temporary directory, with the runner's
+// scripts bundled first (008 contracts/runner.md The frame).
 async function buildEngine(): Promise<BuiltEngine> {
+  const runner = await bundleRunner();
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-engine-'));
-  await build(engineConfig(dir));
+  await build(engineConfig(dir, runner));
   const viteDir = path.join(dir, '.vite');
   const manifest: Manifest = JSON.parse(fs.readFileSync(path.join(viteDir, 'manifest.json'), 'utf8'));
   fs.rmSync(viteDir, { recursive: true, force: true });

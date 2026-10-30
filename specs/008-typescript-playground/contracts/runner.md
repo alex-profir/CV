@@ -10,8 +10,8 @@ are `engine/runner/bootstrap.ts` and `engine/runner/runtime.ts`, built into scri
 type RunInput = { cv: unknown /* a structured clone of the resume */ };
 
 type RunEvents = {
-  onStarted(): void;
-  onLogs(batch: { entries: LogEntry[]; dropped: number }): void;
+  onStarted(info: { errors: number }): void;       // the code's error count, for the first note (FR-033)
+  onLogs(batch: { entries: LogEntry[]; dropped: number; cleared?: true }): void;   // cleared: console.clear came first
   onPending(pending: { timers: number; requests: number }): void;
   onBlocked(since: number | null): void;          // null when the code paused again (R19)
   onEnded(outcome: Run['outcome']): void;          // data-model.md Run
@@ -53,13 +53,14 @@ run's nonce; a message without it is ignored.
 | From → to | Message | Meaning |
 |-----------|---------|---------|
 | host → bootstrap | `{ start, nonce, source, port }` (by `postMessage` to the frame, the port transferred) | Make the worker from `source` and hand it the port |
-| bootstrap → host | `{ worker: 'started' \| 'failed', nonce }` | The worker exists, or couldn't be made |
+| bootstrap → host | `{ worker: 'started' \| 'failed' \| 'died', nonce, message }` | The worker exists, couldn't be made, or died (an `error` event reached the frame, R24) |
 | host → worker | `{ run, nonce, cv }` | Set `cv` and run the code |
 | host → worker | `{ ping, nonce, n }` every 250 ms | Heartbeat (R19) |
 | worker → host | `{ pong, nonce, n }` | Answered as soon as the worker's event loop is free |
-| worker → host | `{ logs, nonce, entries, dropped }` | A batch (R18) |
+| worker → host | `{ started, nonce }` | The code is about to run; the heartbeat starts |
+| worker → host | `{ logs, nonce, entries, dropped, cleared }` | A batch (R18); `cleared` when `console.clear` emptied the logs before it |
 | worker → host | `{ pending, nonce, timers, requests }` | When the counts change |
-| worker → host | `{ uncaught, nonce, entry }` | An uncaught error or rejection, as a log entry with its line |
+| worker → host | `{ uncaught, nonce, entry, at }` | An uncaught error or rejection, as a log entry, with its place in the worker's script (`at`), which the host maps to the code's line |
 | worker → host | `{ end, nonce, uncaught }` | Nothing is left to do (R18) |
 | host → bootstrap | `{ stop, nonce }` | `worker.terminate()` (R24) |
 

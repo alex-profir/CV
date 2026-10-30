@@ -19,14 +19,15 @@ export type AppProps = { resume: Resume; siteData: SiteData; os: AppOs };
 // An item an app adds to its window's own menu, before the window commands.
 // `data-req` is written literally where the item is declared. `shortcut` is
 // the key shown beside it, as `aria-keyshortcuts` writes it (such as `F1`);
-// `disabled` is asked each time the menu shows; `separatorBefore` and
+// `disabled`, and `shortcut` when a function, are asked each time the menu
+// shows; `separatorBefore` and
 // `separatorAfter` draw a separator above or below it (008 contracts/shell.md).
 export type AppMenuItem = {
   key: string;
   label: string;
   run: () => void;
   'data-req'?: string;
-  shortcut?: string;
+  shortcut?: string | (() => string);
   disabled?: () => boolean;
   separatorBefore?: boolean;
   separatorAfter?: boolean;

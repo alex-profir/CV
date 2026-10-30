@@ -238,6 +238,101 @@
   font-size: var(--token-font-size-label);
 }
 
+.playground-toolbar .divider {
+  flex: none;
+  inline-size: var(--token-border-thin);
+  block-size: var(--token-space-5);
+  margin-inline: var(--token-space-1);
+  background: var(--token-color-shell-rule);
+}
+
+/* ---- Examples (FR-027) -------------------------------------------------- */
+
+/* Under its button, over the editor, in two columns of groups, so every
+   example shows without scrolling in a window of the opening size. */
+.playground .examples-panel {
+  position: absolute;
+  z-index: 4;
+  inset-block-start: calc(var(--token-size-playground-toolbar) - var(--token-space-1));
+  inset-inline-start: calc(var(--token-space-16) * 2 + var(--token-space-10));
+  display: flex;
+  flex-direction: column;
+  inline-size: calc(var(--token-size-playground-popover) * 2);
+  max-inline-size: calc(100% - var(--token-space-6));
+  max-block-size: calc(100% - var(--token-size-playground-toolbar) - var(--token-space-6));
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-menu);
+  background: var(--token-color-playground-raised);
+  box-shadow: var(--token-shadow-menu);
+}
+
+.playground .examples-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: var(--token-space-1-5);
+  overflow: auto;
+  padding: var(--token-space-1-5);
+}
+
+.playground .examples-column > section + section {
+  margin-block-start: var(--token-space-1-5);
+  padding-block-start: var(--token-space-1-5);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.playground .examples-panel h3 {
+  margin: var(--token-space-1) var(--token-space-2);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  font-weight: var(--token-font-weight-regular);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+.playground .examples-panel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playground .example {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+  padding: var(--token-space-1) var(--token-space-2);
+  border: 0;
+  border-inline-start: var(--token-border-thick) solid transparent;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-text);
+  font: inherit;
+  text-align: start;
+}
+
+.playground .example[aria-current="true"] {
+  border-inline-start-color: var(--token-color-playground-primary);
+  background: var(--token-color-base-wash);
+}
+
+.playground .example-title {
+  font-weight: var(--token-font-weight-medium);
+}
+
+.playground .example-description {
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
+.playground .examples-foot {
+  margin: 0;
+  padding: var(--token-space-2) var(--token-space-3);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
 /* ---- The message under the toolbar ------------------------------------- */
 
 .playground-message {
@@ -387,6 +482,75 @@
 .playground .empty {
   margin: 0;
   color: var(--token-color-shell-text-soft);
+}
+
+/* ---- The logs (FR-034, FR-035, FR-043, FR-044) --------------------------- */
+
+.playground .logs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-typography-small-font-size);
+}
+
+.playground .log {
+  display: grid;
+  grid-template-columns: var(--token-space-16) minmax(0, 1fr) auto;
+  gap: var(--token-space-3);
+  padding-block: var(--token-space-1);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.playground .log .level {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+.playground .log .value {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.playground .log .cut,
+.playground .log[data-level="note"] .value {
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-body);
+}
+
+.playground .log[data-level="warn"] .level {
+  color: var(--token-color-code-warning);
+}
+
+.playground .log[data-level="error"] {
+  background: var(--token-color-code-error-band);
+}
+
+.playground .log[data-level="error"] .level {
+  color: var(--token-color-code-error);
+}
+
+.playground .log-line {
+  align-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--token-color-shell-accent);
+  font: inherit;
+  font-size: var(--token-font-size-label);
+  text-decoration: underline;
+}
+
+.playground .logs-dropped {
+  margin: 0 0 var(--token-space-2);
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
 }
 
 .playground .diagnostics {

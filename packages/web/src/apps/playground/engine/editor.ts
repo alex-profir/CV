@@ -46,6 +46,7 @@ import 'monaco-editor/features/wordOperations/register';
 import 'monaco-editor/features/wordPartOperations/register';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import TsWorker from './ts.worker.ts?worker';
+import type { Runnable } from './ts.worker.ts';
 import { compilerOptions } from '../compiler-options.ts';
 import type { ChangedOptions, CheckResult } from '../types.ts';
 import type { EditorTheme, EditorView, EngineInit, OutputView } from './contract.ts';
@@ -74,7 +75,7 @@ function setUp(theme: EditorTheme): void {
 
 type WorkerProxy = {
   getCheck(fileName: string, packagesMessage: string): Promise<CheckResult | null>;
-  getRunnable(fileName: string): Promise<{ code: string; map: string; imports: number; errors: number } | null>;
+  getRunnable(fileName: string): Promise<Runnable | null>;
   getVersion(): Promise<string>;
 };
 
