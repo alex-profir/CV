@@ -46,4 +46,26 @@ describe('008-typescript-playground-FR-037: a run waiting on a timer or a reques
     await page.waitForFunction(() => document.querySelector('#os section.playground .playground-toolbar button.stop')?.getAttribute('aria-disabled') === 'true', null, { timeout: 20_000 });
     expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['status 200']);
   });
+
+  // The browser's own promises settle in a later task, so a run that looked
+  // only at timers and requests ended before they did.
+  test("a run waits for the browser's own promises: a blob, a digest where it's offered, the caches", async () => {
+    const page = await openPlaygroundPage();
+    const code = `console.log("blob", await new Blob(["four"]).text());
+// A sandboxed frame isn't always a secure context.
+const subtle = (crypto as any).subtle;
+if (subtle !== undefined) await subtle.digest("SHA-256", new TextEncoder().encode("x"));
+console.log("digest done");
+try {
+  await caches.keys();
+} catch {
+  // Refused, in an opaque origin.
+}
+console.log("caches done");`;
+    await setCode(page, code);
+    await waitForCode(page, 'console.log("caches done");');
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['blob four', 'digest done', 'caches done']);
+  });
 });
