@@ -277,6 +277,24 @@ const DESKTOP: State[] = [
       return page;
     },
   },
+  {
+    name: 'playground-contained',
+    reach: async () => {
+      const page = await openPlaygroundPage();
+      const code = 'for (let i = 0; i < 1100; i++) console.log(i);';
+      await setCode(page, code);
+      await waitForCode(page, code);
+      // The note on dropped entries groups its number, so drawing it fails here.
+      await page.evaluate(() => {
+        Number.prototype.toLocaleString = () => {
+          throw new Error('drawing failed');
+        };
+      });
+      await page.click(`${PLAYGROUND} .playground-toolbar button.run`);
+      await page.waitForSelector(`${LOADING}[role="alert"]`);
+      return page;
+    },
+  },
 ];
 
 const PHONE_STATES: State[] = [

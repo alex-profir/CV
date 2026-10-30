@@ -115,8 +115,38 @@ No network on a first open, or the download stopped part way. Export:
 ```
 
 When the download stopped part way, the heading reads **The download stopped** and the text
-"TypeScript arrived only in part, so the Playground won't use it. The download starts again by
-itself when you're back online, or now with Retry." Nothing part-downloaded is ever used.
+"TypeScript arrived only in part, so the Playground won't use it. It needs one whole download with
+a connection: 6.3 MB. The download starts again by itself when you're back online, or now with
+Retry." Nothing part-downloaded is ever used. Export: `desktop-26-download-stopped-1440.png`
+(amendment of 2026-10-30, adding the size FR-011 requires).
+
+### TypeScript won't open (FR-011, amendment of 2026-10-30)
+
+A whole copy arrived, or was stored, and won't start. It has the offline state's layout and glyph.
+Trying again alone wouldn't help, so the text promises only Retry. Export:
+`desktop-27-wont-open-1440.png`.
+
+```
+|                                        ☁̸                                                |
+|                             TypeScript won't open                                       |
+|         The Playground has TypeScript but couldn't start it. Retry downloads it         |
+|                         again with a connection: 6.3 MB.                                |
+|                                     (Retry)                                             |
+```
+
+### The Playground stopped showing (FR-039, FR-040, amendment of 2026-10-30)
+
+A failure while drawing the window stays in the window: the dock, the CV window and the next run
+go on working. It has the loading state's layout, with no glyph. The panel is an alert, and Try
+again empties the logs, since what they hold may be what failed. Export:
+`desktop-25-contained-1440.png`.
+
+```
+|                         The Playground stopped showing                                  |
+|     Something went wrong while showing the Playground. The rest of the site still       |
+|           works, and your code is safe. Try again clears the logs.                      |
+|                                   (Try again)                                           |
+```
 
 ### Ready, with the starting example (FR-004, FR-012, FR-019, FR-028)
 
@@ -451,6 +481,13 @@ Timers and promises, 2.4 s in. The Logs pane opened by itself, emptied at the st
   the latest 1,000." An entry cut short ends with "… cut at 10,000 characters" (FR-044).
 - `prompt` and `confirm` log a note: "`prompt` isn't available in the Playground, so it returned
   `null`." / "`confirm` … so it returned `false`." (FR-043).
+- Amendment of 2026-10-30: code that calls `close()` logs a note, "The code closed its own worker
+  with close(), so the run ended." and the run ends as finished (FR-045, FR-048). Export:
+  `desktop-29-worker-closed-1440.png`.
+- Amendment of 2026-10-30: when the code's JavaScript can't be read, nothing runs. The logs open
+  with the note "Nothing ran: the code has 1 error, and its JavaScript can't be read." ("2 errors",
+  and so on), then the parser's message as an `error` entry that ends with its `line 2` button, and
+  the toolbar reads "Nothing ran" (FR-033, FR-035). Export: `desktop-28-cant-parse-1440.png`.
 
 ### A CV example, run (FR-027, FR-029)
 
@@ -505,7 +542,9 @@ Export: `desktop-18-shared-1440.png`.
 ```
 
 `Share with…` shows only where the device has its own sharing. When the clipboard refuses, the
-message reads "Copy this link:" with the link in a field, selected (FR-052).
+message reads "Copy this link:" with the link in a field, selected (FR-052). Amendment of
+2026-10-30: `Share with…` shows beside the field too, where the device has its own sharing. Export:
+`desktop-30-link-field-1440.png`.
 
 ### Share: too long for a link (FR-055)
 
@@ -649,6 +688,17 @@ Exports: `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568) and `-landsc
   announced (FR-058).
 - The link opens the Playground with the starting example, or with the visitor's code when the
   shell switched from desktop (FR-059).
+- Amendment of 2026-10-30: when the link can't be copied, or the device's sharing fails for a reason
+  other than the visitor's cancel, the note gives way to "Copy this link:" and the link in a field,
+  selected, on the icon's screen and a shared link's alike (FR-052). Exports:
+  `phone-4-link-field-375.png` and `-320.png`.
+
+```
+| (      ⇪ Share link        )  |
+| [      ⧉ Copy link         ]  |
+|  Copy this link:              |
+|  [ https://…/#playground    ] |
+```
 
 ### Best on a desktop, from a shared link (FR-060)
 

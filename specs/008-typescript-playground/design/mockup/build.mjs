@@ -280,6 +280,7 @@ function runState(run) {
   if (run.state === 'blocked') return `<span class="pg-state is-running">${G.dot}Running · ${run.time} without a pause</span>`;
   if (run.state === 'finished') return `<span class="pg-state is-finished">${G.ok}Finished in ${run.time}</span>`;
   if (run.state === 'stopped') return `<span class="pg-state is-stopped">${G.square}Stopped after ${run.time}</span>`;
+  if (run.state === 'nothing') return `<span class="pg-state is-stopped">${G.warn}Nothing ran</span>`;
   return '';
 }
 
@@ -627,19 +628,88 @@ add('desktop-24-narrow', 'A narrow window', desktop({
   }), { geometry: { left: 720, top: 88, width: 600, height: 648 } }),
 }));
 
+// ---- Amendment of 2026-10-30, for the owner's sign-off (T192) ---------------
+
+add('desktop-25-contained', 'The Playground stopped showing', desktop({
+  playground: playgroundWindow(playground({
+    loading: loadingPanel({
+      heading: 'The Playground stopped showing', glyph: '',
+      body: '<p>Something went wrong while showing the Playground. The rest of the site still works, and your code is safe. Try again clears the logs.</p>',
+      actions: '<button type="button" class="pg-button pg-primary">Try again</button>',
+    }),
+  })),
+}));
+
+add('desktop-26-download-stopped', 'The download stopped', desktop({
+  playground: playgroundWindow(playground({
+    loading: loadingPanel({
+      glyph: G.cloud, heading: 'The download stopped',
+      body: '<p>TypeScript arrived only in part, so the Playground won\'t use it. It needs one whole download with a connection: 6.3 MB. The download starts again by itself when you\'re back online, or now with Retry.</p>',
+      actions: '<button type="button" class="pg-button pg-primary">Retry</button>',
+    }),
+  })),
+}));
+
+add('desktop-27-wont-open', 'TypeScript won\'t open', desktop({
+  playground: playgroundWindow(playground({
+    loading: loadingPanel({
+      glyph: G.cloud, heading: 'TypeScript won\'t open',
+      body: '<p>The Playground has TypeScript but couldn\'t start it. Retry downloads it again with a connection: 6.3 MB.</p>',
+      actions: '<button type="button" class="pg-button pg-primary">Retry</button>',
+    }),
+  })),
+}));
+
+const CANT_PARSE = 'console.log("a");\nconst x = ;\n';
+add('desktop-28-cant-parse', 'JavaScript that can\'t be read', desktop({
+  playground: playgroundWindow(playground({
+    run: { state: 'nothing' },
+    editorHtml: editor(CANT_PARSE, { cursor: [2, 11] }),
+    pane: 'Logs', counts: { errors: 1, logs: 2 },
+    paneHtml: logsPane([
+      { level: 'note', text: 'Nothing ran: the code has 1 error, and its JavaScript can\'t be read.' },
+      { level: 'error', text: 'Expression expected.', where: 2 },
+    ]),
+    status: { cursor: [2, 11], errors: 1 },
+  })),
+}));
+
+const CLOSES = 'console.log("Closing");\nclose();\n';
+add('desktop-29-worker-closed', 'The code closed its worker', desktop({
+  playground: playgroundWindow(playground({
+    run: { state: 'finished', time: '0.02 s' },
+    editorHtml: editor(CLOSES, { cursor: [2, 9] }),
+    pane: 'Logs', counts: { errors: 0, logs: 4 },
+    paneHtml: logsPane([
+      { level: 'note', text: 'No errors in the code. Running.' }, { level: 'log', text: 'Closing' },
+      { level: 'note', text: 'The code closed its own worker with close(), so the run ended.' },
+      { level: 'note', text: 'Finished in 0.02 s' },
+    ]),
+    status: { cursor: [2, 9] },
+  })),
+}));
+
+add('desktop-30-link-field', 'Share: the link to copy by hand', desktop({
+  playground: playgroundWindow(playground({
+    ...jobsBase,
+    banner: banner('info', 'Copy this link:', '<input class="pg-link-field" type="text" readonly aria-label="Link to this code" value="https://example.test/#playground=1.q1YqS0zMTEwsLlWyUkouyC_ILwEA.Xk2mJ0vT9aQ">' + textButton('Share with…')),
+  })),
+}));
+
 // ---- Phone --------------------------------------------------------------
 
 function phoneApp(body) {
   return `<div class="mobile"><main class="mobile-main"><section class="full-screen" aria-labelledby="app-title-playground" data-view="playground"><header class="app-header"><button type="button" class="home-button">${G.homeChevron}Home</button><div class="app-title" id="app-title-playground" tabindex="-1">Playground</div><button type="button" class="show-specs" aria-label="Show specs for Playground">${G.sheet}Specs</button></header><div class="view-content">${body}</div></section></main></div>`;
 }
-const bestOnDesktop = (shared) => `<div class="pg-phone"><div class="pg-phone-card">${playgroundGlyph(shared ? 'p2' : 'p1')}<h1>${shared ? 'This link holds TypeScript code' : 'The Playground is best on a desktop'}</h1><p>${shared
+const bestOnDesktop = (shared, field = false) => `<div class="pg-phone"><div class="pg-phone-card">${playgroundGlyph(shared ? 'p2' : 'p1')}<h1>${shared ? 'This link holds TypeScript code' : 'The Playground is best on a desktop'}</h1><p>${shared
   ? 'Someone shared code from the Playground, a TypeScript editor that runs in the browser. Open the link on a desktop to read, check and run it. Nothing runs here.'
-  : 'It\'s a TypeScript editor that checks and runs code in your browser. Writing code needs a keyboard and room for its panes, so it opens on a desktop.'}</p><div class="pg-phone-actions"><button type="button" class="pg-button pg-primary pg-wide">${G.share}<span>Share link</span></button><button type="button" class="pg-button pg-secondary pg-wide">${G.copy}<span>Copy link</span></button></div><p class="pg-phone-note">${shared ? 'Sharing passes on the same link, with its code.' : 'The link opens the Playground on a desktop.'}</p></div></div>`;
+  : 'It\'s a TypeScript editor that checks and runs code in your browser. Writing code needs a keyboard and room for its panes, so it opens on a desktop.'}</p><div class="pg-phone-actions"><button type="button" class="pg-button pg-primary pg-wide">${G.share}<span>Share link</span></button><button type="button" class="pg-button pg-secondary pg-wide">${G.copy}<span>Copy link</span></button></div>${field ? '<label class="pg-phone-link"><span>Copy this link:</span><input class="pg-link-field" type="text" readonly value="https://example.test/#playground"></label>' : ""}${field ? '' : `<p class="pg-phone-note">${shared ? 'Sharing passes on the same link, with its code.' : 'The link opens the Playground on a desktop.'}</p>`}</div></div>`;
 const home = `<div class="mobile"><main class="mobile-main"><section class="home" aria-label="Home screen"><p class="site-name">${esc(resume.basics?.name ?? '')}</p><ul class="app-grid"><li><button type="button" class="app-icon" data-view="cv"><span class="app-icon-image">${cvGlyph('h')}</span><span class="app-icon-name">CV</span></button></li><li><button type="button" class="app-icon" data-view="terminal"><span class="app-icon-image">${terminalGlyph}</span><span class="app-icon-name">Terminal</span></button></li><li><button type="button" class="app-icon" data-view="playground"><span class="app-icon-image">${playgroundGlyph('h')}</span><span class="app-icon-name">Playground</span></button></li></ul><div class="home-foot"><button type="button" class="about" data-view="about">${G.info20}About this site</button></div></section></main></div>`;
 
 add('phone-1-home', 'Phone, the home screen', home, 'mobile');
 add('phone-2-best-on-desktop', 'Phone, best on desktop', phoneApp(bestOnDesktop(false)), 'mobile');
 add('phone-3-shared-link', 'Phone, a shared link', phoneApp(bestOnDesktop(true)), 'mobile');
+add('phone-4-link-field', 'Phone, the link to copy by hand', phoneApp(bestOnDesktop(false, true)), 'mobile');
 
 for (const s of states) fs.writeFileSync(path.join(here, `${s.file}.html`), s.html);
 console.log(`Wrote ${states.length} pages`);

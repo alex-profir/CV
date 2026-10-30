@@ -614,6 +614,22 @@ kbd {
 .pg-phone-card p { margin: 0; color: var(--token-color-shell-text-soft); }
 .pg-phone-actions { display: flex; flex-direction: column; gap: var(--token-space-2); margin-block: var(--token-space-6) var(--token-space-3); }
 .pg-wide { inline-size: 100%; min-block-size: var(--token-size-home-target); font-size: var(--token-font-size-body); }
+.pg-link-field {
+  inline-size: var(--token-size-playground-popover);
+  max-inline-size: 100%;
+  padding: var(--token-space-1) var(--token-space-2);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-code-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.pg-phone-link .pg-link-field { inline-size: 100%; min-inline-size: 0; box-sizing: border-box; }
+
+.pg-phone-link { display: flex; flex-direction: column; gap: var(--token-space-1); font-size: var(--token-font-size-small); color: var(--token-color-shell-text-secondary); text-align: start; }
+
 .pg-phone-note { font-size: var(--token-font-size-small); color: var(--token-color-shell-text-secondary) !important; }
 
 @media (orientation: landscape) {

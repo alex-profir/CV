@@ -1,6 +1,6 @@
 # Design Review: The TypeScript Playground
 
-**Status**: Approved
+**Status**: Approved (mockup `1188830`). The amendment of 2026-10-30 at the end is awaiting the owner's sign-off.
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -84,3 +84,29 @@ colors, with the site's three fonts.
 - Notes: Approved on review of the exports, with every recommended design value as drawn,
   and the owner confirms the look is original as recorded above. Changes found later are made as
   amendments.
+
+## Amendment of 2026-10-30: awaiting sign-off
+
+The second convergence (T192) found site text and states added or needed since the sign-off. These
+are drawn in `wireframes.md` and in the new exports below. Until the owner signs, T195, T201's
+visible part and T204 stay unbuilt. The first two rows are already in the code (T182, T188), ahead
+of the gate.
+
+| Change | Why | Export | Code |
+|--------|-----|--------|------|
+| The Playground stopped showing, with Try again | A failure while drawing stays in the window (FR-039, FR-040, T182) | `desktop-25-contained-1440.png` | Built |
+| The `closed` note | `close()` ends the run and says why (FR-045, FR-048, T188) | `desktop-29-worker-closed-1440.png` | Built |
+| The note for JavaScript that can't be read, and the parser's message | "Stopped unexpectedly" gave no reason (FR-033, FR-035, T195) | `desktop-28-cant-parse-1440.png` | Not built |
+| The download stopped: the size is added | FR-011 requires it (T204) | `desktop-26-download-stopped-1440.png` | Not built |
+| TypeScript won't open: a state of its own | "Arrived only in part" is untrue there (FR-011, T184, T204) | `desktop-27-wont-open-1440.png` | Not built |
+| Share with… beside the desktop's link field | FR-052 offers the device's sharing (T201) | `desktop-30-link-field-1440.png` | Not built |
+| The phone's link field | FR-052's field, missing on the phone (T201) | `phone-4-link-field-375.png`, `-320.png` | Not built |
+
+The accessibility check gains the contained state when it can be reached by real input; see T192 in
+`tasks.md`.
+
+### Sign-off of the amendment
+
+- Reviewed mockup version: not signed
+- Date: not signed
+- Approved by: not signed
