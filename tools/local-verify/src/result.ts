@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { Exec } from './git.ts';
 import { commonDir } from './git.ts';
 
-export const CHECK_NAMES = ['typecheck', 'traceability', 'content', 'tokens', 'test', 'site'] as const;
+export const CHECK_NAMES = ['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines', 'site'] as const;
 
 export type CheckName = (typeof CHECK_NAMES)[number];
 

@@ -10,7 +10,8 @@ import type { Routes } from '../routes.ts';
 
 declare const self: ServiceWorkerGlobalScope;
 
-// Every served file but `/sw.js`, by path, as the site manifest lists them.
+// Every served file but `/sw.js` and the Playground's engine, by path, as the
+// site manifest lists them (008 FR-009).
 declare const PRECACHE: readonly string[];
 
 // A hash over those files and this worker's code: a new version of either
@@ -21,6 +22,11 @@ declare const VERSION: string;
 declare const ROUTES: Routes;
 
 const CACHE_PREFIX = 'cv-';
+
+// The Playground's engine (008 research R4): never precached, stored by the
+// page in its own `playground-<hash>` caches, and answered from whichever
+// cache holds it, so a stored copy works offline and outlives a site update.
+const ENGINE_PATH = '/playground/';
 
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 
@@ -112,6 +118,11 @@ async function cacheFirst(request: Request): Promise<Response> {
   return (await fromCache(request)) ?? fetch(request);
 }
 
+// Any cache's copy of an engine file, else the network.
+async function engineFile(request: Request): Promise<Response> {
+  return (await caches.match(request, { ignoreVary: true })) ?? fetch(request);
+}
+
 self.addEventListener('install', (event) => event.waitUntil(install()));
 
 self.addEventListener('activate', (event) => event.waitUntil(activate()));
@@ -122,5 +133,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (request.mode === 'navigate') event.respondWith(withinLimit(request).catch(() => storedAnswer(url)));
+  else if (url.pathname.startsWith(ENGINE_PATH)) event.respondWith(engineFile(request));
   else event.respondWith(cacheFirst(request));
 });

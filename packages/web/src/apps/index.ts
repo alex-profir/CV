@@ -8,9 +8,9 @@ import { cvApp } from './cv/app.tsx';
 import { terminalApp } from './terminal/app.tsx';
 
 // What an app's content may ask of the shell (006 contracts/shell.md): the
-// shell it is rendered in, to open the CV or About this site as the dock or
+// shell it is rendered in, to open the CV, the Playground or About this site as the dock or
 // home screen does, and to leave as its window's close control or Home does.
-export type AppOs = { shell: ShellName; open: (view: 'cv' | 'about') => void; exit: () => void };
+export type AppOs = { shell: ShellName; open: (view: 'cv' | 'playground' | 'about') => void; exit: () => void };
 
 // What every app's content is given.
 export type AppProps = { resume: Resume; siteData: SiteData; os: AppOs };

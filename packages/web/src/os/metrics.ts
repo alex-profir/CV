@@ -50,6 +50,10 @@ export const METRICS: Metrics = Object.freeze({
   terminalHeight: px('size.terminal-window-height'),
   terminalMargin: px('size.terminal-window-margin'),
   terminalOffset: px('size.terminal-window-offset'),
+  playgroundWidth: px('size.playground-window-width'),
+  playgroundHeight: px('size.playground-window-height'),
+  playgroundMargin: px('size.terminal-window-margin'),
+  playgroundOffset: px('size.playground-window-offset'),
 });
 
 // How far a focus indicator reaches past its element: its width and its

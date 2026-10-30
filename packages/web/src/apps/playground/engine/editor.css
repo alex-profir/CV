@@ -1,0 +1,6 @@
+/* The editor's look inside the Playground (research R22): Monaco's widgets
+   restyled to the design's raised panels. Every value is a token. */
+.playground-editor .monaco-editor,
+.playground-output .monaco-editor {
+  --vscode-font-family: var(--token-typography-small-font-family);
+}
