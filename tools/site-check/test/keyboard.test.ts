@@ -161,3 +161,19 @@ describe("007-requirement-inspector-FR-032: the inspector's keyboard flow runs a
     expect(report.problems.filter((problem) => problem.variant === INSPECTOR_VARIANT).map(renderProblem)).toEqual([line(3, 'CV'), line(7, 'CV'), line(11, 'Terminal'), line(14, 'About this site')]);
   });
 });
+
+const PLAYGROUND_VARIANT = 'desktop/playground-keyboard/1440px';
+
+describe("008-typescript-playground-FR-077: the Playground's keyboard flow runs at 1440 × 900, checking focus and its indicator at each step", () => {
+  test('on the real build the flow passes', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['keyboard'] });
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    expect(report.results.filter((result) => result.page === '/').map(({ variant, status }) => `${variant} ${status}`)).toContain(`${PLAYGROUND_VARIANT} pass`);
+  });
+
+  test("a copy whose stuck popup doesn't take focus fails, naming the step", async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/playground/Popups.tsx', '      stop.current?.focus();\n', ''));
+    const report = await runCheck(root, { parts: ['keyboard'] });
+    expect(report.problems.filter((problem) => problem.variant === PLAYGROUND_VARIANT).map(renderProblem)).toEqual(expect.arrayContaining([expect.stringMatching(new RegExp(`^keyboard / ${PLAYGROUND_VARIANT} focus-target step \\d+ "the popup takes focus": focus went to .*, expected the popup's Stop$`))]));
+  });
+});

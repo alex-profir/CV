@@ -109,3 +109,26 @@ describe('008-typescript-playground-FR-025: a change applies at once, and Reset 
     await page.waitForSelector(PANEL);
   });
 });
+
+describe('008-typescript-playground-FR-025: a change of the options never leaves the check waiting', () => {
+  test('options changed again and again while checks are out still end in a check of the current code', async () => {
+    const page = await openPlaygroundPage();
+    await openOptions(page);
+    for (let round = 0; round < 12; round += 1) await control(page, 'strict').setChecked(round % 2 === 1);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await setCode(page, 'const n: number = "one";');
+    await page.waitForFunction((selector) => /^\s*1 error/.test(document.querySelector(selector)?.textContent ?? ''), `${PLAYGROUND} .playground-status .check`, { timeout: 30_000 });
+    expect(await readErrors(page)).toHaveLength(1);
+  });
+
+  test('an example chosen just after the editor opens, with the options unchanged, is checked', async () => {
+    for (let round = 0; round < 6; round += 1) {
+      const page = await openPlaygroundPage();
+      await page.locator(`${TOOLBAR} button.examples`).click();
+      await page.locator(`${PLAYGROUND} section.examples-panel button.example`).first().click();
+      await page.waitForTimeout(1_000);
+      await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('…'), `${PLAYGROUND} .playground-status .check`, { timeout: 20_000 });
+      await page.context().close();
+    }
+  });
+});

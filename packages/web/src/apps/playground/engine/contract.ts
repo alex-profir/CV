@@ -58,6 +58,8 @@ export type EngineInit = {
   mac: boolean;
   onChange(version: number): void;
   onCheck(result: CheckResult): void;
+  // A check that was out brought no result (research R7).
+  onCheckLost(): void;
   onCommand(id: EngineCommand): void;
   onCursor?(position: { line: number; column: number }): void;
   onTabFocus?(on: boolean): void;

@@ -176,3 +176,22 @@ describe('008-typescript-playground-FR-068: the token check passes over the Play
     }
   });
 });
+
+describe('008-typescript-playground-FR-031 and 008-typescript-playground-FR-074: the checks pass over the Playground with no exception for it', () => {
+  test('npm run content-check exits 0, reads the examples and the engine, and none of its exclusions names the Playground', () => {
+    const content = runContentCheck(REPO_ROOT);
+    expect(content.stderr).toBe('');
+    expect(content.status).toBe(0);
+    const searched = new Set(searchFiles(REPO_ROOT, [RESUME_FILE]).files.map((file) => file.file));
+    const source = siteSource('packages/web/src/apps/playground').filter((file) => /\.(?:css|tsx?)$/.test(file));
+    expect(source).toContain('packages/web/src/apps/playground/examples/skills-at-a-glance.ts');
+    expect(source.filter((file) => !searched.has(file))).toEqual([]);
+    for (const text of CHECK_SOURCES) expect(text).not.toMatch(/apps\/playground|008-typescript-playground/);
+  });
+
+  test('npm run traceability exits 0, its sources naming no exception for the Playground', () => {
+    const result = runTraceability(REPO_ROOT);
+    expect(result.status).toBe(0);
+    for (const name of fs.readdirSync(path.join(REPO_ROOT, 'tools/traceability/src'))) expect(fs.readFileSync(path.join(REPO_ROOT, 'tools/traceability/src', name), 'utf8'), name).not.toMatch(/apps\/playground|008-typescript-playground/);
+  });
+});

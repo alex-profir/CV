@@ -4,6 +4,7 @@
 import { counted, fill, siteText } from '../../site-text.ts';
 import { currentEngine } from './controller.ts';
 import { useSession } from './session.ts';
+import { ErrorMark, OkMark } from './Glyphs.tsx';
 
 const words = siteText.playground.status;
 
@@ -23,9 +24,15 @@ export function StatusBar() {
       {checking ? (
         <span className="check">{words.checking}</span>
       ) : errors === 0 ? (
-        <span className="check">{words.noErrors}</span>
+        <span className="check">
+          <OkMark />
+          {words.noErrors}
+        </span>
       ) : (
-        <span className="check is-error">{fill(counted(words.errors, errors), { n: errors })}</span>
+        <span className="check is-error">
+          <ErrorMark />
+          {fill(counted(words.errors, errors), { n: errors })}
+        </span>
       )}
       {tabMovesFocus && <span className="chip">{words.tabMovesFocus}</span>}
       <span className="status-gap" />

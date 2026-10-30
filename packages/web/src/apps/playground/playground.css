@@ -758,6 +758,12 @@
   flex: 1;
 }
 
+.playground-status .check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+}
+
 .playground-status .check.is-error {
   color: var(--token-color-code-error);
 }

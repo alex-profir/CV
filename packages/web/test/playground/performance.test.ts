@@ -4,6 +4,7 @@
 // and a type or suggestions within 500 ms, in 95 of 100 tries. CI's shared
 // runners only log the times, as the other timing tests do.
 import { describe, expect, test, vi } from 'vitest';
+import { siteText } from '../../src/site-text.ts';
 import type { Page } from 'playwright';
 import { settle } from '../helpers/shell.ts';
 import { EDITOR, freshProfile, onMac, openPlayground, openPlaygroundPage, PLAYGROUND, setCode, waitChecked, waitReady } from '../helpers/playground.ts';
@@ -68,7 +69,7 @@ describe('the Playground is quick to open and to answer (SC-001, SC-002)', () =>
     const documentStart = primary === 'Meta' ? 'Meta+ArrowUp' : 'Control+Home';
     await setCode(page, CODE);
     await waitChecked(page);
-    expect((await page.locator(STATUS_CHECK).textContent())?.trim()).toMatch(/^✓/);
+    expect((await page.locator(STATUS_CHECK).textContent())?.trim()).toBe(siteText.playground.status.noErrors);
 
     // Errors: one new error per try, from one input, as a paste is.
     const errors: number[] = [];
@@ -76,7 +77,7 @@ describe('the Playground is quick to open and to answer (SC-001, SC-002)', () =>
       await page.keyboard.press(documentEnd);
       await page.keyboard.insertText(`\nconst wrong${i}: number = "x";`);
       const started = Date.now();
-      await page.waitForFunction(({ selector, n }) => new RegExp(`^⊗ ${n} errors?$`).test((document.querySelector(selector)?.textContent ?? '').trim()), { selector: STATUS_CHECK, n: i + 1 }, { timeout: 10_000 });
+      await page.waitForFunction(({ selector, n }) => new RegExp(`^${n} errors?$`).test((document.querySelector(selector)?.textContent ?? '').trim()), { selector: STATUS_CHECK, n: i + 1 }, { timeout: 10_000 });
       errors.push(Date.now() - started);
     }
 

@@ -5,8 +5,9 @@
 import zlib from 'node:zlib';
 import type { BrowserContext, Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
+import { siteText } from '../../../../packages/web/src/site-text.ts';
 import type { Problem } from '../report.ts';
-import { INSPECTOR, SHELL, TERMINAL, openTerminal, settle, shown, typeLine, vimEntry, vimKeys, waitForShell } from '../shell-states.ts';
+import { INSPECTOR, PLAYGROUND, SHELL, TERMINAL, cursorAt, openTerminal, playgroundReady, primaryKey, settle, shown, typeLine, vimEntry, vimKeys, waitForShell } from '../shell-states.ts';
 import type { InspectorView } from '../shell-states.ts';
 
 export type Box = { x: number; y: number; width: number; height: number };
@@ -1054,5 +1055,148 @@ export async function inspectorKeyboardProblems(page: Page, pageLabel: string, v
     await leave('about');
   };
   await run();
+  return problems;
+}
+
+// The Playground's keyboard flow (008 FR-077), at 1440 × 900, by keys alone:
+// each step checks where focus lands and its indicator. A step whose action
+// doesn't happen ends the flow, as what follows needs it.
+const S_MENU = '#os .menu-bar *';
+
+export async function playgroundKeyboardProblems(page: Page, pageLabel: string, variant: string): Promise<Problem[]> {
+  const { problems, step } = flow(page, pageLabel, variant);
+  const P = PLAYGROUND;
+  // Monaco's own cursor covers its input, so the editor's indicator is measured
+  // by the outline around it, not by the pixels at the input.
+  const editor = { target: P.editor, targetName: 'the editor', inside: true, indicator: false };
+  const primary = await primaryKey(page);
+  const mac = primary === 'Meta';
+  const lines = () => page.evaluate((selector) => [...document.querySelectorAll<HTMLElement>(`${selector} .view-line`)].sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top)).map((line) => (line.textContent ?? '').replace(/ /g, ' ')).join('\n'), P.editor);
+  const status = async () => (await page.locator(`${P.status} span`).first().textContent()) ?? '';
+  const shown = (selector: string) => () => page.locator(selector).first().isVisible();
+  const pressTo = async (key: string, target: string, limit = 40) => {
+    for (let presses = 0; presses < limit && !(await focusOn(page, target)); presses += 1) await page.keyboard.press(key);
+  };
+  const running = async () => (await page.locator(`${P.toolbar} button.stop`).getAttribute('aria-disabled')) !== 'true';
+  const replace = async (code: string) => {
+    await page.keyboard.press(`${primary}+KeyA`);
+    await page.keyboard.press('Delete');
+    await page.keyboard.type(code);
+  };
+  const steps = async (): Promise<void> => {
+    if (!(await step('go to the dock', { keys: ['Alt+Shift+D'], done: () => focusIn(page, '#os .dock'), target: '#os .dock-item', targetName: 'a dock item' }))) return;
+    if (!(await step('reach the Playground in the dock', { act: () => pressTo('ArrowRight', P.dockItem), target: P.dockItem, targetName: 'the Playground dock item' }))) return;
+    if (
+      !(await step('open the Playground', {
+        keys: ['Enter'],
+        done: async () => {
+          await playgroundReady(page);
+          return true;
+        },
+        failed: { subject: 'Enter', detail: 'the dock item did not open the Playground' },
+        ...editor,
+      }))
+    )
+      return;
+    const ring = await page.locator(P.editor).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0;
+    });
+    if (!ring) problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'no-focus-indicator', subject: 'the editor', detail: 'no outline around the focused editor' });
+    if (!(await step('type', { act: () => replace('const n: number = "one";'), done: async () => (await lines()).includes('const n: number = "one";'), ...editor }))) return;
+    const errorAt = page.locator(`${P.editor} .squiggly-error`);
+    if (!(await until(async () => (await errorAt.count()) > 0))) problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'shortcut', subject: 'type', detail: 'the typed error got no mark' });
+    if (!(await step('move to an error and read it', { keys: ['F8'], done: shown(`${P.editor} .marker-widget`), failed: { subject: 'F8', detail: 'the error did not open' }, ...editor }))) return;
+    await page.keyboard.press('Escape');
+    if (!(await step('read a type', { act: async () => { await cursorAt(page, 1, 7); await page.keyboard.press(`${primary}+KeyK`); await page.keyboard.press(`${primary}+KeyI`); }, done: shown(`${P.editor} .monaco-hover:not(.hidden)`), failed: { subject: `${primary}+K ${primary}+I`, detail: 'no type showed' }, ...editor }))) return;
+    await page.keyboard.press('Escape');
+    if (
+      !(await step('choose a suggestion', {
+        act: async () => {
+          await page.keyboard.press('End');
+          await page.keyboard.press('Enter');
+          await page.keyboard.type('n.to');
+          await page.locator(`${P.editor} .suggest-widget.visible`).waitFor({ timeout: 10_000 });
+          await page.keyboard.press('Enter');
+        },
+        done: async () => /n\.to[A-Z]/.test(await lines()),
+        failed: { subject: 'Enter', detail: 'the suggestion was not inserted' },
+        ...editor,
+      }))
+    )
+      return;
+    const useAt = await status();
+    if (!(await step('go to the definition', { keys: ['Home', 'F12'], done: async () => (await status()).startsWith('Ln 1,'), failed: { subject: 'F12', detail: 'the cursor did not move to the definition' }, ...editor }))) return;
+    if (!(await step('go back', { keys: [`${primary}+KeyU`], done: async () => !(await status()).startsWith('Ln 1,'), failed: { subject: `${primary}+U`, detail: `the cursor did not go back towards ${useAt}` }, ...editor }))) return;
+    if (
+      !(await step('rename', {
+        act: async () => {
+          await page.keyboard.press('Home');
+          await page.keyboard.press('F2');
+          await page.locator(`${P.editor} .rename-box input`).waitFor({ timeout: 10_000 });
+          await until(() => focusIn(page, `${P.editor} .rename-box`));
+          await page.waitForTimeout(100);
+          await page.keyboard.type('count');
+          await page.keyboard.press('Enter');
+        },
+        done: async () => (await lines()).includes('const count:'),
+        failed: { subject: 'F2', detail: 'the name was not renamed' },
+        ...editor,
+      }))
+    )
+      return;
+    if (
+      !(await step('apply a quick fix', {
+        act: async () => {
+          await replace('interface Job { title: string }');
+          await page.keyboard.press('Escape');
+          await page.keyboard.press('Enter');
+          await page.keyboard.type('const job: Job = {};');
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(800);
+          await cursorAt(page, 2, 7);
+          await page.keyboard.press(`${primary}+Period`);
+          await page.locator('.action-widget').first().waitFor({ timeout: 10_000 });
+          await page.locator('.action-widget').first().getByText('Add missing properties', { exact: true }).waitFor({ timeout: 10_000 });
+          await page.keyboard.press('Enter');
+        },
+        done: async () => (await lines()).includes('title:'),
+        failed: { subject: `${primary}+.`, detail: 'the fix did not change the code' },
+        ...editor,
+      }))
+    )
+      return;
+    if (!(await step('open the command palette', { keys: ['F1'], done: shown(`${P.editor} .quick-input-widget`), failed: { subject: 'F1', detail: 'the palette did not open' }, target: `${P.editor} .quick-input-widget`, targetName: 'the command palette', inside: true }))) return;
+    await page.keyboard.press('Escape');
+    if (!(await step('reach the menu bar from inside the editor', { keys: ['Alt+Shift+M'], done: () => focusIn(page, '#os .menu-bar'), failed: { subject: 'Alt+Shift+M', detail: "the shell's shortcut did not leave the editor" }, target: S_MENU, targetName: 'the menu bar' }))) return;
+    await page.keyboard.press('Escape');
+    if (!(await step('come back to the editor', { act: () => page.locator(`${P.editor} .view-lines`).first().click({ force: true }).then(() => undefined), done: () => focusIn(page, P.editor), ...editor }))) return;
+    if (!(await step('leave the editor', { keys: [mac ? 'Control+Shift+KeyM' : 'Control+KeyM', 'Tab'], done: async () => !(await focusIn(page, P.editor)), failed: { subject: 'Tab', detail: 'Tab did not leave the editor' }, target: `${P.root} *`, targetName: 'a control of the Playground' }))) return;
+    const tab = `${P.root} .pane-tabs [role="tab"][aria-selected="true"]`;
+    if (!(await step('reach the panes', { act: () => pressTo('Tab', tab), target: tab, targetName: "the open pane's tab" }))) return;
+    if (!(await step('switch panes', { keys: ['End'], done: async () => (await page.locator(tab).textContent())?.includes(siteText.playground.panes.logs) === true, failed: { subject: 'End', detail: 'the Logs pane did not open' }, target: tab, targetName: "the Logs pane's tab" }))) return;
+    const optionsButton = `${P.toolbar} button.options`;
+    if (!(await step('reach Options', { act: () => pressTo('Shift+Tab', optionsButton), target: optionsButton, targetName: 'Options' }))) return;
+    const option = `${P.root} section.options-panel #playground-option-noUnusedLocals`;
+    if (!(await step('open the options', { keys: ['Enter'], done: shown(`${P.root} section.options-panel`), failed: { subject: 'Enter', detail: 'the options did not open' }, target: `${P.root} section.options-panel *`, targetName: 'the options panel' }))) return;
+    if (!(await step('change an option', { act: async () => { await pressTo('Tab', option); await page.keyboard.press('Space'); }, done: () => page.locator(option).isChecked(), failed: { subject: 'Space', detail: 'the option did not change' }, target: option, targetName: 'the option' }))) return;
+    if (!(await step('close the options', { keys: ['Escape'], done: async () => (await count(page, `${P.root} section.options-panel`)) === 0, target: optionsButton, targetName: 'Options' }))) return;
+    const examplesButton = `${P.toolbar} button.examples`;
+    if (!(await step('reach Examples', { act: () => pressTo('Shift+Tab', examplesButton), target: examplesButton, targetName: 'Examples' }))) return;
+    if (!(await step('open the examples', { keys: ['Enter'], done: shown(`${P.root} section.examples-panel`), target: `${P.root} section.examples-panel button.example`, targetName: 'the first example' }))) return;
+    if (!(await step('choose an example', { keys: ['Enter'], done: async () => (await count(page, `${P.root} section.examples-panel`)) === 0, failed: { subject: 'Enter', detail: 'the example was not chosen' }, ...editor }))) return;
+    if (!(await step('run', { act: async () => { await replace('while (true) {}'); await page.keyboard.press(`${primary}+Enter`); }, done: running, failed: { subject: `${primary}+Enter`, detail: 'the run did not start' }, ...editor }))) return;
+    const popupOn = (name: string) => `${P.popup} button:nth-of-type(${name === 'stop' ? 1 : 2})`;
+    const popupUp = () => until(() => shown(P.popup)(), 20_000);
+    if (!(await popupUp())) problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'shortcut', subject: 'popup', detail: 'the popup did not show' });
+    if (!(await step('the popup takes focus', { done: shown(P.popup), target: `${P.popup} button`, targetName: "the popup's Stop" }))) return;
+    if (!(await step('keep waiting', { act: async () => { await pressTo('Tab', popupOn('keep'), 4); await page.keyboard.press('Enter'); }, done: async () => (await count(page, P.popup)) === 0, failed: { subject: 'Enter', detail: 'Keep waiting did not close the popup' }, ...editor }))) return;
+    if (!(await popupUp())) problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'shortcut', subject: 'popup', detail: 'the popup did not ask again' });
+    if (!(await step('stop', { keys: ['Enter'], done: async () => !(await running()), failed: { subject: 'Enter', detail: 'Stop did not end the run' }, ...editor }))) return;
+    const share = `${P.toolbar} button.share`;
+    if (!(await step('share', { act: async () => { await page.context().grantPermissions(['clipboard-read', 'clipboard-write']); await pressTo('Shift+Tab', share); await page.keyboard.press('Enter'); }, done: shown(P.message), failed: { subject: 'Enter', detail: 'Share showed no message' }, target: share, targetName: 'Share' }))) return;
+    await step('close the window', { keys: ['Alt+Shift+W'], done: async () => (await count(page, P.window)) === 0, failed: { subject: 'Alt+Shift+W', detail: 'the window did not close' }, target: SHELL.cvTitle, targetName: "the CV window's title, the window now in front" });
+  };
+  await steps();
   return problems;
 }
