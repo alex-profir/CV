@@ -6,7 +6,7 @@ import type { Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import { forcedColorsProblems } from '../../../../tools/site-check/src/parts/modes.ts';
 import { openShell, settle } from '../helpers/shell.ts';
-import { COMMAND_LINE, openTerminal, openVimView, runGroup, SHELL_PAGE } from '../helpers/terminal.ts';
+import { COMMAND_LINE, linesRun, openTerminal, openVimView, runGroup, SHELL_PAGE, typeLine, vimEntry, vimView } from '../helpers/terminal.ts';
 import type { TerminalShell } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -44,6 +44,68 @@ async function forcedPage(shell: TerminalShell): Promise<Page> {
 }
 
 describe('006-terminal-FR-033: with forced colors every part of the Terminal shows', () => {
+  const color = (page: Page, selector: string, property: 'color' | 'backgroundColor' | 'borderInlineStartColor' = 'color') => page.locator(selector).first().evaluate((element, name) => getComputedStyle(element)[name], property);
+
+  test('the list’s folders keep their / and stay distinct without color', async () => {
+    const page = await forcedPage('desktop');
+    await typeLine(page, 'mkdir notes');
+    await linesRun(page);
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('cat ~/');
+    await page.keyboard.press('Tab');
+    await settle(page);
+    await page.keyboard.press('Tab');
+    const folder = page.locator('.terminal .completion-folder').first();
+    await folder.waitFor();
+    expect((await folder.textContent())?.trim()).toMatch(/\/$/);
+    const weight = (selector: string) => page.locator(selector).first().evaluate((element) => Number(getComputedStyle(element).fontWeight));
+    expect(await weight('.terminal .completion-folder')).toBeGreaterThan(await weight('.terminal .completion-file'));
+    expect(await forcedColorsProblems(page, '/')).toEqual([]);
+  });
+
+  test('the insert cursor is a Highlight bar; W10 and the E messages show in CanvasText; [RO] and [+] show', async () => {
+    const page = await forcedPage('desktop');
+    await typeLine(page, 'vim about');
+    await vimView(page).waitFor();
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('i');
+    await page.locator('.terminal .vim-insert-bar').waitFor();
+    expect(await color(page, '.terminal .vim-insert-bar', 'borderInlineStartColor')).toBe(await systemColor(page, 'Highlight'));
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('x');
+    const message = '.terminal .vim-message-text';
+    const canvasText = await systemColor(page, 'CanvasText');
+    await expect.poll(() => page.locator(message).textContent()).toContain('W10');
+    expect(await color(page, message)).toBe(canvasText);
+    await vimEntry(page, ':', 'w');
+    await expect.poll(() => page.locator(message).textContent()).toContain('E45');
+    expect(await color(page, message)).toBe(canvasText);
+    for (const mark of ['.vim-ro', '.vim-modified']) expect(await page.locator(`.terminal ${mark}`).isVisible(), mark).toBe(true);
+    await expectBorders(page, '.terminal .vim-mode', 'the mode pill');
+    expect(await forcedColorsProblems(page, '/')).toEqual([]);
+  });
+
+  test('the Tab key, Esc and the strip show their borders; with reduced transparency the strip has no glass of its own', async () => {
+    const page = await forcedPage('mobile');
+    await page.locator(COMMAND_LINE).tap();
+    await page.setViewportSize({ width: 375, height: 512 });
+    await page.waitForSelector('#os .pocket-strip');
+    await expectBorders(page, '#os .pocket-strip .pocket-key', 'the strip’s Tab key');
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.locator('#os .pocket-strip').waitFor({ state: 'detached' });
+    await expectBorders(page, '#os .pocket-key[aria-label="Tab, complete"]', 'the Tab key');
+    await typeLine(page, 'vim notes.txt');
+    await vimView(page).waitFor();
+    await page.locator('#os .pocket-key[aria-label="i, Insert"]').tap();
+    await page.setViewportSize({ width: 375, height: 512 });
+    await page.waitForSelector('#os .pocket-strip');
+    await expectBorders(page, '#os .pocket-strip .pocket-key', 'Esc');
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] });
+    expect(await page.locator('#os .pocket-strip').evaluate((element) => getComputedStyle(element).backgroundColor)).toMatch(/, 0\)$/);
+    await cdp.detach();
+  });
+
   for (const shell of ['desktop', 'mobile'] as const) {
     test(`in the ${shell} shell: the frame, chips, keys and fold lines have borders, the command line none, and the cursor is Highlight`, async () => {
       const page = await forcedPage(shell);

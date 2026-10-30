@@ -9,7 +9,8 @@ import type { Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { CssVarTokenName } from '@cv/tokens';
 import { REPO_ROOT } from '../helpers/copy.ts';
-import { COMMAND_LINE, openTerminalPage, runGroup } from '../helpers/terminal.ts';
+import { settle } from '../helpers/shell.ts';
+import { COMMAND_LINE, openTerminalPage, runGroup, typeLine, vimView } from '../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -43,6 +44,46 @@ const backgroundOf = (page: Page, value: string) =>
 const SYSTEM_FONTS = /-apple-system|BlinkMacSystemFont|system-ui|ui-monospace|ui-sans-serif|SF Pro|SF Mono|San Francisco|Menlo|Monaco|Segoe UI|Helvetica Neue|Roboto/i;
 
 describe('006-terminal-FR-031: the Terminal matches the approved design', () => {
+  test('the amendment’s colors and widths come from the tokens', async () => {
+    const page = await openTerminalPage('desktop');
+    const read = (selector: string, property: 'color' | 'borderInlineStartColor' | 'borderInlineStartWidth') => page.locator(selector).first().evaluate((element, name) => getComputedStyle(element)[name], property);
+    const asRgb = (value: string) =>
+      page.evaluate((css) => {
+        const probe = document.createElement('div');
+        probe.style.color = css;
+        document.body.append(probe);
+        const computed = getComputedStyle(probe).color;
+        probe.remove();
+        return computed;
+      }, value);
+    await typeLine(page, 'mkdir notes');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('cat ~/');
+    await page.keyboard.press('Tab');
+    await settle(page);
+    await page.keyboard.press('Tab');
+    await page.locator('.terminal .completion-folder').first().waitFor();
+    expect(await read('.terminal .completion-folder', 'color')).toBe(await asRgb(tokenValue('color.terminal-path')));
+    await page.locator(COMMAND_LINE).fill('vim about');
+    await page.keyboard.press('Enter');
+    await vimView(page).waitFor();
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('i');
+    await page.locator('.terminal .vim-insert-bar').waitFor();
+    expect(await read('.terminal .vim-insert-bar', 'borderInlineStartColor')).toBe(await asRgb(tokenValue('color.terminal-cursor')));
+    expect(Number.parseFloat(await read('.terminal .vim-insert-bar', 'borderInlineStartWidth'))).toBe(Number.parseFloat(String(tokenValue('border.thick'))));
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('x');
+    await page.locator('.terminal .vim-message-text[data-tone="warning"]').waitFor();
+    expect(await read('.terminal .vim-message-text', 'color')).toBe(await asRgb(tokenValue('color.vim-warning')));
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press(':');
+    await page.keyboard.type('w');
+    await page.keyboard.press('Enter');
+    await page.locator('.terminal .vim-message-text[data-tone="error"]').waitFor();
+    expect(await read('.terminal .vim-message-text', 'color')).toBe(await asRgb(tokenValue('color.terminal-error')));
+  });
+
   test('the output and the command line use the mono token’s family', async () => {
     const page = await openTerminalPage('desktop');
     await runGroup(page, 'help');

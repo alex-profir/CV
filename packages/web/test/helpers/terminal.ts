@@ -302,6 +302,51 @@ const SHARED_STATES: TerminalState[] = [
     },
   },
   ...SHELL_STATES,
+  {
+    name: 'tab list',
+    reach: async (page) => {
+      await typeLine(page, 'mkdir notes && touch todo');
+      await linesRun(page);
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('cat ~/');
+      await page.keyboard.press('Tab');
+      await settle(page);
+      await page.keyboard.press('Tab');
+      await page.locator('.terminal div.completion-list').waitFor();
+    },
+  },
+  {
+    name: 'vim insert',
+    reach: async (page) => {
+      await typeLine(page, 'vim notes.txt');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('i');
+      await page.locator('.terminal textarea.vim-insert').waitFor();
+      await page.keyboard.type('a line');
+    },
+  },
+  {
+    name: 'vim W10',
+    reach: async (page) => {
+      await typeLine(page, 'vim about');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('x');
+      await page.locator('.terminal .vim-message-text[data-tone="warning"]').waitFor();
+    },
+  },
+  {
+    name: 'vim E45',
+    reach: async (page) => {
+      await typeLine(page, 'vim about');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('x');
+      await vimEntry(page, ':', 'w');
+      await page.locator('.terminal .vim-message-text[data-tone="error"]').waitFor();
+    },
+  },
 ];
 
 export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
@@ -347,6 +392,33 @@ export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
       reach: async (page) => {
         await page.locator('#os .pocket-keys button.pocket-key[aria-label="cv"]').tap();
         await vimView(page).waitFor();
+      },
+    },
+    {
+      name: 'vim keys at 320',
+      size: { width: 320, height: 568 },
+      reach: async (page) => {
+        await page.locator('#os .pocket-keys button.pocket-key[aria-label="cv"]').tap();
+        await vimView(page).waitFor();
+      },
+    },
+    {
+      name: 'the strip with the Tab key',
+      reach: async (page) => {
+        await page.locator(COMMAND_LINE).tap();
+        await page.keyboard.type('cat ~/');
+        await page.setViewportSize({ width: 375, height: 512 });
+        await page.waitForSelector('#os .pocket-strip');
+      },
+    },
+    {
+      name: 'the strip with Esc',
+      reach: async (page) => {
+        await typeLine(page, 'vim notes.txt');
+        await vimView(page).waitFor();
+        await page.locator('#os .pocket-keys button.pocket-key[aria-label="i, Insert"]').tap();
+        await page.setViewportSize({ width: 375, height: 512 });
+        await page.waitForSelector('#os .pocket-strip');
       },
     },
   ],

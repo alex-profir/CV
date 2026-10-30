@@ -104,6 +104,32 @@ describe('006-terminal-FR-076: Tab completes as bash does', () => {
   });
 });
 
+describe('006-terminal-FR-076: the list fits its screen', () => {
+  for (const [shell, across] of [
+    ['desktop', 7],
+    ['mobile', 3],
+  ] as const) {
+    test(`in the ${shell} shell the home folder lists in ${across} columns, inside the screen`, async () => {
+      const page = await openTerminalPage(shell);
+      await typeLine(page, 'mkdir notes && touch todo');
+      await linesRun(page);
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('cat ~/');
+      await page.keyboard.press('Tab');
+      await page.waitForTimeout(100);
+      await page.keyboard.press('Tab');
+      const row = page.locator('.terminal .completion-row').first();
+      await row.waitFor();
+      expect(await row.locator('span').count()).toBe(across);
+      const overflow = await page.locator('.terminal .terminal-screen').evaluate((screen) => {
+        const right = screen.getBoundingClientRect().right;
+        return Math.max(...[...screen.querySelectorAll('.completion-row span')].map((cell) => cell.getBoundingClientRect().right - right));
+      });
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
+  }
+});
+
 describe('006-terminal-FR-077: a completion is heard once, and the command line says how Tab works', () => {
   const STATUS = '.terminal .terminal-status[role="status"]';
   const status = (page: Page) => page.locator(STATUS).evaluate((element) => ({ text: element.textContent ?? '', children: element.children.length }));

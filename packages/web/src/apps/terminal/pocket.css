@@ -76,6 +76,7 @@
 
 .pocket .terminal {
   flex: 1;
+  min-inline-size: 0;
   font-family: var(--token-typography-terminal-pocket-narrow-font-family);
   font-size: var(--token-typography-terminal-pocket-narrow-font-size);
   font-weight: var(--token-typography-terminal-pocket-narrow-font-weight);

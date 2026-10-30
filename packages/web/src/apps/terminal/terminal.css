@@ -461,6 +461,27 @@
   color: var(--token-color-vim-string);
 }
 
+/* Below the text, vim's `~` rows, in what height is left, so they never add
+   to the scroll; the alternative text keeps them from being read. */
+.vim-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.vim-line {
+  flex: none;
+}
+
+.vim-text::after {
+  flex: 1 1 0;
+  min-block-size: 0;
+  overflow: hidden;
+  padding-inline-start: var(--token-size-terminal-padding);
+  color: var(--token-color-terminal-dim);
+  content: "~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~" / "";
+  white-space: pre;
+}
+
 /* The text and the help fill the view to its edges, where an outline
    outside them would be cut off, so theirs is drawn inside, one thin
    border wider: inside, its corners overlap, and it must still cover a
@@ -599,19 +620,23 @@
 }
 
 .vim-mode {
-  color: var(--token-color-vim-mode);
+  padding-inline: var(--token-space-1-5);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-vim-mode);
+  color: var(--token-color-terminal-user-text);
   font-weight: var(--token-font-weight-semibold);
 }
 
 .vim-mode.is-help {
-  color: var(--token-color-vim-mode-help);
+  background: var(--token-color-vim-mode-help);
 }
 
 .vim-pipe {
   color: var(--token-color-terminal-dim);
 }
 
-.vim-scroll {
+/* The type, position and scroll at the right, as the design has them. */
+.vim-type {
   margin-inline-start: auto;
 }
 
@@ -751,6 +776,31 @@
   .vim-status {
     border-block-start: var(--token-border-thin) solid CanvasText;
     background: Canvas;
+  }
+
+  /* The code says what a message is, not its color (FR-033). */
+  .vim-message-text[data-tone] {
+    color: CanvasText;
+  }
+
+  .vim-mode,
+  .vim-mode.is-help {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .vim-insert-bar {
+    border-inline-start-color: Highlight;
+  }
+
+  .completion-file,
+  .completion-folder {
+    color: CanvasText;
+  }
+
+  .vim-text::after {
+    color: CanvasText;
   }
 
   .terminal-glyph .terminal-tile {

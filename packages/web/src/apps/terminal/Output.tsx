@@ -80,7 +80,11 @@ function CompletionList({ matches }: { matches: Extract<Node, { kind: 'completio
   const [width, setWidth] = useState(TERMINAL.columns);
   useLayoutEffect(() => {
     const element = list.current;
-    if (element !== null) setWidth(Math.floor(element.clientWidth / (TERMINAL.fontSize * TERMINAL.advance)));
+    const screen = element?.closest('.terminal-screen');
+    if (element === null || screen === null || screen === undefined) return;
+    const { paddingLeft, paddingRight } = getComputedStyle(screen);
+    const advance = Number.parseFloat(getComputedStyle(element).fontSize) * TERMINAL.advance;
+    setWidth(Math.floor((screen.clientWidth - Number.parseFloat(paddingLeft) - Number.parseFloat(paddingRight)) / advance));
   }, []);
   return (
     <div ref={list} className="completion-list" data-req="006-terminal-FR-076">
