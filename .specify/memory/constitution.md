@@ -18,9 +18,10 @@
 
 ### II. Design Gate
 
-No UI task starts until `specs/<feature>/design/` contains all of:
+The design gate applies to a feature's initial development. No UI task for it starts until
+`specs/<feature>/design/` contains all of:
 
-1. An ASCII wireframe of every screen or state the feature adds or changes.
+1. An ASCII wireframe of every screen or state the feature adds.
 2. PNG exports of the approved Penpot mockup, plus a link to the Penpot file.
 3. A `review.md` sign-off from the project owner. It names the reviewed mockup version and
    gives the date.
@@ -28,12 +29,28 @@ No UI task starts until `specs/<feature>/design/` contains all of:
 - The gate covers both shells. Each shell the feature supports needs its own wireframe and
   mockup exports.
 - Features with no UI change MUST say so in `spec.md` ("No UI"). Only then are they exempt.
-- If the approved design changes, the PNGs and `review.md` are updated before the code changes.
+- Until a feature ships, any change to its approved design updates the PNGs and `review.md`
+  before the code changes.
+- Once a feature has shipped, the gate applies again only to a change that adds a screen or state,
+  or changes the layout or structure of an existing one. It covers that part of the feature, and
+  the PNGs and `review.md` are updated before the code changes.
+- Any other change to a shipped feature's UI is a **small adjustment**, such as a fix to spacing,
+  color, alignment, wording or an icon. It needs no new design artifacts and no design sign-off.
+  If it is unclear whether a change is small, the gate applies unless the owner says otherwise.
+- Each small adjustment is recorded in `docs/backlog.md`, in the pull request that makes it: the
+  date, the feature, what changed and why. The feature's exports and `review.md` stay as signed.
+  The backlog records where what ships differs from them, and the next design work on that screen
+  takes its entries in. A change to CV data alone (Principle IV) is not a UI change and needs no
+  entry.
+- A small adjustment is exempt from this gate only. A behavior change still starts in the spec
+  (Principle I), and every other principle still applies.
 - Until the interim provision on local mockups ends, an interim local mockup can stand in for
   the Penpot mockup and its link (see that section).
 
 **Rationale**: it makes the visual decision explicit and reviewable before implementation.
-It also keeps the published design artifacts in sync with what ships.
+A full design pass earns its cost when something is first designed, not for every later fix, so
+small adjustments stay quick. The backlog keeps them visible, so the published design artifacts
+and what ships can differ only in ways a reader can look up.
 
 ### III. Traceable Requirements
 
@@ -161,8 +178,8 @@ to trust.
   `spec.md` and `tasks.md` and names the amendment it builds by its date.
 - When an amendment ships in several pull requests, each one carries the part of the spec
   amendment it builds, with that part's tests, design and tasks. So the default branch never
-  holds an approved requirement without its test (Principle III), or a UI change without its
-  approved design (Principle II).
+  holds an approved requirement without its test (Principle III), or a UI change the design gate
+  covers without its approved design (Principle II).
 - The tasks of an amendment in pull requests of its own are a new phase in the amended
   feature's `tasks.md`. Earlier tasks keep their record: a task an amendment overturns is marked
   as superseded, never deleted or unticked.
@@ -207,7 +224,8 @@ part it changes (Principle XI).
    `Status: Approved` (Principle I).
 2. **Design** (UI features only): the wireframe, Penpot PNG exports, Penpot link and
    `review.md` sign-off go in `specs/<feature>/design/` (Principle II), or an interim local
-   mockup under the interim provision.
+   mockup under the interim provision. A small adjustment to a shipped feature skips this gate
+   and gets a `docs/backlog.md` entry instead.
 3. **Plan**: `/speckit-plan` produces `plan.md`. Its Constitution Check covers every
    principle. New dependencies, skills and abstractions get written reasons (Principle X).
 4. **Tasks**: `/speckit-tasks` produces `tasks.md`. UI tasks list the design gate as a
@@ -284,7 +302,7 @@ While it applies:
 - **What may wait**: a check that only a person can do. Examples are a pass with a screen
   reader, shortcuts tried by hand in each browser and screen reader, forced colors and text-only
   zoom in a given browser, printing, and comparing the built pages with the approved design
-  exports. These may be done after merge, in a final testing phase that covers several features.
+  exports and the feature's `docs/backlog.md` entries. These may be done after merge, in a final testing phase that covers several features.
 - **What may not wait**: every automated check still runs and passes before merge, in CI or in
   the owner's signed-off local run, as do the requirement-to-test traceability check
   (Principle III) and the checks in CI. A deferred manual
@@ -322,4 +340,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.5.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-29
+**Version**: 1.6.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-30
