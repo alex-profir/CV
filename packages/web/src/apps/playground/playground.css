@@ -1,0 +1,746 @@
+/* The Playground (008 design/mockup/playground.css, research R22), with the
+   mockup's class names without their `pg-` prefix where contracts/
+   playground.md doesn't name them. Every value is a token; forced colors use
+   system colors only. Monaco's own widgets are restyled in
+   engine/editor.css, which loads with the engine. */
+
+/* ---- The icon (FR-001) ------------------------------------------------- */
+
+.playground-glyph .playground-tile {
+  rx: var(--token-radius-icon);
+}
+
+.playground-glyph .playground-tile-top {
+  stop-color: var(--token-color-icon-playground-top);
+}
+
+.playground-glyph .playground-tile-bottom {
+  stop-color: var(--token-color-icon-playground-bottom);
+}
+
+.playground-glyph .playground-brace {
+  fill: none;
+  stroke: var(--token-color-icon-playground-glyph);
+  stroke-width: var(--token-space-1);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.playground-glyph .playground-play {
+  fill: var(--token-color-icon-playground-glyph);
+}
+
+/* ---- The window and its layout ----------------------------------------- */
+
+.window[data-view="playground"] .window-content {
+  overflow: hidden;
+}
+
+.playground {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  background: var(--token-color-code-surface);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+  line-height: var(--token-typography-small-line-height);
+}
+
+.playground h2 {
+  color: var(--token-color-shell-text);
+}
+
+/* Narrower than breakpoint.playground-stack, the panes go under the editor
+   (FR-072); wider, beside it. */
+.playground-body {
+  flex: 1;
+  min-block-size: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--token-size-playground-stacked-side);
+}
+
+.playground-side {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  background: var(--token-color-playground-panel);
+}
+
+@container (--token-breakpoint-playground-stack) {
+  .playground-body {
+    grid-template-columns: minmax(0, 1fr) var(--token-size-playground-side);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .playground-side {
+    border-block-start: 0;
+    border-inline-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  }
+}
+
+/* ---- Glyphs and marks ---------------------------------------------------- */
+
+.playground .glyph {
+  inline-size: var(--token-size-control-dot);
+  block-size: var(--token-size-control-dot);
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thin);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.playground .glyph-filled {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Marks tell states apart by shape as well as color (FR-034, FR-070). */
+.playground .mark {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--token-border-thin);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.playground .mark-error {
+  color: var(--token-color-code-error);
+}
+
+.playground .mark-warn {
+  color: var(--token-color-code-warning);
+}
+
+.playground .mark-info {
+  color: var(--token-color-code-info);
+}
+
+.playground .mark-ok {
+  color: var(--token-color-code-type);
+}
+
+.playground .mark-running {
+  color: var(--token-color-code-type);
+  fill: currentColor;
+}
+
+.playground .mark-stopped {
+  color: var(--token-color-code-error);
+  fill: currentColor;
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+
+.playground .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--token-space-1-5);
+  min-block-size: var(--token-space-7);
+  min-inline-size: var(--token-size-target);
+  padding-inline: var(--token-space-2-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-text);
+  font: inherit;
+  font-weight: var(--token-font-weight-medium);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.playground .button[aria-disabled="true"] {
+  color: var(--token-color-shell-text-secondary);
+  border-color: var(--token-color-shell-rule);
+}
+
+.playground .button.primary,
+.playground .button.run {
+  border-color: var(--token-color-playground-primary);
+  background: var(--token-color-playground-primary);
+  color: var(--token-color-playground-primary-text);
+}
+
+.playground .button.danger {
+  border-color: var(--token-color-playground-danger);
+  background: var(--token-color-playground-danger);
+  color: var(--token-color-playground-danger-text);
+}
+
+.playground .button.tool {
+  border-color: transparent;
+}
+
+.playground .button.tool:is([aria-expanded="true"], [aria-pressed="true"]) {
+  border-color: var(--token-color-chrome-border);
+  background: var(--token-color-base-wash);
+}
+
+.playground .text-button {
+  min-block-size: var(--token-size-target);
+  padding-inline: var(--token-space-2);
+  border: var(--token-border-thin) solid transparent;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-accent);
+  font: inherit;
+  font-weight: var(--token-font-weight-medium);
+  white-space: nowrap;
+}
+
+.playground .icon-button {
+  display: inline-grid;
+  place-items: center;
+  inline-size: var(--token-size-target);
+  block-size: var(--token-size-target);
+  padding: 0;
+  border: 0;
+  border-radius: var(--token-radius-small);
+  background: none;
+  color: var(--token-color-shell-text-secondary);
+}
+
+.playground :is(button, select, input, [tabindex]):focus-visible {
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-space-0-5);
+}
+
+/* ---- The toolbar -------------------------------------------------------- */
+
+.playground-toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  block-size: var(--token-size-playground-toolbar);
+  padding-inline: var(--token-space-3);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  background: var(--token-color-playground-panel);
+}
+
+.playground-toolbar .run-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  margin: 0 0 0 auto;
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* ---- The message under the toolbar ------------------------------------- */
+
+.playground-message {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--token-space-2-5);
+  padding: var(--token-space-2) var(--token-space-3);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  border-inline-start: var(--token-border-thick) solid var(--token-color-code-info);
+  background: var(--token-color-playground-raised);
+}
+
+.playground-message[data-kind="done"] {
+  border-inline-start-color: var(--token-color-code-type);
+}
+
+.playground-message[data-kind="warn"] {
+  border-inline-start-color: var(--token-color-code-warning);
+}
+
+.playground-message[data-kind="error"] {
+  border-inline-start-color: var(--token-color-code-error);
+}
+
+.playground-message p {
+  margin: 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground-message .message-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1);
+}
+
+.playground-message .message-link {
+  inline-size: var(--token-size-playground-popover);
+  padding: var(--token-space-1) var(--token-space-2);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-code-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* ---- The editor and the output panes ------------------------------------ */
+
+.playground-editor {
+  position: relative;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--token-color-code-surface);
+}
+
+.playground-editor:focus-within {
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: calc(var(--token-border-thick) * -1);
+}
+
+.playground-output {
+  flex: 1;
+  min-block-size: var(--token-size-playground-stacked-side);
+}
+
+.playground-output[hidden] {
+  display: none;
+}
+
+/* ---- The panes (FR-020 to FR-023) --------------------------------------- */
+
+.pane-tabs {
+  display: flex;
+  flex: none;
+  padding-inline: var(--token-space-2);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.pane-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--token-space-1-5);
+  min-block-size: var(--token-space-10);
+  padding-inline: var(--token-space-2-5);
+  border: 0;
+  border-block-end: var(--token-border-thick) solid transparent;
+  background: none;
+  color: var(--token-color-shell-text-secondary);
+  font: inherit;
+  font-weight: var(--token-font-weight-medium);
+}
+
+.pane-tab[aria-selected="true"] {
+  border-block-end-color: var(--token-color-playground-primary);
+  color: var(--token-color-shell-text);
+}
+
+.pane-tab .count {
+  min-inline-size: var(--token-space-5);
+  padding-inline: var(--token-space-1-5);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-base-wash);
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  text-align: center;
+}
+
+.pane-tab .count.is-error {
+  background: var(--token-color-code-error-band);
+  color: var(--token-color-code-error);
+}
+
+.playground .pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--token-space-3) var(--token-space-4);
+}
+
+/* While a check is out, the panes show their last result dimmed, under the
+   popups' scrim color (FR-016). */
+.playground .pane.is-checking {
+  position: relative;
+}
+
+.playground .pane.is-checking::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--token-color-playground-scrim);
+  pointer-events: none;
+}
+
+.playground .pane-caption {
+  flex: none;
+  margin: 0 0 var(--token-space-2);
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
+.playground .empty {
+  margin: 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground .diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--token-space-1-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.playground .diagnostics button.error {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--token-space-2);
+  inline-size: 100%;
+  min-block-size: var(--token-size-target);
+  padding: var(--token-space-1-5) var(--token-space-2);
+  border: var(--token-border-thin) solid var(--token-color-shell-rule);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-shell-text);
+  font: inherit;
+  text-align: start;
+}
+
+.playground .diagnostics :is(.where, .code-number) {
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* ---- Compiler options (FR-024 to FR-026) --------------------------------- */
+
+.options-panel {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.options-panel .options-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--token-space-1);
+  min-block-size: var(--token-space-10);
+  padding-inline: var(--token-space-4) var(--token-space-2);
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+.options-panel .options-head h2 {
+  margin: 0 auto 0 0;
+  font-size: var(--token-font-size-small);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.options-panel .options-body {
+  flex: 1;
+  min-block-size: 0;
+  overflow: auto;
+  padding: var(--token-space-2) var(--token-space-4);
+}
+
+.options-panel fieldset {
+  margin: 0 0 var(--token-space-3);
+  padding: 0;
+  border: 0;
+}
+
+.options-panel legend {
+  margin-block-end: var(--token-space-1);
+  padding: 0;
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-typography-level-font-family);
+  font-size: var(--token-typography-level-font-size);
+  letter-spacing: var(--token-typography-level-letter-spacing);
+  text-transform: var(--token-typography-level-text-transform);
+}
+
+.options-panel .option {
+  display: grid;
+  grid-template-columns: var(--token-size-target) minmax(0, 1fr);
+  align-items: start;
+  padding-block: var(--token-space-1);
+}
+
+.options-panel .option input {
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  margin: var(--token-space-0-5) 0 0;
+  accent-color: var(--token-color-playground-primary);
+}
+
+.options-panel .option.is-sub {
+  padding-inline-start: var(--token-space-6);
+}
+
+.options-panel .option-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.options-panel :is(.option-text > span, .option-description) {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.options-panel code {
+  color: var(--token-color-code-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.options-panel .select-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--token-space-1) var(--token-space-3);
+  align-items: center;
+}
+
+.options-panel .select-row .option-description {
+  grid-column: 1 / -1;
+}
+
+.options-panel .select {
+  min-block-size: var(--token-space-7);
+  padding-inline: var(--token-space-2-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+.options-panel .options-foot {
+  flex: none;
+  margin: 0;
+  padding: var(--token-space-2) var(--token-space-4);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  color: var(--token-color-shell-text-secondary);
+  font-size: var(--token-font-size-label);
+}
+
+/* ---- The status bar (FR-012, FR-016, FR-062) ---------------------------- */
+
+.playground-status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--token-space-4);
+  block-size: var(--token-size-playground-status);
+  padding-inline: var(--token-space-3);
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  background: var(--token-color-playground-panel);
+  color: var(--token-color-shell-text-secondary);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+  white-space: nowrap;
+}
+
+.playground-status .status-gap {
+  flex: 1;
+}
+
+.playground-status .check.is-error {
+  color: var(--token-color-code-error);
+}
+
+.playground-status .ts-version {
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground-status .chip {
+  padding-inline: var(--token-space-1-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+}
+
+/* ---- Popups inside the window (FR-050, FR-080) -------------------------- */
+
+.playground-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: var(--token-space-6);
+  background: var(--token-color-playground-scrim);
+}
+
+.playground-popup {
+  inline-size: var(--token-size-playground-dialog);
+  max-inline-size: 100%;
+  padding: var(--token-space-5);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-window);
+  background: var(--token-color-playground-raised);
+  box-shadow: var(--token-shadow-window-focused);
+}
+
+.playground-popup h2 {
+  margin: 0 0 var(--token-space-2);
+  font-family: var(--token-font-family-display);
+  font-size: var(--token-font-size-h4);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.playground-popup p {
+  margin: 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground-popup .popup-actions {
+  display: flex;
+  gap: var(--token-space-2);
+  margin-block-start: var(--token-space-4);
+}
+
+.playground-popup .popup-actions .button {
+  min-block-size: var(--token-space-8);
+  padding-inline: var(--token-space-4);
+}
+
+/* ---- Downloading and offline (FR-007, FR-011) --------------------------- */
+
+.playground.is-loading {
+  display: grid;
+  place-items: center;
+  padding: var(--token-space-6);
+}
+
+.playground-loading {
+  inline-size: var(--token-size-playground-loading);
+  max-inline-size: 100%;
+  text-align: center;
+}
+
+.playground-loading h2 {
+  margin: var(--token-space-3) 0;
+  font-family: var(--token-font-family-display);
+  font-size: var(--token-font-size-h3-narrow);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.playground-loading p {
+  margin: 0 0 var(--token-space-4);
+  color: var(--token-color-shell-text-soft);
+  font-size: var(--token-font-size-body);
+}
+
+.playground-loading .big-glyph {
+  inline-size: var(--token-space-12);
+  block-size: var(--token-space-12);
+  fill: none;
+  stroke: var(--token-color-shell-text-soft);
+  stroke-width: var(--token-border-thick);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.playground-progress {
+  display: block;
+  inline-size: 100%;
+  block-size: var(--token-size-playground-progress);
+  overflow: hidden;
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-pill);
+  background: var(--token-color-base-wash);
+  accent-color: var(--token-color-playground-primary);
+  appearance: none;
+}
+
+.playground-progress::-webkit-progress-bar {
+  background: var(--token-color-base-wash);
+}
+
+.playground-progress::-webkit-progress-value {
+  background: var(--token-color-playground-primary);
+}
+
+.playground-progress::-moz-progress-bar {
+  background: var(--token-color-playground-primary);
+}
+
+.playground-loading .progress-text {
+  margin-block: var(--token-space-2) var(--token-space-4);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-small);
+}
+
+.playground-loading .button {
+  min-block-size: var(--token-space-8);
+  padding-inline: var(--token-space-5);
+}
+
+/* ---- The phone's screen (FR-058) ---------------------------------------- */
+
+.playground-mobile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-block-size: 100%;
+  padding: var(--token-space-6) var(--token-space-5);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.playground-mobile > .app-glyph {
+  inline-size: var(--token-size-app-icon);
+  block-size: var(--token-size-app-icon);
+}
+
+.playground-mobile h2 {
+  margin: var(--token-space-4) 0 var(--token-space-3);
+  font-family: var(--token-font-family-display);
+  font-size: var(--token-font-size-h2-narrow);
+  font-weight: var(--token-font-weight-semibold);
+  line-height: var(--token-typography-h2-narrow-line-height);
+}
+
+.playground-mobile p {
+  max-inline-size: var(--token-size-playground-loading);
+  margin: 0;
+  color: var(--token-color-shell-text-soft);
+}
+
+/* ---- Forced colors (003 FR-056) ----------------------------------------- */
+
+@media (forced-colors: active) {
+  .playground-glyph .playground-tile {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .playground-glyph .playground-brace {
+    stroke: CanvasText;
+  }
+
+  .playground-glyph .playground-play {
+    fill: CanvasText;
+  }
+
+  .pane-tab[aria-selected="true"] {
+    border-block-end-color: Highlight;
+  }
+
+  .playground-scrim {
+    background: Canvas;
+  }
+
+  .playground-popup,
+  .playground-message {
+    border-color: CanvasText;
+  }
+}

@@ -6,28 +6,19 @@ import cvTypes from 'virtual:cv-types';
 import { counted, fill, siteText } from '../../site-text.ts';
 import { announce } from '../../os/announce.ts';
 import { createChecker } from './checker.ts';
+import { GLOBALS_TYPES } from './globals-types.ts';
 import { changedOptions, settle } from './compiler-options.ts';
 import type { ChangedOptions } from './compiler-options.ts';
 import { welcome } from './examples/index.ts';
 import type { Example } from './examples/index.ts';
 import { createKeeper, readKept, removeKept, worthKeeping, writeKept } from './kept.ts';
-import type { Engine, EngineCommand } from './engine/contract.ts';
+import type { EditorView, Engine, EngineCommand } from './engine/contract.ts';
 import { loadEngine, requestRetry } from './engine/loader.ts';
 import { session } from './session.ts';
 import { editorTheme } from './theme-values.ts';
 import type { CheckResult, DownloadState, Message, MessageAction, MessageKey } from './types.ts';
 
 const words = siteText.playground;
-
-// What the code sees beside a worker's globals (research R14): the three
-// dialogs as the runtime gives them.
-const GLOBALS_TYPES = `/** Logs an alert entry; the code goes on. */
-declare function alert(message?: unknown): void;
-/** Not available in the Playground: logs a note and returns null. */
-declare function prompt(message?: string, _default?: string): string | null;
-/** Not available in the Playground: logs a note and returns false. */
-declare function confirm(message?: string): boolean;
-`;
 
 let engine: Engine | null = null;
 let loading: AbortController | null = null;
@@ -40,6 +31,18 @@ let commandHandler: (id: EngineCommand) => void = () => undefined;
 const engineListeners = new Set<() => void>();
 
 export const currentEngine = (): Engine | null => engine;
+
+// The editor's view while it is mounted, for the controls that put focus
+// back in it (the Errors pane, Reset, the panels' Escape).
+let view: EditorView | null = null;
+
+export function setEditorView(next: EditorView | null): void {
+  view = next;
+}
+
+export function focusEditor(): void {
+  view?.focus();
+}
 
 export function onEngine(listener: () => void): () => void {
   engineListeners.add(listener);
@@ -150,6 +153,7 @@ export function startEngine(input: StartInput): void {
   if (engine !== null || loading !== null) return;
   mac = input.mac;
   starting = welcome(mac);
+  addEventListener('pagehide', onPageHide);
   const controller = new AbortController();
   loading = controller;
   let readyState: DownloadState | null = null;

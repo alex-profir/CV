@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS } from './tools/traceability/src/files.ts';
+import { cvTypesPlugin } from './packages/web/scripts/cv-types.ts';
 import { specListPlugin } from './packages/web/scripts/spec-list.ts';
 
 // Every project takes the machine-wide test lock first, so no two runs overlap,
@@ -10,7 +11,7 @@ const TEST_LOCK = 'tools/speckit-auto/test-lock.ts';
 // a way the traceability check can't see (research R3).
 export default defineConfig({
   // The Terminal's spec list, as the site's build serves it (006 research R10).
-  plugins: [specListPlugin()],
+  plugins: [specListPlugin(), cvTypesPlugin()],
   // TSX test files use React's automatic JSX runtime, as `tsconfig.json` does
   // for `tsc` (004 research R2).
   oxc: {
