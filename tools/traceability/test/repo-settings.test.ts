@@ -182,10 +182,13 @@ describe("001-requirement-traceability-FR-035: merging needs the owner's sign-of
   });
 });
 
-describe('SC-008: every pull-request job has a 6-minute limit', () => {
-  test('each job sets timeout-minutes: 6', () => {
+describe('SC-008: every pull-request job has a 6-minute limit, the site job 12', () => {
+  test('each job sets timeout-minutes: 6, and site 12', () => {
     expect(JOB_IDS).toEqual(['traceability', 'test', 'content', 'tokens', 'site']);
-    for (const id of JOB_IDS) expect(job(id).lines.filter((line) => /^ {4}timeout-minutes:/.test(line)), id).toEqual(['    timeout-minutes: 6']);
+    for (const id of JOB_IDS) {
+      const limit = id === 'site' ? 12 : 6;
+      expect(job(id).lines.filter((line) => /^ {4}timeout-minutes:/.test(line)), id).toEqual([`    timeout-minutes: ${limit}`]);
+    }
   });
 
   test('the test job installs no browser', () => {

@@ -138,6 +138,13 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
   itself? → A: No. A line runs 10,000 of its own commands before it is stopped (FR-069). Approved
   by the owner 2026-10-29.
 
+### Session 2026-10-30
+
+- Q: With the Terminal's lines in both shells, the site check takes about 5.5 minutes on the
+  hosted runner, and 001's SC-008 cancels the `site` job at 6. Make the job faster or raise its
+  limit? → A: Raise it. This feature amends 001's SC-008 in its pull request: the `site` job gets
+  12 minutes, the other jobs keep 6 (Constitution XI). Approved by the owner 2026-10-30.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)

@@ -379,3 +379,5 @@ The amendment's re-check (2026-10-29) found none either.
 - **`timeout-minutes: 6` and slow runners**: the limit makes SC-008 a failing check instead of a
   slow one. The `site` job's measured 3.5 minutes leaves room; if a hosted runner ever needs
   more, the fix is to make that job faster (or amend SC-008), not to raise the limit quietly.
+  Amended 2026-10-30 by 006-terminal: SC-008 gives the `site` job 12 minutes, as it had grown to
+  about 5.5 minutes with the Terminal's lines and 007's inspector.
