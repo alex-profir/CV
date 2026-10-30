@@ -4,7 +4,7 @@
     "name": "Alex Profir",
     "label": "Software Engineer",
     "email": "alexprofir512@gmail.com",
-    "summary": "I'm a frontend and mobile-focused full stack developer with solid backend experience. I build applications from the ground up with a strong emphasis on usability, client satisfaction, and product quality. I'm highly collaborative, enjoy working in team environments, and remain flexible when exploring new opportunities.",
+    "summary": "Full stack engineer. Web, mobile and backend, built with agents and specs.",
     "location": {
       "city": "Timișoara",
       "countryCode": "RO"
@@ -23,8 +23,10 @@
       "position": "Software Developer",
       "startDate": "2018-07",
       "endDate": "2026-10",
-      "summary": "Software developer building web and mobile applications, designing REST APIs, and maintaining scalable cloud infrastructure.",
+      "summary": "Software developer building web and mobile applications and backend microservices on scalable cloud infrastructure, using spec-driven development and agentic coding.",
       "highlights": [
+        "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality.",
+        "Built notification and device management microservices to start replacing a monolith, and maintained the auth microservice with teammates.",
         "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
         "Built and maintained responsive web applications using modern frameworks.",
         "Designed and implemented RESTful APIs powering multiple services.",
@@ -51,74 +53,70 @@
   ],
   "skills": [
     {
-      "name": "Web Frameworks & Libraries",
-      "level": "Master",
+      "name": "Agentic Engineering",
       "keywords": [
-        "React",
-        "Angular",
-        "Vue.js",
-        "Next.js",
-        "Nuxt.js"
+        "Agentic Coding · 1.5 yrs",
+        "Spec-Driven Development · 1.5 yrs",
+        "Claude Code",
+        "Agent Orchestration",
+        "Agent Guardrails",
+        "Context Engineering",
+        "MCP"
+      ]
+    },
+    {
+      "name": "Web Frameworks & Libraries",
+      "keywords": [
+        "React · 8 yrs",
+        "Angular · 3 yrs",
+        "Vue.js · 3 yrs",
+        "Next.js · 2 yrs",
+        "Nuxt.js · 2 yrs"
       ]
     },
     {
       "name": "Mobile Development",
-      "level": "Master",
       "keywords": [
-        "React Native",
-        "Xamarin",
-        "Kotlin",
-        "Swift",
-        "Objective-C",
-        "iOS",
-        "Android"
+        "React Native · 7 yrs",
+        "Native Android/iOS · 5 yrs"
       ]
     },
     {
       "name": "Backend Development",
-      "level": "Advanced",
       "keywords": [
-        "Node.js",
-        "Express.js",
-        "Fastify",
-        "Java",
-        "Spring Boot"
+        "Node.js · 7 yrs",
+        "Docker · 5 yrs",
+        "Microservices · 1 yr"
       ]
     },
     {
       "name": "Databases",
-      "level": "Advanced",
       "keywords": [
-        "PostgreSQL",
-        "MariaDB",
-        "MySQL",
-        "MongoDB"
+        "PostgreSQL · 7 yrs",
+        "MariaDB · 7 yrs",
+        "MySQL · 7 yrs",
+        "MongoDB · 6 yrs",
+        "Firestore · 6 yrs"
       ]
     },
     {
       "name": "Programming Languages",
-      "level": "Master",
       "keywords": [
-        "JavaScript",
-        "TypeScript",
-        "C++",
-        "C#",
-        "Java"
+        "JavaScript · 8 yrs",
+        "TypeScript · 8 yrs"
       ]
     },
     {
       "name": "Version Control",
-      "level": "Expert",
       "keywords": [
-        "Git"
+        "Git · 8 yrs"
       ]
     },
     {
       "name": "Cloud Platforms",
-      "level": "Intermediate",
       "keywords": [
-        "GCP",
-        "AWS"
+        "GCP · 5 yrs",
+        "AWS · 5 yrs"
       ]
     }
   ],
@@ -162,12 +160,15 @@
     {
       "name": "Faith-Based Social Network Mobile App",
       "startDate": "2025-12",
-      "description": "Part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
+      "description": "Independent freelance work, part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
       "highlights": [
         "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
         "Maintained Expo and React Native on the latest package versions",
         "Set up CI/CD for automated builds and releases",
-        "Set up crash reporting and error monitoring"
+        "Set up crash reporting and error monitoring",
+        "Created the spec-driven development setup used to build and maintain the app",
+        "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop",
+        "Used AI to cut end-to-end feature delivery from at least a couple of months to 2–3 weeks, with the UI fully matching Figma"
       ]
     },
     {
@@ -178,7 +179,9 @@
       "highlights": [
         "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
         "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
-        "Designed and implemented two backend microservices powering core security and data synchronization features",
+        "Built notification and device management microservices using spec-driven development, to start replacing the monolith that held all the logic",
+        "Implemented and maintained the auth microservice with teammates using spec-driven development",
+        "Delivered features at least 2x faster with spec-driven, agentic development, per team lead reports",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
         "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
         "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
@@ -196,10 +199,10 @@
       ]
     },
     {
-      "name": "3ndy Job Management App",
+      "name": "Job Management App",
       "startDate": "2021-04",
       "endDate": "2021-07",
-      "description": "Mobile application built with Xamarin for job posting and tracking.",
+      "description": "Mobile application for job posting and tracking.",
       "highlights": [
         "Implemented job creation workflow including data entry, media uploads, and job type selection",
         "Designed intuitive summary and editing screens for better user experience",
