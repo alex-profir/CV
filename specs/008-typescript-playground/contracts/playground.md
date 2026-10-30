@@ -34,9 +34,14 @@ section.playground                                   aria-label "Playground"
 │       ├── section.options-panel       (when open, in place of the panes) aria-labelledby its heading
 │       └── section.examples-panel      (when open, under its button) aria-labelledby its heading
 ├── div.playground-status               "Ln 3, Col 6", "Spaces: 2", "✓ No errors" | "⊗ 1 error" | "Checking…", "Tab moves focus", span.ts-version "TypeScript 5.9.3"
-├── div.playground-scrim + section.playground-popup   role="alertdialog" (stuck) | "dialog" (reset, keys), aria-modal="false"
-└── iframe.playground-runner            hidden, one per run (contracts/runner.md)
+└── div.playground-scrim + section.playground-popup   role="alertdialog" (stuck) | "dialog" (reset, keys), aria-modal="false"
 ```
+
+The runner's frame is not in this tree. `iframe.playground-runner` (hidden, one per run,
+contracts/runner.md) lives in a hidden host appended once to `document.body`, never inside
+`section.playground` and never moved: removing or moving a frame ends its worker, and the content
+unmounts for Show specs and shell switches, which must not end a run (FR-005, FR-061). Stop, a new
+run, the window's close and `pagehide` remove it.
 
 - **Errors pane**: `ol` of `li > button.error` ("⊗ 14:7 Type 'string' is not assignable … TS2322"),
   each moving the editor's cursor to its place and focusing the editor; or `p` "✓ No errors. The
