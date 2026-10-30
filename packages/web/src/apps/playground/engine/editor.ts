@@ -171,11 +171,14 @@ export function createEditing(init: EngineInit) {
       fontFamily: init.theme.fontFamily,
       fontSize: init.theme.fontSize,
       lineHeight: init.theme.lineHeight,
-      lineDecorationsWidth: 8,
+      lineDecorationsWidth: 0,
       lineNumbersMinChars: 3,
       // The gutter holds the lightbulb, before the line numbers (FR-082).
       glyphMargin: true,
+      // Folding by its keys and the palette: the design's gutter draws no
+      // folding controls.
       folding: true,
+      showFoldingControls: 'never',
       scrollBeyondLastLine: false,
       renderLineHighlight: 'all',
       cursorBlinking: 'solid',
@@ -187,6 +190,16 @@ export function createEditing(init: EngineInit) {
       'semanticHighlighting.enabled': false,
     });
     view = created;
+    // The gutter is the design's width: the lightbulb's lane and the line
+    // numbers, then the rest before the code, refitted as the numbers grow
+    // or the font loads.
+    const fitGutter = () => {
+      const layout = created.getLayoutInfo();
+      const rest = Math.max(0, init.theme.gutter - layout.glyphMarginWidth - layout.lineNumbersWidth);
+      if (rest !== layout.decorationsWidth) created.updateOptions({ lineDecorationsWidth: rest });
+    };
+    fitGutter();
+    created.onDidLayoutChange(fitGutter);
     const input = created.getDomNode()?.querySelector('textarea');
     input?.setAttribute('aria-describedby', describedBy);
     created.addAction({ id: 'playground.run', label: init.text.runCommand, keybindings: [KeyMod.CtrlCmd | KeyCode.Enter], run: () => init.onCommand('playground.run') });
@@ -246,7 +259,7 @@ export function createEditing(init: EngineInit) {
       lineHeight: init.theme.lineHeight,
       folding: false,
       glyphMargin: false,
-      lineDecorationsWidth: 8,
+      lineDecorationsWidth: init.theme.inset,
       scrollBeyondLastLine: false,
       renderLineHighlight: 'none',
       editContext: false,

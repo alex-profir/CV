@@ -81,8 +81,9 @@ type OutputView = { setText(text: string): void; layout(): void; dispose(): void
 - `mountEditor` may be called again after `dispose` of the previous view: the model, its undo
   history and its markers stay (FR-005, FR-061).
 - `EditorTheme` holds the syntax, surface, line-number, cursor, selection, occurrence, error,
-  warning and widget colors and the code font, every one read from the token output by the
-  interface; the engine has no design value of its own (FR-068).
+  warning and widget colors, the code font, the gutter's width and the output panes' inset before
+  the code, every one read from the token output by the interface; the engine has no design value
+  of its own (FR-068).
 - `EngineText` holds the packages message (R11), the editor's name and description, and the labels
   the engine adds to the palette (Run, Keys).
 
