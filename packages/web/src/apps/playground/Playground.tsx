@@ -3,12 +3,14 @@
 // editor beside the panes, and the status bar. Everything it shows lives in
 // the session and the controller, outside React, so unmounting it for Show
 // specs or a shell switch loses nothing (FR-005, FR-061).
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { Component, useEffect, useRef, useSyncExternalStore } from 'react';
+import type { ReactNode } from 'react';
 import { siteText } from '../../site-text.ts';
 import type { Resume } from '@cv/content';
 import { currentEngine, onEngine, readAddressLink, setCvDocument, setEditorView, startEngine } from './controller.ts';
 import { ExamplesPanel } from './ExamplesPanel.tsx';
 import { Loading } from './Loading.tsx';
+import { emptyLogBook } from './logbook.ts';
 import { Message } from './Message.tsx';
 import { OptionsPanel } from './OptionsPanel.tsx';
 import { Panes } from './Panes.tsx';
@@ -79,6 +81,37 @@ function Workspace() {
   );
 }
 
+// A failure while rendering stays in this window: without this React would
+// empty the whole of `#os` (FR-039, FR-040). Whatever went wrong may be in
+// what the logs hold, so Try again starts them over.
+class Contained extends Component<{ children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  override render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="playground-loading" role="alert">
+        <h2>{words.failed.heading}</h2>
+        <p>{words.failed.text}</p>
+        <button
+          type="button"
+          className="button primary playground-retry"
+          onClick={() => {
+            session.update({ logs: emptyLogBook() });
+            this.setState({ failed: false });
+          }}
+        >
+          {words.failed.retry}
+        </button>
+      </div>
+    );
+  }
+}
+
 export function Playground({ resume }: { resume: Resume }) {
   const ready = useSyncExternalStore(onEngine, engineReady, engineReady);
   // The code's `cv` is a copy of this document at each run (research R10).
@@ -95,7 +128,7 @@ export function Playground({ resume }: { resume: Resume }) {
       aria-label={words.label}
       data-req="008-typescript-playground-FR-003 008-typescript-playground-FR-068 008-typescript-playground-FR-071 008-typescript-playground-FR-072 008-typescript-playground-FR-074"
     >
-      {ready ? <Workspace /> : <Loading />}
+      <Contained>{ready ? <Workspace /> : <Loading />}</Contained>
     </section>
   );
 }

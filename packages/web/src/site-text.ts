@@ -331,6 +331,11 @@ export const siteText = deepFreeze({
       stoppedText: "TypeScript arrived only in part, so the Playground won't use it. The download starts again by itself when you're back online, or now with Retry.",
       retry: 'Retry',
     },
+    failed: {
+      heading: 'The Playground stopped showing',
+      text: "Something went wrong while showing the Playground. The rest of the site still works, and your code is safe. Try again clears the logs.",
+      retry: 'Try again',
+    },
     tools: {
       label: 'Playground tools',
       run: 'Run',
