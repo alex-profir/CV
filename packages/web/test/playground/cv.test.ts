@@ -41,8 +41,8 @@ describe('008-typescript-playground-FR-029: the CV is the code\'s typed `cv`, th
     await waitChecked(page);
     const errors = await readErrors(page);
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatch(/^\D*2:\d+ .*'nope'.*TS2339$/);
-    const name = page.locator(`${EDITOR} .view-line`).filter({ hasText: /^const projects/ }).locator('span span').filter({ hasText: /^projects$/ }).last();
+    expect(errors[0]).toMatch(/^\D*2:\d+\s.*'nope'.*\sTS2339$/s);
+    const name = page.locator(`${EDITOR} .view-line`).filter({ hasText: /^const\s+projects/ }).locator('span span').filter({ hasText: /^projects$/ }).last();
     const at = (await name.boundingBox())!;
     await page.mouse.move(at.x + 4, at.y + at.height / 2);
     await expect.poll(() => page.locator(`${EDITOR} .monaco-hover:not(.hidden)`).first().textContent(), { timeout: 10_000 }).toContain('ResumeProject[] | undefined');
