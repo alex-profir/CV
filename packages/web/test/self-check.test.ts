@@ -156,3 +156,23 @@ describe('007-requirement-inspector-FR-009, 007-requirement-inspector-FR-021 and
     }
   });
 });
+
+describe('008-typescript-playground-FR-068: the token check passes over the Playground and its editor with no exception for them', () => {
+  test("npm run token-check exits 0, reads every style sheet and component of the Playground, engine/editor.css included, names none of them, and none holds a skip marker", () => {
+    const tokens = runTokenCheck(REPO_ROOT);
+    expect(tokens.stdout).toContain('PASS: both token sources are valid and no literal design values were found.');
+    expect(tokens.status).toBe(0);
+    const playground = siteSource('packages/web/src/apps/playground');
+    const styled = playground.filter((file) => /\.(?:css|tsx?)$/.test(file));
+    expect(styled).toContain('packages/web/src/apps/playground/engine/editor.css');
+    expect(styled).toContain('packages/web/src/apps/playground/playground.css');
+    const read = new Set(siteFiles(REPO_ROOT).files.map((file) => file.file));
+    expect(styled.filter((file) => !read.has(file))).toEqual([]);
+    const tokenSources = fs.readdirSync(path.join(REPO_ROOT, 'tools/token-check/src')).map((name) => fs.readFileSync(path.join(REPO_ROOT, 'tools/token-check/src', name), 'utf8'));
+    for (const text of tokenSources) expect(text).not.toMatch(/apps\/playground|editor\.css|008-typescript-playground/);
+    for (const file of playground) {
+      const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      for (const marker of TERMINAL_SKIP_MARKERS) expect(text, file).not.toMatch(marker);
+    }
+  });
+});

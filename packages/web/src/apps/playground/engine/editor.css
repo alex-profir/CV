@@ -5,6 +5,12 @@
   --vscode-font-family: var(--token-typography-small-font-family);
 }
 
+/* Monaco's own chrome in the body font, not the system's UI font; the
+   code sets its own. */
+.playground :is(.monaco-editor, .monaco-component) {
+  font-family: var(--token-font-family-body);
+}
+
 /* The message of the cursor's line's first mark, after the line (FR-016). */
 .playground-editor .playground-inline-message {
   margin-inline-start: var(--token-space-4);
@@ -312,11 +318,18 @@
     background: none;
   }
 
-  .playground .monaco-editor .selected-text {
+  /* The selection and Monaco's other highlights (occurrences, find
+     matches, a definition's range, a quick fix's edit) are framed in
+     Highlight; the current find match by a thicker frame. */
+  .playground .monaco-editor :is(.selected-text, .selectionHighlight, .wordHighlight, .wordHighlightStrong, .wordHighlightText, .findMatch, .currentFindMatch, .findScope, .rangeHighlight, .quickfix-edit-highlight) {
     forced-color-adjust: none;
     box-sizing: border-box;
     border: var(--token-border-thin) solid Highlight;
     background: none;
+  }
+
+  .playground .monaco-editor .currentFindMatch {
+    border-width: var(--token-border-thick);
   }
 
   .playground .monaco-editor :is(.margin, .margin-view-overlays .current-line.current-line-margin) {
@@ -325,6 +338,12 @@
 
   /* A suggestion's kind keeps its letter and loses its wash. */
   .playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon.codicon {
+    background: none;
+  }
+
+  /* A widget's resize edge: the widget keeps its own border. */
+  .playground .monaco-sash,
+  .playground .monaco-editor .find-widget .monaco-sash {
     background: none;
   }
 

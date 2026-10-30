@@ -36,6 +36,7 @@ export type EditorTheme = {
   fontSize: number;
   lineHeight: number;
   gutter: number;
+  inset: number;
 };
 
 export type EngineText = {

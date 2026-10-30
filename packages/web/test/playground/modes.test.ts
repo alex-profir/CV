@@ -91,7 +91,7 @@ async function showCode(page: Page, code: string): Promise<void> {
 }
 
 describe('008-typescript-playground-FR-070: with forced colors every mark, level, cursor, selection, focus, control and popup shows', () => {
-  test("the editor: the error's wavy line in LinkText, the cursor line's message with its cross, the cursor and the selection by their lines", async () => {
+  test("the editor: the error's wavy line in LinkText, the cursor line's message with its cross, the cursor, the selection and find matches by their lines", async () => {
     const page = await forcedPage();
     await showCode(page, "const n: number = 'one';\nconsole.log(n);");
     const mod = (await onMac(page)) ? 'Meta' : 'Control';
@@ -118,6 +118,12 @@ describe('008-typescript-playground-FR-070: with forced colors every mark, level
     await expect.poll(() => page.locator(`${EDITOR} .selected-text`).count()).toBeGreaterThan(0);
     await expectBordered(page, `${EDITOR} .selected-text`, 'selection');
     expect(await problems(page), 'with an error and a selection').toEqual([]);
+    await focusEditor(page);
+    await press(page, `${mod}+KeyF`);
+    await page.keyboard.type('n');
+    await expect.poll(() => page.locator(`${EDITOR} :is(.findMatch, .currentFindMatch)`).count()).toBeGreaterThan(0);
+    await expectBordered(page, `${EDITOR} .currentFindMatch`, 'the current find match', 2);
+    expect(await problems(page), 'with find matches').toEqual([]);
     await expectFocusRing(page, `${EDITOR} textarea, ${EDITOR} .native-edit-context`, 'the editor', '.playground-editor');
   });
 
