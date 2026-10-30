@@ -37,6 +37,13 @@ export function shellFor(name?: FixtureName, options: { limits?: Partial<Limits>
   return Object.assign(shell, { state: INITIAL_STATE, history: [] as string[], ids: 0 });
 }
 
+// Tab at the cursor (the line's end unless given), from the shell's state.
+export async function completeLine(shell: TestShell, line: string, cursor = line.length) {
+  await shell.warm();
+  shell.ids += 1;
+  return shell.complete({ id: shell.ids, line, cursor, state: shell.state });
+}
+
 // One line, sent as one request from the given state (or the shell's
 // last), with the history as the session sends it: this line included.
 export async function runLine(shell: TestShell, line: string, state?: ShellState, options: { shell?: 'desktop' | 'mobile' } = {}): Promise<RunResult> {

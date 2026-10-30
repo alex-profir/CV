@@ -1,10 +1,10 @@
 // The command line (006 research R15, contracts/terminal.md): a real text
 // input named "Command", under the prompt. Enter runs the line, Up and Down
 // step through the history, and the system's editing keys are the field's
-// own. The Terminal adds only what a field doesn't do (research R37): the
-// readline keys on macOS, select all of the Terminal's text, and Ctrl+C.
-// Every other key, Tab and the browser's and screen readers' included, is
-// left to them (FR-026). It has no box: its own caret is hidden, and an
+// own. The Terminal adds only what a field doesn't do (research R37, R44):
+// the readline keys on macOS, select all of the Terminal's text, Ctrl+C and
+// Tab's completion, only where FR-026 lets it. Every other key, the browser's
+// and screen readers' included, is left to them. It has no box: its own caret is hidden, and an
 // `aria-hidden` mirror over it draws the text, its selection and a
 // terminal's block cursor, filled and blinking with focus, hollow without,
 // so the cursor is its focus indicator (FR-032, FR-072, FR-074, R36).
@@ -13,11 +13,15 @@ import type { ClipboardEvent, FormEvent, KeyboardEvent, RefObject, SyntheticEven
 import { siteText } from '../../site-text.ts';
 import { TERMINAL } from '../../os/metrics.ts';
 import { formatPrompt } from './engine/output-map.ts';
-import { clock } from './session.ts';
+import { clock, session } from './session.ts';
+import type { CompletionMatch } from './shell/protocol.ts';
 import { Clock } from './glyphs/Clock.tsx';
 import { PromptMark } from './glyphs/PromptMark.tsx';
 
 const BREAKS = /\r\n|\r|\n/g;
+
+// readline's completion-query-items.
+const COMPLETION_QUERY = 100;
 
 type Navigator = globalThis.Navigator & { userAgentData?: { platform?: string } };
 
@@ -46,6 +50,52 @@ function deleteRange(input: HTMLInputElement, start: number, end: number) {
   if (!document.execCommand('delete')) {
     input.setRangeText('', start, end, 'end');
     input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+// Tab's state (data-model.md Completion), one for the command line and the
+// pocket's Tab key: the line and cursor after the last Tab, so the next counts
+// as the second in a row, and the matches a question waits on.
+let tabbed: { line: string; cursor: number } | null = null;
+let asked: { matches: readonly CompletionMatch[] } | null = null;
+
+export const forgetTab = () => {
+  tabbed = null;
+  asked = null;
+};
+
+// Replaces a range through the field's own editing, so its undo takes it back.
+function replaceRange(input: HTMLInputElement, start: number, end: number, text: string) {
+  input.setSelectionRange(start, end);
+  if (!document.execCommand('insertText', false, text)) {
+    input.setRangeText(text, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+// Tab's completion from the field's text and caret (FR-076, FR-078). The
+// answer is applied only if the line and caret are as they were: a key typed
+// meanwhile wins.
+export async function tabComplete(input: HTMLInputElement) {
+  const line = input.value;
+  const cursor = input.selectionStart ?? line.length;
+  if (line.slice(0, cursor).trim() === '') return;
+  const second = tabbed !== null && tabbed.line === line && tabbed.cursor === cursor;
+  const answer = await session.complete(line, cursor);
+  if (answer === null || input.value !== line || (input.selectionStart ?? line.length) !== cursor) return;
+  if (answer.insert !== '') {
+    replaceRange(input, answer.start, answer.end, answer.insert);
+    tabbed = { line: input.value, cursor: input.selectionStart ?? input.value.length };
+    session.announce(input.value);
+    return;
+  }
+  tabbed = { line, cursor };
+  if (!second || answer.matches.length < 2) return;
+  tabbed = null;
+  if (answer.matches.length < COMPLETION_QUERY) session.showList(line, answer.matches);
+  else {
+    asked = { matches: answer.matches };
+    session.askList(line, answer.matches.length);
   }
 }
 
@@ -228,8 +278,37 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
     }
   };
 
+  // Escape since the last key: the next Tab leaves (FR-026, research R44).
+  const escaped = useRef(false);
+
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     wake();
+    const plain = !event.ctrlKey && !event.altKey && !event.metaKey;
+    // A question takes one key: y lists, any other adds nothing.
+    if (asked !== null && plain && !event.shiftKey && !['Shift'].includes(event.key)) {
+      const { matches } = asked;
+      asked = null;
+      if (event.key !== 'Escape') event.preventDefault();
+      if (event.key.toLowerCase() === 'y') session.answerList(matches);
+      if (event.key === 'Escape') escaped.current = true;
+      return;
+    }
+    if (event.key === 'Tab') {
+      if (!plain || event.shiftKey || escaped.current) {
+        escaped.current = false;
+        return;
+      }
+      const input = event.currentTarget;
+      const typed = input.value.slice(0, input.selectionStart ?? input.value.length);
+      if (typed.trim() === '') return;
+      event.preventDefault();
+      void tabComplete(input);
+      return;
+    }
+    if (!['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) {
+      escaped.current = event.key === 'Escape';
+      tabbed = null;
+    }
     if (added(event)) {
       event.preventDefault();
       return;
@@ -291,8 +370,10 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
           onBlur={() => {
             setFocused(false);
             sleep();
+            escaped.current = false;
+            forgetTab();
           }}
-          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075"
+          data-req="006-terminal-FR-004 006-terminal-FR-006 006-terminal-FR-007 006-terminal-FR-017 006-terminal-FR-018 006-terminal-FR-020 006-terminal-FR-026 006-terminal-FR-027 006-terminal-FR-072 006-terminal-FR-074 006-terminal-FR-075 006-terminal-FR-076"
         />
         <span className="cursor-mirror" aria-hidden="true" data-focused={focused ? '' : undefined} data-blinking={focused && blinking ? '' : undefined} data-req="006-terminal-FR-032 006-terminal-FR-072 006-terminal-FR-074">
           {parts(draft, start, end, at).map((part, index) =>

@@ -4,7 +4,9 @@
 // line through the real adapter in Node, and turns ready when told.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createSession } from '../../../src/apps/terminal/session.ts';
-import type { ClientStatus, ShellClient } from '../../../src/apps/terminal/shell-client.ts';
+import { createShellClient, TIMING } from '../../../src/apps/terminal/shell-client.ts';
+import type { ClientStatus, ShellClient, WorkerLike } from '../../../src/apps/terminal/shell-client.ts';
+import type { FromWorker, ToWorker } from '../../../src/apps/terminal/shell/protocol.ts';
 import { INITIAL_STATE, NO_FILES } from '../../../src/apps/terminal/shell/protocol.ts';
 import { shellFor } from '../shell/context.ts';
 
@@ -40,6 +42,8 @@ function fakeClient(status: ClientStatus = 'ready'): FakeClient {
       void shell.reset();
     },
     ready: () => set('ready'),
+    write: (request) => shell.write(request),
+    complete: async (line, cursor) => shell.complete({ id: 1, line, cursor, state: INITIAL_STATE }),
   };
   return client;
 }
@@ -194,5 +198,132 @@ describe('006-terminal-FR-021: closing empties the session; nothing else does', 
     await settled(session);
     expect(actions.open).toHaveBeenCalledWith('cv');
     expect(actions.exit).toHaveBeenCalledTimes(1);
+  });
+});
+
+// A worker the test answers by hand.
+function fakeWorker() {
+  const worker: WorkerLike & { posted: ToWorker[]; answer(message: FromWorker): void } = {
+    posted: [],
+    postMessage: (message) => void worker.posted.push(message),
+    terminate: () => undefined,
+    onmessage: null,
+    onerror: null,
+    answer: (message) => worker.onmessage?.({ data: message }),
+  };
+  return worker;
+}
+
+describe('006-terminal-FR-080 and 006-terminal-FR-021: a write from the vim view', () => {
+  const request = { id: 5, path: 'todo', text: 'a\n', force: false, cwd: '/home/guest' };
+  const started = () => {
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const client = createShellClient(() => {
+      const worker = fakeWorker();
+      workers.push(worker);
+      return worker;
+    });
+    client.start();
+    workers[0]!.answer({ type: 'ready' });
+    return { client, workers };
+  };
+
+  test('client.write posts write and resolves with the wrote of the same id', async () => {
+    const { client, workers } = started();
+    const answer = client.write(request);
+    expect(workers[0]!.posted.at(-1)).toEqual({ type: 'write', request });
+    const outcome = { id: 5, ok: true as const, path: '/home/guest/todo', created: true, lines: 1, bytes: 2, files: NO_FILES };
+    workers[0]!.answer({ type: 'wrote', outcome: { ...outcome, id: 4 } });
+    workers[0]!.answer({ type: 'wrote', outcome });
+    await expect(answer).resolves.toEqual(outcome);
+  });
+
+  test('with no answer in 2,000 ms it resolves cant-open, and the worker isn’t restarted', async () => {
+    vi.useFakeTimers();
+    const { client, workers } = started();
+    const answer = client.write(request);
+    vi.advanceTimersByTime(TIMING.answer);
+    await expect(answer).resolves.toEqual({ id: 5, ok: false, error: 'cant-open', path: 'todo' });
+    expect(workers).toHaveLength(1);
+    expect(client.status()).toBe('ready');
+  });
+
+  test('a worker restarted by Ctrl+C restores a written file', async () => {
+    const { client, workers } = started();
+    const files = { folders: [], files: { '/home/guest/todo': 'a\n' }, bytes: 2 };
+    const state = { ...INITIAL_STATE, status: 3 };
+    const running = client.run({ id: 1, line: 'true', state, history: [] });
+    workers[0]!.answer({ type: 'result', result: { id: 1, stdout: '', stderr: '', status: 0, recorded: [], effects: [], end: 'done', state } });
+    await running;
+    const written = client.write(request);
+    workers[0]!.answer({ type: 'wrote', outcome: { id: 5, ok: true, path: '/home/guest/todo', created: true, lines: 1, bytes: 2, files } });
+    await written;
+    void client.run({ id: 2, line: 'yes', state, history: [] });
+    client.cancel();
+    expect(workers[1]!.posted).toContainEqual({ type: 'restore', state, files });
+  });
+
+  test('after an ok outcome the session’s files are its files, and reset still empties them', async () => {
+    const session = createSession(fakeClient());
+    const outcome = await session.write('todo', 'a\n', false);
+    expect(outcome).toMatchObject({ ok: true, created: true });
+    expect(session.get().files.files['/home/guest/todo']).toBe('a\n');
+    session.reset();
+    expect(session.get().files).toEqual(NO_FILES);
+  });
+});
+
+describe('006-terminal-FR-076: Tab through the client', () => {
+  const started = () => {
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const client = createShellClient(() => {
+      const worker = fakeWorker();
+      workers.push(worker);
+      return worker;
+    });
+    client.start();
+    workers[0]!.answer({ type: 'ready' });
+    return { client, worker: workers[0]! };
+  };
+
+  test('posts complete with the shell’s state and resolves with the answer of its id', async () => {
+    const { client, worker } = started();
+    const answer = client.complete('ab', 2);
+    const posted = worker.posted.at(-1) as Extract<ToWorker, { type: 'complete' }>;
+    expect(posted.request).toEqual({ id: posted.request.id, line: 'ab', cursor: 2, state: INITIAL_STATE });
+    const completion = { id: posted.request.id, start: 0, end: 2, insert: 'about ', matches: [] };
+    worker.answer({ type: 'completion', completion });
+    await expect(answer).resolves.toEqual(completion);
+  });
+
+  test('an earlier answer arriving late is dropped', async () => {
+    const { client, worker } = started();
+    const first = client.complete('a', 1);
+    const firstId = (worker.posted.at(-1) as Extract<ToWorker, { type: 'complete' }>).request.id;
+    const second = client.complete('ab', 2);
+    const secondId = (worker.posted.at(-1) as Extract<ToWorker, { type: 'complete' }>).request.id;
+    await expect(first).resolves.toBeNull();
+    worker.answer({ type: 'completion', completion: { id: firstId, start: 0, end: 1, insert: 'x', matches: [] } });
+    const completion = { id: secondId, start: 0, end: 2, insert: 'about ', matches: [] };
+    worker.answer({ type: 'completion', completion });
+    await expect(second).resolves.toEqual(completion);
+  });
+
+  test('no answer in 2,000 ms resolves to no completion', async () => {
+    vi.useFakeTimers();
+    const { client } = started();
+    const answer = client.complete('a', 1);
+    vi.advanceTimersByTime(TIMING.answer);
+    await expect(answer).resolves.toBeNull();
+  });
+
+  test('while a line runs, or before the shell is ready, it resolves to none without posting', async () => {
+    const { client, worker } = started();
+    void client.run({ id: 1, line: 'yes', state: INITIAL_STATE, history: [] });
+    const posted = worker.posted.length;
+    await expect(client.complete('a', 1)).resolves.toBeNull();
+    expect(worker.posted).toHaveLength(posted);
+    const idle = createShellClient(() => fakeWorker());
+    await expect(idle.complete('a', 1)).resolves.toBeNull();
   });
 });

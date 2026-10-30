@@ -5,14 +5,15 @@
 // options, `$?` and the working folder itself: a prelude before the line
 // sets them, and an epilogue after it reads them back.
 import { Bash, defineCommand } from 'just-bash/browser';
-import { commandNamed, engineContext } from '../engine/commands.ts';
+import { commandNamed, engineContext, SITE_WORDS } from '../engine/commands.ts';
 import type { SiteInput } from '../engine/commands.ts';
+import { complete } from './complete.ts';
 import { HOME, TerminalFs } from './fs.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
-import type { Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles } from './protocol.ts';
+import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
 import { DENIED, PIPED, RENAMED, siteCommands } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
-import { STANDARD_COMMANDS } from './standard.ts';
+import { SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
 
 type Script = ReturnType<Bash['transform']>['ast'];
 type Plugin = Parameters<Bash['registerTransformPlugin']>[0];
@@ -168,6 +169,11 @@ export type Shell = {
   run(request: RunRequest): Promise<RunResult>;
   reset(): Promise<void>;
   restore(state: ShellState, files: VisitorFiles): Promise<void>;
+  // `:w` and its kin (research R49): through TerminalFs, so its rules and
+  // the 1 MB limit hold.
+  write(request: WriteRequest): Promise<WriteOutcome>;
+  // Tab (research R43): over TerminalFs and the tables the shell is built from.
+  complete(request: CompleteRequest): Promise<Completion>;
 };
 
 // `limits` only in tests, to reach one limit before another.
@@ -175,7 +181,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const limits: Limits = { ...LIMITS, ...options.limits };
   const context = engineContext(input);
   const fs = new TerminalFs(context.fs);
-  let record: RunRecord = { line: '', typed: null, history: [], shell: 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
+  let record: RunRecord = { line: '', typed: null, history: [], shell: 'desktop', recorded: [], effects: [], pipe: null };
   let captured: Captured | null = null;
   let baseline = new Map<string, string>();
   let lastFiles = JSON.stringify({ folders: [], files: {}, bytes: 0 });
@@ -317,7 +323,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   async function runLine(request: RunRequest): Promise<RunResult> {
     const { id, state } = request;
     const base = { id, recorded: [], effects: [], state };
-    record = { line: request.line, typed: null, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], lastFile: null, pipe: null };
+    record = { line: request.line, typed: null, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], pipe: null };
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     if (HIDDEN.test(request.line)) {
       const word = /\S*__cv_\S*/i.exec(request.line)![0];
@@ -367,9 +373,36 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { ...shared, effects: record.effects, status: taken.status, end: 'done', state: stateFrom(taken, state, bodies) };
   }
 
+  async function write(request: WriteRequest): Promise<WriteOutcome> {
+    const { id, path: typed, text, force, cwd } = request;
+    const home = typed === '~' || typed.startsWith('~/') ? `${HOME}${typed.slice(1)}` : typed;
+    const path = fs.canonical(home.startsWith('/') ? home : `${cwd}/${home}`);
+    const refuse = (error: 'exists' | 'cant-open' | 'full'): WriteOutcome => ({ id, ok: false, error, path });
+    const stat = await fs.stat(path).catch(() => null);
+    if (stat?.isDirectory === true || fs.refusesWrite(path)) return refuse('cant-open');
+    if (stat !== null && !force) return refuse('exists');
+    try {
+      await fs.writeFile(path, text);
+    } catch (error) {
+      return refuse((error as { code?: string }).code === 'ENOSPC' ? 'full' : 'cant-open');
+    }
+    const files = await fs.snapshot();
+    lastFiles = JSON.stringify(files);
+    return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files };
+  }
+
   return {
     warm,
     run,
+    write,
+    complete: (request) =>
+      complete(request, {
+        fs,
+        home: HOME,
+        commands: [...SITE_WORDS, ...STANDARD_COMMANDS, ...SHELL_BUILTINS, ...SHELL_KEYWORDS],
+        keywords: ['then', 'else', 'elif', 'if', 'do', 'while', 'until', '!', 'time', '{'],
+        variables: Object.fromEntries([...baseline].filter(([name]) => NAME.test(name) && !HIDDEN.test(name) && name !== PIPED)),
+      }),
     async reset() {
       await fs.reset();
       lastFiles = JSON.stringify(await fs.snapshot());

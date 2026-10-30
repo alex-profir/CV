@@ -8,7 +8,7 @@ import type { SiteText } from '../../../site-text.ts';
 import { announce, counted, rows } from './announce.ts';
 import { command, line, plainText, text } from './block.ts';
 import type { Announcement, Block, Node } from './block.ts';
-import { commandNamed, COMMANDS, pattern } from './commands.ts';
+import { COMMAND_TABLE, commandNamed, pattern } from './command-table.ts';
 import { suggest } from './suggest.ts';
 
 // What output-map reads of a run's result (contracts/shell-worker.md
@@ -59,7 +59,7 @@ const tryLine = (template: string, path: string, run: string): Node => line(...p
 // suggestions as chips, over the site's commands only (FR-016).
 function unknown(word: string, context: MapContext): Node[] {
   const { replies } = context.text.terminal;
-  const suggestions = suggest(word, COMMANDS);
+  const suggestions = suggest(word, COMMAND_TABLE);
   const lead = line(
     text(word, 'primary'),
     ...pattern(replies.unknown.replace('{typed}', ''), {}, 'error'),

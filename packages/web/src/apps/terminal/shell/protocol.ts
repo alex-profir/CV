@@ -74,6 +74,21 @@ export type RunResult = {
   files?: VisitorFiles;
 };
 
+// Tab's request and answer (data-model.md Completion, research R43).
+export type CompleteRequest = { id: number; line: string; cursor: number; state: ShellState };
+// As listed: the last part of a path, a folder with its `/`.
+export type CompletionMatch = { name: string; folder: boolean };
+// Replace `line[start, end)` with `insert`, which is empty when nothing is
+// added. `matches` are sorted in byte order and merged.
+export type Completion = { id: number; start: number; end: number; insert: string; matches: readonly CompletionMatch[] };
+
+// A write from the vim view (data-model.md Write request and outcome,
+// research R49). `path` as typed or the buffer's, resolved from `cwd`.
+export type WriteRequest = { id: number; path: string; text: string; force: boolean; cwd: string };
+export type WriteOutcome =
+  | { id: number; ok: true; path: string; created: boolean; lines: number; bytes: number; files: VisitorFiles }
+  | { id: number; ok: false; error: 'exists' | 'cant-open' | 'full'; path: string };
+
 // What the worker can't build alone: nothing on the site, a fixture CV in
 // a test.
 export type ShellData = Record<string, never>;
@@ -82,6 +97,8 @@ export type ToWorker =
   | { type: 'start'; data: ShellData }
   | { type: 'run'; request: RunRequest }
   | { type: 'restore'; state: ShellState; files: VisitorFiles }
-  | { type: 'reset' };
+  | { type: 'reset' }
+  | { type: 'complete'; request: CompleteRequest }
+  | { type: 'write'; request: WriteRequest };
 
-export type FromWorker = { type: 'ready' } | { type: 'failed'; reason: string } | { type: 'result'; result: RunResult };
+export type FromWorker = { type: 'ready' } | { type: 'failed'; reason: string } | { type: 'result'; result: RunResult } | { type: 'completion'; completion: Completion } | { type: 'wrote'; outcome: WriteOutcome };

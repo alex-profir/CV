@@ -117,7 +117,7 @@ function print(value: Value, indent: number, prefix: readonly JsonToken[], suffi
 }
 
 // A key's text without its quotes, its escapes read.
-const keyName = (raw: string): string => raw.slice(1, -1).replace(/\\u([0-9a-fA-F]{4})|\\(.)/g, (_match, code: string | undefined, char: string) => (code !== undefined ? String.fromCharCode(Number.parseInt(code, 16)) : char === 'n' ? '\n' : char === 't' ? '\t' : char));
+export const keyName = (raw: string): string => raw.slice(1, -1).replace(/\\u([0-9a-fA-F]{4})|\\(.)/g, (_match, code: string | undefined, char: string) => (code !== undefined ? String.fromCharCode(Number.parseInt(code, 16)) : char === 'n' ? '\n' : char === 't' ? '\t' : char));
 
 export function printJson(text: string): { rows: JsonRow[]; folds: JsonFold[] } | { error: 'not-json' } {
   let root: Value;
@@ -151,3 +151,49 @@ export function printJson(text: string): { rows: JsonRow[]; folds: JsonFold[] } 
 
 // A row as plain text, with its indent.
 export const rowText = (row: JsonRow): string => ' '.repeat(row.indent) + row.tokens.map((token) => token.text).join('');
+
+// One line's tokens, for the vim view (research R47): the same kinds as
+// printJson's rows, so an edited line is colored as typed. What doesn't lex is
+// left plain, as a `space` token; the tokens' text joins back to the line.
+export function lexLine(text: string): JsonToken[] {
+  const tokens: JsonToken[] = [];
+  const at = (pattern: RegExp, from: number) => {
+    pattern.lastIndex = from;
+    return pattern.exec(text)?.[0] ?? null;
+  };
+  let index = 0;
+  while (index < text.length) {
+    const blank = at(SPACE, index)!;
+    if (blank !== '') {
+      tokens.push({ kind: 'space', text: blank });
+      index += blank.length;
+      continue;
+    }
+    const char = text[index]!;
+    const pair = text.slice(index, index + 2);
+    if (pair === '{}' || pair === '[]') {
+      tokens.push({ kind: 'punctuation', text: pair });
+      index += 2;
+      continue;
+    }
+    if ('{}[]:,'.includes(char)) {
+      tokens.push({ kind: 'punctuation', text: char });
+      index += 1;
+      continue;
+    }
+    const string = char === '"' ? at(STRING, index) : null;
+    const scalar = string === null ? (at(NUMBER, index) ?? at(LITERAL, index)) : null;
+    const next = text[index + (scalar ?? '').length];
+    if (string !== null) {
+      tokens.push({ kind: /^\s*:/.test(text.slice(index + string.length)) ? 'key' : 'string', text: string });
+      index += string.length;
+    } else if (scalar !== null && scalar !== '' && (next === undefined || /[\s,:\]}]/.test(next))) {
+      tokens.push({ kind: /^[tfn]/.test(scalar) ? 'literal' : 'number', text: scalar });
+      index += scalar.length;
+    } else {
+      tokens.push({ kind: 'space', text: text.slice(index) });
+      return tokens;
+    }
+  }
+  return tokens;
+}

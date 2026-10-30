@@ -21,6 +21,10 @@ export const SHELL_BUILTINS = [
   'true', 'type', 'typeset', 'unset', 'wait',
 ] as const;
 
+// bash's reserved words that just-bash parses, which a command's first word
+// completes to too (research R43).
+export const SHELL_KEYWORDS = ['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'while', 'until', 'do', 'done', 'in', 'function', 'select', 'time', '{', '}', '[[', ']]', '!'] as const;
+
 export type LeftOutReason = 'network' | 'language' | 'scripts' | 'permissions' | 'zlib' | 'aliases' | 'site' | 'unproved';
 
 // Each command just-bash offers that the Terminal leaves out, and why.

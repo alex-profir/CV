@@ -28,6 +28,8 @@ async function handle(message: ToWorker): Promise<FromWorker | null> {
   }
   if (shell === null) return null;
   if (message.type === 'run') return { type: 'result', result: await shell.run(message.request) };
+  if (message.type === 'complete') return { type: 'completion', completion: await shell.complete(message.request) };
+  if (message.type === 'write') return { type: 'wrote', outcome: await shell.write(message.request) };
   if (message.type === 'restore') await shell.restore(message.state, message.files);
   else await shell.reset();
   return { type: 'ready' };

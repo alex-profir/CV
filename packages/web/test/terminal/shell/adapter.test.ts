@@ -2,7 +2,7 @@
 // carried from line to line, syntax checked first, the site's command words
 // matched in any case, `exit` detected, and reset and restore.
 import { describe, expect, test } from 'vitest';
-import { INITIAL_STATE } from '../../../src/apps/terminal/shell/protocol.ts';
+import { INITIAL_STATE, QUOTA } from '../../../src/apps/terminal/shell/protocol.ts';
 import { LANGUAGE_CASES, runLine, runLines, shellFor } from './context.ts';
 
 describe('006-terminal-FR-067: the shell’s state carries to the next line', () => {
@@ -164,7 +164,7 @@ describe('006-terminal-FR-057: any command can be piped into', () => {
     const work = await runLine(shell, 'work');
     expect((await runLine(shell, 'ls | work')).stdout).toBe(work.stdout);
     const vim = await runLine(shell, 'ls | vim cv.json');
-    expect(vim.effects).toEqual([{ kind: 'vim', name: 'cv.json', pipe: null, text: (await runLine(shell, 'cat cv.json')).stdout.replace(/\n$/, '') }]);
+    expect(vim.effects).toEqual([{ kind: 'vim', file: { name: 'cv.json', path: '/home/guest/cv.json', readonly: true, new: false }, pipe: null, text: (await runLine(shell, 'cat cv.json')).stdout.replace(/\n$/, ''), type: 'json' }]);
   });
 });
 
@@ -173,5 +173,61 @@ describe('006-terminal-FR-022: no command reaches the network', () => {
     const result = await runLine(shellFor('every-field'), line);
     expect(result.stderr).toBe(`bash: ${line.split(' ')[0]}: command not found\n`);
     expect(result.status).toBe(127);
+  });
+});
+
+describe('006-terminal-FR-080, 006-terminal-FR-081 and 006-terminal-FR-073: a write from the vim view', () => {
+  const write = (shell: ReturnType<typeof shellFor>, path: string, text: string, force = false, cwd = '/home/guest') => shell.write({ id: 9, path, text, force, cwd });
+
+  test('creates a visitor’s file that cat prints and ls lists, then replaces it', async () => {
+    const shell = shellFor('every-field');
+    const created = await write(shell, 'todo', 'ship it\nnow\n');
+    expect(created).toMatchObject({ id: 9, ok: true, path: '/home/guest/todo', created: true, lines: 2, bytes: 12 });
+    expect(created.ok && created.files.files['/home/guest/todo']).toBe('ship it\nnow\n');
+    expect((await runLine(shell, 'cat todo')).stdout).toBe('ship it\nnow\n');
+    expect((await runLine(shell, 'ls')).stdout).toContain('todo');
+    const replaced = await write(shell, 'todo', 'é\n', true);
+    expect(replaced).toMatchObject({ ok: true, created: false, lines: 1, bytes: 3 });
+    expect((await runLine(shell, 'cat todo')).stdout).toBe('é\n');
+  });
+
+  test('a path relative to cwd, ~/ and /tmp/ resolve', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'mkdir mine');
+    expect(await write(shell, 'a', 'a\n', false, '/home/guest/mine')).toMatchObject({ ok: true, path: '/home/guest/mine/a' });
+    expect(await write(shell, '~/b', 'b\n', false, '/home/guest/mine')).toMatchObject({ ok: true, path: '/home/guest/b' });
+    expect(await write(shell, '/tmp/c', 'c\n')).toMatchObject({ ok: true, path: '/tmp/c' });
+  });
+
+  test('an existing file without force gives exists and stays; with force it is replaced', async () => {
+    const shell = shellFor('every-field');
+    await write(shell, 'todo', 'one\n');
+    expect(await write(shell, 'todo', 'two\n')).toMatchObject({ ok: false, error: 'exists' });
+    expect((await runLine(shell, 'cat todo')).stdout).toBe('one\n');
+    expect(await write(shell, 'todo', 'two\n', true)).toMatchObject({ ok: true });
+  });
+
+  test('a protected file, a folder and a path in a missing or protected folder give cant-open and change nothing', async () => {
+    const shell = shellFor('every-field');
+    const about = (await runLine(shell, 'cat about')).stdout;
+    for (const [path, force] of [['about', false], ['about', true], ['work', true], ['nowhere/x', true], ['work/new', true], ['/new', true]] as const) expect(await write(shell, path, 'x\n', force), path).toMatchObject({ ok: false, error: 'cant-open' });
+    expect((await runLine(shell, 'cat about')).stdout).toBe(about);
+    expect((await runLine(shell, 'ls work/new')).status).not.toBe(0);
+  });
+
+  test('past QUOTA gives full and leaves the file as it was', async () => {
+    const shell = shellFor('every-field');
+    await write(shell, 'todo', 'kept\n');
+    expect(await write(shell, 'todo', 'x'.repeat(QUOTA + 1), true)).toMatchObject({ ok: false, error: 'full' });
+    expect((await runLine(shell, 'cat todo')).stdout).toBe('kept\n');
+    expect(await write(shell, 'big', 'x'.repeat(QUOTA))).toMatchObject({ ok: false, error: 'full' });
+  });
+
+  test('the next line’s result doesn’t report the written files again, and the history doesn’t change', async () => {
+    const shell = shellFor('every-field');
+    await write(shell, 'todo', 'one\n');
+    const result = await runLine(shell, 'history');
+    expect(result.files).toBeUndefined();
+    expect(result.stdout).not.toContain('todo');
   });
 });

@@ -8,7 +8,7 @@
 // or piped text (FR-018).
 import { defineCommand } from 'just-bash/browser';
 import { command } from '../engine/block.ts';
-import type { Block, Effect, Node, Tone } from '../engine/block.ts';
+import type { Block, Effect, Node, Tone, VimFile } from '../engine/block.ts';
 import { COMMANDS, CV_PIPE, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
@@ -40,9 +40,6 @@ export type RunRecord = {
   shell: 'desktop' | 'mobile';
   recorded: Recorded[];
   effects: Effect[];
-  // The protected file `cat` last printed whole, so `cat cv.json | vim -`
-  // names it (FR-059).
-  lastFile: { name: string; text: string } | null;
   // The pipe the vim view's status line shows, when not the line itself.
   pipe: string | null;
 };
@@ -81,6 +78,10 @@ function filesOf(context: RunContext): Map<string, File> {
   for (const child of context.fs.children) walk(child, `${HOME}/${child.name}`);
   return files;
 }
+
+// The vim view's effect: whether the text is JSON is settled here, where the
+// printer is, and stays for the view's life (research R47).
+const vimEffect = (file: VimFile, pipe: string | null, text: string): Effect => ({ kind: 'vim', file, pipe, text, type: 'error' in printJson(text) ? 'text' : 'json' });
 
 const ok = (stdout = '', stderr = '', exitCode = 0): Output => ({ stdout, stderr, exitCode });
 
@@ -145,17 +146,21 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     if (args[0] === '-') {
       const input = decode(ctx.stdin);
       if (input === '') return usageOf(word, 'vim');
-      const name = run.lastFile !== null && run.lastFile.text === input ? run.lastFile.name : '-';
-      run.effects.push({ kind: 'vim', name, pipe: run.pipe ?? run.line, text: input.replace(/\n$/, '') });
+      const file = { name: shell.context.text.terminal.vim.noName, path: null, readonly: false, new: false };
+      run.effects.push(vimEffect(file, run.pipe ?? run.line, input.replace(/\n$/, '')));
       return ok();
     }
     const typed = args[0]!;
     const path = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, typed));
     const stat = await shell.fs.stat(path).catch(() => null);
-    if (stat === null) return ok('', `${fill(replies.noSuchPath, { path: typed })}\n`, 1);
+    // A path with nothing there opens empty, as vim does (research R49).
+    if (stat === null) {
+      run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: false, new: true }, null, ''));
+      return ok();
+    }
     if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: `ls ${typed}` })}\n`, 1);
     const content = await shell.fs.readFile(path);
-    run.effects.push({ kind: 'vim', name: nameOf(path), pipe: null, text: content.replace(/\n$/, '') });
+    run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false }, null, content.replace(/\n$/, '')));
     return ok();
   });
 
@@ -243,7 +248,6 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     });
     if (printed.some((entry) => entry === null) || printed.map((entry) => entry!.text).join('') !== stdoutText(result)) return result;
     const run = shell.run();
-    if (printed.length === 1) run.lastFile = { name: printed[0]!.name, text: printed[0]!.text };
     if (!piped(ctx)) for (const entry of printed) run.recorded.push({ text: entry!.text, block: entry!.file.show() });
     return result;
   });

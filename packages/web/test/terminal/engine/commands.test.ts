@@ -13,16 +13,14 @@ describe('006-terminal-FR-058: vim opens a file, or what is piped in, in the vim
       expect(result.kind, line).toBe('open-vim');
       if (result.kind !== 'open-vim') continue;
       expect(result.file.type).toBe('json');
-      expect(result.file.name).toBe('cv.json');
-      expect(result.file.rows.length).toBe(JSON.stringify(resume, null, 2).split('\n').length);
-      expect(result.file.folds.map((fold) => fold.key)).toEqual(Object.keys(resume).filter((key) => typeof (resume as Record<string, unknown>)[key] === 'object'));
+      expect(result.file.file.name).toBe(line === 'cat cv.json | vim -' ? '[No Name]' : line.split(' ')[1]);
+      expect(result.file.text).toBe(JSON.stringify(resume, null, 2));
     }
     expect((await run('vim cv.json', context) as { file: { pipe: unknown } }).file.pipe).toBeNull();
   });
 
-  test('vim nowhere, vim - with nothing piped and vim alone reply without opening the view', async () => {
+  test('vim - with nothing piped and vim alone reply without opening the view', async () => {
     const context = contextFor('every-field');
-    expect(await textOf('vim nowhere', context)).toBe('nowhere: no such file or folder.');
     expect(await textOf('vim -', context)).toBe('vim takes one path, or - with piped input. Usage: vim [path | -]');
     expect(await textOf('vim', context)).toBe('vim takes one path, or - with piped input. Usage: vim [path | -]');
     expect(await textOf('vim a b', context)).toBe('vim takes one path, or - with piped input. Usage: vim [path | -]');

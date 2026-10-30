@@ -11,19 +11,16 @@ import type { SpecEntry, SpecList } from '../../../../scripts/spec-list.ts';
 import { counted, fill } from '../../../site-text.ts';
 import type { SiteText } from '../../../site-text.ts';
 import { blockText, command, line, link, text } from './block.ts';
-import type { Block, Effect, Node, Tone, VimSource } from './block.ts';
+import { COMMAND_TABLE, commandNamed, pattern } from './command-table.ts';
+import type { ArgKind, CommandName } from './command-table.ts';
+import type { Block, Effect, Node, Tone } from './block.ts';
 import { aboutBlock, contactBlock, entriesBlock, listBlock } from './cv.ts';
 import type { CvInput, Formatters } from './cv.ts';
 import { buildFileSystem } from './files.ts';
 import type { Folder } from './files.ts';
-import { printJson } from './json.ts';
 
-export type CommandName =
-  | 'help' | 'about' | 'work' | 'projects' | 'education' | 'skills' | 'languages' | 'interests'
-  | 'contact' | 'cv' | 'site' | 'specs' | 'ls' | 'cd' | 'cat' | 'jq' | 'vim' | 'pwd' | 'open'
-  | 'history' | 'clear' | 'exit';
-
-export type ArgKind = keyof SiteText['terminal']['takes'];
+export type { ArgKind, CommandName } from './command-table.ts';
+export { commandNamed, pattern };
 
 // What a site command runs with: the site's words and data, the file tree,
 // and from the shell, the working folder, the history and which shell
@@ -56,15 +53,6 @@ export const printed = (block: Block): SiteRun => ({ text: blockText(block), blo
 
 const nothing = (effect?: Effect): SiteRun => ({ text: '', block: null, status: 0, ...(effect === undefined ? {} : { effect }) });
 
-// A site text pattern as nodes: each `{key}` is the node given for it, the
-// rest is text in `tone`.
-export function pattern(template: string, fills: Record<string, Node>, tone?: Tone): Node[] {
-  return template
-    .split(/(\{\w+\})/)
-    .filter((part) => part !== '')
-    .map((part) => fills[part.slice(1, -1)] ?? text(part, tone));
-}
-
 export const usageOf = (context: Pick<RunContext, 'text'>, name: CommandName) => {
   const { args } = context.text.terminal.commands[name];
   return args === '' ? name : `${name} ${args}`;
@@ -85,12 +73,6 @@ const plain =
   (name: CommandName, run: (context: RunContext) => SiteRun) =>
   (args: readonly string[], context: RunContext, word: string): SiteRun =>
     args.length > 0 ? usage(word, context, name) : run(context);
-
-// The row a name or alias names, matched in lower case (FR-007).
-export const commandNamed = (word: string): Command | null => {
-  const typed = word.toLowerCase();
-  return COMMANDS.find((row) => row.name === typed || row.aliases.includes(typed)) ?? null;
-};
 
 // `help`: the lead, then a row per command, its name, arguments and aliases
 // as controls, and its description (FR-008, FR-015); then the standard
@@ -157,16 +139,6 @@ function specsBlock(context: RunContext): Block {
 
 // The vim view's source: JSON rows and folds when the text is JSON, else
 // its lines (FR-058).
-export function vimSource(textValue: string, name: string, pipe: string | null): VimSource {
-  const printedJson = printJson(textValue);
-  if (!('error' in printedJson)) return { name, pipe, rows: printedJson.rows, folds: printedJson.folds, type: 'json' };
-  const rows = textValue.split('\n').map((row) => {
-    const indent = /^ */.exec(row)![0].length;
-    return { indent, tokens: [{ kind: 'string' as const, text: row.slice(indent) }] };
-  });
-  return { name, pipe, rows, folds: [], type: 'text' };
-}
-
 // What `cv` runs, from the home folder (FR-059).
 export const CV_PIPE = 'cat cv.json | jq | vim -';
 
@@ -195,30 +167,27 @@ const LIST = (name: 'skills' | 'languages' | 'interests') => plain(name, (contex
 // In `help`'s order (FR-008). `cv` and `vim` are the shell's site commands,
 // as they read the file system; `ls`, `cd`, `cat`, `jq`, `pwd` and `exit`
 // are the shell's own.
-export const COMMANDS: readonly Command[] = [
-  { name: 'help', aliases: ['?'], args: 'optional-command', run: help },
-  { name: 'about', aliases: ['whoami'], args: 'none', run: plain('about', (context) => printed(aboutBlock(cvInput(context)))) },
-  { name: 'work', aliases: ['experience'], args: 'none', run: SECTION('work') },
-  { name: 'projects', aliases: [], args: 'none', run: SECTION('projects') },
-  { name: 'education', aliases: [], args: 'none', run: SECTION('education') },
-  { name: 'skills', aliases: [], args: 'none', run: LIST('skills') },
-  { name: 'languages', aliases: [], args: 'none', run: LIST('languages') },
-  { name: 'interests', aliases: [], args: 'none', run: LIST('interests') },
-  { name: 'contact', aliases: [], args: 'none', run: plain('contact', (context) => printed(contactBlock(cvInput(context)))) },
-  { name: 'cv', aliases: [], args: 'none' },
-  { name: 'site', aliases: [], args: 'none', run: plain('site', (context) => printed(siteBlock(context))) },
-  { name: 'specs', aliases: [], args: 'none', run: plain('specs', (context) => printed(specsBlock(context))) },
-  { name: 'ls', aliases: [], args: 'optional-path' },
-  { name: 'cd', aliases: [], args: 'optional-path' },
-  { name: 'cat', aliases: [], args: 'path' },
-  { name: 'jq', aliases: [], args: 'optional-path-or-input' },
-  { name: 'vim', aliases: [], args: 'path-or-input' },
-  { name: 'pwd', aliases: [], args: 'none' },
-  { name: 'open', aliases: [], args: 'name', run: open },
-  { name: 'history', aliases: [], args: 'none', run: history },
-  { name: 'clear', aliases: [], args: 'none', run: plain('clear', () => nothing({ kind: 'clear' })) },
-  { name: 'exit', aliases: [], args: 'none' },
-];
+const RUNS: Partial<Record<CommandName, NonNullable<Command['run']>>> = {
+  help,
+  about: plain('about', (context) => printed(aboutBlock(cvInput(context)))),
+  work: SECTION('work'),
+  projects: SECTION('projects'),
+  education: SECTION('education'),
+  skills: LIST('skills'),
+  languages: LIST('languages'),
+  interests: LIST('interests'),
+  contact: plain('contact', (context) => printed(contactBlock(cvInput(context)))),
+  site: plain('site', (context) => printed(siteBlock(context))),
+  specs: plain('specs', (context) => printed(specsBlock(context))),
+  open,
+  history,
+  clear: plain('clear', () => nothing({ kind: 'clear' })),
+};
+
+export const COMMANDS: readonly Command[] = COMMAND_TABLE.map((row) => {
+  const run = RUNS[row.name];
+  return run === undefined ? row : { ...row, run };
+});
 
 // The words a site command or alias can be run by.
 export const SITE_WORDS: readonly string[] = COMMANDS.flatMap((row) => [row.name, ...row.aliases]);

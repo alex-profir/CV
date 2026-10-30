@@ -68,7 +68,6 @@ describe('006-terminal-FR-048: a path that is missing, or the wrong kind', () =>
       ['cd About', 'bash: cd: About: Not a directory\nAbout is a file. Try cat About.', ['cat About']],
       ['cat work', 'cat: work: Is a directory\nwork is a folder. Try ls work.', ['ls work']],
       ['vim work', 'work is a folder. Try ls work.', ['ls work']],
-      ['vim nowhere', 'nowhere: no such file or folder.', []],
       ['ls nowhere', 'ls: nowhere: No such file or directory', []],
       ['cd nowhere', 'bash: cd: nowhere: No such file or directory', []],
     ];

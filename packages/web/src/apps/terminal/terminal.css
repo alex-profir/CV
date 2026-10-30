@@ -443,6 +443,14 @@
   min-block-size: 0;
 }
 
+.vim-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
 .vim-text {
   flex: 1;
   min-block-size: 0;
@@ -461,6 +469,34 @@
 #os .vim-help:focus-visible {
   outline-width: calc(var(--token-border-thick) + var(--token-border-thin));
   outline-offset: calc(-1 * (var(--token-border-thick) + var(--token-border-thin)));
+}
+
+/* Insert mode's real text field (research R48): over the text and
+   transparent, as the command line is over its mirror; clicks go through to
+   the text, which moves the cursor. Its focus outline is the view's. */
+.vim-insert {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  resize: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#os .vim-insert:focus-visible {
+  outline-width: calc(var(--token-border-thick) + var(--token-border-thin));
+  outline-offset: calc(-1 * (var(--token-border-thick) + var(--token-border-thin)));
+}
+
+/* The insert cursor: a bar before the character it inserts at (design). */
+.vim-insert-bar {
+  margin-inline-end: calc(-1 * var(--token-border-thick));
+  border-inline-start: var(--token-border-thick) solid var(--token-color-terminal-cursor);
 }
 
 .vim-line {
@@ -587,6 +623,14 @@
   min-block-size: var(--token-size-vim-message);
   padding-inline: var(--token-size-terminal-padding);
   padding-block: var(--token-space-1);
+}
+
+.vim-message-text[data-tone="warning"] {
+  color: var(--token-color-vim-warning);
+}
+
+.vim-message-text[data-tone="error"] {
+  color: var(--token-color-terminal-error);
 }
 
 .vim-message-text,
@@ -717,4 +761,19 @@
   .terminal-glyph :is(.terminal-mark, .terminal-underscore) {
     stroke: CanvasText;
   }
+}
+
+/* ---- A second Tab's list (FR-076) ------------------------------------- */
+
+.completion-row {
+  white-space: pre;
+}
+
+.completion-file {
+  color: var(--token-color-terminal-text);
+}
+
+.completion-folder {
+  color: var(--token-color-terminal-path);
+  font-weight: var(--token-font-weight-semibold);
 }

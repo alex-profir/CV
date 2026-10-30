@@ -82,18 +82,39 @@ describe('006-terminal-FR-058 and 006-terminal-FR-059: vim and cv open the vim v
   test('vim cv.json and cat cv.json | vim - give the file’s name and text', async () => {
     const shell = shellFor('every-field');
     const cvJson = JSON.stringify(fixture('every-field'), null, 2);
-    expect((await runLine(shell, 'vim cv.json')).effects).toEqual([{ kind: 'vim', name: 'cv.json', pipe: null, text: cvJson }]);
-    expect((await runLine(shell, 'cat cv.json | vim -')).effects).toEqual([{ kind: 'vim', name: 'cv.json', pipe: 'cat cv.json | vim -', text: cvJson }]);
+    expect((await runLine(shell, 'vim cv.json')).effects).toEqual([{ kind: 'vim', file: { name: 'cv.json', path: '/home/guest/cv.json', readonly: true, new: false }, pipe: null, text: cvJson, type: 'json' }]);
+    expect((await runLine(shell, 'cat cv.json | vim -')).effects).toEqual([{ kind: 'vim', file: { name: '[No Name]', path: null, readonly: false, new: false }, pipe: 'cat cv.json | vim -', text: cvJson, type: 'json' }]);
   });
 
-  test('vim work, vim nowhere, vim - with nothing piped and vim alone reply on stderr, with no effect', async () => {
+  test('006-terminal-FR-081: a protected file opens read only, under the name typed', async () => {
+    const shell = shellFor('every-field');
+    for (const [line, name, path] of [['vim about', 'about', '/home/guest/about'], ['vim ~/about', '~/about', '/home/guest/about']] as const) {
+      const [effect] = (await runLine(shell, line)).effects;
+      expect(effect, line).toMatchObject({ kind: 'vim', file: { name, path, readonly: true, new: false } });
+    }
+    const listed = (await runLine(shell, 'ls ~/work')).stdout.split('\n')[0]!;
+    const [work] = (await runLine(shell, `vim ~/work/${listed}`)).effects;
+    expect(work).toMatchObject({ file: { name: `~/work/${listed}`, readonly: true, new: false } });
+  });
+
+  test('a visitor’s file is not read only; a missing path opens empty and new, also in a protected or missing folder', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'echo hi > mine');
+    expect((await runLine(shell, 'vim mine')).effects).toEqual([{ kind: 'vim', file: { name: 'mine', path: '/home/guest/mine', readonly: false, new: false }, pipe: null, text: 'hi', type: 'text' }]);
+    for (const [line, name, path] of [['vim notes.txt', 'notes.txt', '/home/guest/notes.txt'], ['vim work/new', 'work/new', '/home/guest/work/new'], ['vim nowhere/x', 'nowhere/x', '/home/guest/nowhere/x']] as const) {
+      const result = await runLine(shell, line);
+      expect(result.stderr, line).toBe('');
+      expect(result.effects, line).toEqual([{ kind: 'vim', file: { name, path, readonly: false, new: true }, pipe: null, text: '', type: 'text' }]);
+    }
+  });
+
+  test('vim work, vim - with nothing piped and vim alone reply on stderr, with no effect', async () => {
     const shell = shellFor('every-field');
     const { replies } = siteText.terminal;
     const expected: Record<string, string> = {
       'vim work': replies.isFolder.replace('{path}', 'work').replace('{command}', 'ls work'),
-      'vim nowhere': replies.noSuchPath.replace('{path}', 'nowhere'),
     };
-    for (const line of ['vim work', 'vim nowhere', 'vim -', 'vim']) {
+    for (const line of ['vim work', 'vim -', 'vim']) {
       const result = await runLine(shell, line);
       expect(result.effects, line).toEqual([]);
       expect(result.stdout, line).toBe('');
@@ -112,6 +133,7 @@ describe('006-terminal-FR-058 and 006-terminal-FR-059: vim and cv open the vim v
     expect(cv!.effects).toEqual(piped);
     const [, fromWork] = await runLines(shell, ['cd work', 'cv']);
     expect(fromWork!.effects).toEqual(piped);
+    expect(cv!.effects[0]).toMatchObject({ file: { name: '[No Name]', path: null, readonly: false, new: false }, pipe: 'cat cv.json | jq | vim -' });
   });
 });
 

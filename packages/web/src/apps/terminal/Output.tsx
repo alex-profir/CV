@@ -2,9 +2,12 @@
 // output block). Every string reaches the page as a React text child, so
 // typed text can never become markup or a link (FR-018). Headings sit below
 // the run's own `h2` (FR-029).
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import { TERMINAL } from '../../os/metrics.ts';
 import { Arrow } from '../../cv/Arrow.tsx';
 import { VisuallyHidden } from '../../cv/VisuallyHidden.tsx';
+import { columns } from './engine/columns.ts';
 import { rowIndent } from './engine/block.ts';
 import type { Block, JsonRow, Node } from './engine/block.ts';
 
@@ -62,6 +65,30 @@ export function JsonRows({ rows }: { rows: readonly JsonRow[] }) {
           {row.tokens.map((token, at) => (
             <span key={at} className={`json-${token.kind}`}>
               {token.text}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// A second Tab's list, in readline's columns at the screen's own width, so a
+// phone gets fewer than a window (FR-076, research R44).
+function CompletionList({ matches }: { matches: Extract<Node, { kind: 'completion' }>['matches'] }) {
+  const list = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(TERMINAL.columns);
+  useLayoutEffect(() => {
+    const element = list.current;
+    if (element !== null) setWidth(Math.floor(element.clientWidth / (TERMINAL.fontSize * TERMINAL.advance)));
+  }, []);
+  return (
+    <div ref={list} className="completion-list" data-req="006-terminal-FR-076">
+      {columns(matches, width).map((row, index) => (
+        <div key={index} className="completion-row">
+          {row.map((cell) => (
+            <span key={cell} className={cell.trimEnd().endsWith('/') ? 'completion-folder' : 'completion-file'}>
+              {cell}
             </span>
           ))}
         </div>
@@ -183,6 +210,8 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
       return <Rows node={node} run={run} level={level} />;
     case 'json':
       return <JsonRows rows={node.rows} />;
+    case 'completion':
+      return <CompletionList matches={node.matches} />;
   }
 }
 

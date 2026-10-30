@@ -4,8 +4,9 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { resume } from '@cv/content';
 import { cvJson } from '../../../src/apps/terminal/data.ts';
-import { printJson } from '../../../src/apps/terminal/engine/json.ts';
+import { lexLine, printJson } from '../../../src/apps/terminal/engine/json.ts';
 import type { JsonRow } from '../../../src/apps/terminal/engine/block.ts';
+import { fixture } from '../../helpers/fixtures.ts';
 import { contextFor, contextOf, output, run, textOf } from './context.ts';
 
 const RESUME_FILE = path.resolve(import.meta.dirname, '../../../../content/resume.json');
@@ -77,5 +78,26 @@ describe('006-terminal-FR-056: jq pretty-prints JSON with keys and numbers as wr
     const context = contextOf(resume);
     const result = await run('cat cv.json | jq', context);
     expect(result.kind === 'output' && result.result.stdout).toBe(`${cvJson}\n`);
+  });
+});
+
+describe('006-terminal-FR-079: lexLine colors one line at a time', () => {
+  test('each line printJson prints gets the same tokens, and joins back to the line', () => {
+    const printed = printJson(JSON.stringify(fixture('every-field'), null, 2));
+    if ('error' in printed) throw new Error('not JSON');
+    for (const row of printed.rows) {
+      const line = rowText(row);
+      const tokens = lexLine(line);
+      expect(tokens.map((token) => token.text).join('')).toBe(line);
+      expect(row.indent === 0 ? tokens : tokens.slice(1)).toEqual(row.tokens);
+    }
+  });
+
+  test('an unfinished line is colored as far as it lexes, and the rest is plain', () => {
+    expect(lexLine('"work": [')).toEqual([{ kind: 'key', text: '"work"' }, { kind: 'punctuation', text: ':' }, { kind: 'space', text: ' ' }, { kind: 'punctuation', text: '[' }]);
+    expect(lexLine('"na')).toEqual([{ kind: 'space', text: '"na' }]);
+    expect(lexLine('12,')).toEqual([{ kind: 'number', text: '12' }, { kind: 'punctuation', text: ',' }]);
+    expect(lexLine('12x, y')).toEqual([{ kind: 'space', text: '12x, y' }]);
+    expect(lexLine('')).toEqual([]);
   });
 });

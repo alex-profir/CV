@@ -146,3 +146,34 @@ describe('006-terminal-FR-028: text runs, Ctrl+C, stopped lines and loading', ()
     await vi.waitFor(() => expect(session.get().entries.at(-1)?.line).toBe('echo after'));
   });
 });
+
+describe('006-terminal-FR-028: opening the vim view says what it opened', () => {
+  const opening = async (first: string, line: string) => {
+    const shell = shellFor('every-field');
+    const client = {
+      status: () => 'ready' as const,
+      subscribe: () => () => undefined,
+      start: () => undefined,
+      retry: () => undefined,
+      run: (request: Parameters<typeof shell.run>[0]) => shell.run(request),
+      cancel: () => undefined,
+      reset: () => undefined,
+      write: (request: Parameters<typeof shell.write>[0]) => shell.write(request),
+      complete: async () => null,
+    };
+    const session = createSession(client);
+    if (first !== '') session.run(first, 'desktop');
+    session.run(line, 'desktop');
+    await vi.waitFor(() => {
+      if (session.get().vim === null) throw new Error('not open');
+    });
+    return session.get().announcement!.text;
+  };
+
+  test('a visitor’s file, a protected file, a new file and piped text', async () => {
+    expect(await opening('printf "a\\nb\\n" > mine', 'vim mine')).toBe('mine, 2 lines. Type :q to leave.');
+    expect(await opening('', 'vim about')).toMatch(/^about, read only, \d+ lines\. Type :q to leave\.$/);
+    expect(await opening('', 'vim nothing')).toBe('nothing, new, 0 lines. Type :q to leave.');
+    expect(await opening('', 'cv')).toMatch(/^\[No Name\], \d+ lines\. Type :q to leave\.$/);
+  });
+});

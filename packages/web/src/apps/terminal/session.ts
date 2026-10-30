@@ -7,15 +7,14 @@
 // (FR-022). Components read it with useSyncExternalStore.
 import { counted, siteText, fill } from '../../site-text.ts';
 import { TERMINAL } from '../../os/metrics.ts';
-import { vimSource } from './engine/commands.ts';
 import type { Announcement, Block } from './engine/block.ts';
 import { mapOutput } from './engine/output-map.ts';
 import { openVim, vimReducer } from './engine/vim.ts';
-import type { Message, VimInput, VimState } from './engine/vim.ts';
+import type { Message, VimInput, VimSource, VimState } from './engine/vim.ts';
 import { createShellClient } from './shell-client.ts';
 import type { ShellClient } from './shell-client.ts';
 import { INITIAL_STATE, NO_FILES } from './shell/protocol.ts';
-import type { Effect, RunResult, ShellState, VisitorFiles } from './shell/protocol.ts';
+import type { Completion, CompletionMatch, Effect, RunResult, ShellState, VisitorFiles, WriteOutcome } from './shell/protocol.ts';
 
 export type Shell = 'desktop' | 'mobile';
 
@@ -100,18 +99,40 @@ export function announcementText(announce: Announcement): string {
   return fill(summary, { command: announce.command, count: announce.count, unit: counted(units[announce.unit], announce.count) });
 }
 
+// A buffer's lines as vim counts them: none in an empty file.
+const lineCount = (source: VimSource) => (source.text === '' ? 0 : source.text.split('\n').length);
+
+// What opening the vim view says (FR-065).
+function openedText(source: VimSource): string {
+  const forms = siteText.terminal.announce.vimOpened;
+  const form = source.file.new ? forms.new : source.file.readonly ? forms.readonly : forms.plain;
+  return fill(form, { file: source.file.name, n: lineCount(source) });
+}
+
+// A message's tone: vim's warning, its errors, and the rest (design).
+export function messageTone(message: Message): 'info' | 'warning' | 'error' {
+  if (message.kind !== 'vim') return 'info';
+  return message.code === 'W10' ? 'warning' : 'error';
+}
+
 // The vim view's message line in words (contracts/commands.md The vim
 // view's keys), on its shell.
 export function messageText(message: Message, state: VimState, shell: Shell = 'desktop'): string {
   const words = siteText.terminal.vim;
-  const file = state.source.name;
+  const { file } = state.source;
   switch (message.kind) {
-    case 'opened':
-      return fill(words.opened[shell === 'mobile' ? 'phone' : 'desktop'], { file, n: state.source.rows.length });
-    case 'read-only':
-      return fill(words.readOnly, { file });
-    case 'unknown':
-      return fill(words.unknown, { typed: message.command });
+    case 'opened': {
+      const form = file.new ? 'new' : file.path === null ? 'piped' : file.readonly ? 'readonly' : 'plain';
+      const opening = fill(words.openings[form], { file: file.name, n: lineCount(state.source) });
+      return state.folds.length > 0 ? `${opening}${words.foldHint[shell === 'mobile' ? 'phone' : 'desktop']}` : opening;
+    }
+    case 'written':
+      return fill(words.written, { file: message.name, new: message.created ? words.writtenNew : '', n: message.lines, b: message.bytes });
+    case 'vim':
+      return fill(words.messages[message.code], { path: message.arg ?? '', typed: message.arg ?? '' });
+    case 'oldest':
+    case 'newest':
+      return words.messages[message.kind];
     case 'match':
       return fill(words.match, { text: state.search?.text ?? '', index: message.index, count: message.count });
     case 'not-found':
@@ -161,8 +182,8 @@ export function createSession(client: ShellClient = createShellClient()) {
       if (effect.kind === 'clear') next = { ...next, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) };
       else if (effect.kind === 'clear-history') next = { ...next, history: next.history.slice(waiting.history.length) };
       else if (effect.kind === 'vim') {
-        const source = vimSource(effect.text, effect.name, effect.pipe);
-        next = { ...next, entries: next.entries.filter((shown) => shown !== done), vim: openVim(source), vimEntry: done, announcement: say(fill(siteText.terminal.announce.vim, { file: source.name, n: source.rows.length })) };
+        const source: VimSource = { file: effect.file, pipe: effect.pipe, text: effect.text, type: effect.type };
+        next = { ...next, entries: next.entries.filter((shown) => shown !== done), vim: openVim(source), vimEntry: done, announcement: say(openedText(source)) };
       } else if (waiting.actions !== null) {
         const { actions } = waiting;
         acts.push(() => actions.open(effect.view));
@@ -248,6 +269,36 @@ export function createSession(client: ShellClient = createShellClient()) {
     set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement: say(siteText.terminal.announce.cancelled) });
   }
 
+  // A second Tab's list: an entry like Ctrl+C's, the line as typed and not in
+  // the history, then the live prompt with the line as it was (FR-076).
+  function showList(line: string, matches: readonly CompletionMatch[]) {
+    const shown: Entry = { ...entry(line), block: [{ kind: 'completion', matches }] };
+    set({ ...state, entries: [...state.entries, shown], announcement: say(fill(siteText.terminal.announce.possibilities, { n: matches.length })) });
+  }
+
+  // 100 matches or more ask first; `answer` then lists them or leaves it.
+  function askList(line: string, count: number) {
+    const question = fill(siteText.terminal.completionQuestion, { n: count });
+    const shown: Entry = { ...entry(line), block: [{ kind: 'line', children: [{ kind: 'text', text: question, tone: 'dim' }] }] };
+    set({ ...state, entries: [...state.entries, shown], announcement: say(question) });
+  }
+
+  function answerList(matches: readonly CompletionMatch[]) {
+    const last = state.entries.at(-1);
+    if (last === undefined || last.block === null) return;
+    const shown: Entry = { ...last, block: [...last.block, { kind: 'completion', matches }] };
+    set({ ...state, entries: [...state.entries.slice(0, -1), shown], announcement: say(fill(siteText.terminal.announce.possibilities, { n: matches.length })) });
+  }
+
+  // A write from the vim view, from the working folder (research R49). The
+  // files it answers with are the session's, for a restarted worker.
+  async function write(path: string, text: string, force: boolean): Promise<WriteOutcome> {
+    const at = generation;
+    const outcome = await client.write({ id: (ids += 1), path, text, force, cwd: state.cwd });
+    if (outcome.ok && at === generation) set({ ...state, files: outcome.files });
+    return outcome;
+  }
+
   function vim(input: VimInput) {
     if (state.vim === null) return;
     const next = vimReducer(state.vim, input);
@@ -255,9 +306,19 @@ export function createSession(client: ShellClient = createShellClient()) {
       set({ ...state, vim: null, vimEntry: null, entries: state.vimEntry === null ? state.entries : [...state.entries, state.vimEntry] });
       return;
     }
+    if ('write' in next) {
+      const at = generation;
+      set({ ...state, vim: next.state });
+      void write(next.write.path, next.write.text, next.write.force).then((outcome) => {
+        if (at === generation) vim({ wrote: outcome });
+      });
+      return;
+    }
     if (next === state.vim) return;
-    // A new message is announced once, even when its words repeat (FR-065).
-    const spokenText = next.message !== state.vim.message && next.message.kind !== 'none' ? messageText(next.message, next) : '';
+    const { modes } = siteText.terminal.vim;
+    // A new message, or the mode changing, is announced once, even when its
+    // words repeat (FR-065).
+    const spokenText = next.message !== state.vim.message && next.message.kind !== 'none' ? messageText(next.message, next) : next.mode !== state.vim.mode ? modes[next.mode] : '';
     set({ ...state, vim: next, ...(spokenText === '' ? {} : { announcement: say(spokenText) }) });
   }
 
@@ -279,6 +340,13 @@ export function createSession(client: ShellClient = createShellClient()) {
     // The menu's `Clear output` (FR-019): the history stays.
     clear: () => set({ ...state, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) }),
     vim,
+    write,
+    // Tab: nothing while a line runs; the client drops a late answer.
+    complete: (line: string, cursor: number): Promise<Completion | null> => (state.running !== null ? Promise.resolve(null) : client.complete(line, cursor)),
+    showList,
+    askList,
+    answerList,
+    announce: (text: string) => set({ ...state, announcement: say(text) }),
     saveScroll: (scrollTop: number, shell: Shell = 'desktop') => {
       if (scrollTop !== state.scrollTop || scrollTop !== state.shellScroll[shell]) set({ ...state, scrollTop, shellScroll: { ...state.shellScroll, [shell]: scrollTop } });
     },

@@ -21,9 +21,11 @@ export const WRAP_INDENT = 2;
 export const rowIndent = (indent: number) => ({ '--indent': `${indent}ch`, '--wrap': `${indent + WRAP_INDENT}ch` });
 export type JsonFold = { key: string; start: number; end: number };
 
-// What the vim view shows (data-model.md Vim view): `name` as the status
-// line shows it, `pipe` the command line that opened it, if any (FR-059).
-export type VimSource = { name: string; pipe: string | null; rows: readonly JsonRow[]; folds: readonly JsonFold[]; type: 'json' | 'text' };
+// What the vim view has open (data-model.md Vim view): `name` as typed, or
+// `[No Name]` for piped text, whose `path` is null until `:w <path>` names it.
+// `readonly`: a protected file (FR-081). `new`: the path didn't exist when
+// opened, until first written (FR-080).
+export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean };
 
 // Only sets a color token: the words carry the meaning (FR-031).
 export type Tone = 'primary' | 'secondary' | 'dim' | 'heading' | 'error' | 'approved' | 'draft' | 'folder';
@@ -49,7 +51,9 @@ export type Node =
   // `help`'s and `specs`' table rows.
   | { kind: 'rows'; rows: readonly (readonly Block[])[]; req?: 'help' | 'specs' }
   // `jq`'s output (FR-056).
-  | { kind: 'json'; rows: readonly JsonRow[] };
+  | { kind: 'json'; rows: readonly JsonRow[] }
+  // A second Tab's list: names as text, never controls (FR-076).
+  | { kind: 'completion'; matches: readonly { name: string; folder: boolean }[] };
 
 export type Block = readonly Node[];
 
@@ -63,7 +67,7 @@ export type Announcement = { full: string } | { command: string; count: number; 
 // app, or empty the history (FR-019, FR-058, FR-014, FR-020).
 export type Effect =
   | { kind: 'clear' }
-  | { kind: 'vim'; name: string; pipe: string | null; text: string }
+  | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
   | { kind: 'open'; view: 'cv' | 'about' }
   | { kind: 'clear-history' };
 
@@ -140,6 +144,11 @@ function textLines(block: Block, marks: boolean): string[] {
             current = row.map((cell) => textLines(cell, marks).join(' ')).join('  ');
             flush();
           }
+          break;
+        case 'completion':
+          flush();
+          current = node.matches.map((match) => match.name).join('  ');
+          flush();
           break;
         case 'json':
           flush();

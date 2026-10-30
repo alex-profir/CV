@@ -268,3 +268,53 @@ describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
     });
   }
 });
+
+describe('006-terminal-FR-021: an open editor is kept with the session', () => {
+  const edited = async (page: Page) => {
+    await typeLine(page, 'vim todo');
+    await vimView(page).waitFor();
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.type('ione');
+    await page.keyboard.press('Escape');
+    await page.keyboard.type('otwo');
+    await page.keyboard.press('Escape');
+  };
+  const buffer = (page: Page) => page.locator('.terminal .vim-code').allTextContents();
+  const status = (page: Page) => page.locator('.terminal .vim-status').textContent();
+
+  test('minimize and restore keep the changes, the cursor and undo', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    const before = await status(page);
+    await page.locator('#os .window[data-view="terminal"] .window-control[data-control="minimize"], #os .window[data-view="terminal"] button[aria-label^="Minimize"]').first().click();
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await vimView(page).waitFor();
+    expect(await status(page)).toBe(before);
+    expect(await status(page)).toContain('[+]');
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('u');
+    expect(await buffer(page)).toEqual(['one']);
+  });
+
+  test('a 1440 → 375 → 1440 resize keeps them', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await vimView(page).waitFor();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await vimView(page).waitFor();
+    expect(await buffer(page)).toEqual(['one', 'two']);
+    expect(await status(page)).toContain('[+]');
+  });
+
+  test('close and reopen starts afresh, the unwritten changes gone with no question', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.getByRole('button', { name: 'Close Terminal' }).click();
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    expect(await vimView(page).count()).toBe(0);
+    await typeLine(page, 'cat todo');
+    expect(await page.locator('.terminal section.run').last().textContent()).toContain('No such file');
+  });
+});
