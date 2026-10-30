@@ -160,6 +160,7 @@ const PLAYGROUND_SHOWN: Record<string, string> = {
   'desktop/playground-broken-link': `${PLAYGROUND.message}[data-kind="error"]`,
   'desktop/playground-shared-opened': PLAYGROUND.message,
   'desktop/playground-reset': PLAYGROUND.popup,
+  'desktop/playground-keys': PLAYGROUND.popup,
   'desktop/playground-specs': '#os section.spec-view[data-view="playground"]',
   'desktop/playground-narrow': `${PLAYGROUND.editor} .monaco-editor`,
   'mobile/playground-best-on-desktop': PLAYGROUND.phoneScreen,

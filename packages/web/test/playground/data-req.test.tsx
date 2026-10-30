@@ -1,7 +1,6 @@
 // Every target in contracts/playground.md's `data-req` table carries exactly
 // its 008 IDs in the rendered Playground, and the Playground's spec view lists
-// the requirements its source carries (FR-074). The list of keys' popup joins
-// the table's rows here with T071.
+// the requirements its source carries (FR-074).
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
@@ -103,6 +102,11 @@ describe('008-typescript-playground-FR-074: every Playground target carries its 
     await page.waitForSelector(POPUP);
     await expectRows(page, [[POPUP, ids(80)]], 'reset');
     await page.keyboard.press('Escape');
+    await menu(page, siteText.playground.menu.keys);
+    await page.waitForSelector(POPUP);
+    await expectRows(page, [[POPUP, ids(83, 85)]], 'keys');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
     await setCode(page, 'while (true) {}');
     await waitChecked(page);
     await run(page, { wait: 'start' });
@@ -114,7 +118,7 @@ describe('008-typescript-playground-FR-074: every Playground target carries its 
     const page = await openPlaygroundPage();
     await page.click('#menu-title-app');
     const items = await idsOf(page, '#menu-app [role="menuitem"][data-req*="008-typescript-playground-"]');
-    expect(items).toEqual([ids(3, 32), ids(3, 38), ids(3, 27), ids(3, 24), ids(3, 52), ids(3, 85), ids(3, 80)]);
+    expect(items).toEqual([ids(3, 32), ids(3, 38), ids(3, 27), ids(3, 24), ids(3, 52), ids(3, 85), ids(3, 85), ids(3, 80)]);
   });
 
   test('the phone: the screen and its buttons; the dock item and the home icon', async () => {
