@@ -221,3 +221,48 @@ export function engineManifest(site: BuiltSite): EngineManifest {
   if (manifest === undefined) throw new Error('the built site has no engine manifest');
   return JSON.parse(fs.readFileSync(path.join(site.dir, manifest.path), 'utf8'));
 }
+
+// The text a Monaco view shows, its rendered lines in order, with the
+// non-breaking spaces it draws read as spaces. Only lines on screen are
+// rendered, so it suits short code.
+export function viewText(page: Page, selector: string): Promise<string> {
+  return page
+    .locator(`${selector} .view-lines`)
+    .first()
+    .evaluate((lines) =>
+      [...lines.querySelectorAll<HTMLElement>('.view-line')]
+        .sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top))
+        .map((line) => (line.textContent ?? '').replace(/ /g, ' '))
+        .join('\n'),
+    );
+}
+
+export const editorText = (page: Page) => viewText(page, EDITOR);
+
+// The read-only output a pane shows: the JavaScript or the declarations.
+export async function outputText(page: Page, pane: 'javascript' | 'declarations'): Promise<string> {
+  await showPane(page, pane);
+  return viewText(page, `${PLAYGROUND} .pane-${pane} .playground-output`);
+}
+
+// How many error and warning marks the editor draws.
+export function errorMarks(page: Page): Promise<number> {
+  return page.locator(`${EDITOR} :is(.squiggly-error, .squiggly-warning)`).count();
+}
+
+// The editor's text is the given code, once it has been replaced and
+// rendered.
+export async function waitForCode(page: Page, code: string): Promise<void> {
+  const first = code.split('\n')[0]!;
+  await page.waitForFunction(
+    ({ selector, line }) => [...document.querySelectorAll(`${selector} .view-line`)].some((element) => (element.textContent ?? '').replace(/ /g, ' ') === line),
+    { selector: EDITOR, line: first },
+  );
+}
+
+// Waits until the check of the current code has come back: the status bar
+// no longer says `Checking…` and the error count is settled for 400 ms.
+export async function waitChecked(page: Page): Promise<void> {
+  await page.waitForTimeout(400);
+  await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('…'), `${PLAYGROUND} .playground-status .check`);
+}

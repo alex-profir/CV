@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { AppDeclaration, ShellName } from '@cv/os-core';
 import type { Resume, SiteData } from '@cv/content';
 import { cvApp } from './cv/app.tsx';
+import { playgroundApp } from './playground/app.tsx';
 import { terminalApp } from './terminal/app.tsx';
 
 // What an app's content may ask of the shell (006 contracts/shell.md): the
@@ -16,8 +17,20 @@ export type AppOs = { shell: ShellName; open: (view: 'cv' | 'playground' | 'abou
 export type AppProps = { resume: Resume; siteData: SiteData; os: AppOs };
 
 // An item an app adds to its window's own menu, before the window commands.
-// `data-req` is written literally where the item is declared.
-export type AppMenuItem = { key: string; label: string; run: () => void; 'data-req'?: string };
+// `data-req` is written literally where the item is declared. `shortcut` is
+// the key shown beside it, as `aria-keyshortcuts` writes it (such as `F1`);
+// `disabled` is asked each time the menu shows; `separatorBefore` and
+// `separatorAfter` draw a separator above or below it (008 contracts/shell.md).
+export type AppMenuItem = {
+  key: string;
+  label: string;
+  run: () => void;
+  'data-req'?: string;
+  shortcut?: string;
+  disabled?: () => boolean;
+  separatorBefore?: boolean;
+  separatorAfter?: boolean;
+};
 
 // os-core's declaration, with React components for the icon and content,
 // and the optional fields any app may give (006 contracts/shell.md):
@@ -33,4 +46,4 @@ export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   onClose?: () => void;
 };
 
-export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp]);
+export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp, playgroundApp]);

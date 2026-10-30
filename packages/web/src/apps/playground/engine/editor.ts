@@ -1,9 +1,13 @@
 // Monaco, set up as the Playground's editor (research R1, R6, R9, R10, R12,
 // R14, R23): only the features FR-015 and FR-081 to FR-085 need, Monaco's
 // TypeScript language features over our worker, one model for the code.
-import { KeyCode, KeyMod, MarkerSeverity, Uri, editor, languages } from 'monaco-editor/editor';
-import 'monaco-editor/languages/definitions/typescript/register';
+// Monaco's TypeScript features first: through their worker manager they
+// register every editor contribution and its services, which must happen
+// before `monaco-editor/editor` starts the editor's services, or a
+// contribution finds its service missing.
 import { getTypeScriptWorker, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register';
+import 'monaco-editor/languages/definitions/typescript/register';
+import { KeyCode, KeyMod, MarkerSeverity, Uri, editor, languages } from 'monaco-editor/editor';
 import { conf, language } from 'monaco-editor/languages/definitions/typescript/typescript';
 import 'monaco-editor/features/anchorSelect/register';
 import 'monaco-editor/features/bracketMatching/register';
@@ -84,7 +88,7 @@ export function createEditing(init: EngineInit) {
   typescriptDefaults.setCompilerOptions(compilerOptions(init.options) as never);
   typescriptDefaults.setExtraLibs([
     { content: init.cvTypes, filePath: 'file:///cv.d.ts' },
-    { content: init.globalsTypes, filePath: 'file:///playground.d.ts' },
+    { content: init.globalsTypes, filePath: 'file:///playground-globals.d.ts' },
   ]);
   // Our markers come from getCheck (R7).
   typescriptDefaults.setModeConfiguration({
