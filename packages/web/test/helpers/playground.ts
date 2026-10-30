@@ -61,9 +61,15 @@ export async function openPlayground(page: Page): Promise<void> {
 // Waits until TypeScript is downloaded and the editor is ready: the loading
 // view is gone and the status bar shows the version.
 export async function waitReady(page: Page, timeout = 60_000): Promise<void> {
-  await page.waitForSelector(`${EDITOR} .monaco-editor`, { state: 'visible', timeout });
-  await page.waitForSelector(`${PLAYGROUND} .playground-status span.ts-version`, { state: 'visible', timeout });
-  await page.waitForSelector(LOADING, { state: 'detached', timeout });
+  try {
+    await page.waitForSelector(`${EDITOR} .monaco-editor`, { state: 'visible', timeout });
+    await page.waitForSelector(`${PLAYGROUND} .playground-status span.ts-version`, { state: 'visible', timeout });
+    await page.waitForSelector(LOADING, { state: 'detached', timeout });
+  } catch (error) {
+    // What the window shows tells a slow start from a stuck one.
+    const shown = await page.evaluate((selector) => document.querySelector(selector)?.textContent ?? '(no Playground)', PLAYGROUND).catch(() => '(the page is gone)');
+    throw new Error(`${String(error)}\nThe Playground showed: ${shown.slice(0, 300)}`, { cause: error });
+  }
 }
 
 // The shell opened in a fresh profile, with the Playground open and ready.

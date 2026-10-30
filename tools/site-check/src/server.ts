@@ -4,10 +4,13 @@
 //
 // Run as a script, it's `npm run serve`: the site in `packages/web/dist/` on
 // `PORT` or 4173.
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import { resolveRoute } from '../../../packages/web/src/routes.ts';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
@@ -44,6 +47,35 @@ function chooseEncoding(header: string | undefined): 'br' | 'gzip' | null {
   return null;
 }
 
+const brotli = promisify(zlib.brotliCompress);
+const gzip = promisify(zlib.gzip);
+
+// Compressed bodies, by their content, for every server on the machine. Brotli
+// takes over 20 s on the Playground's largest file, and each test file starts
+// a server, so it's done once, and never on the event loop: this process also
+// answers the other requests, and drives the browser in the tests.
+const COMPRESSED_DIR = path.join(os.tmpdir(), 'cv-site-check-compressed');
+
+async function compressedOnce(body: Buffer, encoding: 'br' | 'gzip'): Promise<Buffer> {
+  const file = path.join(COMPRESSED_DIR, `${createHash('sha256').update(body).digest('hex')}.${encoding}`);
+  try {
+    return await fs.promises.readFile(file);
+  } catch {
+    // Not there yet.
+  }
+  const made = await (encoding === 'br' ? brotli(body) : gzip(body));
+  try {
+    await fs.promises.mkdir(COMPRESSED_DIR, { recursive: true });
+    // Whole or not at all, as another server may be reading.
+    const part = `${file}.${process.pid}.${Date.now()}`;
+    await fs.promises.writeFile(part, made);
+    await fs.promises.rename(part, file);
+  } catch {
+    // Compressed again next time.
+  }
+  return made;
+}
+
 export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; manifest: SiteManifest; port?: number }): Promise<RunningServer> {
   const files = new Map(manifest.files.map((file) => [file.path, file]));
   // The manifest's files don't change while the server runs, so each is
@@ -55,11 +87,11 @@ export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; 
     return body;
   };
   // By the body `read` returned, which is the same buffer for each file.
-  const compressed = new WeakMap<Buffer, Partial<Record<'br' | 'gzip', Buffer>>>();
+  const compressed = new WeakMap<Buffer, Partial<Record<'br' | 'gzip', Promise<Buffer>>>>();
   const compress = (body: Buffer, encoding: 'br' | 'gzip') => {
     let forBody = compressed.get(body);
     if (forBody === undefined) compressed.set(body, (forBody = {}));
-    return (forBody[encoding] ??= encoding === 'br' ? zlib.brotliCompressSync(body) : zlib.gzipSync(body));
+    return (forBody[encoding] ??= compressedOnce(body, encoding));
   };
   const notFound = (): Answer => ({
     status: manifest.routes.notFound.status,
@@ -85,28 +117,28 @@ export function startServer({ siteDir, manifest, port = 0 }: { siteDir: string; 
     return { status: 200, headers: { 'Content-Type': file.type, 'Cache-Control': cache }, body: read(file.path), compressible: isText(file.type) };
   }
 
-  const server = http.createServer((request, response) => {
-    let result: Answer;
-    try {
-      result = answer(request.method ?? 'GET', request.url ?? '/');
-    } catch (error) {
-      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      response.end(`server error: ${error instanceof Error ? error.message : String(error)}\n`);
-      return;
-    }
+  const respond = async (request: http.IncomingMessage, response: http.ServerResponse): Promise<void> => {
+    const result = answer(request.method ?? 'GET', request.url ?? '/');
     const headers = { ...result.headers };
     let body = result.body;
     if (body !== null && result.compressible) {
       headers.Vary = 'Accept-Encoding';
       const encoding = chooseEncoding(request.headers['accept-encoding']);
       if (encoding !== null) {
-        body = compress(body, encoding);
+        body = await compress(body, encoding);
         headers['Content-Encoding'] = encoding;
       }
     }
     headers['Content-Length'] = String(body?.length ?? 0);
     response.writeHead(result.status, headers);
     response.end(request.method === 'HEAD' ? undefined : (body ?? undefined));
+  };
+
+  const server = http.createServer((request, response) => {
+    respond(request, response).catch((error: unknown) => {
+      response.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end(`server error: ${error instanceof Error ? error.message : String(error)}\n`);
+    });
   });
 
   return new Promise((resolve, reject) => {
