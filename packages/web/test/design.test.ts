@@ -40,13 +40,23 @@ describe('004-cv-page-FR-042: the page matches the approved design', () => {
       ['p.org', body],
       ['p.date', mono],
       ['p.role', mono],
-      ['.level', mono],
       ['ul.chips > li', mono],
       ['.section-number', mono],
       ['dl.contact dt', mono],
     ] as const) {
       expect(await fontOf(page, selector), selector).toBe(family);
     }
+  });
+
+  // The real CV gives no skill a level, so this adds one to the built page.
+  test('a skill level uses the font token the design gives it', async () => {
+    const page = await realPage(1440);
+    await page.locator('.skill-head').first().evaluate((head) => {
+      const level = document.createElement('span');
+      level.className = 'level';
+      head.append(level);
+    });
+    expect(await fontOf(page, '.level')).toBe(tokenValue('font.family.mono'));
   });
 
   test('at 1440 px the column is size.page wide with space.14 on each side, and sections have a size.section-label heading column', async () => {
