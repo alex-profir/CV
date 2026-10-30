@@ -45,15 +45,22 @@ function findImports(file: any): Import[] {
 }
 
 // Removes `export` from declarations and drops `export {}`, so the
-// JavaScript is a plain script body (R13).
+// JavaScript is a plain script body (R13). What `export default` holds still
+// runs: with no name, a function or class has to be an expression there, since
+// a declaration in a script body needs one.
 function stripExports(): any {
   return (context: any) => (file: any) => {
+    const { factory } = context;
+    const asExpression = (statement: any, expression: any) => ts.setSourceMapRange(ts.setTextRange(factory.createExpressionStatement(factory.createParenthesizedExpression(expression)), statement), statement);
     const statements = file.statements.flatMap((statement: any) => {
-      if (ts.isExportDeclaration(statement) || ts.isExportAssignment(statement)) return [];
+      if (ts.isExportDeclaration(statement)) return [];
+      if (ts.isExportAssignment(statement)) return [asExpression(statement, statement.expression)];
+      const own = (statement.modifiers ?? []).filter((modifier: any) => modifier.kind !== ts.SyntaxKind.ExportKeyword && modifier.kind !== ts.SyntaxKind.DefaultKeyword);
+      if (ts.isFunctionDeclaration(statement) && statement.name === undefined) return [asExpression(statement, factory.createFunctionExpression(own, statement.asteriskToken, undefined, statement.typeParameters, statement.parameters, statement.type, statement.body))];
+      if (ts.isClassDeclaration(statement) && statement.name === undefined) return [asExpression(statement, factory.createClassExpression(own, undefined, statement.typeParameters, statement.heritageClauses, statement.members))];
       const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
       if (modifiers === undefined || !modifiers.some((modifier: any) => modifier.kind === ts.SyntaxKind.ExportKeyword)) return [statement];
-      const kept = (statement.modifiers ?? []).filter((modifier: any) => modifier.kind !== ts.SyntaxKind.ExportKeyword && modifier.kind !== ts.SyntaxKind.DefaultKeyword);
-      return [ts.factory.replaceModifiers(statement, kept)];
+      return [ts.factory.replaceModifiers(statement, own)];
     });
     return context.factory.updateSourceFile(file, statements);
   };

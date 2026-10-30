@@ -9,7 +9,7 @@ import { announce } from '../../os/announce.ts';
 import type { Engine, RunHandle } from './engine/contract.ts';
 import { addLogs, announced, clearLogs, emptyLogBook } from './logbook.ts';
 import { session } from './session.ts';
-import type { LogEntry, Run, RunOutcome } from './types.ts';
+import type { LogBook, LogEntry, Run, RunOutcome } from './types.ts';
 
 const words = siteText.playground;
 
@@ -22,6 +22,10 @@ const STUCK_MS = STUCK_SECONDS * 1000;
 // a second (FR-064, FR-066).
 const TICK_MS = 100;
 const ANNOUNCE_MS = 1000;
+
+// The logs are drawn at most this often, however fast they come (FR-040,
+// FR-044). The newest stay in `waitingLogs` until then.
+const DRAW_MS = 250;
 
 let handle: RunHandle | null = null;
 let runIds = 0;
@@ -68,10 +72,31 @@ function updateRun(id: number, change: (run: Run) => Partial<Run>): void {
   session.update((state) => (state.run === null || state.run.id !== id ? {} : { run: { ...state.run, ...change(state.run) } }));
 }
 
+let waitingLogs: LogBook | null = null;
+let drawTimer: ReturnType<typeof setTimeout> | null = null;
+let nextDraw = 0;
+
+function drawLogs(): void {
+  if (drawTimer !== null) clearTimeout(drawTimer);
+  drawTimer = null;
+  if (waitingLogs === null) return;
+  const logs = waitingLogs;
+  waitingLogs = null;
+  nextDraw = performance.now() + DRAW_MS;
+  session.update({ logs });
+}
+
+function changeLogs(change: (logs: LogBook) => LogBook): void {
+  waitingLogs = change(waitingLogs ?? session.get().logs);
+  const wait = nextDraw - performance.now();
+  if (wait <= 0) drawLogs();
+  else drawTimer ??= setTimeout(drawLogs, wait);
+}
+
 // Entries into the log book, numbered by the page so the runner's and the
 // page's own notes never share an id.
 function addEntries(entries: LogEntry[], dropped = 0): void {
-  session.update((state) => ({ logs: addLogs(state.logs, entries.map((entry) => ({ ...entry, id: (entryIds += 1) })), dropped) }));
+  changeLogs((logs) => addLogs(logs, entries.map((entry) => ({ ...entry, id: (entryIds += 1) })), dropped));
 }
 
 // Whether the Playground's window is on screen: open on the desktop, not
@@ -117,6 +142,8 @@ export function startRun(engine: Engine, cv: unknown): void {
   stopRun();
   runIds += 1;
   const id = runIds;
+  waitingLogs = null;
+  nextDraw = 0;
   const run: Run = { id, startedAt: performance.now(), state: 'starting', pending: { timers: 0, requests: 0 }, blockedSince: null, stuck: 'no', askAgainAt: null, uncaught: 0, outcome: null };
   session.update({ run, logs: emptyLogBook(), pane: 'logs', panel: session.get().panel === 'options' ? 'none' : session.get().panel });
   announcedTimers = null;
@@ -135,7 +162,7 @@ export function startRun(engine: Engine, cv: unknown): void {
       },
       onLogs: ({ entries, dropped, cleared }) => {
         if (!isCurrent(id)) return;
-        if (cleared === true) session.update((state) => ({ logs: clearLogs(state.logs) }));
+        if (cleared === true) changeLogs(clearLogs);
         addEntries(entries, dropped);
       },
       onPending: (pending) => {
@@ -154,6 +181,8 @@ export function startRun(engine: Engine, cv: unknown): void {
         handle = null;
         updateRun(id, () => ({ state: 'ended', outcome, stuck: 'no', blockedSince: null, askAgainAt: null }));
         addEntries([{ id: 0, level: 'note', values: [], note: outcome.kind === 'nothing-ran' ? { key: 'nothingRan', reason: outcome.reason === 'packages' ? 'packages' : 'noEmitOnError' } : { key: 'ended', outcome } }]);
+        // The end shows at once, with everything that came before it.
+        drawLogs();
         updateRun(id, () => ({ uncaught: outcome.uncaught ?? 0 }));
         announce(outcome.kind === 'nothing-ran' ? (outcome.reason === 'packages' ? words.editor.packages : fill(words.logs.nothingRan, { option: 'noEmitOnError' })) : outcomeText(outcome));
       },
@@ -173,7 +202,10 @@ export function stopRun(silent = false): void {
   const going = handle;
   handle = null;
   if (going === null) return;
-  if (silent) session.update({ run: null });
+  if (silent) {
+    waitingLogs = null;
+    session.update({ run: null });
+  }
   going.stop();
 }
 

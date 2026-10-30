@@ -68,4 +68,52 @@ console.log("caches done");`;
     await run(page);
     expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['blob four', 'digest done', 'caches done']);
   });
+
+  // The work the runtime has to count, or the run ends under it (FR-036).
+  for (const [name, code, shown] of [
+    ['a stream read with getReader', 'const reader = new Response("abc").body!.getReader();\nconst { value } = await reader.read();\nconsole.log("chunk", value!.length);', ['chunk 3']],
+    ['a stream read with for await', 'for await (const chunk of new Response("abc").body as any) console.log("chunk", chunk.length);', ['chunk 3']],
+    ['a timed abort the code listens for', 'AbortSignal.timeout(200).addEventListener("abort", () => console.log("aborted"));', ['aborted']],
+    ['a timed abort set on onabort', 'AbortSignal.timeout(200).onabort = () => console.log("aborted");', ['aborted']],
+    ['a message to its own port', 'const channel = new MessageChannel();\nchannel.port1.onmessage = (event) => console.log(event.data);\nchannel.port2.postMessage("hello");', ['hello']],
+  ] as const) {
+    test(`${name} keeps the run going until it is done`, async () => {
+      const page = await openPlaygroundPage();
+      await setCode(page, code);
+      await waitForCode(page, code.split('\n')[0]!);
+      await waitChecked(page);
+      await run(page);
+      expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(shown);
+    });
+  }
+
+  test('a delayed task keeps the run going, where the browser has them', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'const tasks = (self as any).scheduler;\nif (tasks !== undefined) await tasks.postTask(() => console.log("task"), { delay: 200 });\nconsole.log("after");';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['task', 'after']);
+  });
+
+  test('a port with a handler and no message, and a timed abort only held, do not keep the run going', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'const channel = new MessageChannel();\nchannel.port1.onmessage = () => console.log("never");\nconst signal = AbortSignal.timeout(60_000);\nconsole.log(signal.aborted);';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page, { timeout: 10_000 });
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['false']);
+  });
+
+  test('XMLHttpRequest.send that throws is not left pending', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'try { new XMLHttpRequest().send(); } catch (error) { console.log((error as Error).name); }';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await run(page, { timeout: 10_000 });
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['InvalidStateError']);
+  });
 });

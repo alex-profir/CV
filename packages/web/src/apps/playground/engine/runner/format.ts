@@ -65,7 +65,40 @@ function read(target: object, key: PropertyKey): unknown {
   }
 }
 
+// A count that is one, whatever the code's own getters answered.
+const counted = (n: unknown): number => (typeof n === 'number' && Number.isSafeInteger(n) && n > 0 ? n : 0);
+
+// What reading an object threw, shown as its value: code can make any step of
+// reading it throw (a `Proxy`), and `console.log` never throws into the code.
+function failure(error: unknown, budget: Budget): Shown {
+  try {
+    const held = error as { name?: unknown; message?: unknown } | null;
+    return { t: 'err', name: text(String(read(held ?? {}, 'name') ?? 'Error'), budget), message: text(String(read(held ?? {}, 'message') ?? error), budget) };
+  } catch {
+    return spend(budget, MARKER), { t: 'deep' };
+  }
+}
+
 function show(value: unknown, depth: number, parents: Set<object>, budget: Budget): Shown {
+  try {
+    return showValue(value, depth, parents, budget);
+  } catch (error) {
+    return failure(error, budget);
+  }
+}
+
+// An object of the browser's own whose state isn't in its keys.
+function builtIn(object: object, budget: Budget): Shown | null {
+  const number = (name: string, value: number): [string, Shown] => [name, { t: 'num', v: text(String(value), budget) }];
+  if (object instanceof RegExp) return { t: 'text', v: text(RegExp.prototype.toString.call(object), budget) };
+  if (object instanceof Promise) return { t: 'text', v: text('Promise', budget) };
+  if (object instanceof ArrayBuffer) return { t: 'obj', ctor: 'ArrayBuffer', entries: [number('byteLength', object.byteLength)], more: 0 };
+  if (object instanceof DataView) return { t: 'obj', ctor: 'DataView', entries: [number('byteLength', object.byteLength), number('byteOffset', object.byteOffset)], more: 0 };
+  if (typeof URL === 'function' && object instanceof URL) return { t: 'obj', ctor: 'URL', entries: [['href', { t: 'str', v: text(object.href, budget) }]], more: 0 };
+  return null;
+}
+
+function showValue(value: unknown, depth: number, parents: Set<object>, budget: Budget): Shown {
   if (value === null) return spend(budget, 4), { t: 'null' };
   if (value === undefined) return spend(budget, 9), { t: 'undef' };
   switch (typeof value) {
@@ -92,37 +125,40 @@ function show(value: unknown, depth: number, parents: Set<object>, budget: Budge
     return { t: 'err', name: text(name, budget), message: text(String(read(object, 'message') ?? ''), budget) };
   }
   if (object instanceof Date) return { t: 'date', v: text(Number.isNaN(object.getTime()) ? 'Invalid Date' : object.toISOString(), budget) };
+  const known = builtIn(object, budget);
+  if (known !== null) return known;
   if (depth >= LIMITS.depth) return spend(budget, MARKER), { t: 'deep' };
   parents.add(object);
   try {
     if (object instanceof Map) {
       const entries: [Shown, Shown][] = [];
-      let more = object.size;
+      let more = counted(object.size);
       for (const [key, item] of object) {
         if (entries.length >= LIMITS.items || !spend(budget, 4)) break;
         entries.push([show(key, depth + 1, parents, budget), show(item, depth + 1, parents, budget)]);
         more -= 1;
       }
-      return { t: 'map', entries, more };
+      return { t: 'map', entries, more: counted(more) };
     }
     if (object instanceof Set) {
       const items: Shown[] = [];
-      let more = object.size;
+      let more = counted(object.size);
       for (const item of object) {
         if (items.length >= LIMITS.items || !spend(budget, 2)) break;
         items.push(show(item, depth + 1, parents, budget));
         more -= 1;
       }
-      return { t: 'set', items, more };
+      return { t: 'set', items, more: counted(more) };
     }
     if (Array.isArray(object) || ArrayBuffer.isView(object)) {
       const list = object as ArrayLike<unknown>;
+      const length = counted(list.length);
       const items: Shown[] = [];
-      for (let index = 0; index < list.length; index += 1) {
+      for (let index = 0; index < length; index += 1) {
         if (items.length >= LIMITS.items || !spend(budget, 2)) break;
         items.push(show(read(list, index), depth + 1, parents, budget));
       }
-      return { t: 'arr', items, more: list.length - items.length };
+      return { t: 'arr', items, more: length - items.length };
     }
     let keys: string[];
     try {
@@ -165,6 +201,7 @@ export function measure(values: readonly Shown[]): number {
       case 'bool':
       case 'sym':
       case 'date':
+      case 'text':
         return value.v.length;
       case 'null':
         return 4;

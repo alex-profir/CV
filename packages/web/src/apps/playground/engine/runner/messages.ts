@@ -23,6 +23,7 @@ export function isShown(value: unknown, depth = 0): value is Shown {
     case 'bool':
     case 'sym':
     case 'date':
+    case 'text':
       return typeof value['v'] === 'string';
     case 'null':
     case 'undef':
@@ -64,7 +65,11 @@ export function isWorkerEntry(value: unknown): value is LogEntry {
   return LEVELS.includes(value['level']) && value['note'] === undefined && value['values'].every((item) => isShown(item));
 }
 
-export const workerEntries = (value: unknown): LogEntry[] => (Array.isArray(value) ? value.filter(isWorkerEntry) : []);
+// An entry that isn't one keeps its place, shortened: code can forge one, and
+// the logs must not lose a line of the runtime's without a trace (FR-034).
+const REFUSED: Omit<LogEntry, 'id'> = { level: 'log', values: [{ t: 'deep' }] };
+
+export const workerEntries = (value: unknown): LogEntry[] => (Array.isArray(value) ? value.map((entry) => (isWorkerEntry(entry) ? entry : { id: 0, ...REFUSED })) : []);
 
 export function isPlace(value: unknown): value is { line: number; column: number } {
   return isRecord(value) && isCount(value['line']) && isCount(value['column']);

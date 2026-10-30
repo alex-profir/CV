@@ -3,7 +3,7 @@
 // word and glyph, its values as text, and for an uncaught error a button to
 // its line. Values reach the page only as React text: nothing the code
 // prints is ever markup.
-import { useLayoutEffect, useRef } from 'react';
+import { memo, useLayoutEffect, useRef } from 'react';
 import { counted, fill, siteText } from '../../site-text.ts';
 import { currentEngine } from './controller.ts';
 import { ErrorMark, InfoMark, WarnMark } from './Glyphs.tsx';
@@ -34,6 +34,7 @@ export function shownText(value: Shown, nested = false): string {
     case 'bool':
     case 'sym':
     case 'date':
+    case 'text':
       return value.v;
     case 'null':
       return 'null';
@@ -89,7 +90,8 @@ function Level({ level }: { level: LogEntry['level'] }) {
   );
 }
 
-function Entry({ entry }: { entry: LogEntry }) {
+// An entry never changes, so a new batch draws only the new rows.
+const Entry = memo(function Entry({ entry }: { entry: LogEntry }) {
   const text = entry.note !== undefined ? noteText(entry.note) : entry.values.map((value) => shownText(value)).join(' ');
   return (
     <li className="log" data-level={entry.level}>
@@ -105,7 +107,7 @@ function Entry({ entry }: { entry: LogEntry }) {
       )}
     </li>
   );
-}
+});
 
 export function LogsPane() {
   const book = useSession((state) => state.logs);

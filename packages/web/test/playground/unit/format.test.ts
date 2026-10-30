@@ -1,6 +1,7 @@
 // The runner's formatter (data-model.md Log book, research R18).
 import { describe, expect, test } from 'vitest';
 import { LIMITS, formatEntry, measure } from '../../../src/apps/playground/engine/runner/format.ts';
+import { isShown } from '../../../src/apps/playground/engine/runner/messages.ts';
 
 const one = (value: unknown) => formatEntry([value]).values[0];
 
@@ -37,6 +38,29 @@ describe('008-typescript-playground-FR-034: logged values are shown by their kin
     class Shape {}
     expect(one(named)).toEqual({ t: 'fn', name: 'named', cls: false });
     expect(one(Shape)).toEqual({ t: 'fn', name: 'Shape', cls: true });
+  });
+
+  test("the browser's own objects show their state, and always pass the page's check", () => {
+    expect(one(/a+/g)).toEqual({ t: 'text', v: '/a+/g' });
+    expect(one(Promise.resolve(1))).toEqual({ t: 'text', v: 'Promise' });
+    expect(one(new ArrayBuffer(8))).toEqual({ t: 'obj', ctor: 'ArrayBuffer', entries: [['byteLength', { t: 'num', v: '8' }]], more: 0 });
+    const view = one(new DataView(new ArrayBuffer(8)));
+    expect(view).toEqual({ t: 'obj', ctor: 'DataView', entries: [['byteLength', { t: 'num', v: '8' }], ['byteOffset', { t: 'num', v: '0' }]], more: 0 });
+    expect(isShown(view)).toBe(true);
+    expect(one(new URL('https://example.test/x'))).toEqual({ t: 'obj', ctor: 'URL', entries: [['href', { t: 'str', v: 'https://example.test/x' }]], more: 0 });
+    expect(isShown(one(new Uint8Array(2)))).toBe(true);
+  });
+
+  test('reading a value never throws, whatever its Proxy does, and counts stay counts', () => {
+    const throwing = new Proxy({}, { getPrototypeOf() { throw new TypeError('no prototype'); } });
+    expect(one(throwing)).toEqual({ t: 'err', name: 'TypeError', message: 'no prototype' });
+    const { proxy, revoke } = Proxy.revocable([], {});
+    revoke();
+    expect(one(proxy)).toMatchObject({ t: 'err', name: 'TypeError' });
+    const nonsense = new Proxy([1], { get: (target, key) => (key === 'length' ? Number.NaN : Reflect.get(target, key)) });
+    expect(isShown(one(nonsense))).toBe(true);
+    const thrown = new Proxy({}, { getPrototypeOf() { throw new Proxy({}, { get() { throw new Error('again'); } }); } });
+    expect(isShown(one(thrown))).toBe(true);
   });
 
   test('circular parts are marked', () => {
