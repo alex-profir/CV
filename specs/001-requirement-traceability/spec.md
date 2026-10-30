@@ -14,6 +14,9 @@ Clarifications, Session 2026-10-29, and Constitution 1.4.0, Merge requirements).
 **Amended**: 2026-10-30, by 006-terminal: the `site` job's limit rises to 12 minutes (SC-008; see
 Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
 
+**Amended**: 2026-10-30 by 008-typescript-playground: the `site` job's limit in SC-008 becomes 20
+minutes (see Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -97,6 +100,12 @@ Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
   job takes about 5.5 minutes on the hosted runner; two of its last three runs were cancelled at
   the 6-minute limit. Make the job faster or raise its limit? → A: Raise the `site` job's limit to
   12 minutes. The other jobs keep 6 minutes (SC-008, amended by 006-terminal).
+
+### Session 2026-10-30 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground (008) adds its part to the site check, which now takes 7 minutes or
+  more before Lighthouse, past the `site` job's 12-minute limit. Which gives way? → A: The limit. The
+  `site` job gets 20 minutes, and every other job keeps 6 (SC-008).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -480,8 +489,9 @@ and `/cv` remains a plain server-rendered page.
   involved using only the report, without reading the check's code.
 - **SC-008** *(added 2026-10-29)*: Every pull request's checks finish within 6 minutes of
   starting, on the hosting service's standard runners, except the `site` job, which finishes
-  within 12 minutes. Before the amendment the slowest took about 19 minutes. Amended 2026-10-30
-  by 006-terminal: every job, `site` included, had to finish within 6 minutes.
+  within 20 minutes. Before the amendment the slowest took about 19 minutes. Amended 2026-10-30
+  by 006-terminal: every job, `site` included, had to finish within 6 minutes. Amended 2026-10-30
+  by 008-typescript-playground: the `site` job had to finish within 12 minutes.
 - **SC-009** *(added 2026-10-29)*: No pull request merges without a passing sign-off on its head
   commit, whoever merges it, the owner included.
 - **SC-010** *(added 2026-10-29)*: The local full run runs 100% of the project's test files, and
