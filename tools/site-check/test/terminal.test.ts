@@ -107,10 +107,10 @@ describe('006-terminal-FR-040: the terminal part runs every CV command, the JSON
 // `<shell>/terminal/shell/<width>px`.
 const ADAPTER = 'packages/web/src/apps/terminal/shell/adapter.ts';
 
-const SHARED_OUTPUT = 'const shared = { id, stdout: result.stdout, stderr,';
+const SHARED_OUTPUT = 'const shared = { id, stdout, stderr,';
 
 // A copy whose shell prints nothing for lines that start with `start`.
-const silent = (start: string) => (copy: string) => replaceIn(copy, ADAPTER, SHARED_OUTPUT, `const shared = { id, stdout: request.line.startsWith(${JSON.stringify(start)}) ? '' : result.stdout, stderr,`);
+const silent = (start: string) => (copy: string) => replaceIn(copy, ADAPTER, SHARED_OUTPUT, `const shared = { id, stdout: request.line.startsWith(${JSON.stringify(start)}) ? '' : stdout, stderr,`);
 
 describe("006-terminal-FR-040: the terminal part types the shell's lines in both shells, and names the line that differs", () => {
   test('a copy where rm about succeeds fails, naming the line and about', async () => {

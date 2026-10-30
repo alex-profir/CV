@@ -576,7 +576,7 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 
 | # | Gap in 3.6.0 | Handled by |
 |---|--------------|------------|
-| G1 | A write that the file system refuses inside a redirect (`echo hi > about`) rejects `exec` instead of printing `bash: about: Permission denied` with status 1. The line's earlier output is lost | Upstream fix first. Until it is released, the adapter refuses a redirect to a protected path before the line runs (R28) |
+| G1 | A write that the file system refuses inside a redirect (`echo hi > about`) rejects `exec` instead of printing `bash: about: Permission denied` with status 1. The line's earlier output is lost | Upstream fix first. Until it is released, the adapter checks each redirect's target as the command runs, and a write past the limit fails its command alone (R28, which lists what stays until the fix) |
 | G2 | A trailing `\|` (`ls \|`) parses as a complete line and runs | The adapter's syntax check (R27) |
 | G3 | stdout and stderr come back as two strings, so their lines can't be interleaved as a terminal shows them, even under `2>&1` in a group | Shown stdout first, then stderr (R30). SC-014 compares each stream on its own (R38) (spec FR-068, SC-014) |
 | G4 | Every `exec` starts from a fresh copy of the shell's state: variables, functions, options and the working folder reset after each line. Files are kept | The adapter carries the state (R27) |
@@ -665,7 +665,7 @@ itself, since just-bash resets it after each `exec` (G4):
    too, worded as bash words it (`syntax error near unexpected token '|'`) (FR-057, G2). The
    interface shows both without bash's `bash: ` prefix and line number, as the approved design
    sets (R30).
-2. **Prelude**: the variables (as `NAME='value'`, quoted), `export` for those exported, the
+2. **Prelude**: the variables go with `exec`'s `env`, outside the script, as the parser takes at most 1,000,000 bytes and a variable may be bigger (T283); then `export` for those exported, the
    functions (below), the `set -o` options that were on (`errexit`, `nounset`, `pipefail`,
    `noglob`, `noclobber`, `xtrace`), and `(exit N)` so `$?` is the last line's status. The working
    folder is passed as `exec`'s `cwd`. The shell's own variables (`PWD`, `OLDPWD`, `IFS`,
@@ -737,15 +737,27 @@ public interface, and it changes between versions); asking upstream for persiste
   in the design's order, then the visitor's in name order. GNU `ls` sorts names itself, so when
   `ls`'s output reaches the screen unchanged, the interface shows the design's order (R29, R30),
   and piped output stays GNU's order (R38).
-- **Until G1 is fixed upstream**: a transform plugin (just-bash's public `registerTransformPlugin`)
-  finds each output redirect whose target is a literal word, and replaces a command whose target
-  resolves to a protected path with `__cv_denied '<target>'`. That prints bash's
-  `bash: <target>: Permission denied` and returns 1 without running the command, which is what
-  bash does when a redirect fails. A target built from an expansion, and a redirect that passes
-  the 1 MB limit, still lose the line's output and show only the error, until the fix. The guard
-  resolves a relative target from the folder the line starts in, as it runs before the line: after
-  a `cd` in the same line (`cd work; echo x > y`), a refused redirect still ends the line with
-  `bash: Permission denied`, and the file is unchanged. The plugin is deleted once the fix is
+- **Until G1 is fixed upstream** (rebuilt 2026-10-30, T282): just-bash reports a refused open only
+  for a redirect to a descriptor above 2. So a transform plugin puts before each output redirect
+  one more, `99>> <target>`, with the target's word and a marker character at its end. The word
+  expands as the command runs, so a target from a variable, after a `cd`, in a loop or in a function
+  is checked like a literal one, in the redirects' order. TerminalFs sees the marker, answers for
+  that target and creates nothing, and the adapter words the refusal as bash does:
+  `bash: <target>: Permission denied`, or `No such file or directory`, or `Not a directory`. A folder
+  is left to just-bash, which says `Is a directory`. Only that command fails, with status 1.
+  A write past 1 MB is known only after the command, so the plugin wraps the command as
+  `{ command; __cv_wrote $?; }`. TerminalFs takes a redirect's write past the limit without
+  throwing, and `__cv_wrote` prints `bash: <target>: No space left on device` and returns 1, or
+  returns the command's status. As on a full disk, the target is left empty or as `>>` found it.
+  What stays until the fix: (1) a word with effects (`$(…)`, `$((…))`, `${x:=y}`) isn't expanded a
+  second time, so isn't checked first; its refusal is still named and fails its command, and the
+  file system words it; (2) `eval`, `source` and `bash -c` parse at run time, past the plugin, so a
+  refused redirect in them ends the line with its error, loses what the line printed, and keeps the
+  state and files (FR-021); (3) a command reading the refusal through a pipe,
+  `(echo x > about) 2>&1 | grep x`, sees just-bash's `cannot open redirect target`, and one reading
+  `type f` through a pipe sees `__cv_wrote`, as the wording is corrected where output reaches the
+  screen or a file; (4) `__cv_wrote` counts as a command, so a command with an output redirect counts
+  as two of FR-069's 10,000. The plugin, the marker and `__cv_wrote` are deleted once the fix is
   released.
 - **`rm -r /`** is refused as GNU's `rm` refuses it by default (`--preserve-root`), and a folder
   the visitor can empty but not remove (`rm -rf /tmp`, as `/` is protected) says

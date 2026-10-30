@@ -499,6 +499,44 @@ describe('006-terminal-FR-078: the Tab key completes as Tab does', () => {
     expect(await commandLineFocused(page)).toBe(true);
   });
 
+  // The on-screen keyboard's own events are for T279's real phones.
+  test('the 100-match question: a key event of Unidentified is read from what it types, and the Tab key answers yes', async () => {
+    const page = await openPocket();
+    await typeInLine(page, 'mkdir h && touch h/f{1..100}');
+    await page.keyboard.press('Enter');
+    await linesRun(page);
+    const ask = async (questions: number) => {
+      if ((await lineValue(page)) === '') await typeInLine(page, 'ls h/f');
+      await tabKey(page).tap();
+      await settle(page);
+      await tabKey(page).tap();
+      await expect.poll(() => page.locator('.terminal-screen').getByText('Display all 100 possibilities? (y or n)').count()).toBe(questions);
+    };
+    const typeUnidentified = (text: string) =>
+      page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement, typed) => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Unidentified', bubbles: true, cancelable: true }));
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, `${input.value}${typed}`);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, text);
+
+    await ask(1);
+    await typeUnidentified('n');
+    await expect.poll(() => lineValue(page)).toBe('ls h/f');
+    expect(await page.locator('.terminal div.completion-list').count()).toBe(0);
+
+    await ask(2);
+    await typeUnidentified('y');
+    await page.locator('.terminal div.completion-list').waitFor();
+    expect(await lineValue(page)).toBe('ls h/f');
+    expect(await commandLineFocused(page)).toBe(true);
+
+    await ask(3);
+    await tabKey(page).tap();
+    await expect.poll(() => page.locator('.terminal div.completion-list').count()).toBe(2);
+    expect(await lineValue(page)).toBe('ls h/f');
+    expect(await commandLineFocused(page)).toBe(true);
+  });
+
   test('reached with the arrow keys and pressed with Enter, it completes and focus returns to the command line', async () => {
     const page = await openPocket();
     await typeInLine(page, 'cat ~/sk');

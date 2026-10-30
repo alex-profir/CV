@@ -47,6 +47,31 @@ describe('006-terminal-FR-067: the shell’s state carries to the next line', ()
 });
 
 describe('006-terminal-FR-007: site command words match without regard to capitals, spaces or tabs', () => {
+  test.each([
+    ['in a chain', 'true && WORK | head -1', 'work | head -1'],
+    ['after a semicolon', 'echo a; ABOUT', 'echo a; about'],
+    ['in a loop', 'for i in 1 2; do WORK; done | head -3', 'for i in 1 2; do work; done | head -3'],
+    ['in a function', 'f() { Skills; }; f', 'skills'],
+    ['an alias', 'true; WHOAMI', 'about'],
+    ['help, under its own name', 'true; HELP', 'help'],
+  ])('a site command in any case %s', async (_, line, same) => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, line);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toBe((await runLine(shellFor('every-field'), same)).stdout);
+    expect(result.stdout).not.toBe('');
+  });
+
+  test('replies name the word as typed; standard commands and the visitor’s functions keep bash’s meaning', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'true; About extra')).stderr).toMatch(/^About /);
+    expect((await runLine(shell, 'true; about extra')).stderr).toMatch(/^about /i);
+    expect(await runLine(shell, 'true; GREP x')).toMatchObject({ stderr: 'bash: GREP: command not found\n', status: 127 });
+    expect((await runLine(shell, 'WORK() { echo mine; }; WORK')).stdout).toBe('mine\n');
+    expect((await runLine(shell, 'true; WORK')).stdout).toBe('mine\n');
+    expect((await runLine(shell, 'env | grep -c CV_; set -x; WORK; true')).stderr).not.toMatch(/__cv_/i);
+  });
+
   test(' HELP , work\\t, Work  and help   work run the site command; GREP x is not found', async () => {
     const shell = shellFor('every-field');
     const help = (await runLine(shell, 'help')).stdout;
@@ -94,14 +119,46 @@ describe('006-terminal-FR-008: exit, and the adapter’s own commands', () => {
     expect(await runLine(shell, 'echo bye; exit 3; echo not')).toMatchObject({ end: 'exited', status: 3, stdout: 'bye\n' });
   });
 
-  test('a line naming __cv_state or __cv_denied is command not found', async () => {
+  test('a line naming __cv_state or __cv_wrote is command not found', async () => {
     const shell = shellFor('every-field');
-    for (const line of ['__cv_state 0', 'echo x; __cv_denied about', 'echo __CV_STATE']) {
+    for (const line of ['__cv_state 0', 'echo x; __cv_wrote 0', 'echo __CV_STATE']) {
       const result = await runLine(shell, line);
       expect(result.stderr, line).toMatch(/^bash: \S*__cv_\S*: command not found\n$/i);
       expect(result.status, line).toBe(127);
       expect(result.stdout, line).toBe('');
     }
+  });
+});
+
+describe('006-terminal-FR-021: a line that fails inside the shell keeps the Terminal open', () => {
+  test('a redirect the shell can’t check first shows its error, keeps the state and the files, and gives a new prompt', async () => {
+    const shell = shellFor('every-field');
+    await runLines(shell, ['touch keep', 'cd work', 'v=1']);
+    const result = await runLine(shell, 'eval "echo x > about"');
+    expect(result).toMatchObject({ stderr: 'bash: about: Permission denied\n', status: 1, end: 'done' });
+    expect(result.state).toMatchObject({ cwd: shell.state.cwd, variables: { v: '1' }, status: 1 });
+    expect(await runLine(shell, 'cd; ls keep; echo $v')).toMatchObject({ stdout: 'keep\n1\n', end: 'done' });
+    expect(await runLine(shell, 'echo a; eval "seq 300000 > big"; echo b')).toMatchObject({ stdout: 'a\nb\n', stderr: 'bash: big: No space left on device\n', end: 'done' });
+  });
+
+  test('exit and set -e still end the shell', async () => {
+    expect((await runLine(shellFor('every-field'), 'exit 3')).end).toBe('exited');
+    expect(await runLine(shellFor('every-field'), 'set -e; false; echo not')).toMatchObject({ end: 'exited', stdout: '' });
+    expect(await runLine(shellFor('every-field'), 'set -e; f=about; echo x > $f; echo not')).toMatchObject({ end: 'exited', stderr: 'bash: about: Permission denied\n', status: 1 });
+  });
+});
+
+describe('006-terminal-FR-067 and 006-terminal-FR-021: a variable over 1 MB', () => {
+  test('works as in bash, and unset clears it, in a restarted worker too', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'x=$(seq 200000)')).end).toBe('done');
+    expect(new TextEncoder().encode(shell.state.variables.x!).length).toBeGreaterThan(1_000_000);
+    expect((await runLine(shell, 'echo ${#x}')).stdout).toBe('1288894\n');
+    const restarted = shellFor('every-field');
+    expect((await runLine(restarted, 'echo ${x:0:1}; export -p | grep -c " x="', shell.state)).stdout).toBe('1\n0\n');
+    expect(await runLine(shell, 'unset x')).toMatchObject({ stdout: '', stderr: '', end: 'done' });
+    expect(shell.state.variables.x).toBeUndefined();
+    expect((await runLine(shell, 'echo ok')).stdout).toBe('ok\n');
   });
 });
 

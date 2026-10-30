@@ -95,6 +95,16 @@ describe.each<TerminalShell>(['desktop', 'mobile'])('006-terminal-FR-049, 006-te
     expect(await runAll(page, ['cat about', 'ls work', 'cat cv.json'])).toEqual(before);
   });
 
+  test('006-terminal-FR-021 and 006-terminal-FR-073: a refused redirect or a line that fails inside the shell keeps the Terminal open', async () => {
+    const page = await openTerminalPage(shell);
+    await runGroup(page, 'touch keep');
+    expect(await shownLines(await runGroup(page, 'f=about; echo x > $f'))).toEqual(['bash: about: Permission denied']);
+    expect(await shownLines(await runGroup(page, 'seq 300000 > big'))).toEqual(['bash: big: No space left on device']);
+    expect(await shownLines(await runGroup(page, 'eval "echo x > about"'))).toEqual(['bash: about: Permission denied']);
+    expect(await shownLines(await runGroup(page, 'x=$(seq 200000); echo ${#x}'))).toEqual(['1288894']);
+    expect(await shownLines(await runGroup(page, 'unset x; wc -c < keep'))).toEqual(['0']);
+  });
+
   test('006-terminal-FR-073 and 006-terminal-FR-021: US3 scenario 10, the visitor’s folder, gone after closing', async () => {
     const page = await openTerminalPage(shell);
     expect(await shownLines(await runGroup(page, 'mkdir notes && echo hi > notes/a && mv notes/a notes/b && cat notes/b'))).toEqual(['hi']);

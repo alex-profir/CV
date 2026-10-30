@@ -8,10 +8,10 @@ import { Bash, defineCommand } from 'just-bash/browser';
 import { commandNamed, engineContext, SITE_WORDS } from '../engine/commands.ts';
 import type { SiteInput } from '../engine/commands.ts';
 import { complete } from './complete.ts';
-import { HOME, TerminalFs } from './fs.ts';
+import { HOME, OPENING, TerminalFs, WROTE } from './fs.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
-import { DENIED, PIPED, RENAMED, siteCommands } from './site-commands.ts';
+import { PIPED, RENAMED, siteCommands, TYPED } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
 import { SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
 
@@ -38,8 +38,6 @@ const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 // The adapter's own words: a line that names one is refused.
 const HIDDEN = /__cv_/i;
 
-const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
-
 type Captured = { status: number; functions: string[]; options: string[]; cwd: string; env: Map<string, string>; exported: string[] };
 
 // Every node of an AST, depth first, with whether it sends its output into
@@ -65,73 +63,85 @@ function walk(node: unknown, visit: (node: AstNode, piped: boolean) => void, pip
 const literalWord = (value: string) => ({ type: 'Word', parts: [{ type: 'Literal', value }] });
 
 // The site's part of every run (research R29): the site's commands under
-// the names the shell runs them by, and each command whose output goes into
-// a pipe marked, so it prints text there and no block.
-const sitePlugin: Plugin = {
-  name: 'cv-site',
-  transform(context) {
-    walk(context.ast, (node, piped) => {
-      if (node.type !== 'SimpleCommand') return;
-      const name = node.name as { parts?: { type: string; value?: string }[] } | null;
-      const word = name?.parts?.length === 1 && name.parts[0]!.type === 'Literal' ? name.parts[0]!.value! : null;
-      if (word !== null && RENAMED[word] !== undefined) node.name = literalWord(RENAMED[word]!);
-      if (piped && name !== null) (node.assignments as unknown[]).unshift({ type: 'Assignment', name: PIPED, value: literalWord('1'), append: false, array: null });
-    });
-    return { ast: context.ast };
-  },
-};
-
-// The redirect guard, until just-bash's G1 fix is released (research R28,
-// G1; T129's upstream issue): a write the file system refuses inside a
-// redirect ends the whole line, where bash says why and goes on. So a
-// command whose literal output redirect names a protected path, from the
-// folder the line starts in, runs `__cv_denied` instead, which says it as
-// bash does. Delete this plugin once the fix ships (plan, Dependencies).
-const WRITES = new Set(['>', '>>', '>|', '&>', '&>>']);
-
-// A redirect target written out in full: literal text, quoted or not, with a
-// leading `~`; null when an expansion makes it. The folder is the one the
-// line starts in, so a target after a `cd` in the same line isn't caught.
-function literalTarget(word: unknown): { typed: string; path: string } | null {
-  const parts = (word as { type?: string; parts?: { type: string; value?: string; user?: string | null }[] }).parts;
-  if (parts === undefined || parts.length === 0) return null;
-  let typed = '';
-  let path = '';
-  for (const [index, part] of parts.entries()) {
-    if (part.type === 'TildeExpansion' && index === 0 && part.user === null) {
-      // bash names the target expanded.
-      typed += HOME;
-      path += HOME;
-    } else if (part.type === 'Literal' || part.type === 'SingleQuoted') {
-      typed += part.value!;
-      path += part.value!;
-    } else return null;
-  }
-  return { typed, path };
-}
-
-function guardPlugin(fs: TerminalFs, cwd: string): Plugin {
+// the names the shell runs them by, in any case wherever a command can stand
+// (FR-007), unless the visitor's function has that name; and each command
+// whose output goes into a pipe marked, so it prints text there and no block.
+function sitePlugin(functions: () => ReadonlySet<string>): Plugin {
   return {
-    name: 'cv-redirect-guard',
+    name: 'cv-site',
     transform(context) {
-      walk(context.ast, (node) => {
+      const defined = functions();
+      walk(context.ast, (node, piped) => {
         if (node.type !== 'SimpleCommand') return;
-        const redirections = (node.redirections ?? []) as { operator: string; target: unknown }[];
-        for (const redirection of redirections) {
-          if (!WRITES.has(redirection.operator)) continue;
-          const target = literalTarget(redirection.target);
-          if (target === null || !fs.refusesWrite(target.path.startsWith('/') ? target.path : `${cwd}/${target.path}`)) continue;
-          node.assignments = [];
-          node.name = literalWord(DENIED);
-          node.args = [literalWord(target.typed)];
-          node.redirections = [];
-          return;
+        const name = node.name as { parts?: { type: string; value?: string }[] } | null;
+        const word = name?.parts?.length === 1 && name.parts[0]!.type === 'Literal' ? name.parts[0]!.value! : null;
+        const assignments = node.assignments as unknown[];
+        if (word !== null && !defined.has(word)) {
+          const lower = word.toLowerCase();
+          // Replies name the word as typed (FR-017).
+          if (lower !== word && commandNamed(word) !== null) assignments.unshift({ type: 'Assignment', name: TYPED, value: literalWord(word), append: false, array: null });
+          if (commandNamed(word) !== null || RENAMED[word] !== undefined) node.name = literalWord(RENAMED[lower] ?? lower);
         }
+        if (piped && name !== null) assignments.unshift({ type: 'Assignment', name: PIPED, value: literalWord('1'), append: false, array: null });
       });
       return { ast: context.ast };
     },
   };
 }
+
+// The redirect check, until just-bash's G1 fix is released (research R28, G1;
+// T129's upstream issue): just-bash rejects `exec` when the file system
+// refuses `>`, `>>`, `>|`, `&>` or `&>>`, and ends the whole line, where bash
+// says why and fails that command alone. It only reports the refusal of a
+// redirect to a descriptor above 2. So each output redirect first opens its
+// target on `CHECK_FD`, marked OPENING: the file system answers for that
+// target without creating it, in the redirects' order and as the target
+// expands when the command runs. A write past the 1 MB limit is only known
+// after the command, so `__cv_wrote` follows it and gives its status. Delete
+// this plugin, OPENING and `__cv_wrote` once the fix ships (plan,
+// Dependencies).
+const WRITES = new Set(['>', '>>', '>|', '&>', '&>>', '>&']);
+const CHECK_FD = 99;
+
+// Expanding a word twice would do these twice (`> f$((i++))`).
+const EFFECTS = new Set(['CommandSubstitution', 'ProcessSubstitution', 'ArithmeticExpansion', 'AssignDefault']);
+
+type Redirection = { fd: number | null; operator: string; target: { type: string; parts?: unknown[] }; fdVariable?: string };
+
+// A redirect that names a file: `>&` does only with a literal word that isn't
+// a descriptor, and a word that has effects isn't expanded a second time.
+function checkable(redirection: Redirection): boolean {
+  if (!WRITES.has(redirection.operator) || redirection.target.type !== 'Word' || redirection.fdVariable !== undefined) return false;
+  const parts = redirection.target.parts as { type: string; value?: string }[];
+  if (redirection.operator === '>&' && !(parts.length === 1 && parts[0]!.type === 'Literal' && !/^(\d+-?|-)$/.test(parts[0]!.value!))) return false;
+  let effects = false;
+  walk(parts, (part) => {
+    if (EFFECTS.has(part.type)) effects = true;
+  });
+  return !effects;
+}
+
+const redirectPlugin: Plugin = {
+  name: 'cv-redirect-check',
+  transform(context) {
+    const done = new WeakSet<object>();
+    walk(context.ast, (node) => {
+      if (done.has(node) || node.type === 'FunctionDef' || !Array.isArray(node.redirections)) return;
+      done.add(node);
+      const redirections = node.redirections as Redirection[];
+      if (!redirections.some((redirection) => WRITES.has(redirection.operator) && (redirection.operator !== '>&' || checkable(redirection)))) return;
+      node.redirections = redirections.flatMap((redirection) => (checkable(redirection) ? [{ type: 'Redirection', fd: CHECK_FD, operator: '>>', target: { type: 'Word', parts: [...redirection.target.parts!, { type: 'Literal', value: OPENING }] } }, redirection] : [redirection]));
+      const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
+      const wrote = { type: 'SimpleCommand', name: literalWord(WROTE), args: [{ type: 'Word', parts: [{ type: 'ParameterExpansion', parameter: '?', operation: null }] }], assignments: [], redirections: [] };
+      const command = { ...node };
+      for (const key of Object.keys(node)) delete node[key];
+      Object.assign(node, { type: 'Group', body: [statement(command), statement(wrote)], redirections: [] });
+      done.add(command);
+      done.add(node);
+    });
+    return { ast: context.ast };
+  },
+};
 
 // A line's syntax error, worded as just-bash words it (research R27, G2), or
 // null.
@@ -152,16 +162,6 @@ function syntaxError(ast: Script): string | null {
 // just-bash's parse errors as bash's: `line 1: …`.
 const parseMessage = (message: string) => message.replace(/^Parse error at (\d+):\d+: /, 'line $1: ').replace(/^(?!line \d+: )/, 'line 1: ');
 
-// A typed first word that names a site command in another case runs it
-// (FR-007); `typed` is that word as typed.
-function lowerFirst(line: string): { line: string; typed: string | null } {
-  const match = /^(\s*)([^\s;|&<>()]+)/.exec(line);
-  if (match === null) return { line, typed: null };
-  const word = match[2]!;
-  if (commandNamed(word) === null || word === word.toLowerCase()) return { line, typed: null };
-  return { line: `${match[1]}${word.toLowerCase()}${line.slice(match[0].length)}`, typed: word };
-}
-
 export type Shell = {
   // Runs `true` once, so the first line pays no first-run cost (research
   // R34) and the shell's own variables are known.
@@ -181,7 +181,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const limits: Limits = { ...LIMITS, ...options.limits };
   const context = engineContext(input);
   const fs = new TerminalFs(context.fs);
-  let record: RunRecord = { line: '', typed: null, history: [], shell: 'desktop', recorded: [], effects: [], pipe: null };
+  let record: RunRecord = { line: '', history: [], shell: 'desktop', recorded: [], effects: [], pipe: null };
   let captured: Captured | null = null;
   let baseline = new Map<string, string>();
   let lastFiles = JSON.stringify({ folders: [], files: {}, bytes: 0 });
@@ -200,19 +200,29 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { stdout: '', stderr: '', exitCode: 0 };
   });
 
+  // After a command with an output redirect: its status, or 1 with bash's
+  // error when a write past the 1 MB limit was refused (research G1).
+  const cvWrote = defineCommand(WROTE, async (args) => {
+    const full = fs.takeFull();
+    return { stdout: '', stderr: full.map((target) => `bash: ${target}: No space left on device\n`).join(''), exitCode: full.length > 0 ? 1 : Number(args[0] ?? 0) };
+  });
+
   const commands = siteCommands({ context, fs, run: () => record });
 
-  const bashFor = (prelude: number, cwd: string) => {
+  // The visitor's functions, which win over a site command in another case.
+  let functions: ReadonlySet<string> = new Set();
+
+  const bashFor = (prelude: number) => {
     const bash = new Bash({
       fs,
       cwd: HOME,
       env: ENV,
       commands: [...STANDARD_COMMANDS],
-      customCommands: [...commands, cvState],
+      customCommands: [...commands, cvState, cvWrote],
       executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + prelude, maxOutputSize: limits.pipe, maxLoopIterations: 1_000_000_000 },
     });
-    bash.registerTransformPlugin(sitePlugin);
-    bash.registerTransformPlugin(guardPlugin(fs, cwd));
+    bash.registerTransformPlugin(sitePlugin(() => functions));
+    bash.registerTransformPlugin(redirectPlugin);
     return bash;
   };
 
@@ -250,9 +260,10 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return found;
   };
 
+  // The variables go with `exec`'s `env`, not in the script: the parser
+  // takes 1,000,000 bytes at most, and a variable may be bigger (research R27).
   const prelude = (state: ShellState): string => {
     const lines: string[] = [];
-    for (const [name, value] of Object.entries(state.variables)) if (NAME.test(name)) lines.push(`${name}=${quote(value)}`);
     const exported = state.exported.filter((name) => NAME.test(name) && name in state.variables);
     if (exported.length > 0) lines.push(`export ${exported.join(' ')}`);
     lines.push(...Object.values(state.functions));
@@ -323,14 +334,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   async function runLine(request: RunRequest): Promise<RunResult> {
     const { id, state } = request;
     const base = { id, recorded: [], effects: [], state };
-    record = { line: request.line, typed: null, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], pipe: null };
+    record = { line: request.line, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], pipe: null };
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     if (HIDDEN.test(request.line)) {
       const word = /\S*__cv_\S*/i.exec(request.line)![0];
       return { ...base, stdout: '', stderr: `bash: ${word}: command not found\n`, status: 127, end: 'done', state: { ...state, status: 127 } };
     }
-    const lowered = lowerFirst(request.line);
-    const { line } = lowered;
+    const { line } = request;
     let ast: Script;
     try {
       ast = parse(line);
@@ -344,31 +354,43 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const shift = before.split('\n').length;
     const bodies = definitions(ast);
     captured = null;
-    record.typed = lowered.typed;
+    functions = new Set([...Object.keys(state.functions), ...Object.keys(bodies)]);
+    const variables = Object.fromEntries(Object.entries(state.variables).filter(([name]) => NAME.test(name)));
+    // `exec` rejecting, or the script not parsing, isn't the line ending the
+    // shell as `exit` and `set -e` do: the Terminal stays open (FR-021).
+    let failed = false;
     let result: { stdout: string; stderr: string; exitCode: number };
     try {
-      result = await bashFor(shift + 3, state.cwd).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true });
+      result = await bashFor(shift + 3).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, env: variables, rawScript: true });
+      failed = /^bash: syntax error: /.test(result.stderr) && captured === null;
     } catch (thrown) {
-      result = { stdout: '', stderr: `bash: ${(thrown as Error).message}\n`, exitCode: 1 };
+      failed = true;
+      const { message } = thrown as Error;
+      result = { stdout: '', stderr: `${message.startsWith('bash: ') ? '' : 'bash: '}${message}\n`, exitCode: 1 };
     }
+    const unwritten = fs.takeFull().map((target) => `bash: ${target}: No space left on device\n`).join('');
     const taken = captured as Captured | null;
     // A message naming a line names the visitor's (research R27).
-    const stderr = result.stderr
+    const stderr = fs
+      .plainText(`${result.stderr}${unwritten}`)
       .replace(/(line |Parse error at )(\d+)(?=:)/g, (_, lead: string, at: string) => `${lead}${Math.max(1, Number(at) - shift)}`)
       .split('\n')
-      .filter((entry) => !/^\++ .*(__cv_|declare -F$)|^\+ \(?exit \d+\)?$|^\+ :$/.test(entry))
+      .filter((entry) => !/^\++ .*(__cv_|declare -F$)|^\+ \(?exit \d+\)?$|^\+ :$/i.test(entry))
       // A command only just-bash's Node build has is unknown, as in bash
       // (research G17).
       .map((entry) => entry.replace(/^bash: (\S+): command not available in browser environments\..*$/, 'bash: $1: command not found'))
       .join('\n');
-    const limit = limitOf(result.stdout, stderr, result.exitCode);
+    const stdout = fs.plainText(result.stdout);
+    fs.endLine();
+    const limit = limitOf(stdout, stderr, result.exitCode);
     const files = await filesChanged();
-    const shared = { id, stdout: result.stdout, stderr, recorded: record.recorded, ...(files === undefined ? {} : { files }) };
+    const shared = { id, stdout, stderr, recorded: record.recorded, ...(files === undefined ? {} : { files }) };
     // Stopped by the output limit, the line shows none of what it printed,
     // only the stopped line (research G14), so a megabyte of text never
     // reaches the screen.
     if (limit === 'output') return { ...shared, stdout: '', stderr: '', recorded: [], effects: [], status: result.exitCode, end: 'limit', limit, state };
     if (limit !== null) return { ...shared, effects: [], status: result.exitCode, end: 'limit', limit, state };
+    if (taken === null && failed) return { ...shared, effects: record.effects, status: result.exitCode, end: 'done', state: { ...state, status: result.exitCode } };
     if (taken === null) return { ...shared, effects: record.effects, status: result.exitCode, end: 'exited', state };
     return { ...shared, effects: record.effects, status: taken.status, end: 'done', state: stateFrom(taken, state, bodies) };
   }

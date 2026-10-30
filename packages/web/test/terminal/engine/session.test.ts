@@ -190,6 +190,23 @@ describe('006-terminal-FR-021: closing empties the session; nothing else does', 
     expect(heard).toHaveBeenCalledTimes(1);
   });
 
+  test('a line that fails inside the shell doesn’t close the Terminal, and keeps its state (006-terminal-FR-021)', async () => {
+    const client = fakeClient();
+    const session = createSession(client);
+    client.ready();
+    const actions = { open: vi.fn(), exit: vi.fn() };
+    session.run('touch keep; v=1', 'desktop', actions);
+    session.run('eval "echo x > about"', 'desktop', actions);
+    session.run('echo $v; ls keep', 'desktop', actions);
+    await settled(session);
+    expect(actions.exit).not.toHaveBeenCalled();
+    expect(session.get().entries).toHaveLength(3);
+    expect(session.get().state.variables.v).toBe('1');
+    session.run('exit', 'desktop', actions);
+    await settled(session);
+    expect(actions.exit).toHaveBeenCalledTimes(1);
+  });
+
   test('open and exit reach the shell around the Terminal after their line runs', async () => {
     const session = createSession(fakeClient());
     const actions = { open: vi.fn(), exit: vi.fn() };

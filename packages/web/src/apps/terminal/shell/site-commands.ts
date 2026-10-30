@@ -27,15 +27,9 @@ type Output = Awaited<ReturnType<ShellCommand['execute']>>;
 // the same name would win: the adapter renames the typed word (research R29).
 export const RENAMED: Readonly<Record<string, string>> = { help: '__cv_help' };
 
-// The command the redirect guard runs (research G1).
-export const DENIED = '__cv_denied';
-
 // What one line's run collects, and what it was sent with.
 export type RunRecord = {
   line: string;
-  // The line's first word as typed, when the adapter lower-cased it to run
-  // a site command: replies name the word as typed (FR-017).
-  typed: string | null;
   history: readonly string[];
   shell: 'desktop' | 'mobile';
   recorded: Recorded[];
@@ -53,6 +47,10 @@ export type SiteShell = {
 // Set by the adapter on a command whose output goes into a pipe: what it
 // prints there is text, never a block (research R29).
 export const PIPED = '__CV_PIPED';
+
+// Set by the adapter on a site command typed in another case, to the word as
+// typed: replies name it (FR-017).
+export const TYPED = '__CV_TYPED';
 
 const piped = (ctx: Context) => ctx.env.get(PIPED) === '1';
 
@@ -112,13 +110,8 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return ok('', result.stderr, result.status);
   };
 
-  // The word a command was run by: as typed, for the line's first.
-  const typedAs = (word: string) => {
-    const run = shell.run();
-    const typed = run.typed?.toLowerCase() === word ? run.typed : word;
-    run.typed = null;
-    return typed;
-  };
+  // The word a command was run by, as typed.
+  const typedAs = (word: string, ctx: Context) => ctx.env.get(TYPED) ?? word;
 
   // `help <name>` for a standard command is its `--help`, for a builtin
   // the shell's own help (research R32).
@@ -131,7 +124,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const rows = COMMANDS.filter((row) => row.run !== undefined).flatMap((row) =>
     [row.name, ...row.aliases].map((word) =>
       defineCommand(RENAMED[word] ?? word, async (args, ctx) => {
-        const typed = typedAs(word);
+        const typed = typedAs(word, ctx);
         return (row.name === 'help' ? standardHelp(args, ctx) : null) ?? emit(ctx, row.run!(args, runContext(ctx), typed));
       }),
     ),
@@ -141,7 +134,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const vim = defineCommand('vim', async (args, ctx) => {
     const run = shell.run();
     const { replies } = shell.context.text.terminal;
-    const word = typedAs('vim');
+    const word = typedAs('vim', ctx);
     if (args.length !== 1) return usageOf(word, 'vim');
     if (args[0] === '-') {
       const input = decode(ctx.stdin);
@@ -166,7 +159,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   // `cv`: `cat cv.json | jq | vim -` from the home folder (FR-059).
   const cv = defineCommand('cv', async (args, ctx) => {
-    if (args.length > 0) return usageOf(typedAs('cv'), 'cv');
+    if (args.length > 0) return usageOf(typedAs('cv', ctx), 'cv');
     const run = shell.run();
     run.pipe = CV_PIPE;
     try {
@@ -395,12 +388,11 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   // What the adapter's redirect guard runs in place of a command whose
   // output would go to a protected path: bash's message (research R28, G1).
-  const denied = defineCommand(DENIED, async (args) => ok('', `bash: ${args[0] ?? ''}: Permission denied\n`, 1));
 
   // `--help` for the standard commands just-bash gives none (research G18).
   const helped = Object.entries(MISSING_HELP).filter(([name]) => name !== 'rm').map(([name, help]) =>
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, rm, denied, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), ...helped];
+  return [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), ...helped];
 }

@@ -36,6 +36,17 @@ function requireGnu() {
 // counted or sorted.
 const LINES: readonly string[] = [
   'grep -ril rest ~/work | sort',
+  // A refused redirect fails its command alone (research G1), however its
+  // target is written.
+  'echo before; f=about; echo x > $f; echo $?; echo after',
+  'cd work; echo before; echo x > y; echo $?; echo after',
+  'for f in about skills; do echo x > "$f"; echo next; done; echo after',
+  'f() { echo x > "$1"; echo $?; }; f about; echo after',
+  'echo before; echo x > $(echo about); echo $?; echo after',
+  'for i in 1; do echo x; done > about; echo $?',
+  'echo x > nope/y; echo $?',
+  'echo x > about/y; echo $?',
+  'echo x > work; echo $?',
   'ls | wc -l',
   'cat about | tr a-z A-Z | head -3',
   'for f in ~/work/*; do wc -l < "$f"; done',

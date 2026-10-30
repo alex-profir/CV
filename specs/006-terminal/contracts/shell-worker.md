@@ -10,7 +10,7 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | `src/apps/terminal/shell-client.ts` | the page, in the `os` script | Starts the worker on first open, queues lines, the watchdog, Ctrl+C, restarts, `reset` |
 | `src/apps/terminal/shell/worker.ts` | the worker | The entry: imports `no-network.ts` first, creates the adapter, answers messages |
 | `src/apps/terminal/shell/no-network.ts` | the worker | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` with functions that throw, before just-bash's module body runs (research R39) |
-| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect guard, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
+| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect check, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
 | `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
 | `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS`, and from 2026-10-30 `SHELL_KEYWORDS` (research R32, R43) |

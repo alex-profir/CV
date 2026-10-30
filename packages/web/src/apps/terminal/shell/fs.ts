@@ -15,6 +15,18 @@ import type { FsEntryInfo, VisitorFiles } from './protocol.ts';
 export const HOME = '/home/guest';
 export const TMP = '/tmp';
 
+// Ends a redirect target the adapter checks before a command runs (research
+// G1): the file system answers for that target and creates nothing.
+export const OPENING = '\u0001';
+
+// The command the adapter runs after one with an output redirect, and the
+// group that holds them, as the shell's `type` prints it.
+export const WROTE = '__cv_wrote';
+const WRAPPED = new RegExp(`\\{ ([^{}]*); ${WROTE} \\$\\?; \\}`, 'g');
+
+// Written to as bash writes to them, not as files.
+const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full']);
+
 // The folders the shell needs to run, all protected (FR-045). just-bash adds
 // `/bin` and `/usr/bin` stubs and `/dev` itself.
 const LAYOUT = ['/bin', '/usr', '/usr/bin', '/dev', '/home'];
@@ -23,7 +35,7 @@ const MODE = { protectedFile: 0o444, protectedFolder: 0o555, file: 0o644, folder
 
 // A file system error as just-bash's commands print it: the text after the
 // path (`rm: cannot remove 'about': Permission denied`).
-const failure = (code: 'EACCES' | 'ENOSPC' | 'ENOENT' | 'ENOSYS', message: string) => Object.assign(new Error(message), { code });
+const failure = (code: 'EACCES' | 'ENOSPC' | 'ENOENT' | 'ENOTDIR' | 'ENOSYS', message: string) => Object.assign(new Error(message), { code });
 const denied = () => failure('EACCES', 'Permission denied');
 const noSpace = () => failure('ENOSPC', 'No space left on device');
 const missing = () => failure('ENOENT', 'No such file or directory');
@@ -60,6 +72,12 @@ export class TerminalFs extends InMemoryFs {
   // The built names of the home folder, in the design's order (FR-043).
   private readonly homeOrder: string[] = [];
   private building = true;
+  // This line's redirects (research G1): each target as typed by its path, why
+  // each refused one was refused, and those a write past the limit failed.
+  private resolved: { path: string; typed: string } | null = null;
+  private readonly opened = new Map<string, string>();
+  private readonly refused = new Map<string, string>();
+  private full: string[] = [];
 
   constructor(tree: Folder) {
     super();
@@ -142,6 +160,93 @@ export class TerminalFs extends InMemoryFs {
     return this.locked.has(at) || this.locked.has(parentOf(at));
   }
 
+  endLine() {
+    this.resolved = null;
+    this.opened.clear();
+    this.refused.clear();
+    this.full = [];
+  }
+
+  // Remembered, as just-bash opens a redirect's target right after resolving
+  // it, and marked in the path for `appendFile` when it is only being checked.
+  override resolvePath(base: string, path: string): string {
+    if (path.endsWith(OPENING)) {
+      const typed = path.slice(0, -OPENING.length);
+      const at = super.resolvePath(base, typed);
+      this.opened.set(this.canonical(at), typed);
+      return `${at}${OPENING}`;
+    }
+    const at = super.resolvePath(base, path);
+    this.resolved = { path: at, typed: path };
+    return at;
+  }
+
+  // A write's checks. just-bash opens a redirect's target by writing nothing
+  // as `binary`, which no command does: a refusal then names the target, for
+  // one the adapter can't check first (research G1).
+  private async writable(path: string, at: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const opening = content === '' && options === 'binary';
+    const typed = this.resolved?.path === path ? this.resolved.typed : path;
+    if (opening) this.opened.set(at, typed);
+    try {
+      this.guard(at);
+      if (at !== '/dev/null' && !(await this.folderExists(parentOf(at)))) throw missing();
+    } catch (error) {
+      if (!opening) throw error;
+      const { code, message } = error as Error & { code: 'EACCES' | 'ENOENT' };
+      throw failure(code, `bash: ${typed}: ${message}`);
+    }
+  }
+
+  // Whether a redirect can open `path`; a folder is left to the shell, which
+  // says "Is a directory". Rejecting makes just-bash fail the command alone.
+  private async open(path: string) {
+    const at = this.canonical(path);
+    if (STREAMS.has(at)) return;
+    const stat = await super.stat(at).catch(() => null);
+    if (stat?.isDirectory === true) return;
+    const parent = await super.stat(parentOf(at)).catch(() => null);
+    const refusal = parent === null ? missing() : !parent.isDirectory ? failure('ENOTDIR', 'Not a directory') : this.refusesWrite(at) ? denied() : null;
+    if (refusal === null) return;
+    this.refused.set(this.opened.get(at) ?? at, refusal.message);
+    throw refusal;
+  }
+
+  // Past the limit, a redirect's write fails its command alone (research G1).
+  private async redirected(at: string, write: () => Promise<void>) {
+    try {
+      await write();
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ENOSPC' || !this.opened.has(at)) throw error;
+      this.full.push(this.opened.get(at)!);
+    }
+  }
+
+  // The targets a write past the limit failed since the last call.
+  takeFull(): string[] {
+    const { full } = this;
+    this.full = [];
+    return full;
+  }
+
+  // Output as bash words it: a checked target's refusal, with its reason, and
+  // a function's body as `type` prints it, without the adapter's words.
+  plainText(text: string): string {
+    let body = text;
+    for (let last = ''; last !== body; ) {
+      last = body;
+      body = body.replace(WRAPPED, '$1');
+    }
+    body = body.replaceAll(` ${WROTE} $?;`, '');
+    if (!body.includes(OPENING)) return body;
+    return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
+  }
+
+  // A command's error output sent to a file reads as it does on the screen.
+  private spoken(content: FileContent): FileContent {
+    return typeof content === 'string' ? this.plainText(content) : content;
+  }
+
   private async under(path: string): Promise<string[]> {
     const all = this.getAllPaths().filter((other) => other === path || other.startsWith(`${path}/`));
     return all.length === 0 ? [path] : all;
@@ -180,21 +285,24 @@ export class TerminalFs extends InMemoryFs {
 
   override async writeFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
     const at = this.canonical(path);
-    this.guard(at);
+    await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
-    if (!(await this.folderExists(parentOf(at)))) throw missing();
     const exists = await super.exists(at);
-    await this.room(at, byteLength(content), exists);
-    return super.writeFile(at, content, options);
+    return this.redirected(at, async () => {
+      await this.room(at, byteLength(content), exists);
+      await super.writeFile(at, this.spoken(content), options);
+    });
   }
 
   override async appendFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    if (path.endsWith(OPENING)) return this.open(path.slice(0, -OPENING.length));
     const at = this.canonical(path);
-    this.guard(at);
+    await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
-    if (!(await this.folderExists(parentOf(at)))) throw missing();
-    await this.room(at, byteLength(content), false);
-    return super.appendFile(at, content, options);
+    return this.redirected(at, async () => {
+      await this.room(at, byteLength(content), false);
+      await super.appendFile(at, this.spoken(content), options);
+    });
   }
 
   override async createExclusive(path: string, options: CreateExclusiveOptions) {
