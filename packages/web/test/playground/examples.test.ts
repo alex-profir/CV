@@ -30,7 +30,7 @@ describe('008-typescript-playground-FR-027: the examples panel lists the example
     expect(await page.evaluate(() => document.activeElement?.classList.contains('example'))).toBe(true);
     await page.keyboard.press('Escape');
     await expect.poll(() => page.locator(PANEL).count()).toBe(0);
-    expect(await page.evaluate(() => document.activeElement?.classList.contains('examples'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.classList.contains('examples'))).toBe(true);
   });
 
   test('choosing one replaces the code, says so, and Undo brings the code back', async () => {

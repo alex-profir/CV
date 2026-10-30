@@ -17,6 +17,8 @@ import type { EditorView, Engine, EngineCommand } from './engine/contract.ts';
 import { loadEngine, requestRetry } from './engine/loader.ts';
 import { runGoing, startRun, stopRun } from './running.ts';
 import { session } from './session.ts';
+import type { PlaygroundSession } from './session.ts';
+import { LINK_LIMIT, makeLink } from './share.ts';
 import { editorTheme } from './theme-values.ts';
 import type { CheckResult, DownloadState, Message, MessageAction, MessageKey } from './types.ts';
 
@@ -81,10 +83,20 @@ export const canStop = () => runGoing();
 // Message).
 export function showMessage(kind: Message['kind'], text: MessageKey, actions: MessageAction[] = [], values?: Record<string, string | number>, link?: string): void {
   messageIds += 1;
+  following = null;
   session.update({ message: { kind, text, actions, id: messageIds, ...(values === undefined ? {} : { values }), ...(link === undefined ? {} : { link }) } });
 }
 
-export const dismissMessage = () => session.update({ message: null });
+// A message that follows the shown one once it's dismissed: the unknown
+// options a shared link set, after the note that it opened (contracts/share-link.md).
+let following: Pick<Message, 'kind' | 'text' | 'actions' | 'values'> | null = null;
+
+export function dismissMessage(): void {
+  const next = following;
+  following = null;
+  if (next === null) session.update({ message: null });
+  else showMessage(next.kind, next.text, next.actions, next.values);
+}
 
 // Kept code (FR-019): read once when the Playground first mounts in a visit.
 let keptRead = false;
@@ -218,6 +230,7 @@ export function startEngine(input: StartInput): void {
       session.update({ download: readyState ?? { kind: 'ready', typescript: created.typescript, kept } });
       if (!kept) showMessage('warn', 'cantKeepTypeScript');
       for (const listener of [...engineListeners]) listener();
+      openPendingLink();
     })
     .catch(() => {
       if (loading === controller) loading = null;
@@ -264,6 +277,7 @@ export function replaceCode(code: string, options: ChangedOptions): void {
 export function undoReplacement(): void {
   if (engine === null) return;
   engine.undo();
+  following = null;
   dismissMessage();
 }
 
@@ -293,3 +307,80 @@ export function resetPlayground(): void {
 }
 
 export const keepingNow = () => keeper.flush();
+
+// Numbers in messages, grouped as the design writes them (11,240).
+const grouped = (n: number) => n.toLocaleString('en');
+
+// The last link Share made, for Share with….
+let sharedLink: string | null = null;
+
+const canShareWith = (link: string): boolean => typeof navigator.share === 'function' && (typeof navigator.canShare !== 'function' || navigator.canShare({ url: link }));
+
+// Share (FR-052, FR-055): a link to the code and its changed options,
+// copied; in a field to copy by hand when the clipboard refuses; or, when
+// too long, an offer to copy the code itself.
+export async function shareCode(): Promise<void> {
+  if (engine === null) return;
+  const { options } = session.get();
+  const result = await makeLink(location.origin, engine.getCode(), options);
+  if ('tooLong' in result) {
+    sharedLink = null;
+    showMessage('warn', 'tooLong', ['copy-code'], { length: grouped(result.tooLong), limit: grouped(LINK_LIMIT) });
+    return;
+  }
+  sharedLink = result.link;
+  try {
+    await navigator.clipboard.writeText(result.link);
+  } catch {
+    showMessage('info', 'linkField', [], undefined, result.link);
+    return;
+  }
+  showMessage('done', 'linkCopied', canShareWith(result.link) ? ['share-with'] : [], { n: Object.keys(options).length });
+}
+
+// Share with… (FR-052): the device's own sharing, with the link alone.
+export function shareWith(): void {
+  if (sharedLink !== null) void navigator.share({ url: sharedLink }).catch(() => undefined);
+}
+
+// Copy the code (FR-055).
+export async function copyCode(): Promise<void> {
+  if (engine === null) return;
+  try {
+    await navigator.clipboard.writeText(engine.getCode());
+    showMessage('done', 'codeCopied');
+  } catch {
+    // The message stays, so the visitor can copy the code from the editor.
+  }
+}
+
+// A link read on load (contracts/share-link.md Opening a link), once the
+// editor is ready: shared code replaces the editor's as one undoable edit;
+// a broken link shows the starting example and leaves kept code alone.
+// Nothing here runs the code (FR-053).
+function openPendingLink(): void {
+  const link = session.get().pendingLink;
+  if (engine === null || link.kind === 'none') return;
+  session.update({ pendingLink: { kind: 'none' } });
+  if (link.kind === 'code') {
+    const had = worthKeeping(engine.getCode(), session.get().options, startingExample().code);
+    replaceCode(link.code, link.options);
+    session.update({ example: null });
+    showMessage('info', had ? 'sharedReplaced' : 'sharedOpened', had ? ['undo', 'run'] : ['run']);
+    if (link.unknown.length > 0) following = { kind: 'info', text: 'unknownOptions', actions: [], values: { n: link.unknown.length, names: link.unknown.join(', ') } };
+  } else if (link.kind === 'broken') {
+    // The starting example with the defaults is never kept, so kept code stays.
+    replaceCode(startingExample().code, {});
+    undoable = false;
+    session.update({ example: startingExample().id });
+    showMessage('error', 'brokenLink');
+  }
+  history.replaceState(history.state, '', '/');
+  requestAnimationFrame(focusEditor);
+}
+
+// Os.tsx puts a link read on load here (contracts/shell.md Opening from a link).
+export function receiveLink(link: PlaygroundSession['pendingLink']): void {
+  session.update({ pendingLink: link });
+  openPendingLink();
+}

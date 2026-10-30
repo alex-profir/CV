@@ -111,7 +111,7 @@ describe('008-typescript-playground-FR-003: the Playground opens in a window lik
     const at = entries.indexOf(siteText.inspector.show);
     expect(at).toBeGreaterThan(0);
     const run = (await onMac(page)) ? 'Cmd+Enter' : 'Ctrl+Enter';
-    expect(entries.slice(0, at + 2)).toEqual([`${menu.run} ${run}`, menu.stop, '—', menu.examples, menu.options, '—', `${menu.palette} F1`, menu.keys, '—', menu.reset, '—', siteText.inspector.show, '—']);
+    expect(entries.slice(0, at + 2)).toEqual([`${menu.run} ${run}`, menu.stop, '—', menu.examples, menu.options, menu.share, '—', `${menu.palette} F1`, menu.keys, '—', menu.reset, '—', siteText.inspector.show, '—']);
     expect(entries.slice(at + 2)[0]).toMatch(new RegExp(`^${own.move}`));
   });
 

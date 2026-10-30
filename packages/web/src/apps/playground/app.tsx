@@ -6,7 +6,7 @@
 import type { App, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
 import { BestOnDesktop } from './BestOnDesktop.tsx';
-import { canStop, closePlayground, currentEngine, runCode, stopCode } from './controller.ts';
+import { canStop, closePlayground, currentEngine, runCode, shareCode, stopCode } from './controller.ts';
 import { openExamplesPanel } from './ExamplesPanel.tsx';
 import { openOptionsPanel } from './OptionsPanel.tsx';
 import { KEY_COMMANDS } from './keys.ts';
@@ -33,6 +33,7 @@ export const playgroundApp: App = {
     { key: 'stop', label: words.stop, disabled: () => !canStop(), run: stopCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-038' },
     { key: 'examples', label: words.examples, separatorBefore: true, disabled: () => currentEngine() === null, run: openExamplesPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-027' },
     { key: 'options', label: words.options, run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
+    { key: 'share', label: words.share, disabled: () => currentEngine() === null, run: () => void shareCode(), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-052' },
     {
       key: 'palette',
       label: words.palette,
