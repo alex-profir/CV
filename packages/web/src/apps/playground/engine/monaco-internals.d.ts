@@ -1,5 +1,5 @@
 // Types for the Monaco modules the engine imports that ship none (research
-// R6): its worker bootstrap and its TypeScript worker class.
+// R6): its worker bootstrap, its TypeScript worker class and the tab focus mode.
 declare module 'monaco-editor/internal/common/initialize' {
   export function initialize(callback: (ctx: unknown, createData: unknown) => unknown): void;
 }
@@ -38,4 +38,12 @@ declare module '*?worker' {
 
 declare module 'monaco-editor/languages/features/typescript/lib/lib' {
   export const libFileMap: Record<string, string>;
+}
+
+// Whether Tab moves focus, one setting for the page (FR-062).
+declare module 'monaco-editor/editor/browser/config/tabFocus' {
+  export const TabFocus: {
+    getTabFocusMode(): boolean;
+    onDidChangeTabFocus(listener: (on: boolean) => void): { dispose(): void };
+  };
 }

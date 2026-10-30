@@ -44,6 +44,9 @@ import 'monaco-editor/features/toggleTabFocusMode/register';
 import 'monaco-editor/features/wordHighlighter/register';
 import 'monaco-editor/features/wordOperations/register';
 import 'monaco-editor/features/wordPartOperations/register';
+// Tab moving focus is one setting for every editor of the page; the
+// editor's option doesn't report its changes, so its emitter is read.
+import { TabFocus } from 'monaco-editor/editor/browser/config/tabFocus';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import TsWorker from './ts.worker.ts?worker';
 import type { Runnable } from './ts.worker.ts';
@@ -209,11 +212,12 @@ export function createEditing(init: EngineInit) {
     const markers = editor.onDidChangeMarkers((uris) => {
       if (uris.some((uri) => uri.toString() === model.uri.toString())) showInline();
     });
-    created.onDidDispose(() => markers.dispose());
-    showInline();
-    created.onDidChangeConfiguration((event) => {
-      if (event.hasChanged(editor.EditorOption.tabFocusMode)) init.onTabFocus?.(created.getOption(editor.EditorOption.tabFocusMode));
+    const tabFocus = TabFocus.onDidChangeTabFocus((on) => init.onTabFocus?.(on));
+    created.onDidDispose(() => {
+      markers.dispose();
+      tabFocus.dispose();
     });
+    showInline();
     return {
       saveViewState: () => created.saveViewState(),
       focus: () => created.focus(),
