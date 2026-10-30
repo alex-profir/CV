@@ -9,8 +9,6 @@ import type { Resume, SiteData } from '@cv/content';
 import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
 import type { App } from '../apps/index.ts';
-import { readAddressLink } from '../apps/playground/controller.ts';
-import { holdsLink } from '../apps/playground/share.ts';
 import { shellTitle } from '../format/meta.ts';
 import { startLoading } from '../inspector/data.ts';
 import { crossFade, viewScroller } from '../inspector/transition.ts';
@@ -38,6 +36,11 @@ export type OsProps = { resume: Resume; siteData: SiteData; apps: readonly App[]
 const TEXT: OsText = { aboutName: siteText.os.views.about, ...siteText.os.announce };
 
 const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'playground' || value === 'about';
+
+// The first app in the shell that says this address is its own.
+export function appFromAddress(apps: readonly App[], href: string, shell: 'desktop' | 'mobile'): App | undefined {
+  return apps.find((app) => app.shells.includes(shell) && app.opensFromAddress?.(href) === true);
+}
 
 // The desktop area: the viewport between the menu bar and the dock's space,
 // measured when the desktop is in the page.
@@ -119,15 +122,15 @@ export function Os({ resume, siteData, apps }: OsProps) {
     startLoading();
     const early = window.osEarlyView;
     delete window.osEarlyView;
-    // A shared link opens the Playground: in front of the CV window on the
-    // desktop, where its session holds the link until the editor is ready,
-    // and full screen on a phone, which shows the link's screen
-    // (contracts/shell.md Opening from a link).
-    if (holdsLink(location.href)) {
-      if (state.shell === 'desktop') readAddressLink();
-      dispatch(state.shell === 'desktop' ? { type: 'open', view: 'playground' } : { type: 'mobileOpen', view: 'playground' });
+    // An app's own address opens it: in front of the CV window on the desktop
+    // and full screen on a phone (008 contracts/shell.md Opening from a link).
+    const fromAddress = appFromAddress(apps, location.href, state.shell);
+    if (fromAddress !== undefined) {
+      fromAddress.onOpenFromAddress?.(state.shell);
+      const view = fromAddress.id as ViewId;
+      dispatch(state.shell === 'desktop' ? { type: 'open', view } : { type: 'mobileOpen', view });
     } else if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
-  }, [state.shell, state.mobile.open]);
+  }, [state.shell, state.mobile.open, apps]);
 
   // Focus moved after a key shows its indicator (FR-024).
   useEffect(() => watchInput(), []);

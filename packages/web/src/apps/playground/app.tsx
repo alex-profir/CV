@@ -6,13 +6,14 @@
 import type { App, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
 import { BestOnDesktop } from './BestOnDesktop.tsx';
-import { canStop, closePlayground, currentEngine, runCode, shareCode, stopCode } from './controller.ts';
+import { canStop, closePlayground, currentEngine, readAddressLink, runCode, shareCode, stopCode } from './controller.ts';
 import { openExamplesPanel } from './ExamplesPanel.tsx';
 import { openOptionsPanel } from './OptionsPanel.tsx';
 import { KEY_COMMANDS } from './keys.ts';
 import { Playground } from './Playground.tsx';
 import { PlaygroundIcon } from './PlaygroundIcon.tsx';
 import { session } from './session.ts';
+import { holdsLink } from './share.ts';
 import { onMac } from './text.ts';
 
 const words = siteText.playground.menu;
@@ -47,4 +48,10 @@ export const playgroundApp: App = {
     { key: 'reset', label: words.reset, separatorBefore: true, separatorAfter: true, disabled: () => currentEngine() === null, run: () => session.update({ popup: 'reset' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-080' },
   ],
   onClose: closePlayground,
+  // A shared link opens the Playground. On the desktop its session holds the
+  // link until the editor is ready; a phone shows the link's screen.
+  opensFromAddress: holdsLink,
+  onOpenFromAddress: (shell) => {
+    if (shell === 'desktop') readAddressLink();
+  },
 };
