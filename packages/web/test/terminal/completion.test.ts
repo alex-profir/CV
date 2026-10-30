@@ -74,11 +74,18 @@ describe('006-terminal-FR-076: Tab completes as bash does', () => {
 
   test('a key typed while the answer is on its way wins', async () => {
     const page = await openTerminalPage('desktop');
+    // The request is held, so the key comes first however busy the machine is.
+    await page.evaluate(() => {
+      const post = Worker.prototype.postMessage as (this: Worker, message: unknown) => void;
+      Worker.prototype.postMessage = function hold(this: Worker, message: unknown) {
+        if ((message as { type?: string }).type === 'complete') setTimeout(() => post.call(this, message), 500);
+        else post.call(this, message);
+      };
+    });
     await page.keyboard.type('ab');
-    await page.keyboard.down('Tab');
-    await page.keyboard.up('Tab');
+    await page.keyboard.press('Tab');
     await page.keyboard.type('x');
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(800);
     expect(await value(page)).toBe('abx');
   });
 
