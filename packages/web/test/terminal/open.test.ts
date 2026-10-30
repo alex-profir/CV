@@ -19,15 +19,15 @@ describe('006-terminal-FR-001: the Terminal is an app of both shells, after the 
   test('the dock shows CV, then Terminal', async () => {
     const page = await openShell(SHELL_PAGE.desktop);
     const items = page.locator('#os .dock .dock-item');
-    expect(await items.evaluateAll((list) => list.map((item) => item.getAttribute('data-app')))).toEqual(['cv', 'terminal']);
-    expect(await items.evaluateAll((list) => list.map((item) => item.querySelector('.dock-name')?.textContent?.trim()))).toEqual(['CV', 'Terminal']);
+    expect(await items.evaluateAll((list) => list.map((item) => item.getAttribute('data-app')).slice(0, 2))).toEqual(['cv', 'terminal']);
+    expect(await items.evaluateAll((list) => list.map((item) => item.querySelector('.dock-name')?.textContent?.trim()).slice(0, 2))).toEqual(['CV', 'Terminal']);
   });
 
   test('the home screen shows CV, then Terminal', async () => {
     const page = await openShell(SHELL_PAGE.mobile);
     const icons = page.locator('#os .app-grid .app-icon');
-    expect(await icons.evaluateAll((list) => list.map((icon) => icon.getAttribute('data-view')))).toEqual(['cv', 'terminal']);
-    expect(await icons.evaluateAll((list) => list.map((icon) => icon.textContent?.trim()))).toEqual(['CV', 'Terminal']);
+    expect(await icons.evaluateAll((list) => list.map((icon) => icon.getAttribute('data-view')).slice(0, 2))).toEqual(['cv', 'terminal']);
+    expect(await icons.evaluateAll((list) => list.map((icon) => icon.textContent?.trim()).slice(0, 2))).toEqual(['CV', 'Terminal']);
   });
 
   test('the Terminal declares both shells and needs no network', () => {
@@ -35,7 +35,7 @@ describe('006-terminal-FR-001: the Terminal is an app of both shells, after the 
     expect(terminal).toBeDefined();
     expect([...terminal!.shells].sort()).toEqual(['desktop', 'mobile']);
     expect(terminal!.needsNetwork).toBe(false);
-    expect(APPS.map((app) => app.id)).toEqual(['cv', 'terminal']);
+    expect(APPS.map((app) => app.id).slice(0, 2)).toEqual(['cv', 'terminal']);
   });
 });
 

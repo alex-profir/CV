@@ -126,7 +126,7 @@ export function createEditing(init: EngineInit) {
       editor.setModelMarkers(
         model,
         'playground',
-        result.diagnostics.map((entry) => ({ startLineNumber: entry.line, startColumn: entry.column, endLineNumber: entry.endLine, endColumn: Math.max(entry.endColumn, entry.column + (entry.endLine === entry.line ? 1 : 0)), message: entry.message, code: entry.code === 0 ? undefined : `TS${entry.code}`, severity: SEVERITY[entry.category] ?? MarkerSeverity.Error, source: 'ts' })),
+        result.diagnostics.map((entry) => ({ startLineNumber: entry.line, startColumn: entry.column, endLineNumber: entry.endLine, endColumn: Math.max(entry.endColumn, entry.column + (entry.endLine === entry.line ? 1 : 0)), message: entry.message, code: entry.code === 0 ? undefined : String(entry.code), severity: SEVERITY[entry.category] ?? MarkerSeverity.Error, source: 'ts' })),
       );
     }
     init.onCheck(result);
@@ -169,7 +169,8 @@ export function createEditing(init: EngineInit) {
       lineHeight: init.theme.lineHeight,
       lineDecorationsWidth: 8,
       lineNumbersMinChars: 3,
-      glyphMargin: false,
+      // The gutter holds the lightbulb, before the line numbers (FR-082).
+      glyphMargin: true,
       folding: true,
       scrollBeyondLastLine: false,
       renderLineHighlight: 'all',
@@ -188,6 +189,27 @@ export function createEditing(init: EngineInit) {
     created.addAction({ id: 'playground.keys', label: init.text.keysCommand, keybindings: [KeyMod.Alt | KeyCode.F1], run: () => init.onCommand('playground.keys') });
     if (viewState !== null) created.restoreViewState(viewState as editor.ICodeEditorViewState);
     created.onDidChangeCursorPosition((event) => init.onCursor?.({ line: event.position.lineNumber, column: event.position.column }));
+    // The message of the first mark on the cursor's line, after the line,
+    // as the design shows it (FR-016).
+    const inline = created.createDecorationsCollection();
+    const showInline = () => {
+      const line = created.getPosition()?.lineNumber;
+      const mark = line === undefined ? undefined : editor.getModelMarkers({ resource: model.uri, owner: 'playground' }).find((entry) => entry.startLineNumber === line);
+      if (line === undefined || mark === undefined) return inline.clear();
+      const end = model.getLineMaxColumn(line);
+      inline.set([
+        {
+          range: { startLineNumber: line, startColumn: end, endLineNumber: line, endColumn: end },
+          options: { showIfCollapsed: true, after: { content: mark.message.split('\n')[0]!, inlineClassName: mark.severity === MarkerSeverity.Warning ? 'playground-inline-message is-warning' : 'playground-inline-message' } },
+        },
+      ]);
+    };
+    created.onDidChangeCursorPosition(showInline);
+    const markers = editor.onDidChangeMarkers((uris) => {
+      if (uris.some((uri) => uri.toString() === model.uri.toString())) showInline();
+    });
+    created.onDidDispose(() => markers.dispose());
+    showInline();
     created.onDidChangeConfiguration((event) => {
       if (event.hasChanged(editor.EditorOption.tabFocusMode)) init.onTabFocus?.(created.getOption(editor.EditorOption.tabFocusMode));
     });

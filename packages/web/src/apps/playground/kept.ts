@@ -71,8 +71,10 @@ export function removeKept(storage: StorageLike | null = pageStorage()): void {
 
 // Writes 300 ms after the last change, and at once when asked (the window's
 // close, `pagehide`).
-export function createKeeper(write: () => void, timers: { set: typeof setTimeout; clear: typeof clearTimeout } = { set: setTimeout, clear: clearTimeout }) {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+// The default timers call the page's own functions as functions: called as
+// methods of another object, browsers throw.
+export function createKeeper(write: () => void, timers: { set: (run: () => void, ms: number) => unknown; clear: (timer: unknown) => void } = { set: (run, ms) => setTimeout(run, ms), clear: (timer) => clearTimeout(timer as number) }) {
+  let timer: unknown = null;
   return {
     changed() {
       if (timer !== null) timers.clear(timer);
