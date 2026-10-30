@@ -15,6 +15,25 @@
   color: var(--token-color-code-warning);
 }
 
+/* Its cross, or the warning's triangle, before the words. */
+.playground-editor .playground-inline-message::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  margin-inline-end: var(--token-space-1);
+  background-color: currentColor;
+  mask-image: url("./glyphs/error.svg");
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  vertical-align: middle;
+}
+
+.playground-editor .playground-inline-message.is-warning::before {
+  mask-image: url("./glyphs/warning.svg");
+}
+
 /* While a check is out, the marks and the message stay as they were,
    dimmed under the popups' scrim color, as the panes are (FR-016). */
 .playground-editor.is-checking :is(.squiggly-error, .squiggly-warning)::after {
@@ -238,8 +257,6 @@
   color: var(--token-color-code-keyword);
 }
 
-/* With forced colors, backgrounds give way to the system's, so the masked
-   glyphs take the text color and the letters lose their wash (FR-070). */
 /* Reduced motion (FR-069, wireframes Accessibility): Monaco's widgets,
    hovers and scrollbars, in the editor and the output panes, appear and go
    at once, with no fade or slide. The Playground draws no motion of its own. */
@@ -257,21 +274,58 @@
    scrollbars and the selected row of a list show by their own lines, not
    by a background forced colors remove. */
 @media (forced-colors: active) {
+  /* Monaco turns forced colors off for itself, for its own high-contrast
+     themes; here the system's colors apply, so the syntax colors drop to
+     CanvasText. The rules below that set `none` keep their system colors. */
+  .playground :is(.monaco-editor, .monaco-component) {
+    forced-color-adjust: auto;
+  }
+
+  /* The wavy line is the mark's bottom border, cut to a wave by the mask. */
   .playground .monaco-editor :is(.squiggly-error, .squiggly-warning) {
     forced-color-adjust: none;
-    background: LinkText;
+    box-sizing: border-box;
+    border-block-end: var(--token-space-1) solid LinkText;
+    background: none;
     mask-image: url("./glyphs/wavy.svg");
     mask-position: left bottom;
     mask-repeat: repeat-x;
   }
 
   .playground .monaco-editor .squiggly-warning {
-    background: CanvasText;
+    border-block-end-color: CanvasText;
   }
 
-  .playground .monaco-editor .cursor {
+  /* No scrim over the marks while a check is out: they stay as they were. */
+  .playground-editor.is-checking :is(.squiggly-error, .squiggly-warning)::after {
+    display: none;
+  }
+
+  .playground-editor.is-checking .playground-inline-message {
+    background: none;
+  }
+
+  .playground .monaco-editor .cursors-layer > .cursor {
     forced-color-adjust: none;
-    background: CanvasText;
+    box-sizing: border-box;
+    border-inline-start: var(--token-border-thick) solid CanvasText;
+    background: none;
+  }
+
+  .playground .monaco-editor .selected-text {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border: var(--token-border-thin) solid Highlight;
+    background: none;
+  }
+
+  .playground .monaco-editor :is(.margin, .margin-view-overlays .current-line.current-line-margin) {
+    background: none;
+  }
+
+  /* A suggestion's kind keeps its letter and loses its wash. */
+  .playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon.codicon {
+    background: none;
   }
 
   .playground .monaco-scrollable-element .slider {
@@ -286,8 +340,24 @@
     border-color: Highlight;
   }
 
-  .playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close, .codicon-error, .codicon-warning, .codicon-info)::before {
+  /* The masked glyphs are drawn as a border filling their box, in the text
+     color, and the cross of the cursor line's message in LinkText. */
+  .playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close)::before {
     forced-color-adjust: none;
-    background-color: CanvasText;
+    box-sizing: border-box;
+    border: calc(var(--token-space-4) / 2) solid CanvasText;
+    background: none;
+  }
+
+  .playground :is(.codicon-error, .codicon-warning, .codicon-info)::before,
+  .playground-editor .playground-inline-message::before {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border: calc(var(--token-space-3) / 2) solid CanvasText;
+    background: none;
+  }
+
+  .playground-editor .playground-inline-message:not(.is-warning)::before {
+    border-color: LinkText;
   }
 }
