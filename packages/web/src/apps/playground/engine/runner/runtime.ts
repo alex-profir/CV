@@ -423,6 +423,23 @@ function checkEnd(): void {
   ended = true;
 }
 
+// The code closing its own worker would read as a blocked run, with nobody to
+// answer the heartbeat (FR-045, FR-048): the run ends here and says why. On
+// every holder, as `fetch` is, so the original stays out of reach.
+const realClose = (scope['close'] as () => void).bind(scope);
+const closeWorker = () => {
+  if (!ended) {
+    push({ level: 'note', values: [], note: { key: 'closed' } });
+    flush();
+    send({ end: true, uncaught });
+    ended = true;
+  }
+  realClose();
+};
+for (let holder: object | null = scope; holder !== null; holder = Object.getPrototypeOf(holder)) {
+  if (holder === scope || Object.hasOwn(holder, 'close')) Object.defineProperty(holder, 'close', { value: closeWorker, writable: true, configurable: false, enumerable: false });
+}
+
 // ---- The page ------------------------------------------------------------
 
 type FromPage = { nonce?: unknown; ping?: number; run?: boolean; cv?: unknown };

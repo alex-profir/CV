@@ -42,6 +42,10 @@ export default defineConfig({
           // Builds the site once per run into a temporary directory, for the
           // page tests (004 research R21). A run of `fast` alone never starts it.
           globalSetup: [TEST_LOCK, 'packages/web/test/helpers/site.ts'],
+          // Vitest's 1 s for a poll can pass with the page simply not yet
+          // answering when other browsers are at work; a poll ends when it
+          // succeeds, and the tests that hold a time measure it themselves.
+          expect: { poll: { timeout: 15_000 } },
         },
       },
     ],

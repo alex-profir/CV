@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { box, focusedElement } from '../helpers/shell.ts';
-import { focusEditor, menu, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, running, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { focusEditor, menu, openPlaygroundPage, PLAYGROUND, POPUP, RUNNER, readLogs, run, running, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -50,6 +50,18 @@ describe('008-typescript-playground-FR-048: code that runs 5 s without a pause g
     const page = await openPlaygroundPage();
     await start(page, 'const spin = (): Promise<void> => Promise.resolve().then(spin);\nawait spin();');
     await page.waitForSelector(POPUP, { timeout: 8_000 });
+  });
+
+  test('code that closes its own worker ends the run and says so, with no popup', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'console.log("before");\nself.close();');
+    await expect.poll(() => running(page), { timeout: 3_000 }).toBe(false);
+    const logs = await readLogs(page);
+    expect(logs.map((row) => row.text)).toContain('before');
+    expect(logs.map((row) => row.text)).toContain(siteText.playground.logs.closed);
+    await page.waitForTimeout(6_000);
+    expect(await popupShown(page)).toBe(0);
+    expect(await page.locator(RUNNER).count()).toBe(0);
   });
 
   test('a 60 s timer and a pending request never get it', async () => {

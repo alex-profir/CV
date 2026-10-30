@@ -52,13 +52,15 @@ export function isShown(value: unknown, depth = 0): value is Shown {
 
 const LEVELS: readonly unknown[] = ['log', 'info', 'warn', 'error', 'debug', 'alert'];
 
-// The runtime's only notes are `prompt` and `confirm`; the rest are the page's
-// own, and a line is the page's to add.
+// The runtime's only notes are these; the rest are the page's own, and a line
+// is the page's to add.
+const WORKER_NOTES: readonly unknown[] = ['prompt', 'confirm', 'closed'];
+
 export function isWorkerEntry(value: unknown): value is LogEntry {
   if (!isRecord(value) || typeof value['id'] !== 'number' || 'line' in value) return false;
   if (value['cut'] !== undefined && value['cut'] !== true) return false;
   if (!Array.isArray(value['values'])) return false;
-  if (value['level'] === 'note') return value['values'].length === 0 && isRecord(value['note']) && (value['note']['key'] === 'prompt' || value['note']['key'] === 'confirm');
+  if (value['level'] === 'note') return value['values'].length === 0 && isRecord(value['note']) && WORKER_NOTES.includes(value['note']['key']);
   return LEVELS.includes(value['level']) && value['note'] === undefined && value['values'].every((item) => isShown(item));
 }
 

@@ -16,8 +16,9 @@ describe('008-typescript-playground-FR-040: nothing the worker sends is trusted'
     for (const value of values) expect(isWorkerEntry(entry(formatEntry([value]).values)), String(typeof value)).toBe(true);
   });
 
-  test('prompt and confirm notes pass; the page\'s own notes and lines do not', () => {
+  test('prompt, confirm and closed notes pass; the page\'s own notes and lines do not', () => {
     expect(isWorkerEntry({ id: 1, level: 'note', values: [], note: { key: 'prompt' } })).toBe(true);
+    expect(isWorkerEntry({ id: 1, level: 'note', values: [], note: { key: 'closed' } })).toBe(true);
     expect(isWorkerEntry({ id: 1, level: 'note', values: [], note: { key: 'ended', outcome: {} } })).toBe(false);
     expect(isWorkerEntry(entry([], { line: 3 }))).toBe(false);
   });

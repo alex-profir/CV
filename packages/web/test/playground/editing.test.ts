@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { bundled, ts } from '../helpers/bundled-typescript.ts';
-import { EDITOR, editorText, onMac, openPlaygroundPage, PLAYGROUND, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, editorText, focusEditor, freshProfile, onMac, openPlayground, openPlaygroundPage, PLAYGROUND, run, setCode, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 120_000 });
 
@@ -237,5 +237,20 @@ describe('008-typescript-playground-FR-015: the editor works as VS Code does', (
     await waitChecked(page);
     await page.keyboard.press(keys.formatDocument);
     await expect.poll(() => editorText(page)).toBe(formatted(code));
+  });
+});
+
+describe('008-typescript-playground-FR-015: the editor starts cleanly', () => {
+  test('opening the Playground, typing and running throw no uncaught error on the page', async () => {
+    const page = await freshProfile();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await openPlayground(page);
+    await waitReady(page);
+    await focusEditor(page);
+    await page.keyboard.type('const typed = 1;');
+    await waitChecked(page);
+    await run(page);
+    expect(errors).toEqual([]);
   });
 });

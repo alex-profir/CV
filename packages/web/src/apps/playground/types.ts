@@ -64,6 +64,7 @@ export type NoteKey =
   | { key: 'errorsNote'; n: number }
   | { key: 'nothingRan'; reason: 'noEmitOnError' | 'packages' }
   | { key: 'prompt' | 'confirm' }
+  | { key: 'closed' }
   | { key: 'ended'; outcome: RunOutcome };
 
 export type LogEntry = {

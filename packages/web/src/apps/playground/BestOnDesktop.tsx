@@ -3,7 +3,7 @@
 // passes on a link that opens it on a desktop. Opened from a shared link,
 // it says so and passes that link on unchanged; the code is never decoded,
 // TypeScript isn't downloaded and nothing runs.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { siteText } from '../../site-text.ts';
 import { phoneLink } from './controller.ts';
 import { CopyGlyph, ShareGlyph } from './Glyphs.tsx';
@@ -15,13 +15,20 @@ const words = siteText.playground.mobile;
 // Whether the page was opened with a link that holds code.
 const fromLink = () => holdsCode(location.href);
 
+// The address changes with no load when a link is pasted into this tab.
+const onAddress = (listener: () => void) => {
+  addEventListener('hashchange', listener);
+  return () => removeEventListener('hashchange', listener);
+};
+
 const canShare = (url: string) => typeof navigator.share === 'function' && (typeof navigator.canShare !== 'function' || navigator.canShare({ url }));
 
 export function BestOnDesktop() {
-  const [linked] = useState(fromLink);
+  const linked = useSyncExternalStore(onAddress, fromLink, () => false);
   const text = linked ? words.link : words.app;
   const [note, setNote] = useState<string>(text.note);
   const frame = useRef(0);
+  useEffect(() => setNote(text.note), [text]);
 
   // The note is a status region: cleared, then set on the next frame, so the
   // same words twice are read twice.
