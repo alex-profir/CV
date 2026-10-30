@@ -51,74 +51,69 @@
   ],
   "skills": [
     {
-      "name": "Web Frameworks & Libraries",
-      "level": "Master",
+      "name": "Agentic Engineering",
       "keywords": [
-        "React",
-        "Angular",
-        "Vue.js",
-        "Next.js",
-        "Nuxt.js"
+        "Agentic Coding · 1.5 yrs",
+        "Spec-Driven Development · 1.5 yrs",
+        "Claude Code",
+        "Agent Orchestration",
+        "Agent Guardrails",
+        "Context Engineering",
+        "MCP"
+      ]
+    },
+    {
+      "name": "Web Frameworks & Libraries",
+      "keywords": [
+        "React · 8 yrs",
+        "Angular · 3 yrs",
+        "Vue.js · 3 yrs",
+        "Next.js · 2 yrs",
+        "Nuxt.js · 2 yrs"
       ]
     },
     {
       "name": "Mobile Development",
-      "level": "Master",
       "keywords": [
-        "React Native",
-        "Xamarin",
-        "Kotlin",
-        "Swift",
-        "Objective-C",
-        "iOS",
-        "Android"
+        "React Native · 7 yrs",
+        "Native Android/iOS · 5 yrs"
       ]
     },
     {
       "name": "Backend Development",
-      "level": "Advanced",
       "keywords": [
-        "Node.js",
-        "Express.js",
-        "Fastify",
-        "Java",
-        "Spring Boot"
+        "Node.js · 7 yrs",
+        "Microservices · 1 yr"
       ]
     },
     {
       "name": "Databases",
-      "level": "Advanced",
       "keywords": [
-        "PostgreSQL",
-        "MariaDB",
-        "MySQL",
-        "MongoDB"
+        "PostgreSQL · 7 yrs",
+        "MariaDB · 7 yrs",
+        "MySQL · 7 yrs",
+        "MongoDB · 6 yrs",
+        "Firestore · 6 yrs"
       ]
     },
     {
       "name": "Programming Languages",
-      "level": "Master",
       "keywords": [
-        "JavaScript",
-        "TypeScript",
-        "C++",
-        "C#",
-        "Java"
+        "JavaScript · 8 yrs",
+        "TypeScript · 8 yrs"
       ]
     },
     {
       "name": "Version Control",
-      "level": "Expert",
       "keywords": [
-        "Git"
+        "Git · 8 yrs"
       ]
     },
     {
       "name": "Cloud Platforms",
-      "level": "Intermediate",
       "keywords": [
-        "GCP",
-        "AWS"
+        "GCP · 5 yrs",
+        "AWS · 5 yrs"
       ]
     }
   ],
@@ -167,7 +162,10 @@
         "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
         "Maintained Expo and React Native on the latest package versions",
         "Set up CI/CD for automated builds and releases",
-        "Set up crash reporting and error monitoring"
+        "Set up crash reporting and error monitoring",
+        "Created the spec-driven development setup used to build and maintain the app",
+        "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop",
+        "Cut end-to-end feature delivery from at least a couple of months to 2–3 weeks, with the UI fully matching Figma"
       ]
     },
     {
@@ -178,7 +176,9 @@
       "highlights": [
         "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
         "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
-        "Designed and implemented two backend microservices powering core security and data synchronization features",
+        "Built notification and device management microservices using spec-driven development, replacing the monolith that held all the logic",
+        "Implemented and maintained the auth microservice with teammates using spec-driven development",
+        "Delivered features at roughly 5x the previous speed with spec-driven, agentic development",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
         "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
         "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
@@ -196,10 +196,10 @@
       ]
     },
     {
-      "name": "3ndy Job Management App",
+      "name": "Job Management App",
       "startDate": "2021-04",
       "endDate": "2021-07",
-      "description": "Mobile application built with Xamarin for job posting and tracking.",
+      "description": "Mobile application for job posting and tracking.",
       "highlights": [
         "Implemented job creation workflow including data entry, media uploads, and job type selection",
         "Designed intuitive summary and editing screens for better user experience",

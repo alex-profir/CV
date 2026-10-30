@@ -42,3 +42,10 @@
   1.2.0's interim provision on local mockups, this approval stands on the four exports, and the
   Penpot link is added in the provision's follow-up pull request. The token export is written by
   hand in Penpot's form from this design's values until then.
+- Change (2026-10-30): the owner asked for the timeline dot to be centred on the line and on the
+  date line, ring included. The exports draw it 2 px right of and below that. The exports in
+  `mockup/` still show the old position until they are redone.
+- Change (2026-10-30): the owner replaced the skill levels in the CV document with years of
+  experience on each keyword, so the real page shows no level beside a skill name. The page still
+  shows a level when the CV document holds one. The exports still show the levels until they are
+  redone.

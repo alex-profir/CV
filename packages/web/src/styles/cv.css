@@ -140,13 +140,12 @@ main.not-found {
   margin-block-start: var(--token-space-10);
 }
 
-/* The dot's inner circle is centred on the line and on the date line, as
-   in the exports: its ring sits a border's width right of and below that. */
+/* The dot, ring included, is centred on the line and on the date line. */
 .timeline > li::before {
   content: "";
   position: absolute;
-  inset-inline-start: calc(-1 * (var(--timeline-indent) + var(--token-border-thin) / 2 + var(--token-size-timeline-dot) / 2));
-  inset-block-start: calc((var(--token-typography-date-font-size) * var(--token-typography-date-line-height) - var(--token-size-timeline-dot)) / 2);
+  inset-inline-start: calc(-1 * (var(--timeline-indent) + var(--token-border-thin) / 2 + var(--token-size-timeline-dot) / 2 + var(--token-border-thick)));
+  inset-block-start: calc((var(--token-typography-date-font-size) * var(--token-typography-date-line-height) - var(--token-size-timeline-dot)) / 2 - var(--token-border-thick));
   box-sizing: content-box;
   inline-size: var(--token-size-timeline-dot);
   block-size: var(--token-size-timeline-dot);
