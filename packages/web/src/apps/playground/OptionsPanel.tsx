@@ -58,7 +58,10 @@ function OptionRow({ option, value }: { option: DescribedOption; value: boolean 
   const toggle = (checked: boolean) => setOptions(option.name === 'strict' ? withStrict(changed, checked) : changedOptions({ ...settle(changed), [option.name]: checked }));
   return (
     <div className={option.underStrict ? 'option is-sub' : 'option'}>
-      <input type="checkbox" id={controlId(option.name)} checked={value as boolean} aria-describedby={descriptionId(option.name)} onChange={(event) => toggle(event.target.checked)} />
+      {/* The box is drawn 16 px; its label around it is the 24 px target (FR-067). */}
+      <label className="option-box">
+        <input type="checkbox" id={controlId(option.name)} checked={value as boolean} aria-describedby={descriptionId(option.name)} onChange={(event) => toggle(event.target.checked)} />
+      </label>
       <span className="option-text">
         <label htmlFor={controlId(option.name)}>
           <code>{option.name}</code>
