@@ -6,13 +6,19 @@
 import type { App, AppProps } from '../index.ts';
 import { siteText } from '../../site-text.ts';
 import { BestOnDesktop } from './BestOnDesktop.tsx';
-import { closePlayground, currentEngine } from './controller.ts';
+import { canStop, closePlayground, currentEngine, runCode, stopCode } from './controller.ts';
+import { openExamplesPanel } from './ExamplesPanel.tsx';
 import { openOptionsPanel } from './OptionsPanel.tsx';
+import { KEY_COMMANDS } from './keys.ts';
 import { Playground } from './Playground.tsx';
 import { PlaygroundIcon } from './PlaygroundIcon.tsx';
 import { session } from './session.ts';
+import { onMac } from './text.ts';
 
 const words = siteText.playground.menu;
+
+// Run's key, as the list of keys gives it for the visitor's system.
+const runKey = () => KEY_COMMANDS.find((command) => command.id === 'playground.run')!.keys[onMac() ? 'mac' : 'other'][0]!;
 
 export const playgroundApp: App = {
   id: 'playground',
@@ -20,9 +26,12 @@ export const playgroundApp: App = {
   shells: ['desktop', 'mobile'],
   needsNetwork: false,
   Icon: PlaygroundIcon,
-  Content: (props: AppProps) => (props.os.shell === 'mobile' ? <BestOnDesktop /> : <Playground />),
+  Content: (props: AppProps) => (props.os.shell === 'mobile' ? <BestOnDesktop /> : <Playground resume={props.resume} />),
   focusOnOpen: '.playground [data-focus-home]',
   menuItems: [
+    { key: 'run', label: words.run, shortcut: runKey, disabled: () => currentEngine() === null, run: runCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-032' },
+    { key: 'stop', label: words.stop, disabled: () => !canStop(), run: stopCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-038' },
+    { key: 'examples', label: words.examples, separatorBefore: true, disabled: () => currentEngine() === null, run: openExamplesPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-027' },
     { key: 'options', label: words.options, run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
     {
       key: 'palette',

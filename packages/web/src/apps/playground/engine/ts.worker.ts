@@ -9,6 +9,10 @@ import type { CheckResult, Diagnostic } from '../types.ts';
 
 type Import = { start: number; end: number; specifier: string };
 
+// The code to run (R13): its script body and map, how many imports and
+// errors it has, and whether TypeScript gave no JavaScript (`noEmitOnError`).
+export type Runnable = { code: string; map: string; imports: number; errors: number; skipped: boolean };
+
 // TypeScript's own errors for what an import names, dropped where the
 // packages message stands (R11): cannot find module, cannot find name
 // 'require', a dynamic import's module option, and the like.
@@ -116,7 +120,7 @@ class PlaygroundWorker extends TypeScriptWorker {
   // The JavaScript to run (R13): the emit with `export` removed, as a script
   // body, with its source map; or nothing, with the imports, when the code
   // imports or may not be emitted.
-  async getRunnable(fileName: string): Promise<{ code: string; map: string; imports: number; errors: number } | null> {
+  async getRunnable(fileName: string): Promise<Runnable | null> {
     const service = this.getLanguageService();
     const program = service.getProgram();
     const file = program?.getSourceFile(fileName);
@@ -135,8 +139,8 @@ class PlaygroundWorker extends TypeScriptWorker {
       false,
       { after: [stripExports()] },
     );
-    if (result.emitSkipped) return { code: '', map: '', imports, errors };
-    return { code: withoutMapComment(code).replace(/^\s*export\s*\{\s*\};?\s*$/m, ''), map, imports, errors };
+    if (result.emitSkipped) return { code: '', map: '', imports, errors, skipped: true };
+    return { code: withoutMapComment(code).replace(/^\s*export\s*\{\s*\};?\s*$/m, ''), map, imports, errors, skipped: false };
   }
 
   // TypeScript's fixes, without any that adds an import (FR-082). Monaco

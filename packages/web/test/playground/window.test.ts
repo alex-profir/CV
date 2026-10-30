@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { box, drag, frontWindow, openShell, PHONE_USER_AGENT, settle } from '../helpers/shell.ts';
-import { openPlayground, openPlaygroundPage, PLAYGROUND } from '../helpers/playground.ts';
+import { onMac, openPlayground, openPlaygroundPage, PLAYGROUND, running, setCode, waitChecked } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -110,7 +110,25 @@ describe('008-typescript-playground-FR-003: the Playground opens in a window lik
     const entries = await menuEntries(page);
     const at = entries.indexOf(siteText.inspector.show);
     expect(at).toBeGreaterThan(0);
-    expect(entries.slice(0, at + 2)).toEqual([menu.options, '—', `${menu.palette} F1`, menu.keys, '—', menu.reset, '—', siteText.inspector.show, '—']);
+    const run = (await onMac(page)) ? 'Cmd+Enter' : 'Ctrl+Enter';
+    expect(entries.slice(0, at + 2)).toEqual([`${menu.run} ${run}`, menu.stop, '—', menu.options, '—', `${menu.palette} F1`, menu.keys, '—', menu.reset, '—', siteText.inspector.show, '—']);
     expect(entries.slice(at + 2)[0]).toMatch(new RegExp(`^${own.move}`));
+  });
+
+  test('the menu runs the code, and Stop is disabled with no run', async () => {
+    const page = await openPlaygroundPage();
+    const menu = siteText.playground.menu;
+    await page.click('#menu-title-app');
+    expect(await page.getByRole('menuitem', { name: menu.stop, exact: true }).getAttribute('aria-disabled')).toBe('true');
+    await page.keyboard.press('Escape');
+    await setCode(page, 'setInterval(() => {}, 1000);');
+    await waitChecked(page);
+    await page.click('#menu-title-app');
+    await page.getByRole('menuitem', { name: new RegExp(`^${menu.run}\\b`) }).click();
+    await expect.poll(() => running(page)).toBe(true);
+    await page.click('#menu-title-app');
+    expect(await page.getByRole('menuitem', { name: menu.stop, exact: true }).getAttribute('aria-disabled')).toBeNull();
+    await page.getByRole('menuitem', { name: menu.stop, exact: true }).click();
+    await expect.poll(() => running(page)).toBe(false);
   });
 });

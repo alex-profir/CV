@@ -4,7 +4,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
-import { EDITOR, editorText, menu, openPlaygroundPage, paneTab, PLAYGROUND, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, editorText, menu, openPlaygroundPage, paneTab, PLAYGROUND, readLogs, run, RUNNER, running, setCode, showPane, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -51,5 +51,28 @@ describe('008-typescript-playground-FR-005: Show specs and Back keep everything 
     expect(await paneTab(page, 'declarations').getAttribute('aria-selected')).toBe('true');
     await page.locator(`${TOOLBAR} button.options`).click();
     expect(await page.locator(`${PLAYGROUND} #playground-option-removeComments`).isChecked()).toBe(true);
+  });
+});
+
+describe('008-typescript-playground-FR-005: Show specs and Back keep the logs and a run going', () => {
+  test("the logs stay, the run's time keeps counting, and its runner frame is the same element, outside the window", async () => {
+    const page = await openPlaygroundPage();
+    await setCode(page, 'let n = 0;\nsetInterval(() => console.log("tick", ++n), 200);');
+    await waitChecked(page);
+    await run(page, { wait: 'start' });
+    await expect.poll(async () => (await readLogs(page)).length).toBeGreaterThan(3);
+    const frame = await page.locator(RUNNER).elementHandle();
+    expect(await frame!.evaluate((element) => element.closest('section.playground') === null)).toBe(true);
+    const before = (await readLogs(page)).length;
+    await menu(page, siteText.inspector.show);
+    await expect.poll(() => page.locator(PLAYGROUND).count()).toBe(0);
+    await page.waitForTimeout(1_500);
+    await menu(page, fill(siteText.inspector.back, { view: siteText.os.views.playground }));
+    await page.waitForSelector(`${EDITOR} .monaco-editor`);
+    expect(await running(page)).toBe(true);
+    expect((await readLogs(page)).length).toBeGreaterThan(before + 4);
+    expect(await frame!.evaluate((element) => element.isConnected && element.closest('section.playground') === null)).toBe(true);
+    expect(await page.locator(RUNNER).count()).toBe(1);
+    await stop(page);
   });
 });

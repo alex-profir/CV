@@ -68,8 +68,11 @@ export type OutputView = { setText(text: string): void; layout(): void; dispose(
 export type RunInput = { cv: unknown };
 
 export type RunEvents = {
-  onStarted(): void;
-  onLogs(batch: { entries: LogEntry[]; dropped: number }): void;
+  // The code started, with the number of errors it has (FR-033).
+  onStarted(info: { errors: number }): void;
+  // A batch of entries; `cleared` when `console.clear` emptied the logs
+  // before them (FR-034).
+  onLogs(batch: { entries: LogEntry[]; dropped: number; cleared?: true }): void;
   onPending(pending: { timers: number; requests: number }): void;
   onBlocked(since: number | null): void;
   onEnded(outcome: RunOutcome): void;

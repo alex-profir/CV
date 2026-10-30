@@ -9,6 +9,7 @@ import { counted, fill, siteText } from '../../site-text.ts';
 import { currentEngine } from './controller.ts';
 import { settle } from './compiler-options.ts';
 import { ErrorsList } from './ErrorsPane.tsx';
+import { LogsPane } from './LogsPane.tsx';
 import { session, useSession } from './session.ts';
 import type { CheckResult, Pane } from './types.ts';
 
@@ -65,10 +66,6 @@ function ErrorsPane() {
       <ErrorsList diagnostics={diagnostics} />
     </>
   );
-}
-
-function LogsPane() {
-  return <p className="empty">{words.noLogs}</p>;
 }
 
 export function Panes() {
