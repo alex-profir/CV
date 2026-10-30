@@ -229,7 +229,7 @@ Items 5 to 10 are *approved as designed*; 5 is left for the plan.
 
 ## 2026-10-30 amendment
 
-**Status**: Awaiting the owner's review
+**Status**: Approved
 
 The spec's amendment of 2026-10-30 (Clarifications, Session 2026-10-30 (owner review of the
 shell); FR-026, FR-039, FR-058, FR-060, FR-064 to FR-066, FR-076 to FR-081) makes Tab complete,
@@ -275,22 +275,25 @@ before. Penpot was reachable, so the interim provision on local mockups was not 
 
 ### Decisions for the owner
 
+The owner approved each, as designed, on approval.
+
 1. **New token**: `color.vim-warning`, referring to the existing `{color.base.amber}`, for vim's
-   warnings. Errors reuse `color.terminal-error`. See README.md.
+   warnings. Errors reuse `color.terminal-error`. See README.md. *Approved.*
 2. **`cv`'s piped text** is named `[No Name]` and isn't marked read only, as in vim, so `:w`
    alone gives `E32: No file name` and `:w <path>` saves a copy. The other way is to keep the
    approved `cv.json [RO]`; but then `:w` would refuse a file that looks named, with an error
-   about it having no name.
-3. **The contrast fix** above, on every vim export.
+   about it having no name. *Approved.*
+3. **The contrast fix** above, on every vim export. *Approved.*
 4. **The vim keys** in three rows, `:q` twice as wide, the third row in the speaker grille's
-   place at 375 px. At 320 px the screen gives up the row.
+   place at 375 px. At 320 px the screen gives up the row. *Approved.*
 5. **Long vim messages** wrap onto a second line, and the text above gives up a row, rather than
-   vim's own "Press ENTER" prompt.
+   vim's own "Press ENTER" prompt. *Approved.*
 6. **Tab's list** is output: bash's columns, folders marked as `ls` marks them, but no controls,
    as FR-076 asks. `Display all [n] possibilities? (y or n)` is a plain haze line, with no board.
+   *Approved.*
 7. **`help`'s wording** for FR-077: `Tab completes a command or path; Escape then Tab leaves the
    command line.` (phone: `Tab ⇥ completes a command or path.`), and the command line's
-   description `Tab completes. Escape then Tab leaves.`
+   description `Tab completes. Escape then Tab leaves.` *Approved.*
 
 ### Original look (FR-031, SC-010)
 
@@ -301,7 +304,9 @@ before. Penpot was reachable, so the interim provision on local mockups was not 
 ### Sign-off
 
 - Reviewed mockup version: Penpot page **006 Terminal — Glass**, as exported to `exports/` on
-  2026-10-30 (commit pending)
-- Date:
-- Approved by:
-- Notes:
+  2026-10-30 (commit `bad9df6`)
+- Date: 2026-10-30
+- Approved by: Alex Profir (project owner)
+- Notes: Approved on review of the exports in `bad9df6`, as designed, with every decision above.
+  The owner had chosen the Tab key in place of `skills` and the bar cursor for insert mode before
+  the boards were drawn, and confirms the look is original as recorded above.
