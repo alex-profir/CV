@@ -75,6 +75,21 @@ worktrees are listed with the reason. If GitHub can't be reached, nothing is
 cleaned. Conflicts between features are resolved when each branch merges `main`
 before its pull request, not by the loop.
 
+## One test run at a time
+
+Parallel test runs can bring the machine down, so only one runs at a time, across
+every worktree and loop. Vitest takes a lock in its global setup, however it was
+started (`npm test`, `npx vitest run <file>`, a session's or your own), and
+`site-check` takes it before opening a browser. Anything else waits and prints
+`test lock: waiting for pid … in <worktree>`. Typecheck, the other checks and
+`npm run build` run freely, and `vitest` in watch mode goes without the lock.
+
+The kernel releases the lock when the holder exits, even if it is killed, so it
+can't go stale. A run that hangs does hold it, so a waiter gives up with an error
+naming the holder after `SPECKIT_TEST_LOCK_WAIT_MINUTES` (default 180). The lock
+is `~/.cache/speckit-auto/test.lock` (`SPECKIT_TEST_LOCK_FILE` moves it). A branch
+takes part once it has this commit from `main`.
+
 ## How the build works
 
 `workflows/speckit-build.yml`:
@@ -108,7 +123,9 @@ before its pull request, not by the loop.
 | `expect.sh` | Checks that plan and tasks were really written |
 | `tasks-status.sh` | Counts open and ticked tasks; detects a stalled session |
 | `checks.sh` | The repository's checks after the build |
+| `test-lock.ts` | Lets one test run at a time on this machine; used by `vitest.config.ts` and `site-check` |
 | `worktree.sh` | Builds features side by side in worktrees and removes merged ones (`run.sh worktree`) |
+| `test/test-lock.test.ts` | The lock with real processes, and that Vitest and `site-check` take it |
 | `test/worktree.test.ts` | `worktree.sh` against a throwaway repository, with `gh`, `npm` and the loop stubbed |
 
 Settings: `CONTEXT_BUDGET_PCT` (default 40), `CONTEXT_WINDOW_TOKENS` (default
