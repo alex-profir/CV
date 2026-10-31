@@ -165,6 +165,21 @@ describe('005-os-shell-FR-019: a window moves with any pointer dragging its titl
     expect(await box(page, CV)).toEqual(before);
     expect(await page.locator(CV).count()).toBe(1);
   });
+
+  // Safari's engine is the one that selects, and these tests run in Chromium,
+  // so this checks the cancelling itself rather than a selection.
+  test('a drag cancels text selection until the pointer is released', async () => {
+    const page = await desktop();
+    const selectable = () => page.evaluate(() => document.body.dispatchEvent(new Event('selectstart', { bubbles: true, cancelable: true })));
+    expect(await selectable()).toBe(true);
+    const from = await grip(page, CV);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 40, from.y + 40, { steps: 2 });
+    expect(await selectable()).toBe(false);
+    await page.mouse.up();
+    expect(await selectable()).toBe(true);
+  });
 });
 
 describe('005-os-shell-FR-020: Move… and Resize… work by single clicks', () => {
