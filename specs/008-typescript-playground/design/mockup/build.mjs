@@ -280,6 +280,7 @@ function runState(run) {
   if (run.state === 'blocked') return `<span class="pg-state is-running">${G.dot}Running · ${run.time} without a pause</span>`;
   if (run.state === 'finished') return `<span class="pg-state is-finished">${G.ok}Finished in ${run.time}</span>`;
   if (run.state === 'stopped') return `<span class="pg-state is-stopped">${G.square}Stopped after ${run.time}</span>`;
+  if (run.state === 'ended') return `<span class="pg-state is-stopped">${G.warn}${run.text}</span>`;
   if (run.state === 'nothing') return `<span class="pg-state is-stopped">${G.warn}Nothing ran</span>`;
   return '';
 }
@@ -696,20 +697,115 @@ add('desktop-30-link-field', 'Share: the link to copy by hand', desktop({
   })),
 }));
 
+// ---- Amendment of 2026-10-31: the site text no export held (T205) ----------
+
+const { siteText } = await import('../../../../packages/web/src/site-text.ts');
+const { KEY_COMMANDS, keyLabel, keysFor, tabFocusKey, hoverKey } = await import('../../../../packages/web/src/apps/playground/keys.ts');
+const TALL = { left: 40, top: 16, width: 1360, height: 776 };
+
+const ENDLESS = 'const grow: string[] = [];\nwhile (true) grow.push("x".repeat(1_000_000));\n';
+const endedRun = (file, title, state) => add(file, title, desktop({
+  playground: playgroundWindow(playground({
+    run: { state: 'ended', text: state },
+    editorHtml: editor(ENDLESS, { cursor: [2, 1] }),
+    pane: 'Logs', counts: { errors: 0, logs: 2 },
+    paneHtml: logsPane([{ level: 'note', text: 'No errors in the code. Running.' }, { level: 'note', text: state }]),
+    status: { cursor: [2, 1] },
+  })),
+}));
+endedRun('desktop-31-crashed', 'A run that stopped unexpectedly', 'Stopped unexpectedly after 3.1 s');
+endedRun('desktop-32-out-of-memory', 'A run out of memory', 'Ran out of memory after 3.1 s');
+
+add('desktop-33-no-logs', 'The Logs pane before a run', desktop({
+  playground: playgroundWindow(playground({
+    editorHtml: editor(WELCOME, { cursor: [1, 1] }),
+    pane: 'Logs', counts: { errors: 0, logs: 0 },
+    paneHtml: '<div class="pg-pane pg-logs"><p class="pg-empty">Nothing logged yet. Run the code to see what it logs.</p></div>',
+    status: { cursor: [1, 1] },
+  })),
+}));
+
+const VALUES = 'const self_ = { name: "loop", self: null as unknown };\nself_.self = self_;\nconsole.log(self_);\nconsole.log(() => {});\nconsole.log(confirm("Sure?"));\n';
+add('desktop-34-log-values', 'Values in the logs', desktop({
+  playground: playgroundWindow(playground({
+    run: { state: 'finished', time: '0.02 s' },
+    editorHtml: editor(VALUES, { cursor: [5, 1] }),
+    pane: 'Logs', counts: { errors: 0, logs: 6 },
+    paneHtml: logsPane([
+      { level: 'note', text: 'No errors in the code. Running.' },
+      { level: 'log', text: '{ name: "loop", self: [circular] }' },
+      { level: 'log', text: 'function (anonymous)' },
+      { level: 'note', text: 'confirm isn\'t available in the Playground, so it returned false.' },
+      { level: 'log', text: 'false' },
+      { level: 'note', text: 'Finished in 0.02 s' },
+    ]),
+    status: { cursor: [5, 1] },
+  })),
+}));
+
+add('desktop-35-reset-done', 'Reset: done', desktop({
+  playground: playgroundWindow(playground({
+    banner: banner('ok', 'The Playground was reset to the starting example and the default options.', textButton('Undo')),
+    editorHtml: editor(WELCOME, { cursor: [1, 1] }),
+    pane: 'JavaScript', counts: { errors: 0, logs: 0 }, paneHtml: jsPane(WELCOME_JS), status: { cursor: [1, 1] },
+  })),
+}));
+
+add('desktop-36-code-copied', 'Share: the code copied', desktop({
+  playground: playgroundWindow(playground({
+    ...jobsBase,
+    banner: banner('ok', 'Code copied.'),
+  })),
+}));
+
+add('desktop-37-kept-options', 'Kept code with an unknown option', desktop({
+  playground: playgroundWindow(playground({
+    ...jobsBase,
+    banner: banner('info', 'Your kept code set 1 option this version doesn\'t know, <code>oldFlag</code>, so it was left out.'),
+  })),
+}));
+
+add('desktop-38-options-default', 'Compiler options at their defaults', desktop({
+  playground: playgroundWindow(playground({
+    open: 'options',
+    editorHtml: editor(JOBS, { cursor: [9, 1], decos: { ...errDeco }, focused: false }),
+    side: optionsPanel.replace(/<p class="pg-options-foot">.*?<\/p>/s, '<p class="pg-options-foot">Every option is at its default.</p>').replace('<input type="checkbox" checked><span class="pg-option-text"><code>noUnusedLocals', '<input type="checkbox"><span class="pg-option-text"><code>noUnusedLocals'),
+    status: { cursor: [9, 1], errors: 1 },
+  })),
+}));
+
+const keyWords = siteText.playground.popups.keys;
+const half = Math.ceil(KEY_COMMANDS.length / 2);
+const allKeyNote = (command) => command.differs === undefined ? '' : keyWords.differs[command.differs].replace('{key}', command.kept?.mac ?? '');
+const allKeysTable = (commands) => '<table class="pg-key-table"><thead><tr><th scope="col">Command</th><th scope="col">Key</th></tr></thead><tbody>' + commands.map((c) => {
+  const note = allKeyNote(c);
+  return '<tr><td>' + esc(keyLabel(c)) + (note ? '<span class="pg-key-note">' + esc(note) + '</span>' : '') + '</td><td><kbd>' + esc(keysFor(c, true).join(', ')) + '</kbd></td></tr>';
+}).join('') + '</tbody></table>';
+const allKeysDialog = '<div class="pg-dialog pg-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title"><div class="pg-dialog-head"><h2 id="keys-title">Keys</h2><button type="button" class="pg-icon-button" aria-label="Close">' + G.x + '</button></div><p>' + esc(keyWords.lede.mac) + '</p><p>' + esc(keyWords.help.mac.replace('{tab}', tabFocusKey(true)).replace('{hover}', hoverKey(true))) + '</p><div class="pg-key-columns">' + allKeysTable(KEY_COMMANDS.slice(0, half)) + allKeysTable(KEY_COMMANDS.slice(half)) + '</div><p class="pg-dialog-foot">' + esc(keyWords.footer) + '</p></div>';
+add('desktop-39-keys-all', 'The list of keys, every command', desktop({
+  cv: false, dock: { cv: false },
+  playground: playgroundWindow(playground({
+    editorHtml: editor(JOBS, { cursor: [9, 1], decos: errDeco, focused: false }),
+    pane: 'Errors', counts: { errors: 1, logs: 0 }, paneHtml: errorsPane([jobsError]),
+    status: { cursor: [9, 1], errors: 1 }, dialog: allKeysDialog,
+  }), { geometry: TALL }),
+}));
+
 // ---- Phone --------------------------------------------------------------
 
 function phoneApp(body) {
   return `<div class="mobile"><main class="mobile-main"><section class="full-screen" aria-labelledby="app-title-playground" data-view="playground"><header class="app-header"><button type="button" class="home-button">${G.homeChevron}Home</button><div class="app-title" id="app-title-playground" tabindex="-1">Playground</div><button type="button" class="show-specs" aria-label="Show specs for Playground">${G.sheet}Specs</button></header><div class="view-content">${body}</div></section></main></div>`;
 }
-const bestOnDesktop = (shared, field = false) => `<div class="pg-phone"><div class="pg-phone-card">${playgroundGlyph(shared ? 'p2' : 'p1')}<h1>${shared ? 'This link holds TypeScript code' : 'The Playground is best on a desktop'}</h1><p>${shared
+const bestOnDesktop = (shared, field = false, note = '') => `<div class="pg-phone"><div class="pg-phone-card">${playgroundGlyph(shared ? 'p2' : 'p1')}<h1>${shared ? 'This link holds TypeScript code' : 'The Playground is best on a desktop'}</h1><p>${shared
   ? 'Someone shared code from the Playground, a TypeScript editor that runs in the browser. Open the link on a desktop to read, check and run it. Nothing runs here.'
-  : 'It\'s a TypeScript editor that checks and runs code in your browser. Writing code needs a keyboard and room for its panes, so it opens on a desktop.'}</p><div class="pg-phone-actions"><button type="button" class="pg-button pg-primary pg-wide">${G.share}<span>Share link</span></button><button type="button" class="pg-button pg-secondary pg-wide">${G.copy}<span>Copy link</span></button></div>${field ? '<label class="pg-phone-link"><span>Copy this link:</span><input class="pg-link-field" type="text" readonly value="https://example.test/#playground"></label>' : ""}${field ? '' : `<p class="pg-phone-note">${shared ? 'Sharing passes on the same link, with its code.' : 'The link opens the Playground on a desktop.'}</p>`}</div></div>`;
+  : 'It\'s a TypeScript editor that checks and runs code in your browser. Writing code needs a keyboard and room for its panes, so it opens on a desktop.'}</p><div class="pg-phone-actions"><button type="button" class="pg-button pg-primary pg-wide">${G.share}<span>Share link</span></button><button type="button" class="pg-button pg-secondary pg-wide">${G.copy}<span>Copy link</span></button></div>${field ? '<label class="pg-phone-link"><span>Copy this link:</span><input class="pg-link-field" type="text" readonly value="https://example.test/#playground"></label>' : ""}${field ? '' : `<p class="pg-phone-note">${note || (shared ? 'Sharing passes on the same link, with its code.' : 'The link opens the Playground on a desktop.')}</p>`}</div></div>`;
 const home = `<div class="mobile"><main class="mobile-main"><section class="home" aria-label="Home screen"><p class="site-name">${esc(resume.basics?.name ?? '')}</p><ul class="app-grid"><li><button type="button" class="app-icon" data-view="cv"><span class="app-icon-image">${cvGlyph('h')}</span><span class="app-icon-name">CV</span></button></li><li><button type="button" class="app-icon" data-view="terminal"><span class="app-icon-image">${terminalGlyph}</span><span class="app-icon-name">Terminal</span></button></li><li><button type="button" class="app-icon" data-view="playground"><span class="app-icon-image">${playgroundGlyph('h')}</span><span class="app-icon-name">Playground</span></button></li></ul><div class="home-foot"><button type="button" class="about" data-view="about">${G.info20}About this site</button></div></section></main></div>`;
 
 add('phone-1-home', 'Phone, the home screen', home, 'mobile');
 add('phone-2-best-on-desktop', 'Phone, best on desktop', phoneApp(bestOnDesktop(false)), 'mobile');
 add('phone-3-shared-link', 'Phone, a shared link', phoneApp(bestOnDesktop(true)), 'mobile');
 add('phone-4-link-field', 'Phone, the link to copy by hand', phoneApp(bestOnDesktop(false, true)), 'mobile');
+add('phone-5-too-long', 'Phone, code too long for a link', phoneApp(bestOnDesktop(false, false, 'This code is too long to share as a link, so the code itself was copied.')), 'mobile');
 
 for (const s of states) fs.writeFileSync(path.join(here, `${s.file}.html`), s.html);
 console.log(`Wrote ${states.length} pages`);
