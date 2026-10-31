@@ -27,6 +27,27 @@ vi.setConfig({ testTimeout: 240_000 });
 
 const SCREEN = '.terminal .terminal-screen';
 
+// T370: `tree`'s line art, which the Terminal's font files don't hold, takes a
+// cell each, at the zooms FR-035 sets, and copies as it printed.
+describe('006-terminal-FR-068: line art at the cell’s width', () => {
+  test('each of tree’s characters is as wide as a letter', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, 'tree work');
+    const widths = await page.locator(`${SCREEN} .out-cell`).evaluateAll((cells) => cells.map((cell) => [cell.textContent, cell.getBoundingClientRect().width]));
+    const letter = await page.evaluate((screen) => {
+      const probe = document.createElement('span');
+      probe.textContent = '0';
+      probe.className = 'out-stream';
+      document.querySelector(screen)!.append(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
+      return width;
+    }, SCREEN);
+    expect(widths.length).toBeGreaterThan(0);
+    for (const [, width] of widths) expect(Math.abs((width as number) - letter)).toBeLessThan(0.5);
+  });
+});
+
 // The starter controls before the prompt.
 const starter = (page: Page) => page.locator('.terminal .starter');
 

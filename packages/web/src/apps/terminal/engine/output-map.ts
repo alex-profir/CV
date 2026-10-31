@@ -6,7 +6,7 @@
 import { fill } from '../../../site-text.ts';
 import type { SiteText } from '../../../site-text.ts';
 import { announce, counted, rows } from './announce.ts';
-import { command, line, plainText, text } from './block.ts';
+import { command, line, pathLine, plainText, text } from './block.ts';
 import type { Announcement, Block, Node } from './block.ts';
 import { COMMAND_TABLE, commandNamed, pattern } from './command-table.ts';
 import { suggest } from './suggest.ts';
@@ -42,6 +42,8 @@ const lines = (value: string) => {
   return parts;
 };
 
+const LONG_RUN = 1000;
+
 const stdoutLine = (value: string): Node => line({ kind: 'text', text: value, stream: 'stdout' });
 const stderrLine = (value: string): Node => line({ kind: 'text', text: value, stream: 'stderr', tone: 'error' });
 
@@ -49,11 +51,11 @@ const stderrLine = (value: string): Node => line({ kind: 'text', text: value, st
 // `{path}` captured.
 function patternOf(template: string): RegExp {
   const escaped = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped.replace('\\{path\\}', '(.+)').replace('\\{command\\}', '\\S+ \\1')}$`);
+  return new RegExp(`^${escaped.replace('\\{path\\}', '(.+)').replace('\\{command\\}', '\\S+ .+')}$`);
 }
 
 // `{path} is a file. Try cat {path}.` with its control (FR-048).
-const tryLine = (template: string, path: string, run: string): Node => line(...pattern(fill(template, { path }), { command: command(`${run} ${path}`, 'inline', { req: 'path' }) }));
+const tryLine = (template: string, path: string, run: string): Node => line(...pattern(fill(template, { path }), { command: command(pathLine(run, path), 'inline', { req: 'path' }) }));
 
 // `{typed}: command not found. Run help to see them all, or try:` and the
 // suggestions as chips, over the site's commands only (FR-016).
@@ -114,7 +116,10 @@ export function mapOutput(result: ShownResult, typed: string, context: MapContex
   let recordedOnly = true;
   let at = 0;
   const textOut = (value: string) => {
-    for (const entry of lines(value)) {
+    const each = lines(value);
+    // A long run is one text node, which wraps and selects the same, as two
+    // elements a line hold up the page (FR-069, T313).
+    for (const entry of each.length > LONG_RUN ? [each.join('\n')] : each) {
       block.push(stdoutLine(entry));
       recordedOnly = false;
     }

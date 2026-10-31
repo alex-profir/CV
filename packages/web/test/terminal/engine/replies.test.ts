@@ -1,7 +1,8 @@
 // The Terminal's replies (contracts/commands.md Replies).
 import { describe, expect, test } from 'vitest';
 import { plainText } from '../../../src/apps/terminal/engine/block.ts';
-import { siteText } from '../../../src/site-text.ts';
+import { mapOutput } from '../../../src/apps/terminal/engine/output-map.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { contextFor, nodes, output, run, textOf } from './context.ts';
 
 const context = () => contextFor('every-field');
@@ -35,24 +36,25 @@ describe('006-terminal-FR-016: a command the Terminal does not know', () => {
 });
 
 describe('006-terminal-FR-017: a wrong argument gets the usage reply', () => {
-  test('work 2020, open alone, vim alone, help work extra and help nosuch give it on stderr with status 2', async () => {
+  test('work 2020, open alone, vim alone, help work extra give it on stderr with status 2', async () => {
     const cases: [string, string][] = [
       ['work 2020', 'work takes no arguments. Usage: work'],
       ['open', 'open takes one name, cv or about. Usage: open <name>'],
       ['vim', 'vim takes one path, or - with piped input. Usage: vim [path | -]'],
       ['help work extra', 'help takes at most one command. Usage: help [command]'],
-      ['help nosuch', 'help takes at most one command. Usage: help [command]'],
     ];
     for (const [line, reply] of cases) {
       const shown = await run(line, context());
       expect(plainText(output(shown)), line).toBe(reply);
       expect(shown.kind === 'output' && [shown.result.stderr, shown.result.status], line).toEqual([`${reply}\n`, 2]);
     }
+    const nosuch = await run('help nosuch', context());
+    expect(nosuch.kind === 'output' && [nosuch.result.stderr, nosuch.result.status]).toEqual(['help: no command is named nosuch. Run help to see them all.\n', 1]);
   });
 
   test('cat alone reads its input, as in bash, and help work shows work’s own help', async () => {
     expect(await textOf('cat', context())).toBe('');
-    expect(await textOf('help work', context())).toContain(siteText.terminal.commands.work.help);
+    expect(await textOf('help work', context())).toContain(fullText.terminal.commands.work.help);
   });
 
   test('the command is named as typed', async () => {
@@ -78,6 +80,13 @@ describe('006-terminal-FR-048: a path that is missing, or the wrong kind', () =>
       expect(commands.map((node) => node.kind === 'command' && node.line), line).toEqual(lines);
       for (const node of commands) expect(node).toMatchObject({ req: 'path' });
     }
+  });
+
+  test('a reply’s control quotes the path it names (T316)', () => {
+    const nodesOf = (stderr: string) => nodes(mapOutput({ stdout: '', stderr, recorded: [], end: 'done', state: { cwd: '/home/guest' } }, 'x', { text: fullText, columns: 80 }).block).flatMap((node) => (node.kind === 'command' ? [node.line] : []));
+    expect(nodesOf('cat: my dir: Is a directory\n')).toEqual(['ls my\\ dir']);
+    expect(nodesOf('bash: cd: a;b: Not a directory\n')).toEqual(['cat a\\;b']);
+    expect(nodesOf('-x is a folder. Try ls -- -x.\n')).toEqual(['ls -- -x']);
   });
 
   test('ls on a file lists that file alone', async () => {

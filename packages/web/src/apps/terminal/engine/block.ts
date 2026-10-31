@@ -25,7 +25,8 @@ export type JsonFold = { key: string; start: number; end: number };
 // `[No Name]` for piped text, whose `path` is null until `:w <path>` names it.
 // `readonly`: a protected file (FR-081). `new`: the path didn't exist when
 // opened, until first written (FR-080).
-export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean };
+// `blank`: one blank line, where the text alone reads as an empty file (T309).
+export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean; blank?: boolean };
 
 // Only sets a color token: the words carry the meaning (FR-031).
 export type Tone = 'primary' | 'secondary' | 'dim' | 'heading' | 'error' | 'approved' | 'draft' | 'folder';
@@ -69,7 +70,9 @@ export type Effect =
   | { kind: 'clear' }
   | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
   | { kind: 'open'; view: 'cv' | 'about' }
-  | { kind: 'clear-history' };
+  | { kind: 'clear-history' }
+  // `history -d`, by its place in the history (T372).
+  | { kind: 'delete-history'; index: number };
 
 export const text = (value: string, tone?: Tone): Node => (tone === undefined ? { kind: 'text', text: value } : { kind: 'text', text: value, tone });
 
@@ -83,6 +86,21 @@ export const link = (href: string, children: Block, external: boolean): Node => 
 
 export const time = (datetime: string, value: string, spoken?: string): Node =>
   spoken === undefined ? { kind: 'time', datetime, text: value } : { kind: 'time', datetime, text: value, spoken };
+
+// What bash puts a backslash before, outside quotes, in a name it inserts.
+export const QUOTED = /[ \t\n\\"'@<>=;|&()#$`?*[!:{]/g;
+
+// A path as one word of a command line: as Tab would write it, `~/` outside the
+// quotes, so a name is only ever a name (FR-018, T316).
+export function pathWord(path: string): string {
+  const home = path === '~' || path.startsWith('~/') ? '~' : '';
+  const rest = path.slice(home.length);
+  if (/[\x00-\x1f\x7f]/.test(rest)) return `${home}${rest.startsWith('/') ? '/' : ''}$'${rest.slice(rest.startsWith('/') ? 1 : 0).replace(/[\\']/g, '\\$&').replace(/\n/g, '\\n').replace(/\t/g, '\\t')}'`;
+  return `${home}${rest.replace(QUOTED, '\\$&').replace(/^~/, '\\~')}`;
+}
+
+// A command line running `word` on `path`.
+export const pathLine = (word: string, path: string): string => `${word} ${path.startsWith('-') ? '-- ' : ''}${pathWord(path)}`;
 
 export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls' | 'standard'; tone?: Tone } = {}): Node => ({
   kind: 'command',

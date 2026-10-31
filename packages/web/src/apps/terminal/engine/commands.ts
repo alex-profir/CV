@@ -9,7 +9,7 @@
 import type { Resume, SiteData } from '@cv/content';
 import type { SpecEntry, SpecList } from '../../../../scripts/spec-list.ts';
 import { counted, fill } from '../../../site-text.ts';
-import type { SiteText } from '../../../site-text.ts';
+import type { FullText } from '../../../shell-text.ts';
 import { blockText, command, line, link, text } from './block.ts';
 import { COMMAND_TABLE, commandNamed, pattern } from './command-table.ts';
 import type { ArgKind, CommandName } from './command-table.ts';
@@ -26,7 +26,7 @@ export { commandNamed, pattern };
 // and from the shell, the working folder, the history and which shell
 // shows the output.
 export type RunContext = {
-  text: SiteText;
+  text: FullText;
   format: Formatters;
   resume: Resume;
   siteData: SiteData;
@@ -96,12 +96,13 @@ export function helpBlock(context: RunContext): Block {
 
 // `help <name>`: a site command's usage, description and own help. The
 // shell answers for its standard commands and builtins; any other name gets
-// the usage reply (FR-017).
+// a reply that no command has that name (FR-017).
 function help(args: readonly string[], context: RunContext, word: string): SiteRun {
   if (args.length > 1) return usage(word, context, 'help');
   if (args.length === 0) return printed(helpBlock(context));
   const named = commandNamed(args[0]!);
-  if (named === null) return usage(word, context, 'help');
+  // bash's status for a name it has no help on (FR-017).
+  if (named === null) return { text: '', block: null, stderr: `${fill(context.text.terminal.replies.helpUnknown, { name: args[0]!, help: 'help' })}\n`, status: 1 };
   const own = context.text.terminal.commands[named.name];
   return printed([line(text(usageOf(context, named.name), 'primary')), line(text(own.description, 'secondary')), line(text(own.help))]);
 }
@@ -142,6 +143,8 @@ function specsBlock(context: RunContext): Block {
 // its lines (FR-058).
 // What `cv` runs, from the home folder (FR-059).
 export const CV_PIPE = 'cat cv.json | jq | vim -';
+// And with its output going anywhere but the screen (T303).
+export const CV_PRINT = 'cat cv.json | jq';
 
 function open(args: readonly string[], context: RunContext, word: string): SiteRun {
   if (args.length !== 1) return usage(word, context, 'open');

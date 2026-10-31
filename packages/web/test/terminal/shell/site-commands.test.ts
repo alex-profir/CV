@@ -2,6 +2,8 @@
 // of its block and records the block with that text; the wrappers of `cat`,
 // `ls` and `jq` record what the site adds; `vim`, `cv`, `open` and `clear`
 // return their effects.
+import { STANDARD_GROUP } from '../../../src/apps/terminal/shell/site-commands.ts';
+import { pathLine } from '../../../src/apps/terminal/engine/block.ts';
 import { describe, expect, test } from 'vitest';
 import { blockText } from '../../../src/apps/terminal/engine/block.ts';
 import { COMMANDS } from '../../../src/apps/terminal/engine/commands.ts';
@@ -11,6 +13,20 @@ import { nodes } from '../engine/context.ts';
 import { runLine, runLines, shellFor, treeFor } from './context.ts';
 
 const PRINTING = COMMANDS.filter((row) => row.run !== undefined && !['open', 'clear', 'history'].includes(row.name));
+
+// The lines a block's controls run.
+const commandLines = (block: unknown): string[] => {
+  const found: string[] = [];
+  const seek = (node: unknown) => {
+    if (Array.isArray(node)) return node.forEach(seek);
+    if (node === null || typeof node !== 'object') return;
+    const typed = node as { kind?: string; line?: string };
+    if (typed.kind === 'command' && typed.line !== undefined) found.push(typed.line);
+    Object.values(typed).forEach(seek);
+  };
+  seek(block);
+  return found;
+};
 
 describe('006-terminal-FR-008 and 006-terminal-FR-047: a site command prints its block’s text, and records it once', () => {
   test('every printing command and alias', async () => {
@@ -69,6 +85,51 @@ describe('006-terminal-FR-050: ls records a listing whose names are controls', (
     const lines = nodes(work.recorded[0]!.block).flatMap((node) => (node.kind === 'command' ? [node.line] : []));
     expect(lines.length).toBeGreaterThan(0);
     for (const entry of lines) expect(entry).toMatch(/^cat ~\/work\//);
+  });
+
+  test('a control quotes its path, so a name is only ever a name (T316)', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, `mkdir "my dir"; touch 'q;touch pwned' '$(touch sub)' -- -x`);
+    const lines = commandLines((await runLine(shell, 'ls')).recorded[0]!.block);
+    for (const line of ['ls ~/my\\ dir', 'cat ~/q\\;touch\\ pwned', 'cat ~/\\$\\(touch\\ sub\\)', 'cat ~/-x', 'cat ~/about']) expect(lines).toContain(line);
+    await runLine(shell, 'cat ~/q\\;touch\\ pwned; cat ~/\\$\\(touch\\ sub\\)');
+    expect((await runLine(shell, 'ls ~/pwned ~/sub')).stdout).toBe('');
+    expect(pathLine('ls', '-x')).toBe('ls -- -x');
+    expect(pathLine('ls', 'a\nb')).toBe("ls $'a\\nb'");
+    expect(pathLine('cat', '~')).toBe('cat ~');
+  });
+
+  test('ls draws its names as controls with its other options, each line GNU’s text (T327)', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'mkdir a; touch a/f .h');
+    for (const [line, expected] of [
+      ['ls -a', ['ls ~/a', 'cat ~/about', 'cat ~/.h']],
+      ['ls -F', ['ls ~/a', 'cat ~/about']],
+      ['ls -1', ['ls ~/a', 'cat ~/about']],
+      ['ls -R a', ['cat ~/a/f']],
+      ['ls -d ~/about', ['cat ~/about']],
+      ['ls a about', ['cat ~/about', 'cat ~/a/f']],
+      ['ls -lR a', ['cat ~/a/f']],
+      ['ls -l a about', ['cat ~/about', 'cat ~/a/f']],
+    ] as const) {
+      const run = await runLine(shell, line);
+      expect(run.recorded, line).toHaveLength(1);
+      expect(run.recorded[0]!.text, line).toBe(run.stdout);
+      expect(commandLines(run.recorded[0]!.block), line).toEqual(expect.arrayContaining([...expected]));
+    }
+    expect(commandLines((await runLine(shell, 'ls -a')).recorded[0]!.block)).not.toContain('ls ~/.');
+  });
+
+  test('ls takes --color, -p, -C and -m, and lists them in its help; -l’s columns are as wide as the widest (T329)', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'ls --color=auto')).stdout).toBe((await runLine(shell, 'ls')).stdout);
+    expect((await runLine(shell, 'ls -p work | wc -l')).status).toBe(0);
+    expect((await runLine(shell, 'ls -p')).stdout).toContain('work/\n');
+    expect((await runLine(shell, 'ls -m')).stdout).toMatch(/^about, contact, /);
+    expect((await runLine(shell, 'ls -C')).stdout).toMatch(/^about\t cv\.json/);
+    for (const option of ['--color', '-p', '-C', '-m']) expect((await runLine(shell, 'ls --help')).stdout).toContain(option);
+    expect((await runLine(shell, "ls -l about | cut -d' ' -f5")).stdout).toMatch(/^\d+\n$/);
+    expect((await runLine(shell, 'ls -ld work')).stdout).toMatch(/^dr-xr-xr-x \d+ root root 4096 /);
   });
 
   test('ls | cat records nothing', async () => {
@@ -172,5 +233,78 @@ describe('006-terminal-FR-017 and 006-terminal-FR-020: usage replies and the his
     expect(results[3]!.stdout).toBe('3  history\n4  history 2\n');
     expect(results[4]!.effects).toEqual([{ kind: 'clear-history' }]);
     expect(results[5]!.stdout).toBe('1  history\n');
+  });
+});
+
+describe('006-terminal-FR-057: cv and clear where their output doesn’t reach the screen (T303)', () => {
+  test.each(['cv | head -1', 'cv | wc -l', 'x=$(cv); echo "$x" | head -1', 'cv > out; head -1 out', 'cv >> out2; head -1 out2', '{ cv; } | head -1'])('%s prints the JSON and opens no view', async (line) => {
+    const result = await runLine(shellFor('every-field'), line);
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toBe('');
+    expect(result.effects).toEqual([]);
+  });
+
+  test('the JSON is cv.json, pretty-printed; cv alone is the view', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'cv | wc -l')).stdout).toBe((await runLine(shell, 'jq . cv.json | wc -l')).stdout);
+    expect((await runLine(shell, 'cv')).effects).toMatchObject([{ kind: 'vim' }]);
+  });
+
+  test.each(['clear | wc -l', 'clear > f', 'x=$(clear)'])('%s leaves the screen as it was', async (line) => {
+    expect((await runLine(shellFor('every-field'), line)).effects).toEqual([]);
+  });
+
+  test('clear in a line keeps only what comes after it', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'echo one; clear; echo two')).toMatchObject({ stdout: 'two\n', effects: [{ kind: 'clear' }] });
+    expect(await runLine(shell, 'echo one; clear')).toMatchObject({ stdout: '', effects: [{ kind: 'clear' }] });
+    const listed = await runLine(shell, 'work; clear; ls');
+    expect(listed.recorded).toHaveLength(1);
+    expect(listed.stdout).toBe(listed.recorded[0]!.text);
+  });
+
+  // T330.
+  test.each(['rm -f about', 'rm -fv about', 'rm --force about', 'rm -f ~/about'])('%s refuses a protected file, and the file stays', async (line) => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, line);
+    expect(result.stderr).toMatch(/^rm: cannot remove '.*about': Permission denied\n$/);
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'cat about')).status).toBe(0);
+  });
+
+  test.each(['rm -f nope', 'rm -f work/nope', 'rm -f about/x', 'rm -f'])('%s is silent with status 0', async (line) => {
+    const result = await runLine(shellFor('every-field'), line);
+    expect(result).toMatchObject({ stdout: '', stderr: '', status: 0 });
+  });
+
+  test('rm -f removes what it can and says why it left the rest', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'touch mine');
+    const result = await runLine(shell, 'rm -f mine about nope');
+    expect(result.stderr).toBe("rm: cannot remove 'about': Permission denied\n");
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'cat mine')).status).not.toBe(0);
+  });
+
+  // T340, from tree 2.3.2.
+  test('tree -f names a path as given, and -L takes a positive number', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'tree -f')).stdout).toContain('── ./about\n');
+    expect((await runLine(shell, 'tree -f work')).stdout).toMatch(/── work\/[^/\n]+\n/);
+    expect((await runLine(shell, 'tree -f')).stdout).not.toContain('/home/guest');
+    for (const line of ['tree -L x', 'tree -L 0']) expect(await runLine(shell, line)).toMatchObject({ stdout: '', stderr: 'tree: Invalid level, must be greater than 0.\n', status: 1 });
+    expect(await runLine(shell, 'tree -L')).toMatchObject({ stderr: 'tree: Missing argument to -L option.\n', status: 1 });
+  });
+});
+
+describe('006-terminal-FR-008: every name in help’s standard group has its help (T389)', () => {
+  test.each(STANDARD_GROUP)('help %s', async (name) => {
+    const result = await runLine(shellFor('every-field'), `help ${name}`);
+    expect(result.stdout.trim()).not.toBe('');
+    expect(result.status).toBe(0);
+  });
+
+  test('echo --help stays as bash has it', async () => {
+    expect((await runLine(shellFor('every-field'), 'echo --help')).stdout).toBe('--help\n');
   });
 });

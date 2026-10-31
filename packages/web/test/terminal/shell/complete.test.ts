@@ -17,6 +17,17 @@ async function tab(line: string, cursor = line.length) {
 const names = async (line: string) => (await completeLine(shell, line)).matches.map((match) => match.name);
 
 describe('006-terminal-FR-076: what Tab inserts, as bash’s readline does', () => {
+  // T371, from a real bash on a terminal.
+  test('`${name` completes names, closed as bash closes them', async () => {
+    await runLine(shell, 'f1=1; f2=2; fone=1');
+    expect(await tab('echo ${f')).toBe('echo ${f');
+    expect(await names('echo ${f')).toEqual(['${f1}', '${f2}', '${fone}']);
+    expect(await tab('echo ${fo')).toBe('echo ${fone} ');
+    expect(await tab('echo "${fo')).toBe('echo "${fone}" ');
+    expect(await tab('echo ${HOM')).toBe('echo ${HOME');
+    expect(await tab('{ gre')).toBe('{ grep ');
+  });
+
   test.each([
     ['one file: completed, then a space', 'cat cv', 'cat cv.json '],
     ['a folder gets / and no space', 'cd wo', 'cd work/'],
@@ -33,8 +44,10 @@ describe('006-terminal-FR-076: what Tab inserts, as bash’s readline does', () 
     ['after &&', 'ls && wc', 'ls && wc '],
     ['after ||', 'ls || wc', 'ls || wc '],
     ['after (', '(wc', '(wc '],
-    ['after then', 'if true; then wc', 'if true; then wc '],
-    ['after do', 'for x in a; do wc', 'for x in a; do wc '],
+    ['after then, files, not commands (T393)', 'if true; then wc', 'if true; then wc'],
+    ['after do, files, not commands (T393)', 'for x in a; do wc', 'for x in a; do wc'],
+    ['a word that starts with { is no command (T393)', 'ls {a', 'ls {a'],
+    ['{ alone starts a command (T393)', '{ wc', '{ wc '],
     ['no match changes nothing', 'xyz', 'xyz'],
     ['a command and the folder of its name: no mark', 'wo', 'work'],
   ])('%s: %s', async (_rule, typed, expected) => {

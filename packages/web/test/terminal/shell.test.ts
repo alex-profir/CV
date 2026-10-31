@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Locator, Page } from 'playwright';
 import { resume } from '@cv/content';
 import { LANGUAGE_CASES, runLines, shellFor } from './shell/context.ts';
+import { siteText } from '../../src/site-text.ts';
 import { resize, settle } from '../helpers/shell.ts';
 import { openTerminal, openTerminalPage, runGroup, typeLine } from '../helpers/terminal.ts';
 import type { TerminalShell } from '../helpers/terminal.ts';
@@ -93,6 +94,29 @@ describe.each<TerminalShell>(['desktop', 'mobile'])('006-terminal-FR-049, 006-te
     expect(await shownLines(await runGroup(page, 'mv work jobs'))).toEqual(["mv: cannot move 'work' to 'jobs': Permission denied"]);
     expect(await shownLines(await runGroup(page, 'echo hi > cv.json'))).toEqual(['bash: cv.json: Permission denied']);
     expect(await runAll(page, ['cat about', 'ls work', 'cat cv.json'])).toEqual(before);
+  });
+
+  test('006-terminal-FR-021 and 006-terminal-FR-073: a refused redirect or a line that fails inside the shell keeps the Terminal open', async () => {
+    const page = await openTerminalPage(shell);
+    await runGroup(page, 'touch keep');
+    expect(await shownLines(await runGroup(page, 'f=about; echo x > $f'))).toEqual(['bash: about: Permission denied']);
+    expect(await shownLines(await runGroup(page, 'seq 300000 > big'))).toEqual(['bash: big: No space left on device']);
+    expect(await shownLines(await runGroup(page, 'eval "echo x > about"'))).toEqual(['bash: about: Permission denied']);
+    expect(await shownLines(await runGroup(page, 'x=$(seq 200000); echo ${#x}'))).toEqual(['1288894']);
+    expect(await shownLines(await runGroup(page, 'unset x; wc -c < keep'))).toEqual(['0']);
+  });
+
+  test('006-terminal-FR-021 and 006-terminal-FR-069: recursion, PATH= and set -u errors keep the Terminal and its files', async () => {
+    const page = await openTerminalPage(shell);
+    await runGroup(page, 'touch keep');
+    const stopped = await shownLines(await runGroup(page, ':(){ :|:& };:'));
+    expect(stopped).toEqual([siteText.terminal.replies.stopped.commands]);
+    expect(await shownLines(await runGroup(page, 'set -u; echo $nope; echo more'))).toEqual(['bash: nope: unbound variable']);
+    expect(await shownLines(await runGroup(page, 'set +u; echo ${nope:?boom}; echo more'))).toEqual(['bash: nope: boom']);
+    expect(await shownLines(await runGroup(page, 'readonly q=1; q=2; echo more'))).toEqual(['bash: q: readonly variable']);
+    await runGroup(page, 'PATH=');
+    expect((await shownLines(await runGroup(page, 'ls keep')))[0]).toContain('ls: command not found');
+    expect(await shownLines(await runGroup(page, 'PATH=/usr/bin:/bin; wc -c < keep'))).toEqual(['0']);
   });
 
   test('006-terminal-FR-073 and 006-terminal-FR-021: US3 scenario 10, the visitor’s folder, gone after closing', async () => {

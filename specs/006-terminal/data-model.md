@@ -418,19 +418,24 @@ run (research R27).
 ```ts
 type ShellState = {
   cwd: string;                                  // '/home/guest' on opening (FR-046)
-  variables: Readonly<Record<string, string>>;  // shell variables, without the shell's own (PWD, IFS…)
+  variables: Readonly<Record<string, string>>;  // those differing from a fresh shell's, without its own (PWD, LINENO…)
   exported: readonly string[];                  // which of them are exported
   functions: Readonly<Record<string, string>>;  // name → its definition, serialized (research R27)
   options: readonly ShellOption[];              // set -o options that are on
   status: number;                               // $? after the last line
+  unset: readonly string[];                     // variables of a fresh shell the visitor unset
+  declarations: readonly string[];              // declare -p's line for arrays and attributes (research R27)
+  positional: readonly string[];                // $1, $2…
+  shopts: readonly string[];                    // shopt settings that are on
 };
-type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace';
+type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport';
 ```
 
 **Rules**: a variable name matches `[A-Za-z_][A-Za-z0-9_]*`. A function is kept only while
-`declare -F` lists it after a line. `HOME`, `USER`, `LOGNAME` and `SHELL` are set by the adapter,
-not carried. The initial state is `{ cwd: '/home/guest', variables: {}, exported: [],
-functions: {}, options: [], status: 0 }`.
+`declare -F` lists it after a line. `HOME`, `USER`, `LOGNAME` and `SHELL` start as the adapter sets
+them, and are carried once changed. The initial state is `{ cwd: '/home/guest', variables: {},
+exported: [], functions: {}, options: [], status: 0, unset: [], declarations: [], positional: [],
+shopts: [] }`.
 
 ## Terminal file system (FR-045, FR-049, FR-073)
 
@@ -512,7 +517,7 @@ Added while building (2026-10-29): `Effect` is declared in `engine/block.ts` and
 
 **Rules**: `recorded[i].text` is exactly what the command wrote to its stdout. A `Recorded` is made
 only by the site's own commands and wrappers, never from typed or piped text (FR-018). `exited`
-means the epilogue didn't run and no limit stopped the line: the interface does what `exit` does
+means the last checkpoint didn't run and no limit stopped the line: the interface does what `exit` does
 (FR-008).
 
 ## Site command run

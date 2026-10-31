@@ -54,6 +54,9 @@ export type Session = {
   // The entry the vim view adds when it quits, so its output follows its
   // prompt (FR-064).
   vimEntry: Entry | null;
+  // The views waiting for this one to close (T311, research R47): each `vim`
+  // of a line, or of a line that waited behind the view.
+  vimQueue: readonly { source: VimSource; entry: Entry | null }[];
   // What the status region says, with a counter so the same words are
   // spoken again (FR-028).
   announcement: { text: string; id: number } | null;
@@ -81,6 +84,7 @@ const EMPTY: Session = {
   shellScroll: {},
   vim: null,
   vimEntry: null,
+  vimQueue: [],
   announcement: null,
   starter: true,
   shell: 'idle',
@@ -100,7 +104,7 @@ export function announcementText(announce: Announcement): string {
 }
 
 // A buffer's lines as vim counts them: none in an empty file.
-const lineCount = (source: VimSource) => (source.text === '' ? 0 : source.text.split('\n').length);
+const lineCount = (source: VimSource) => (source.text === '' && source.file.blank !== true ? 0 : source.text.split('\n').length);
 
 // What opening the vim view says (FR-065).
 function openedText(source: VimSource): string {
@@ -178,12 +182,24 @@ export function createSession(client: ShellClient = createShellClient()) {
       announcement: 'full' in announce && announce.full === '' ? state.announcement : say(announcementText(announce)),
     };
     const acts: (() => void)[] = [];
+    // What the line printed after its last `clear` stays (T298).
+    const shown = block.length > 0 ? [done] : [];
+    const views = (result.effects as Effect[]).filter((effect) => effect.kind === 'vim');
     for (const effect of result.effects as Effect[]) {
-      if (effect.kind === 'clear') next = { ...next, entries: [], starter: false, scrollTop: 0, shellScroll: {}, announcement: say(siteText.terminal.announce.cleared) };
+      if (effect.kind === 'clear') {
+        const words = siteText.terminal.announce.cleared;
+        const spoken = block.length > 0 ? `${words} ${announcementText(announce)}` : words;
+        next = { ...next, entries: shown, starter: false, scrollTop: 0, shellScroll: {}, announcement: say(spoken) };
+      }
       else if (effect.kind === 'clear-history') next = { ...next, history: next.history.slice(waiting.history.length) };
+      else if (effect.kind === 'delete-history') next = { ...next, history: next.history.toSpliced(effect.index, 1) };
       else if (effect.kind === 'vim') {
         const source: VimSource = { file: effect.file, pipe: effect.pipe, text: effect.text, type: effect.type };
-        next = { ...next, entries: next.entries.filter((shown) => shown !== done), vim: openVim(source), vimEntry: done, announcement: say(openedText(source)) };
+        // The line's entry goes with its last view, after what it printed.
+        const owner = effect === views.at(-1) ? done : null;
+        next = { ...next, entries: next.entries.filter((each) => each !== done) };
+        if (next.vim === null) next = { ...next, vim: openVim(source), vimEntry: owner, announcement: say(openedText(source)) };
+        else next = { ...next, vimQueue: [...next.vimQueue, { source, entry: owner }] };
       } else if (waiting.actions !== null) {
         const { actions } = waiting;
         acts.push(() => actions.open(effect.view));
@@ -262,22 +278,28 @@ export function createSession(client: ShellClient = createShellClient()) {
   }
 
   // Ctrl+C with nothing selected (FR-075, research R33): stops the running
-  // line, which ends with the "stopped" Ctrl+C line; else ends the typed
-  // line with `^C`, not added to the history, and empties the draft.
+  // line, which ends with the "stopped" Ctrl+C line, and drops the lines
+  // waiting, as a terminal's interrupt discards what's waiting (T308); else
+  // ends the typed line with `^C`, not added to the history, and empties the
+  // draft.
   function cancel() {
     if (state.vim !== null) return;
-    if (state.running !== null) {
-      if (state.running.cancelled === true) return;
-      set({ ...state, running: { ...state.running, cancelled: true } });
-      client.cancel();
+    const waited = queue.length > 0;
+    queue = queue.map((each) => ({ ...each, entry: { ...each.entry, block: [], cancelled: true } }));
+    const waiting = queue.map((each) => each.entry);
+    const { running } = state;
+    if (running !== null) {
+      set({ ...state, running: { ...running, cancelled: true }, waiting });
+      if (running.cancelled !== true) client.cancel();
       return;
     }
     const typed: Entry = { ...entry(state.draft), block: [], cancelled: true };
     const announcement = say(siteText.terminal.announce.cancelled);
-    // Lines still wait for the shell: it follows them, as typed.
-    if (queue.length > 0) {
-      queue = [...queue, { entry: typed, shell: 'desktop', actions: null, history: state.history }];
+    if (waited) {
+      // A typed line takes its place after the lines it drops, as typed.
+      if (state.draft !== '') queue = [...queue, { entry: typed, shell: 'desktop', actions: null, history: state.history }];
       set({ ...state, waiting: queue.map((each) => each.entry), draft: '', stepping: null, announcement });
+      pump();
       return;
     }
     set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement });
@@ -317,7 +339,10 @@ export function createSession(client: ShellClient = createShellClient()) {
     if (state.vim === null) return;
     const next = vimReducer(state.vim, input);
     if (next === 'quit') {
-      set({ ...state, vim: null, vimEntry: null, entries: state.vimEntry === null ? state.entries : [...state.entries, state.vimEntry] });
+      const entries = state.vimEntry === null ? state.entries : [...state.entries, state.vimEntry];
+      const [following, ...rest] = state.vimQueue;
+      if (following === undefined) set({ ...state, vim: null, vimEntry: null, entries });
+      else set({ ...state, vim: openVim(following.source), vimEntry: following.entry, vimQueue: rest, entries, announcement: say(openedText(following.source)) });
       return;
     }
     if ('write' in next) {

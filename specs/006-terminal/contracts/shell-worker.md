@@ -10,7 +10,7 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | `src/apps/terminal/shell-client.ts` | the page, in the `os` script | Starts the worker on first open, queues lines, the watchdog, Ctrl+C, restarts, `reset` |
 | `src/apps/terminal/shell/worker.ts` | the worker | The entry: imports `no-network.ts` first, creates the adapter, answers messages |
 | `src/apps/terminal/shell/no-network.ts` | the worker | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` with functions that throw, before just-bash's module body runs (research R39) |
-| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect guard, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
+| `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect check, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
 | `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
 | `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS`, and from 2026-10-30 `SHELL_KEYWORDS` (research R32, R43) |
@@ -67,16 +67,16 @@ new Bash({
   cwd: '/home/guest',
   env: { HOME: '/home/guest', USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash' },
   commands: STANDARD_COMMANDS,          // research R32
-  customCommands: [...siteCommands, cvState],             // research R27, R28, R29
-  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + preludeLines,
+  customCommands: [...siteCommands, ...adapterCommands],  // research R27, R28, R29
+  executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + overhead, maxCallDepth: 20000,
                      maxOutputSize: 4 * 1048576,            // LIMITS.pipe, research R33
                      maxLoopIterations: 1_000_000_000 },   // research R33, G15
 });
-// then registerTransformPlugin(sitePlugin) and registerTransformPlugin(guardPlugin(fs, cwd))
+// then registerTransformPlugin for the line's tree (R27), sitePlugin, redirectPlugin and the checkpoints
 // no network, fetch, python or javascript option (research R39)
 ```
 
-`__cv_state` and `__cv_denied` are the adapter's own commands. `help` doesn't list them, and a line
+`__cv_begin`, `__cv_read`, `__cv_end`, `__cv_wrote` and the other `__cv_*` names are the adapter's own commands. `help` doesn't list them, and a line
 that names them gets "command not found" (the adapter refuses a line whose words name them).
 
 ## Build

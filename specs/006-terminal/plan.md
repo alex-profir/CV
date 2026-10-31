@@ -59,7 +59,7 @@ Technical approach (details in [research.md](./research.md)):
   service worker keeps the version an open page came from, so the shell still loads after an
   update (R35).
 - **State carried by an adapter** (R27): just-bash resets variables, functions and the working
-  folder after each run, so the adapter wraps each line in a prelude and an epilogue and carries
+  folder after each run, so the adapter wraps each line in a prelude and a checkpoint and carries
   them, with function bodies from just-bash's own parser.
 - **The Terminal's file system** (R28): the CV and spec files are protected (`Permission denied`,
   owned by `root`), the visitor writes anywhere else up to 1 MB, and everything is gone when the
@@ -366,6 +366,7 @@ amendment's, which adds no dependency.
 | On-screen keyboard detection (`useOnScreenKeyboard.ts`) | abstraction | FR-053's room for the keyboard, from `visualViewport` (R15) | The `interactive-widget` viewport meta: Safari ignores it | N/A |
 | Terminal test helper (`packages/web/test/helpers/terminal.ts`) | abstraction (tests only) | Opens the Terminal, types a line, waits for its result and reads it, now also waiting for the shell to be ready | Repeating those steps in about thirty test files | N/A |
 | Site check part `terminal` and `terminalFields` | abstraction | FR-040's check, with the amendment's lines (R20, R41) | Folding it into `cv-app`: a different app | N/A |
+| The site's own `jq` (`shell/jq.ts`) | abstraction | FR-056: jq's language and options, lazily, as just-bash's differs where no wrapper reaches (R53, G39) | Accepting the differences, or a WebAssembly build of jq: the owner chose the site's own, and no dependency is added | N/A |
 | `just-bash` 3.6.0 | dependency | FR-067's language and FR-068's commands, with a pluggable file system, custom commands, limits, and no network or other language, in the browser (R25) | The Terminal's own parser grown into bash, with `sed`, `awk` and `jq`: each larger than the Terminal. Real bash in WebAssembly: real programs and MBs. ShellJS: Node only | Yes: Vercel Labs |
 | Shell worker and its client (`shell/worker.ts`, `shell-client.ts`, `shell/protocol.ts`) | abstraction | Runs the shell off the page's thread, so a runaway line never freezes it, and loads it only when the Terminal opens (R26, R34, FR-069, FR-070) | The shell on the main thread: freezes the page for up to 5 s, as measured. A dynamic `import()`: the same freeze | N/A |
 | Network lock (`shell/no-network.ts`) | abstraction | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` before just-bash's module body runs (R39, FR-022) | Doing it in `worker.ts`'s body: ES imports are hoisted, so just-bash would already be evaluated | N/A |
@@ -374,7 +375,7 @@ amendment's, which adds no dependency.
 | Site commands and wrappers (`shell/site-commands.ts`) | abstraction | The FR-008 commands as shell commands that print text and record their blocks, except where the adapter marks them piped (`__CV_PIPED`); `cat`, `ls`, `rm` and `jq` wrapped for blocks, owners and protected `rm -r` (R29); `sed`, `tee`, `cp` and `mv` wrapped so a refused write gives GNU's wording, naming the path as typed (G5, G19, G20) | Telling commands whether output is a terminal, with no output match: decided at parse time, wrong for functions. Escape sequences: forgeable with `printf` | N/A |
 | Output mapping (`engine/output-map.ts`) | abstraction | A run's result to the shown block: recordings, text, bash's messages with the site's replies, limits, announcements (R30) | Mapping inside the renderer: untestable in Node | N/A |
 | `STANDARD_COMMANDS` and `SHELL_BUILTINS` (`shell/standard.ts`) | abstraction | The one list just-bash registers and `help` lists, so no command is missing from `help`, and each left-out name has a reason (R32) | All of just-bash's commands: the network, other languages and scripts | N/A |
-| Redirect guard plugin (in `shell/adapter.ts`) | abstraction (temporary) | Refuses a redirect to a protected path before the line runs, until just-bash's G1 fix is released (R28) | Nothing: a refused redirect rejects the whole line and loses its output. Deleted once the fix ships | N/A |
+| Redirect check plugin (in `shell/adapter.ts`, with its part in `shell/fs.ts`) | abstraction (temporary) | Checks each output redirect's target as its command runs, and fails only that command on a refusal or a write past 1 MB, until just-bash's G1 fix is released (R28) | Nothing: a refused redirect rejects the whole line and loses its output. Deleted once the fix ships | N/A |
 | Kept caches in the service worker (`src/sw/service-worker.ts`) | abstraction | A page from an older version can still load its shell file (R35, FR-070) | Deleting old caches at once: strands the page. Mixing files into the new cache: against 004 FR-039 | N/A |
 | Linux key sender (`pressLinux`, `asLinux` in `tools/site-check/src/parts/keyboard.ts`) | abstraction (check only) | Playwright gives a key the editing command of the machine it runs on, so on a Mac FR-074's Linux keys (Home, End, Ctrl+Left…) do nothing in a field; the sender gives them Linux's editing command through CDP there, and presses them plainly elsewhere, with the page reporting Linux (FR-039) | Skipping the steps on a Mac: the local full run is the merge gate, and would never check them | N/A |
 | Worker license file (`scripts/shell-licenses.ts`) | abstraction (build only) | A Vite plugin of the worker build that writes `assets/shell-licenses-<hash>.txt` from each bundled package's `package.json` and `LICENSE`, and puts the comment naming it at the top of the worker file (R40); it reads the worker chunk's modules and the license list just-bash's browser build carries for what it inlined (`re2js`, `ieee754`) | A hand-kept list in `build-site.ts`: misses what just-bash inlines, and goes stale on an update | N/A |
@@ -499,7 +500,7 @@ move it, as the spec's Assumptions say of the file system.
 None. Every Constitution Check row is Pass, and no exception is needed, for either amendment. The design gate for the
 amendment's UI tasks is a prerequisite recorded for `tasks.md`, not an exception. The hand-written
 token export is allowed by the constitution's interim provision on local mockups. The redirect
-guard plugin is temporary and listed above with its reason and its end. The four differences
+check plugin is temporary and listed above with its reason and its end. The four differences
 from bash that just-bash's gaps cause (research G3, G5, G11, G12) are allowed by spec FR-068, not
 exceptions here. For `/speckit-tasks`: the 2026-10-30 amendment's tasks are a new phase in
 `tasks.md` (Constitution XI); earlier tasks it overturns (the read-only vim messages, Tab always

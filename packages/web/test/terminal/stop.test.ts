@@ -65,6 +65,18 @@ describe('006-terminal-FR-069: a line is stopped at 5 s and the page keeps answe
     expect(await page.evaluate(() => document.querySelector('.terminal section.run:last-of-type')!.nextElementSibling?.matches('form.prompt-line'))).toBe(true);
   });
 
+  test('a loop inside awk or sed, which the shell’s clock can’t reach, ends in the time line with the page answering (T315)', async () => {
+    const page = await runawayTerminal();
+    for (const line of ["awk 'BEGIN{while(1);}'", "printf 'a\\n' | sed ':a;ba'"]) {
+      const start = Date.now();
+      await page.locator(COMMAND_LINE).fill(line);
+      await page.keyboard.press('Enter');
+      await expect.poll(() => busy(page), { timeout: 15_000 }).toBe(0);
+      expect(Date.now() - start, line).toBeLessThan(12_000);
+      expect(await page.locator('section.run').last().innerText(), line).toContain(siteText.terminal.replies.stopped.time);
+    }
+  });
+
   test('a worker that never answers is ended after 6 s and started again, keeping a variable and a visitor’s file', async () => {
     const page = await runawayTerminal();
     await runGroup(page, 'KEPT=yes; mkdir mine');
@@ -130,5 +142,23 @@ describe('006-terminal-FR-075: Ctrl+C', () => {
     });
     expect(prevented).toBe(false);
     expect(await page.locator(COMMAND_LINE).inputValue()).toBe('abc');
+  });
+});
+
+describe('006-terminal-FR-075: Ctrl+C drops what waits behind the running line', () => {
+  test('the line stops, the one behind it shows ^C and never runs', async () => {
+    const page = await runawayTerminal();
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('while :; do :; done');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => busy(page)).toBe(1);
+    await page.keyboard.type('echo behind-ran');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => busy(page)).toBe(2);
+    await page.keyboard.press('Control+C');
+    await expect.poll(() => busy(page)).toBe(0);
+    expect(await page.locator('.terminal section.run').count()).toBe(2);
+    expect(await page.locator('.terminal section.run').nth(1).locator('.run-cancel').count()).toBe(1);
+    expect(await page.locator('.terminal section.run').nth(1).locator('.run-output').count()).toBe(0);
   });
 });

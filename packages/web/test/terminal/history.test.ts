@@ -68,4 +68,13 @@ describe('006-terminal-FR-020: history takes a count, and -c empties it', () => 
     await runGroup(page, 'history -c');
     expect((await historyRows(page)).map((row) => row.line)).toEqual(['history']);
   });
+
+  // T372.
+  test('history -d takes that entry out', async () => {
+    const page = await openTerminalPage('desktop');
+    for (const line of ['about', 'work']) await runGroup(page, line);
+    await runGroup(page, 'history -d 1');
+    const rows = await runGroup(page, 'history');
+    expect(await rows.locator('.run-output li').allTextContents()).toEqual(['1  work', '2  history -d 1', '3  history']);
+  });
 });

@@ -100,7 +100,7 @@ describe('006-terminal-FR-057 and 006-terminal-FR-067: syntax errors, streams an
   test('a syntax error is shown without bash: and its line number', async () => {
     const shell = shellFor('every-field');
     expect(plainText(mapOutput(await runLine(shell, 'echo "a'), 'echo "a', CONTEXT).block)).toBe("unexpected EOF while looking for matching `\"'");
-    expect(plainText(mapOutput(await runLine(shell, 'ls |'), 'ls |', CONTEXT).block)).toBe("syntax error near unexpected token `|'");
+    expect(plainText(mapOutput(await runLine(shell, 'ls |'), 'ls |', CONTEXT).block)).toBe('syntax error: unexpected end of file');
   });
 
   test('stdout first, then stderr in the error tone (research G3)', async () => {

@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { blockText } from '../../../src/apps/terminal/engine/block.ts';
 import type { Block, Node } from '../../../src/apps/terminal/engine/block.ts';
 import { siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { blockOf, contextFor, nodes } from './context.ts';
 
 const PRINTING = ['about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact', 'help', 'specs', 'site'] as const;
@@ -75,6 +76,6 @@ describe('006-terminal-FR-047 and 006-terminal-FR-057: blockText gives a blockâ€
 
   test('on the empty-sections fixture, an empty section is its one line', async () => {
     const context = contextFor('empty-sections');
-    expect(blockText(await blockOf('interests', context))).toBe(siteText.terminal.replies.emptySection.replace('{section}', siteText.sections.interests.toLowerCase()));
+    expect(blockText(await blockOf('interests', context))).toBe(fullText.terminal.replies.emptySection.replace('{section}', siteText.sections.interests.toLowerCase()));
   });
 });

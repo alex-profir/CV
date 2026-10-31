@@ -231,6 +231,40 @@ describe('006-terminal-FR-079: editing', () => {
     expect(fresh.redo).toEqual([]);
   });
 
+  // T375, each from a real vim on a terminal, where each key is its own change.
+  test.each([
+    ['dd', 'j', 'dd', 'u', 'redo', 1, 0],
+    ['dd', 'G', 'dd', 'u', 'redo', 4, 0],
+    ['3dd', 'u', 'redo', 0, 0],
+    ['j', 'A', 'x', 'Escape', 'u', 'redo', 1, 13],
+    ['j', 'A', 'x', 'Escape', 'u', 1, 12],
+    ['j', 'a', 'x', 'Escape', 'u', 1, 1],
+    ['j', 'a', 'x', 'Escape', 'u', 'redo', 1, 1],
+    ['j', 'w', 'c', 'w', 'z', 'z', 'Escape', 'u', 'redo', 1, 5],
+    ['G', 'o', 'x', 'Escape', 'u', 'redo', 6, 0],
+    ['j', 'O', 'x', 'Escape', 'u', 'redo', 1, 0],
+  ] as const)('undo and redo come back to where the change began: %s %s %s', (...steps) => {
+    const column = steps.at(-1) as number;
+    const line = steps.at(-2) as number;
+    let next = open('one two three\nfour five six\n\n  seven eight\nnine ten\neleven\ntwelve thirteen');
+    for (const step of steps.slice(0, -2) as string[]) {
+      if (step === 'redo') next = inputs(next, { key: 'r', ctrl: true });
+      else if (step === 'Escape') next = inputs(next, { key: 'Escape' });
+      else if (next.mode === 'insert') next = inputs(next, { text: step });
+      else next = keys(next, step);
+    }
+    expect(next.cursor).toEqual({ line, column });
+  });
+
+  test('{ with a count past the paragraphs stays, as } does', () => {
+    const text = open('one\n\ntwo\n\nthree');
+    const end = keys(text, 'G');
+    expect(keys(end, '{').cursor.line).toBe(3);
+    expect(keys(end, '2{').cursor.line).toBe(1);
+    expect(keys(end, '3{').cursor.line).toBe(0);
+    expect(keys(end, '4{').cursor.line).toBe(4);
+  });
+
   test('at most 1,000 undo steps are kept', () => {
     let e = open('a'.repeat(1100));
     for (let times = 0; times < 1100; times += 1) e = keys(e, 'x');
@@ -272,7 +306,7 @@ describe('006-terminal-FR-080: writing', () => {
   };
 
   test(':w, :w path, :w! path, :wq, :x and ZZ give { write, then }', () => {
-    expect(writeOf(command(changed, 'w'))).toMatchObject({ write: { path: FILE.path, text: '', force: true }, then: 'stay' });
+    expect(writeOf(command(changed, 'w'))).toMatchObject({ write: { path: FILE.path, text: '\n', force: true }, then: 'stay' });
     const typed = inputs(keys(open('a'), 'A'), { text: 'b' }, Esc);
     expect(writeOf(command(typed, 'w')).write.text).toBe('ab\n');
     expect(writeOf(command(typed, 'w other'))).toMatchObject({ write: { path: 'other', force: false }, then: 'stay' });
@@ -383,5 +417,171 @@ describe('006-terminal-FR-064 and 006-terminal-FR-061: the help split, and leavi
 
   test('lineText reads the buffer', () => {
     expect(lineText(open('a\nb'), 1)).toBe('b');
+  });
+});
+
+// Each expected text and cursor was taken from `vim -u NONE -N -s` (9.1).
+describe('006-terminal-FR-079 and 006-terminal-FR-060: as real vim does', () => {
+  const TEXT = 'one two three\n  four five\n\nsix seven\neight nine\n\n\n  ten\neleven twelve';
+  const after = (from: VimState) => [from.lines.join('\n'), ...at(from)];
+  const typed = (from: VimState, text: string) => inputs(from, ...[...text].map((value) => ({ text: value })));
+
+  test.each([
+    ['3D', 'six seven\neight nine\n\n\n  ten\neleven twelve', 0, 0],
+    ['j3D', 'one two three\neight nine\n\n\n  ten\neleven twelve', 1, 0],
+    ['w2D', 'one \n\nsix seven\neight nine\n\n\n  ten\neleven twelve', 0, 3],
+    ['8G3D', 'one two three\n  four five\n\nsix seven\neight nine\n\n', 6, 0],
+    ['9G2D', TEXT, 8, 0],
+    ['G3dd', TEXT, 8, 0],
+  ])('%s', (sequence, expected, line, column) => {
+    expect(after(keys(open(TEXT), sequence))).toEqual([expected, line, column]);
+  });
+
+  test('2C deletes to the line’s end and the next line, then inserts on the one left', () => {
+    const changed = keys(open(TEXT), '2C');
+    expect(changed.mode).toBe('insert');
+    expect(changed.lines.slice(0, 2)).toEqual(['', '']);
+    expect(after(inputs(typed(changed, 'x'), Esc))[0]).toBe('x\n\nsix seven\neight nine\n\n\n  ten\neleven twelve');
+  });
+
+  test.each([
+    ['3i', 'xxxone two', 0, 2],
+    ['3a', 'oxxxne two', 0, 3],
+    ['3A', 'one twoxxx', 0, 9],
+    ['3I', 'xxxone two', 0, 2],
+    ['3o', 'one two\nx\nx\nx', 3, 0],
+    ['3O', 'x\nx\nx\none two', 2, 0],
+  ])('%sx<Esc> repeats what was typed, as one undo step', (sequence, expected, line, column) => {
+    const done = inputs(typed(keys(open('one two'), sequence), 'x'), Esc);
+    expect(after(done)).toEqual([expected, line, column]);
+    expect(keys(done, 'u').lines).toEqual(['one two']);
+  });
+
+  test('on an empty line: J adds no leading space, dw deletes the line, 2dw the two empty lines', () => {
+    expect(after(keys(open('\nabc'), 'J'))[0]).toBe('abc');
+    expect(after(keys(open('\nabc'), 'dw'))[0]).toBe('abc');
+    expect(after(keys(open('\n\nabc'), '2dw'))[0]).toBe('abc');
+  });
+
+  test.each([
+    ['2G', 1, 2],
+    ['8G', 7, 2],
+    ['G', 8, 0],
+    ['Ggg', 0, 0],
+    ['2gg', 1, 2],
+  ])('%s lands on the line’s first non-blank', (sequence, line, column) => {
+    expect(at(keys(open(TEXT), sequence))).toEqual([line, column]);
+  });
+
+  test(':2 lands on the first non-blank', () => {
+    expect(at(state(command(open(TEXT), '2')))).toEqual([1, 2]);
+  });
+
+  test.each([
+    ['}', 2, 0],
+    ['}}', 5, 0],
+    ['}}}', 8, 12],
+    ['G{', 6, 0],
+    ['G{{', 2, 0],
+    ['G{{{', 0, 0],
+    ['4G{', 2, 0],
+    ['3G}', 5, 0],
+    ['7G{', 2, 0],
+  ])('%s in a text file stops at blank lines', (sequence, line, column) => {
+    expect(at(keys(open(TEXT), sequence))).toEqual([line, column]);
+  });
+
+  test('{ and } in JSON keep the fold jumps', () => {
+    const moved = keys(json(), '}');
+    expect(moved.folds.map((fold) => fold.start)).toContain(moved.cursor.line);
+  });
+
+  test('x, r, h and l treat a character as whole', () => {
+    const emoji = open('a😀b');
+    expect(text(keys(emoji, 'lx'))).toBe('ab');
+    expect(at(keys(emoji, 'll'))).toEqual([0, 3]);
+    expect(at(keys(emoji, 'llh'))).toEqual([0, 1]);
+    expect(at(keys(emoji, '$h'))).toEqual([0, 1]);
+    expect(text(keys(emoji, 'lrz'))).toBe('azb');
+    expect(at(keys(open('a😀'), '$'))).toEqual([0, 1]);
+    expect(at(inputs(keys(emoji, 'A'), { key: 'ArrowLeft' }, { key: 'ArrowLeft' }))).toEqual([0, 1]);
+  });
+});
+
+// Each expected text and cursor from `vim -u NONE -N -s` 9.1 (T300, T309).
+describe('006-terminal-FR-060 and 006-terminal-FR-079: the column kept, and word and paragraph moves as vim’s', () => {
+  const WORDS = 'a\n\n\nb c\n d(e) f.g';
+  const LONG = 'one two three\n  four five\n\nsix seven';
+  const SEVEN = 'one two three\nfour five six\n\n  seven eight\nnine ten\neleven\ntwelve thirteen';
+  const send = (from: VimState, typed: string) =>
+    (typed.match(/<Esc>|./gs) ?? []).reduce((now, key) => (now.mode === 'insert' && key !== '<Esc>' ? state(vimReducer(now, { text: key })) : state(vimReducer(now, { key: key === '<Esc>' ? 'Escape' : key }))), from);
+  test.each([
+    ['abc\nabcdef', '$j', 'abc\nabcdef', [1, 5]],
+    ['abcdef\nab\nabcdef', 'lllljj', 'abcdef\nab\nabcdef', [2, 4]],
+    ['abcdef\n\nabcdef', 'lllljj', 'abcdef\n\nabcdef', [2, 4]],
+    ['abc\nabcdef\nab\nabcdef', '$jj', 'abc\nabcdef\nab\nabcdef', [2, 1]],
+    ['abcdef\nab\nabcdef', 'lllljh', 'abcdef\nab\nabcdef', [1, 0]],
+    [WORDS, 'w', WORDS, [1, 0]],
+    [WORDS, '2w', WORDS, [2, 0]],
+    [WORDS, '4w', WORDS, [3, 2]],
+    ['  a', '$b', '  a', [0, 0]],
+    [WORDS, 'Gb', WORDS, [3, 2]],
+    [WORDS, 'd3w', 'b c\n d(e) f.g', [0, 0]],
+    [WORDS, '2d3w', '(e) f.g', [0, 0]],
+    [WORDS, '2cwM<Esc>', 'M c\n d(e) f.g', [0, 0]],
+    [WORDS, 'd3w2p', 'b c\na\n\n\na\n\n\n d(e) f.g', [1, 0]],
+    [WORDS, 'wcwZ<Esc>2p', 'a\nZ\n\n\n\nb c\n d(e) f.g', [2, 0]],
+    [LONG, 'd4w', 'five\n\nsix seven', [0, 0]],
+    [LONG, 'y4wP', 'one two three\n  four one two three\n  four five\n\nsix seven', [0, 0]],
+    [LONG, 'c4wX<Esc>', 'X five\n\nsix seven', [0, 0]],
+    // T398: a count past the words, as vim 9.1.
+    [SEVEN, 'c20wq<Esc>', 'q', [0, 0]],
+    [SEVEN, '20cwq<Esc>', 'q', [0, 0]],
+    [SEVEN, 'jc20wq<Esc>', 'one two three\nq', [1, 0]],
+    [SEVEN, 'y20wP', `${SEVEN}${SEVEN}`, [0, 0]],
+    [SEVEN, 'jd20w', 'one two three', [0, 0]],
+    ['a\n\nb', '}', 'a\n\nb', [1, 0]],
+    ['a\n\nb', '}}', 'a\n\nb', [2, 0]],
+    ['a\n\nb', '2}', 'a\n\nb', [2, 0]],
+    ['a', '}', 'a', [0, 0]],
+    ['a', '2}', 'a', [0, 0]],
+    ['a\nb', '}', 'a\nb', [1, 0]],
+  ])('on %j, %s', (from, typed, lines, cursor) => {
+    const done = send(open(from as string), typed as string);
+    expect(text(done)).toBe(lines);
+    expect(at(done)).toEqual(cursor);
+  });
+
+  test('past the last paragraph, a count leaves the cursor where it was', () => {
+    expect(at(send(open('a\nb'), '2}'))).toEqual([0, 0]);
+  });
+});
+
+describe('006-terminal-FR-080: a file of one blank line isn’t an empty file', () => {
+  const BLANK: VimFile = { ...FILE, blank: true };
+  const written = (out: VimOutput) => (out !== 'quit' && 'write' in out ? out.write.text : null);
+  test('as vim, it writes its one line; x doesn’t delete it; dd empties it', () => {
+    expect(written(command(open('', BLANK), 'w'))).toBe('\n');
+    expect(written(command(keys(open('', BLANK), 'x'), 'w'))).toBe('\n');
+    expect(written(command(keys(open('', BLANK), 'dd'), 'w'))).toBe('');
+    expect(written(command(open('', FILE), 'w'))).toBe('');
+  });
+  test('deleting a buffer’s only line writes an empty file, and undo brings the line back', () => {
+    const emptied = keys(open('x'), 'dd');
+    expect(written(command(emptied, 'w'))).toBe('');
+    expect(written(command(keys(emptied, 'u'), 'w'))).toBe('x\n');
+  });
+});
+
+describe('006-terminal-FR-060: a count of `w` past the last word (T360)', () => {
+  test.each([['20w', [1, 2]], ['5w', [1, 2]], ['w', [0, 4]]])('%s stops as vim does', (typed, cursor) => {
+    expect(at(keys(open('one two\nabc'), typed))).toEqual(cursor);
+  });
+
+  test('`w` on the last word goes to its last letter, and stays there', () => {
+    const last = keys(open('one two'), 'w');
+    expect(at(last)).toEqual([0, 4]);
+    expect(at(keys(last, 'w'))).toEqual([0, 6]);
+    expect(at(keys(last, 'ww'))).toEqual([0, 6]);
   });
 });

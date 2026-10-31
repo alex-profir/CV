@@ -14,8 +14,9 @@ Output blocks and their nodes are in [data-model.md](../data-model.md#result-and
   escapes, variables, globs, redirects, `if`, `for`, `while`, `until` and functions. Variables and
   functions last until the Terminal closes (research R27).
 - The command word of a site command is matched in lower case, with spaces and tabs ignored around
-  and between words (FR-007): the adapter lower-cases a line's first word when it names a site
-  command or alias in another case, so ` HELP ` runs `help`. A standard command's name is
+  and between words (FR-007): wherever a command can stand, the adapter lower-cases a word that names a
+  site command or alias in another case, so ` HELP ` and `true && WORK` run `help` and `work`, unless
+  the visitor's function has that name. A standard command's name is
   case-sensitive, as in bash. The echo in the heading is the line exactly as typed (FR-006).
 - Empty line: a new prompt, no message, nothing in `history` (FR-007).
 - A syntax error, an empty side of a `|` included, prints bash's message and runs nothing (FR-057,

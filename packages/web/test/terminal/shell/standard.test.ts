@@ -5,8 +5,9 @@ import { describe, expect, test } from 'vitest';
 import { getCommandNames, getNetworkCommandNames } from 'just-bash/browser';
 import { COMMANDS, SITE_WORDS } from '../../../src/apps/terminal/engine/commands.ts';
 import type { Node } from '../../../src/apps/terminal/engine/block.ts';
-import { LEFT_OUT, SHELL_BUILTINS, STANDARD_COMMANDS } from '../../../src/apps/terminal/shell/standard.ts';
+import { LEFT_OUT, NAMED_NOT_RUN, SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from '../../../src/apps/terminal/shell/standard.ts';
 import { fill, siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { runLine, shellFor } from './context.ts';
 import type { TestShell } from './context.ts';
 
@@ -86,7 +87,7 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     const table = new Set<string>(SITE_WORDS);
     const expected = [...new Set([...STANDARD_COMMANDS, ...SHELL_BUILTINS])].filter((name) => !table.has(name)).sort();
     expect(await standardGroup(shell)).toEqual(expected);
-    const { standard } = siteText.terminal;
+    const { standard } = fullText.terminal;
     const text = (await runLine(shell, 'help')).stdout;
     // The heading and its note share one line, two spaces apart (design/wireframes.md).
     expect(text).toContain(`\n${standard.heading}  ${standard.note}\n`);
@@ -102,16 +103,58 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     expect((await runLine(shellFor('every-field'), `type ${name}`)).stdout).toBe(`${name} is a shell builtin\n`);
   });
 
+  // Each name `type` knows runs, and each that doesn't run `type` doesn't know
+  // (T336).
+  test.each([...NAMED_NOT_RUN])('%s isn’t found by type, type -t, command -v or command -V, and doesn’t run', async (name) => {
+    const shell = shellFor('every-field');
+    const shown = await runLine(shell, `type ${name}`);
+    expect(shown.stdout).toBe('');
+    expect(shown.stderr).toBe(`bash: type: ${name}: not found\n`);
+    expect(shown.status).toBe(1);
+    expect((await runLine(shell, `type -t ${name}`)).stdout).toBe('');
+    expect((await runLine(shell, `command -v ${name}`)).stdout).toBe('');
+    const long = await runLine(shell, `command -V ${name}`);
+    expect(long.stderr).toBe(`bash: command: ${name}: not found\n`);
+    if (name === 'select' || name === 'coproc') return;
+    expect((await runLine(shell, `${name} x`)).stderr).toBe(`bash: ${name}: command not found\n`);
+  });
+
+  test.each(SHELL_BUILTINS)('%s runs: it isn’t “command not found”', async (name) => {
+    if (['exec', 'exit'].includes(name)) return;
+    expect((await runLine(shellFor('every-field'), `${name} --help`)).stderr).not.toMatch(/command not found/);
+  });
+
+  test('a name from an expansion is looked at too, and a function of that name is found', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'n=trap; type -t $n; echo $?')).stdout).toBe('1\n');
+    expect((await runLine(shell, 'trap() { :; }; type -t trap')).stdout).toBe('function\n');
+  });
+
+  test('command -v help names no adapter’s path', async () => {
+    expect((await runLine(shellFor('every-field'), 'command -v help')).stdout).toBe('help\n');
+  });
+
+  test('select and coproc, which just-bash can’t parse, aren’t keywords (research R43)', () => {
+    expect(SHELL_KEYWORDS as readonly string[]).not.toContain('select');
+    expect(SHELL_KEYWORDS as readonly string[]).not.toContain('coproc');
+  });
+
+  // T338.
+  test.each(STANDARD_COMMANDS.flatMap((name) => ['-n', '-d', '-P', '-s', '-I', '-L', '-a', '-E', '-e', '-f', '-m', '-A', '-k', '-t', '-o', '-c', '-u', '-v', '-F', '-N', '--', '--nope'].map((option) => [name, option] as const)))('%s %s prints no JavaScript error', async (name, option) => {
+    const result = await runLine(shellFor('every-field'), `${name} ${option} </dev/null`);
+    expect(`${result.stdout}${result.stderr}`).not.toMatch(/Cannot read prop|is not a function|undefined|TypeError|ReferenceError|RangeError/);
+  });
+
   test('help grep is grep --help, help export the shell’s own help, help work work’s own, help nosuch the usage reply', async () => {
     const shell = shellFor('every-field');
     expect((await runLine(shell, 'help grep')).stdout).toBe((await runLine(shell, 'grep --help')).stdout);
     const exportHelp = await runLine(shell, 'help export');
     expect(exportHelp.status).toBe(0);
     expect(exportHelp.stdout).toMatch(/^export: export /);
-    expect((await runLine(shell, 'help work')).stdout).toContain(siteText.terminal.commands.work.help);
+    expect((await runLine(shell, 'help work')).stdout).toContain(fullText.terminal.commands.work.help);
     const nosuch = await runLine(shell, 'help nosuch');
-    expect(nosuch.status).toBe(2);
-    expect(nosuch.stderr).toBe(`${fill(siteText.terminal.replies.usage, { command: 'help', what: siteText.terminal.takes['optional-command'], usage: 'help [command]' })}\n`);
+    expect(nosuch.status).toBe(1);
+    expect(nosuch.stderr).toBe(`${fill(fullText.terminal.replies.helpUnknown, { name: 'nosuch', help: 'help' })}\n`);
   });
 
   test('no name runs that help doesn’t list', async () => {
@@ -127,10 +170,56 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
 });
 
 describe('006-terminal-FR-017: a standard command’s wrong option gives its own message', () => {
+  test('date reads the same in any zone: its dates are UTC, each side of Greenwich (T321)', async () => {
+    const zone = process.env.TZ;
+    try {
+      for (const name of ['Asia/Tokyo', 'America/Los_Angeles']) {
+        process.env.TZ = name;
+        const shell = shellFor('every-field');
+        for (const typed of ['15 Jan 2020', '2020/01/15', '01/15/2020', 'jan 15 2020', '2020-01-15']) expect((await runLine(shell, `date -u -d '${typed}' +%F`)).stdout, `${name} ${typed}`).toBe('2020-01-15\n');
+        expect((await runLine(shell, "date -u -d 'next monday' +%a")).stdout).toBe('Mon\n');
+        expect((await runLine(shell, "date -u -d '12:00' +%H:%M")).stdout).toBe('12:00\n');
+      }
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
+  test('find -delete on a protected file, cp and mv of a file on itself, and uniq’s OUTPUT (T322)', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'find about -delete')).stderr).toBe('find: cannot delete ‘about’: Permission denied\n');
+    expect((await runLine(shell, 'touch a; mv a a')).stderr).toBe("mv: 'a' and 'a' are the same file\n");
+    expect((await runLine(shell, 'cp a a')).stderr).toBe("cp: 'a' and 'a' are the same file\n");
+    expect((await runLine(shell, 'cp a b nope')).stderr).toBe("cp: target 'nope': No such file or directory\n");
+    expect((await runLine(shell, "printf 'x\\nx\\n' > i; uniq i o; cat o")).stdout).toBe('x\n');
+    expect((await runLine(shell, 'mkdir d; diff d d; echo $?')).stdout).toBe('0\n');
+    expect((await runLine(shell, 'diff --version')).stdout).toContain('diff (GNU diffutils)');
+    expect((await runLine(shell, 'sed')).status).toBe(1);
+    expect((await runLine(shell, 'awk')).status).toBe(1);
+  });
+
   test('ls --badopt, grep alone and head -n x about', async () => {
     const shell = shellFor('every-field');
-    expect(await runLine(shell, 'ls --badopt')).toMatchObject({ stderr: "ls: unrecognized option '--badopt'\n", status: 1 });
-    expect(await runLine(shell, 'grep')).toMatchObject({ stderr: 'grep: missing pattern\n', status: 2 });
-    expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines\n', status: 1 });
+    expect(await runLine(shell, 'ls --badopt')).toMatchObject({ stderr: "ls: unrecognized option '--badopt'\nTry 'ls --help' for more information.\n", status: 2 });
+    expect(await runLine(shell, 'grep')).toMatchObject({ stderr: "Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information.\n", status: 2 });
+    expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines: ‘x’\n', status: 1 });
+  });
+});
+
+describe('006-terminal-FR-068: the builtins answer --help as bash does', () => {
+  test.each([...SHELL_BUILTINS.filter((name) => ![':', '[', 'echo', 'false', 'test', 'true'].includes(name)), 'pwd', 'history'])('%s --help prints help %s’s text, with status 2', async (name) => {
+    const shell = shellFor('every-field');
+    const help = await runLine(shell, `help ${name}`);
+    const result = await runLine(shell, `${name} --help`);
+    expect(result).toMatchObject({ stderr: '', status: 2, end: 'done' });
+    expect(result.stdout).not.toBe('');
+    if (name !== 'pwd') expect(result.stdout).toBe(help.stdout);
+  });
+
+  test('the ones bash doesn’t answer stay silent: :, true, false, test', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, ': --help')).toMatchObject({ stdout: '', status: 0 });
+    expect(await runLine(shell, 'test --help')).toMatchObject({ stdout: '', status: 0 });
   });
 });

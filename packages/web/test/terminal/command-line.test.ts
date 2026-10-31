@@ -127,3 +127,45 @@ describe('006-terminal-FR-018: typed and pasted text is shown as text and never 
     await expect.poll(() => typedLines(page)).toEqual(['help work']);
   });
 });
+
+describe('006-terminal-FR-018 and 006-terminal-FR-074: the caret and a character stay whole', () => {
+  test('a paste with line breaks leaves the caret after it', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('xy');
+    await page.keyboard.press('ArrowLeft');
+    await paste(page, 'a\nb');
+    expect(await value(page)).toBe('xa by');
+    expect(await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.selectionStart)).toBe(4);
+    await page.keyboard.type('!');
+    expect(await value(page)).toBe('xa b!y');
+    await page.keyboard.press('ControlOrMeta+Z');
+    await page.keyboard.press('ControlOrMeta+Z');
+    expect(await value(page)).toBe('xy');
+  });
+
+  test('the cursor’s block on an emoji holds the whole character, and the line is unchanged', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('echo 😀 x');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('ArrowLeft');
+    expect(await page.locator('.terminal .cursor-block').textContent()).toBe('😀');
+    expect(await page.locator('.terminal .cursor-mirror').textContent()).toBe('echo 😀 x');
+    expect(await value(page)).toBe('echo 😀 x');
+  });
+});
+
+describe('006-terminal-FR-019: clear in a line, on the build', () => {
+  test.each(['desktop', 'mobile'] as const)('in the %s shell, what it prints after clear stays', async (shell) => {
+    const page = await openTerminalPage(shell);
+    await runGroup(page, 'echo gone');
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('clear; echo two');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => runCount(page)).toBe(1);
+    expect(await page.locator('.terminal section.run .run-output').textContent()).toBe('two');
+    expect(await page.locator('.terminal section.run').textContent()).not.toContain('gone');
+  });
+});
