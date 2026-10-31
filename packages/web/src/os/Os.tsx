@@ -5,6 +5,7 @@
 // render is exactly what the build pre-rendered: both shells, with the CV
 // window open on the desktop.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { Resume, SiteData } from '@cv/content';
 import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
@@ -216,8 +217,10 @@ export function Os({ resume, siteData, apps }: OsProps) {
     }
   }, []);
 
-  // Apps' own announcements, through the same region (008 research R23).
-  useEffect(() => onAnnounce((message) => setAnnouncement((previous) => ({ message, id: (previous?.id ?? 0) + 1 }))), []);
+  // Apps' own announcements, through the same region (008 research R23). Each
+  // commits at once, from `announce`'s microtask: two waiting for one render
+  // would leave only the later for the Announcer to hear of (008 FR-064).
+  useEffect(() => onAnnounce((message) => flushSync(() => setAnnouncement((previous) => ({ message, id: (previous?.id ?? 0) + 1 })))), []);
 
   // The state as rendered, for apps that read where their window is (008 FR-050).
   useEffect(() => publishOsState(state), [state]);

@@ -106,21 +106,24 @@ describe('008-typescript-playground-FR-063: the editor is named, read line by li
 });
 
 describe('008-typescript-playground-FR-064: each summary counts only the entries since the last', () => {
-  test('the summaries add up to what was logged, rather than each giving the running total', async () => {
+  // Throttled too: on a busy page a summary and the run's end came before one
+  // render, and the summary was lost.
+  for (const rate of [1, 20]) test(`the summaries add up to what was logged, rather than each giving the running total, at ${rate}× CPU`, async () => {
     const page = await openPlaygroundPage();
     const code = 'let sent = 0;\nconst timer = setInterval(() => {\n  for (let i = 0; i < 200; i++) console.log(i);\n  sent += 200;\n  if (sent === 6000) clearInterval(timer);\n}, 100);';
     await setCode(page, code);
     await waitChecked(page);
+    await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate });
     await page.evaluate(() => {
       const said: string[] = [];
       (window as unknown as { said: string[] }).said = said;
       const region = document.querySelector('#os [role="status"][data-req="005-os-shell-FR-041"]')!;
       new MutationObserver(() => said.push(region.textContent ?? '')).observe(region, { childList: true, subtree: true, characterData: true });
     });
-    await run(page, { timeout: 30_000 });
-    await page.waitForTimeout(1_500);
+    await run(page, { timeout: 60_000 });
+    await page.waitForTimeout(rate === 1 ? 1_500 : 5_000);
     const said = await page.evaluate(() => (window as unknown as { said: string[] }).said);
-    const counts = said.flatMap((text) => [...text.matchAll(/^([\d,]+) new log entr/g)].map((match) => Number(match[1]!.replaceAll(',', ''))));
+    const counts = said.flatMap((text) => [...text.matchAll(/(?:^| )([\d,]+) new log entr/g)].map((match) => Number(match[1]!.replaceAll(',', ''))));
     expect(counts.length).toBeGreaterThan(1);
     const total = counts.reduce((sum, n) => sum + n, 0);
     // The 6,000, and the notes at the start and at the end.
