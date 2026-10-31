@@ -176,7 +176,8 @@ Prerequisites: on a machine without Playwright's Chromium (or after
 `npx playwright uninstall`), `npm run verify` prints
 `site check needs Chromium: run npx playwright install chromium`, runs nothing and exits 2.
 With `nvm use 24`, the entry point stops first:
-`local full run needs Node 26 or later (see .nvmrc), but this is Node 24.<x>.<y>`, exit 2. A newer
+`npm run verify needs Node 26 or later (see .nvmrc), but this is Node 24.<x>.<y>: run nvm use`,
+exit 2 (`npm run signoff` names itself the same way). A newer
 major than `.nvmrc`'s (say Node 27) gets
 `local full run needs Node 26 (see .nvmrc), but this is Node 27.<x>.<y>: run nvm use`.
 

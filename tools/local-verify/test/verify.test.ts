@@ -7,8 +7,10 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { REPO_ROOT, makeProject } from '../../traceability/test/helpers/project.ts';
 import { checks, commandLine } from '../src/checks.ts';
+import { nodeVersionProblem } from '../src/node-version.js';
+import { readPassingResult } from '../src/result.ts';
 import type { LocalRunResult } from '../src/result.ts';
-import { verify } from '../src/verify.ts';
+import { defaultRunCommand, verify } from '../src/verify.ts';
 import type { Prerequisites } from '../src/verify.ts';
 import { fakeBin, makeRepo } from './helpers/repo.ts';
 import type { FakeOptions, Repo } from './helpers/repo.ts';
@@ -260,6 +262,28 @@ describe('001-requirement-traceability-FR-033: every check runs and the run ends
     expect(code).toBe(1);
     expect(readResult(repo).checks.find((check) => check.name === 'test')?.status).toBe('fail');
   });
+
+  test('a second run on a commit that passed takes the earlier pass back before its first check', async () => {
+    const repo = sample();
+    const fake = fakes(repo);
+    expect((await run(repo, fake)).code).toBe(0);
+    expect(readPassingResult(resultDir(repo), repo.sha)).toHaveProperty('result');
+    const seen: ReturnType<typeof readPassingResult>[] = [];
+    const code = await verify({
+      root: repo.root,
+      env: fake.env,
+      prerequisites: CHROMIUM,
+      runCommand: (command, args, options) => {
+        seen.push(readPassingResult(resultDir(repo), repo.sha));
+        return defaultRunCommand(command, args, options);
+      },
+      stdout: { write: () => true },
+      stderr: { write: () => true },
+    });
+    expect(code).toBe(0);
+    expect(seen[0]).toEqual({ reason: 'none' });
+    expect(readPassingResult(resultDir(repo), repo.sha)).toHaveProperty('result');
+  });
 });
 
 describe('001-requirement-traceability-FR-037: the result stays outside the working copy', { timeout: 30_000 }, () => {
@@ -310,6 +334,19 @@ describe('001-requirement-traceability-FR-032: npm run verify through its entry 
   test('an argument after the subcommand is a usage error', () => {
     const result = main(sample(), ['verify', 'extra']);
     expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 2, stderr: 'usage: npm run verify | npm run signoff (takes no arguments)\n' });
+  });
+
+  test('Node older than 26 names the command run and says to run nvm use, before any check', () => {
+    expect(nodeVersionProblem('24.21.0', 'verify')).toBe('npm run verify needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
+    expect(nodeVersionProblem('24.21.0', 'signoff')).toBe('npm run signoff needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
+    expect(nodeVersionProblem('24.21.0', undefined)).toBe('local full run needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
+    expect(nodeVersionProblem('26.0.0', 'verify')).toBeNull();
+    const repo = sample();
+    const fake = fakes(repo);
+    const oldNode = 'data:text/javascript,Object.defineProperty(process.versions,"node",{value:"24.21.0"})';
+    const result = spawnSync(process.execPath, ['--import', oldNode, MAIN, 'signoff'], { cwd: repo.root, env: fake.env, encoding: 'utf8' });
+    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 2, stderr: 'npm run signoff needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use\n' });
+    expect(fake.log()).toEqual([]);
   });
 
   test('a dirty tree refuses with exit 2 before any prerequisite is probed', () => {
