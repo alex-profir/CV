@@ -583,7 +583,8 @@ export async function terminalKeyboardProblems(page: Page, pageLabel: string, va
       if (await focusOn(page, `${T.run} button[aria-label="about"]`)) return true;
       await page.keyboard.press('Shift+Tab');
       return false;
-    }, 10_000);
+      // About 140 presses, with `until`'s 50 ms between them: 7 s when idle.
+    }, 30_000);
     if (!reached) {
       problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'focus-target', subject: 'Shift+Tab', detail: `focus went to ${await describeFocus(page)}, expected about's control in help's output` });
       return;
