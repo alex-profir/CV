@@ -20,11 +20,11 @@ function realRun(): Run {
   return run;
 }
 
-// 006 added the Terminal's checks within 005's 480 s plus 3 minutes, and 007
-// the inspector's within that plus 3 minutes. 008 adds the Playground's within
-// that plus 3 minutes, and 005's, 006's and 007's whole check follows this one
-// (005 SC-010, amended 2026-10-30; 006 FR-042 and 007 FR-034, amended 2026-10-31).
-const PLAYGROUND_BUDGET_MS = 480_000 + 180_000 + 180_000 + 180_000;
+// 006 added the Terminal's checks within 005's 480 s plus 4 minutes, and 007
+// the inspector's within that plus 3 minutes. 008 gives the whole check
+// 1,020 s (FR-088), and 005's, 006's and 007's cases follow it (005 SC-010,
+// amended 2026-10-30; 006 FR-042 and 007 FR-034, amended 2026-10-31).
+const PLAYGROUND_BUDGET_MS = 1_020_000;
 
 // Whichever test comes first waits for the one run.
 const RUN_TIMEOUT = 1_200_000;

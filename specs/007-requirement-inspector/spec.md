@@ -28,7 +28,7 @@ budget (see Clarifications, Session 2026-10-31).
 
 ### Session 2026-10-31 (amended by 008-typescript-playground)
 
-- Q: 007's 840 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+- Q: 007's 900 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
   allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
   feature's budget, now 008's 1,020 s (FR-034).
 
@@ -480,7 +480,7 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
   app, the shell, the width and the requirement in every failure. The whole check, with every later
   feature's parts, stays within the latest feature's budget on the owner's machine. Amended
-  2026-10-31 by 008-typescript-playground: it held the whole check to 840 s, 006's budget plus 3 minutes.
+  2026-10-31 by 008-typescript-playground: it held the whole check to 006's budget plus 3 minutes, 900 s.
 
 ### Key Entities
 

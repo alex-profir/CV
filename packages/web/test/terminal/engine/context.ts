@@ -49,7 +49,7 @@ export type Shown =
   | { kind: 'output'; block: Block; announce: Announcement; result: RunResult }
   | { kind: 'clear' }
   | { kind: 'open-vim'; file: VimSource }
-  | { kind: 'os'; action: { open: 'cv' | 'about' } | { exit: true }; block: Block }
+  | { kind: 'os'; action: { open: 'cv' | 'playground' | 'about' } | { exit: true }; block: Block }
   | { kind: 'cd'; folder: Path; block: Block; announce: Announcement };
 
 export function output(shown: Shown): Block {
