@@ -144,11 +144,41 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     });
   };
 
+  // bash's `history -d`, `-w` and its wrong words (T372). `-w` writes to the
+  // visitor's own files, so to what goes when the session does (FR-021); `-c`
+  // and the count are the table's.
+  const historyOption = async (args: readonly string[], ctx: Context): Promise<Output | null> => {
+    const run = shell.run();
+    const fails = (message: string) => ok('', `bash: history: ${message}\n`, 1);
+    if (args[0] === '-d') {
+      const typed = args[1];
+      if (typed === undefined) return ok('', 'bash: history: -d: option requires an argument\nhistory: usage: history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]\n', 2);
+      if (!/^-?\d+$/.test(typed)) return fails(`${typed}: invalid number`);
+      const position = Number(typed);
+      const index = position < 0 ? run.history.length + position : position - 1;
+      if (position === 0 || index < 0 || index >= run.history.length) return fails(`${typed}: history position out of range`);
+      run.effects.push({ kind: 'delete-history', index });
+      return ok();
+    }
+    if (args[0] === '-w') {
+      if (args.length > 2) return fails('too many arguments');
+      const typed = args[1] ?? ctx.env.get('HISTFILE') ?? `${HOME}/.bash_history`;
+      const path = ctx.fs.resolvePath(ctx.cwd, typed);
+      const text = run.history.map((entry) => `${entry}\n`).join('');
+      return shell.fs.writeFile(path, text).then(() => ok(), (error: { code?: string }) => fails(`${typed}: cannot create: ${error.code === 'ENOENT' ? 'No such file or directory' : error.code === 'ENOSPC' ? 'No space left on device' : error.code === 'EISDIR' ? 'Is a directory' : 'Permission denied'}`));
+    }
+    if (args.length > 1 && !args[0]!.startsWith('-')) return fails('too many arguments');
+    if (args[0] !== undefined && !args[0].startsWith('-') && !/^\d+$/.test(args[0])) return { ...fails(`${args[0]}: numeric argument required`), exitCode: 2 };
+    return null;
+  };
+
   const rows = COMMANDS.filter((row) => row.run !== undefined).flatMap((row) =>
     [row.name, ...row.aliases].map((word) =>
       defineCommand(RENAMED[word] ?? word, async (args, ctx) => {
         const typed = typedAs(word, ctx);
         // A wrong option gets bash's error (FR-017).
+        const answered = row.name === 'history' ? await historyOption(args, ctx) : null;
+        if (answered !== null) return answered;
         const wrong = row.name === 'history' ? args.find((arg) => /^-./.test(arg) && arg !== '-c') : undefined;
         if (wrong !== undefined) return ok('', `bash: history: ${wrong.slice(0, 2)}: invalid option\nhistory: usage: history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]\n`, 2);
         return (row.name === 'help' ? standardHelp(args, ctx) : null) ?? emit(ctx, row.run!(args, runContext(ctx), typed));
@@ -565,13 +595,33 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     }
     return bytes;
   };
+  // The first conversion `printf` has no such letter for, past bash's length
+  // modifiers.
+  const badFormat = (format: string) => {
+    for (const match of format.matchAll(/%%|%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?[hlLjzt]*(.?)/gs)) {
+      if (match[0] === '%%' || /[diouxXfFeEgGaAcsbq]/.test(match[1]!)) continue;
+      if (match[1] === '') return null;
+      return { char: match[1]!, before: format.slice(0, match.index) };
+    }
+    return null;
+  };
   const masked = (arg: string) => arg.replace(/\\x([89a-fA-F][0-9a-fA-F])|\\0?([23][0-7]{2})/g, (_, hex?: string, octal?: string) => String.fromCharCode(0xf700 + Number.parseInt(hex ?? octal!, hex === undefined ? 8 : 16)));
   const byteExact = (name: string, reads: (args: readonly string[]) => boolean) =>
     defineCommand(name, async (args, ctx) => {
-      const mask = reads(args) ? args.map(masked) : args;
+      // bash's usage and its words for a format it can't read (T372).
+      if (name === 'printf' && (args.length === 0 || (args.length === 1 && args[0] === '--'))) return ok('', 'printf: usage: printf [-v var] format [arguments]\n', 2);
+      const formatAt = name !== 'printf' ? -1 : args[0] === '-v' ? 2 : args[0] === '--' ? 1 : 0;
+      const bad = formatAt < 0 ? null : badFormat(args[formatAt] ?? '');
+      if (bad !== null) {
+        const before = await ctx.origCommand!(args.toSpliced(formatAt, 1, bad.before));
+        return { ...before, stderr: `bash: printf: \`${bad.char}': invalid format character\n`, exitCode: 1 };
+      }
+      // Its length modifiers mean nothing to bash, and just-bash refuses them.
+      const typed = formatAt < 0 || args[formatAt] === undefined ? args : args.toSpliced(formatAt, 1, args[formatAt]!.replace(/%%|(%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?)[hlLjzt]+/g, (whole, start?: string) => start ?? whole));
+      const mask = reads(typed) ? typed.map(masked) : typed;
       // bash's builtin names itself as the shell (T305).
       const named = (result: Output) => (name === 'printf' ? { ...result, stderr: result.stderr.replace(/^printf: /gm, 'bash: printf: ') } : result);
-      if (mask.every((arg, index) => arg === args[index])) return named(await ctx.origCommand!(args));
+      if (mask.every((arg, index) => arg === typed[index])) return named(await ctx.origCommand!(typed));
       const result = named(await ctx.origCommand!(mask));
       const bytes = Uint8Array.from(bytesOf(result.stdout));
       try {

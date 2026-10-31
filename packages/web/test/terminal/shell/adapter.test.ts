@@ -768,6 +768,43 @@ describe('006-terminal-FR-067: Phase 40, lines that write or close, each as bash
     expect(await run('echo a > f; cp -n f f; echo $?')).toMatchObject({ stdout: '0\n', stderr: '' });
   });
 
+  test('T361: `type` of a function keeps the word its body reads', async () => {
+    const shell = shellFor('every-field');
+    const [, called] = await runLines(shell, ['f() { echo "$x""y"; }', 'x=a; f']);
+    expect(called!.stdout).toBe('ay\n');
+  });
+
+  test('T368: an arithmetic error stops only the line, and what ran stays', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'echo a; n=1; echo $((1.5)); echo b')).toMatchObject({ stdout: 'a\n', stderr: 'bash: 1.5: arithmetic syntax error: invalid arithmetic operator (error token is ".5")\n', status: 1, end: 'done' });
+    expect((await runLine(shell, 'echo $n $?')).stdout).toBe('1 1\n');
+    expect(await runLine(shell, '[[ ]]')).toMatchObject({ stderr: "bash: line 1: syntax error near `]]'\n", status: 2 });
+  });
+
+  test('T372: `history -d` deletes an entry, `-w` writes the visitor’s own file', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'echo one');
+    expect((await runLine(shell, 'history -d 1')).effects).toEqual([{ kind: 'delete-history', index: 0 }]);
+    expect((await runLine(shell, 'history -d -1')).effects).toEqual([{ kind: 'delete-history', index: 2 }]);
+    expect(await runLine(shell, 'history -d 99')).toMatchObject({ stderr: 'bash: history: 99: history position out of range\n', status: 1, effects: [] });
+    expect(await runLine(shell, 'history -d x')).toMatchObject({ stderr: 'bash: history: x: invalid number\n', status: 1 });
+    expect(await runLine(shell, 'history a')).toMatchObject({ stderr: 'bash: history: a: numeric argument required\n', status: 2 });
+    expect(await runLine(shell, 'history 1 2')).toMatchObject({ stderr: 'bash: history: too many arguments\n', status: 1 });
+    await runLine(shell, 'history -w');
+    expect((await runLine(shell, 'head -1 ~/.bash_history')).stdout).toBe('echo one\n');
+    expect(await runLine(shell, 'history -w about')).toMatchObject({ stderr: 'bash: history: about: cannot create: Permission denied\n', status: 1 });
+  });
+
+  test('T375: `SECONDS` and two slashes carry to the next line', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'SECONDS=100');
+    expect(Number((await runLine(shell, 'echo $SECONDS')).stdout)).toBeGreaterThanOrEqual(100);
+    await runLine(shell, 'cd //tmp');
+    expect((await runLine(shell, 'pwd')).stdout).toBe('//tmp\n');
+    await runLine(shell, 'cd /tmp');
+    expect((await runLine(shell, 'pwd')).stdout).toBe('/tmp\n');
+  });
+
   test('T360: `set -u` names a positional parameter as bash does', async () => {
     expect((await run('set -u; echo $1')).stderr).toBe('bash: $1: unbound variable\n');
   });

@@ -70,7 +70,9 @@ export type Effect =
   | { kind: 'clear' }
   | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
   | { kind: 'open'; view: 'cv' | 'about' }
-  | { kind: 'clear-history' };
+  | { kind: 'clear-history' }
+  // `history -d`, by its place in the history (T372).
+  | { kind: 'delete-history'; index: number };
 
 export const text = (value: string, tone?: Tone): Node => (tone === undefined ? { kind: 'text', text: value } : { kind: 'text', text: value, tone });
 

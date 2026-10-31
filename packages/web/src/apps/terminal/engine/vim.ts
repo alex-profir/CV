@@ -331,7 +331,8 @@ function back(state: VimState, count: number): VimState {
   for (let times = 0; times < count; times += 1) {
     const before = next.undo.at(-1);
     if (before === undefined) return times === 0 ? { ...next, message: { kind: 'oldest' } } : next;
-    next = { ...withLines(next, before.lines, before.cursor), undo: next.undo.slice(0, -1), redo: [...next.redo, stepOf(next)], message: { kind: 'none' } };
+    // A redo puts the cursor where the change began, as this undo does (T375).
+    next = { ...withLines(next, before.lines, before.cursor), undo: next.undo.slice(0, -1), redo: [...next.redo, { ...stepOf(next), cursor: before.cursor }], message: { kind: 'none' } };
   }
   return next;
 }
@@ -341,7 +342,7 @@ function forward(state: VimState, count: number): VimState {
   for (let times = 0; times < count; times += 1) {
     const after = next.redo.at(-1);
     if (after === undefined) return times === 0 ? { ...next, message: { kind: 'newest' } } : next;
-    next = { ...withLines(next, after.lines, after.cursor), redo: next.redo.slice(0, -1), undo: [...next.undo, stepOf(next)], message: { kind: 'none' } };
+    next = { ...withLines(next, after.lines, after.cursor), redo: next.redo.slice(0, -1), undo: [...next.undo, { ...stepOf(next), cursor: after.cursor }], message: { kind: 'none' } };
   }
   return next;
 }
@@ -372,7 +373,9 @@ function insertMode(state: VimState, cursor: Cursor, entered: Step = stepOf(stat
 function enter(state: VimState, column: (text: string, at: number) => number): VimState {
   const open = opened(state);
   const { line, column: at } = open.cursor;
-  return insertMode(open, { line, column: column(lineText(open, line), at) }, stepOf(state));
+  const cursor = { line, column: column(lineText(open, line), at) };
+  // Undo and redo come back to where the typing began (T375).
+  return insertMode(open, cursor, { ...stepOf(state), cursor });
 }
 
 // Where `count` words end from `column`, within the line: past the blanks after
@@ -735,8 +738,12 @@ function normalKey(state: VimState, input: { key: string; page?: number }): VimO
       return moveTo(step(done, count - 1), step(done, count - 1).cursor.line, Number.POSITIVE_INFINITY);
     case 'G':
       return toLine(done, pending?.count == null ? done.lines.length - 1 : pending.count - 1);
-    case '{':
-      return repeated(done, count, (from) => sections(from, false));
+    case '{': {
+      // vim fails a count that runs out of paragraphs.
+      const once = repeated(done, count - 1, (from) => sections(from, false));
+      const to = sections(once, false);
+      return count > 1 && to.cursor.line === once.cursor.line && to.cursor.column === once.cursor.column ? done : to;
+    }
     case '}': {
       // vim fails a count that runs out of paragraphs.
       const once = repeated(done, count - 1, (from) => sections(from, true));

@@ -77,7 +77,8 @@ function findWord(before: string): Word {
       quote = char;
       start = at + 1;
     } else if (char === '$') start = at;
-    else if (BREAKS.has(char)) start = at + 1;
+    // `${`, the start of a name, not a group's `{` (T371).
+    else if (BREAKS.has(char) && !(char === '{' && before[at - 1] === '$')) start = at + 1;
   }
   return { start, quote };
 }
@@ -146,19 +147,21 @@ export async function complete(request: CompleteRequest, sources: CompleteSource
   const fromVariable = /^\$(\w+|\{\w+\})\//.exec(raw);
   const variable = fromVariable === null ? undefined : values[fromVariable[1]!.replace(/[{}]/g, '')];
 
-  // `$HO`: the variables' names.
+  // `$HO` and `${HO`: the variables' names.
   if (raw.startsWith('$') && fromVariable === null) {
-    const typed = raw.slice(1);
+    const lead = raw.startsWith('${') ? '${' : '$';
+    const typed = raw.slice(lead.length);
     const names = Object.keys(values).filter((name) => name.startsWith(typed)).sort(byBytes);
-    const matches = names.map((name) => ({ name: `$${name}`, folder: false }));
+    const matches = names.map((name) => ({ name: lead === '$' ? `$${name}` : `\${${name}}`, folder: false }));
     if (names.length === 0) return none();
     if (names.length === 1) {
-      // A variable that holds a folder gets the folder's mark.
+      // A variable that holds a folder gets the folder's mark, and in `${` is left open.
       const folder = (await sources.fs.stat(values[names[0]!]!).catch(() => null))?.isDirectory === true;
+      if (lead === '${') return { ...none(matches), insert: folder ? `\${${names[0]!}` : `\${${names[0]!}}${closing}${space}` };
       return { ...none(matches), insert: `$${names[0]!}${folder ? '/' : `${closing}${space}`}` };
     }
     const common = commonPrefix(names);
-    return common === typed ? none(matches) : { ...none(matches), insert: `$${common}` };
+    return common === typed ? none(matches) : { ...none(matches), insert: `${lead}${common}` };
   }
 
   // A word with a pattern in it: what it matches, if that's one name (T301).

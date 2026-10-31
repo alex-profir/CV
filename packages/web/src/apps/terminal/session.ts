@@ -192,6 +192,7 @@ export function createSession(client: ShellClient = createShellClient()) {
         next = { ...next, entries: shown, starter: false, scrollTop: 0, shellScroll: {}, announcement: say(spoken) };
       }
       else if (effect.kind === 'clear-history') next = { ...next, history: next.history.slice(waiting.history.length) };
+      else if (effect.kind === 'delete-history') next = { ...next, history: next.history.toSpliced(effect.index, 1) };
       else if (effect.kind === 'vim') {
         const source: VimSource = { file: effect.file, pipe: effect.pipe, text: effect.text, type: effect.type };
         // The line's entry goes with its last view, after what it printed.

@@ -215,6 +215,40 @@ describe('006-terminal-FR-079: editing', () => {
     expect(fresh.redo).toEqual([]);
   });
 
+  // T375, each from a real vim on a terminal, where each key is its own change.
+  test.each([
+    ['dd', 'j', 'dd', 'u', 'redo', 1, 0],
+    ['dd', 'G', 'dd', 'u', 'redo', 4, 0],
+    ['3dd', 'u', 'redo', 0, 0],
+    ['j', 'A', 'x', 'Escape', 'u', 'redo', 1, 13],
+    ['j', 'A', 'x', 'Escape', 'u', 1, 12],
+    ['j', 'a', 'x', 'Escape', 'u', 1, 1],
+    ['j', 'a', 'x', 'Escape', 'u', 'redo', 1, 1],
+    ['j', 'w', 'c', 'w', 'z', 'z', 'Escape', 'u', 'redo', 1, 5],
+    ['G', 'o', 'x', 'Escape', 'u', 'redo', 6, 0],
+    ['j', 'O', 'x', 'Escape', 'u', 'redo', 1, 0],
+  ] as const)('undo and redo come back to where the change began: %s %s %s', (...steps) => {
+    const column = steps.at(-1) as number;
+    const line = steps.at(-2) as number;
+    let next = open('one two three\nfour five six\n\n  seven eight\nnine ten\neleven\ntwelve thirteen');
+    for (const step of steps.slice(0, -2) as string[]) {
+      if (step === 'redo') next = inputs(next, { key: 'r', ctrl: true });
+      else if (step === 'Escape') next = inputs(next, { key: 'Escape' });
+      else if (next.mode === 'insert') next = inputs(next, { text: step });
+      else next = keys(next, step);
+    }
+    expect(next.cursor).toEqual({ line, column });
+  });
+
+  test('{ with a count past the paragraphs stays, as } does', () => {
+    const text = open('one\n\ntwo\n\nthree');
+    const end = keys(text, 'G');
+    expect(keys(end, '{').cursor.line).toBe(3);
+    expect(keys(end, '2{').cursor.line).toBe(1);
+    expect(keys(end, '3{').cursor.line).toBe(0);
+    expect(keys(end, '4{').cursor.line).toBe(4);
+  });
+
   test('at most 1,000 undo steps are kept', () => {
     let e = open('a'.repeat(1100));
     for (let times = 0; times < 1100; times += 1) e = keys(e, 'x');

@@ -288,8 +288,8 @@ describe('006-terminal-FR-057: cv and clear where their output doesn’t reach t
   // T340, from tree 2.3.2.
   test('tree -f names a path as given, and -L takes a positive number', async () => {
     const shell = shellFor('every-field');
-    expect((await runLine(shell, 'tree -f')).stdout).toContain('-- ./about\n');
-    expect((await runLine(shell, 'tree -f work')).stdout).toMatch(/-- work\/[^/\n]+\n/);
+    expect((await runLine(shell, 'tree -f')).stdout).toContain('── ./about\n');
+    expect((await runLine(shell, 'tree -f work')).stdout).toMatch(/── work\/[^/\n]+\n/);
     expect((await runLine(shell, 'tree -f')).stdout).not.toContain('/home/guest');
     for (const line of ['tree -L x', 'tree -L 0']) expect(await runLine(shell, line)).toMatchObject({ stdout: '', stderr: 'tree: Invalid level, must be greater than 0.\n', status: 1 });
     expect(await runLine(shell, 'tree -L')).toMatchObject({ stderr: 'tree: Missing argument to -L option.\n', status: 1 });

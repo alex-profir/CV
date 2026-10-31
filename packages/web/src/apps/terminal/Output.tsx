@@ -18,6 +18,12 @@ type Props = { block: Block; run: RunControl };
 
 const INLINE = new Set<Node['kind']>(['text', 'command', 'link', 'time']);
 
+// The line art `tree` prints, which the Terminal's font files don't hold: each
+// character at the cell's width, whatever font draws it (T370).
+const LINE_ART = /([├└│─])/;
+const CELL = rowIndent(1) as CSSProperties;
+const inCells = (text: string): ReactNode => (!LINE_ART.test(text) ? text : text.split(LINE_ART).map((piece, at) => (at % 2 === 1 ? <span key={at} className="out-cell" style={CELL}>{piece}</span> : piece)));
+
 const toneClass = (tone: string | undefined) => (tone === undefined ? undefined : `tone-${tone}`);
 
 function Control({ node, run }: { node: Extract<Node, { kind: 'command' }>; run: RunControl }) {
@@ -132,7 +138,7 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
     case 'text':
       // What a command printed keeps its spaces and tabs, as a terminal
       // shows them (FR-067).
-      if (node.stream !== undefined) return <span className={['out-stream', toneClass(node.tone)].filter(Boolean).join(' ')}>{node.text}</span>;
+      if (node.stream !== undefined) return <span className={['out-stream', toneClass(node.tone)].filter(Boolean).join(' ')}>{inCells(node.text)}</span>;
       return node.tone === undefined ? node.text : <span className={toneClass(node.tone)}>{node.text}</span>;
     case 'time':
       return node.spoken === undefined ? (

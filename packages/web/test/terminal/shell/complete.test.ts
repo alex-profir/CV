@@ -17,6 +17,17 @@ async function tab(line: string, cursor = line.length) {
 const names = async (line: string) => (await completeLine(shell, line)).matches.map((match) => match.name);
 
 describe('006-terminal-FR-076: what Tab inserts, as bash’s readline does', () => {
+  // T371, from a real bash on a terminal.
+  test('`${name` completes names, closed as bash closes them', async () => {
+    await runLine(shell, 'f1=1; f2=2; fone=1');
+    expect(await tab('echo ${f')).toBe('echo ${f');
+    expect(await names('echo ${f')).toEqual(['${f1}', '${f2}', '${fone}']);
+    expect(await tab('echo ${fo')).toBe('echo ${fone} ');
+    expect(await tab('echo "${fo')).toBe('echo "${fone}" ');
+    expect(await tab('echo ${HOM')).toBe('echo ${HOME');
+    expect(await tab('{ gre')).toBe('{ grep ');
+  });
+
   test.each([
     ['one file: completed, then a space', 'cat cv', 'cat cv.json '],
     ['a folder gets / and no space', 'cd wo', 'cd work/'],

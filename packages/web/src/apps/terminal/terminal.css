@@ -266,6 +266,12 @@
   overflow-wrap: anywhere;
 }
 
+/* A line-art character takes one cell, drawn by whichever font holds it. */
+.out-cell {
+  display: inline-block;
+  width: var(--indent);
+}
+
 /* `help`'s standard group: the heading bold, then the names two spaces
    apart, each a 24 px target (FR-008, FR-034, FR-068). */
 .out-standard-heading .tone-primary {
