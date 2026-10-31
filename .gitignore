@@ -3,6 +3,7 @@ node_modules/
 *.log
 .env*
 dist/
+.vercel/
 coverage/
 # The site check's fixture sites are laid out as a repository, built site included.
 !tools/site-check/test/__fixtures__/*/packages/web/dist/
