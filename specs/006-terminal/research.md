@@ -665,7 +665,8 @@ itself, since just-bash resets it after each `exec` (G4):
    too, worded as bash words it (`syntax error near unexpected token '|'`) (FR-057, G2). The
    interface shows both without bash's `bash: ` prefix and line number, as the approved design
    sets (R30).
-2. **Prelude**: the variables (as `NAME='value'`, quoted), `export` for those exported, the
+2. **Prelude**: the variables (passed as `exec`'s `env` since the review of 2026-10-31, so a
+   value over 1 MB never reaches the parser's 1,000,000-byte limit), `export` for those exported, the
    functions (below), the `set -o` options that were on (`errexit`, `nounset`, `pipefail`,
    `noglob`, `noclobber`, `xtrace`), and `(exit N)` so `$?` is the last line's status. The working
    folder is passed as `exec`'s `cwd`. The shell's own variables (`PWD`, `OLDPWD`, `IFS`,
@@ -681,9 +682,13 @@ itself, since just-bash resets it after each `exec` (G4):
    name. After the line, only the names `declare -F` listed are kept, so `unset -f` and a
    definition that never ran are honored. A function defined only through `eval` has no known
    body and isn't carried, a known limit.
-6. **`exit`**: when the epilogue didn't run and no limit stopped the line, the shell exited. The
-   interface then does what `exit` does (FR-008): closes the window on desktop, goes home on
-   mobile. `set -e` and a failing command exit the shell the same way, as in an interactive bash.
+6. **`exit`**: when the epilogue didn't run and no limit stopped the line, the shell exited if
+   the line can exit: it runs `exit` or `logout`, a stored function that does, `eval`, `source`
+   or `.`, or `set -e` is on or set in it. The interface then does what `exit` does (FR-008):
+   closes the window on desktop, goes home on mobile. `set -e` and a failing command exit the
+   shell the same way, as in an interactive bash. Any other line was stopped by an error
+   (`set -u`'s unbound variable, `${x:?}`, a redirect the file system refuses, G1): it shows the
+   error, and the shell goes on with the state from before the line (review of 2026-10-31).
 7. **Line numbers**: the prelude's lines are counted, and a runtime message that names a line
    (`bash: line 7: …`) is shifted back by that count, so it names the visitor's line.
 

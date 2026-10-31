@@ -41,8 +41,10 @@ scope.onmessage = (event) => {
       const answer = await handle(event.data);
       if (answer !== null) scope.postMessage(answer);
     } catch (error) {
-      if (event.data.type === 'start') scope.postMessage({ type: 'failed', reason: error instanceof Error ? error.message : String(error) });
-      else throw error;
+      // Any message that throws fails the shell, so the page shows the
+      // failure and its `try again`; rethrowing would reject the queue and
+      // silently drop every later message.
+      scope.postMessage({ type: 'failed', reason: error instanceof Error ? error.message : String(error) });
     }
   });
 };

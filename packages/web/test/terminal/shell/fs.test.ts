@@ -95,9 +95,15 @@ describe('006-terminal-FR-049: protected paths refuse every write and change not
     await rejects(fs.symlink('/home/guest/mine', '/home/guest/work/link'), 'Permission denied');
     expect(await fs.readFile('/home/guest/about')).toBe(before);
     expect(await fs.readdir('/home/guest')).toEqual([...BUILT, 'mine']);
-    // Writing to /dev/null is allowed, and keeps nothing.
+    // Writing to /dev/null is allowed, and keeps nothing; removing it,
+    // moving onto it or making a folder in it isn't.
     await fs.writeFile('/dev/null', 'gone');
+    await fs.cp('/home/guest/mine', '/dev/null');
     expect(await fs.readFile('/dev/null')).toBe('');
+    await rejects(fs.rm('/dev/null'), 'Permission denied');
+    await rejects(fs.mv('/home/guest/mine', '/dev/null'), 'Permission denied');
+    await rejects(fs.mkdir('/dev/null/x'), 'Permission denied');
+    expect(await fs.exists('/home/guest/mine')).toBe(true);
   });
 
   test('modes: protected files 0444 and folders 0555, the visitor’s 0644 and 0755; home takes writes', async () => {

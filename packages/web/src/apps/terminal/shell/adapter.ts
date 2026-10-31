@@ -2,8 +2,9 @@
 // just-bash is given"): just-bash with TerminalFs, the standard commands and
 // the site's, run one line at a time. just-bash starts every run from a
 // fresh state (G4), so the adapter carries the variables, functions,
-// options, `$?` and the working folder itself: a prelude before the line
-// sets them, and an epilogue after it reads them back.
+// options, `$?` and the working folder itself: the variables as the run's
+// environment, a prelude before the line for the rest, and an epilogue
+// after it reads them back.
 import { Bash, defineCommand } from 'just-bash/browser';
 import { commandNamed, engineContext, SITE_WORDS } from '../engine/commands.ts';
 import type { SiteInput } from '../engine/commands.ts';
@@ -37,8 +38,6 @@ const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 // The adapter's own words: a line that names one is refused.
 const HIDDEN = /__cv_/i;
-
-const quote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
 
 type Captured = { status: number; functions: string[]; options: string[]; cwd: string; env: Map<string, string>; exported: string[] };
 
@@ -110,17 +109,32 @@ function literalTarget(word: unknown): { typed: string; path: string } | null {
   return { typed, path };
 }
 
+// The literal name a simple command runs, or null.
+const commandWord = (node: AstNode): string | null => {
+  const name = node.name as { parts?: { type: string; value?: string }[] } | null;
+  return name?.parts?.length === 1 && name.parts[0]!.type === 'Literal' ? name.parts[0]!.value! : null;
+};
+
+const MOVES = new Set(['cd', 'pushd', 'popd']);
+
 function guardPlugin(fs: TerminalFs, cwd: string): Plugin {
   return {
     name: 'cv-redirect-guard',
     transform(context) {
+      // A line that changes folder may write a relative path elsewhere: only
+      // its absolute and `~` targets are known.
+      let moves = false;
+      walk(context.ast, (node) => {
+        if (node.type === 'SimpleCommand' && MOVES.has(commandWord(node) ?? '')) moves = true;
+      });
       walk(context.ast, (node) => {
         if (node.type !== 'SimpleCommand') return;
         const redirections = (node.redirections ?? []) as { operator: string; target: unknown }[];
         for (const redirection of redirections) {
           if (!WRITES.has(redirection.operator)) continue;
           const target = literalTarget(redirection.target);
-          if (target === null || !fs.refusesWrite(target.path.startsWith('/') ? target.path : `${cwd}/${target.path}`)) continue;
+          if (target === null || (moves && !target.path.startsWith('/'))) continue;
+          if (!fs.refusesWrite(target.path.startsWith('/') ? target.path : `${cwd}/${target.path}`)) continue;
           node.assignments = [];
           node.name = literalWord(DENIED);
           node.args = [literalWord(target.typed)];
@@ -147,6 +161,25 @@ function syntaxError(ast: Script): string | null {
     }
   });
   return error;
+}
+
+// Whether a line can end the shell: it runs `exit` or `logout`, `set -e`
+// or `set -o errexit`, text the parse can't see (`eval`, `source`), or a
+// function in `exiting`. Any other line just-bash stops before its
+// epilogue was stopped by an error, which bash reports and goes on from
+// (research R27, G1).
+const EXITS = new Set(['exit', 'logout', 'eval', 'source', '.']);
+function mayExit(ast: unknown, exiting: ReadonlySet<string> = new Set()): boolean {
+  let found = false;
+  walk(ast, (node) => {
+    if (found || node.type !== 'SimpleCommand') return;
+    const word = commandWord(node);
+    if (word !== null && (EXITS.has(word) || exiting.has(word))) found = true;
+    if (word !== 'set') return;
+    const args = ((node.args ?? []) as { parts?: { type: string; value?: string }[] }[]).map((arg) => (arg.parts ?? []).map((part) => part.value ?? '').join(''));
+    if (args.some((arg, index) => /^-[a-zA-Z]*e/.test(arg) || (arg === '-o' && args[index + 1] === 'errexit'))) found = true;
+  });
+  return found;
 }
 
 // just-bash's parse errors as bash's: `line 1: …`.
@@ -250,9 +283,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return found;
   };
 
+  // The variables go in as the run's environment, not as text, so a large
+  // value neither reaches the parser's 1,000,000-byte limit nor adds to the
+  // command count.
+  const variablesOf = (state: ShellState): Record<string, string> => Object.fromEntries(Object.entries(state.variables).filter(([name]) => NAME.test(name)));
+
   const prelude = (state: ShellState): string => {
     const lines: string[] = [];
-    for (const [name, value] of Object.entries(state.variables)) if (NAME.test(name)) lines.push(`${name}=${quote(value)}`);
     const exported = state.exported.filter((name) => NAME.test(name) && name in state.variables);
     if (exported.length > 0) lines.push(`export ${exported.join(' ')}`);
     lines.push(...Object.values(state.functions));
@@ -261,6 +298,21 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     // `$?` as the last line left it, even under errexit.
     lines.push(`(exit ${state.status}) && :`);
     return lines.join('\n');
+  };
+
+  // The stored functions that can end the shell, through the ones they call.
+  const exitingFunctions = (functions: Record<string, string>): Set<string> => {
+    const exiting = new Set<string>();
+    const bodies = Object.entries(functions).map(([name, body]) => [name, parse(body)] as const);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [name, body] of bodies) {
+        if (exiting.has(name) || !mayExit(body, exiting)) continue;
+        exiting.add(name);
+        grew = true;
+      }
+    }
+    return exiting;
   };
 
   const EPILOGUE = '__cv_s=$?; __cv_state "$__cv_s" "$(declare -F)" "$SHELLOPTS"';
@@ -347,7 +399,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     record.typed = lowered.typed;
     let result: { stdout: string; stderr: string; exitCode: number };
     try {
-      result = await bashFor(shift + 3, state.cwd).exec(`${before}\n${line}\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true });
+      // The blank line ends a line left open by a trailing backslash.
+      result = await bashFor(shift + 3, state.cwd).exec(`${before}\n${line}\n\n${EPILOGUE}`, { cwd: state.cwd, rawScript: true, env: variablesOf(state) });
     } catch (thrown) {
       result = { stdout: '', stderr: `bash: ${(thrown as Error).message}\n`, exitCode: 1 };
     }
@@ -369,7 +422,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     // reaches the screen.
     if (limit === 'output') return { ...shared, stdout: '', stderr: '', recorded: [], effects: [], status: result.exitCode, end: 'limit', limit, state };
     if (limit !== null) return { ...shared, effects: [], status: result.exitCode, end: 'limit', limit, state };
-    if (taken === null) return { ...shared, effects: record.effects, status: result.exitCode, end: 'exited', state };
+    if (taken === null) {
+      // `exit`, in the line or in a function it calls; else an error ended
+      // the line, and the shell goes on as before it.
+      const exits = state.options.includes('errexit') || mayExit(ast, exitingFunctions(state.functions));
+      if (exits) return { ...shared, effects: record.effects, status: result.exitCode, end: 'exited', state };
+      return { ...shared, effects: record.effects, status: result.exitCode, end: 'done', state: { ...state, status: result.exitCode } };
+    }
     return { ...shared, effects: record.effects, status: taken.status, end: 'done', state: stateFrom(taken, state, bodies) };
   }
 
@@ -377,10 +436,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const { id, path: typed, text, force, cwd } = request;
     const home = typed === '~' || typed.startsWith('~/') ? `${HOME}${typed.slice(1)}` : typed;
     const path = fs.canonical(home.startsWith('/') ? home : `${cwd}/${home}`);
-    const refuse = (error: 'exists' | 'cant-open' | 'full'): WriteOutcome => ({ id, ok: false, error, path });
+    const refuse = (error: 'exists' | 'cant-open' | 'full' | 'readonly'): WriteOutcome => ({ id, ok: false, error, path });
+    // The open file under another name is the file itself, as in vim.
+    const own = request.own !== undefined && fs.canonical(request.own) === path;
     const stat = await fs.stat(path).catch(() => null);
+    if (own && !force && fs.isProtected(path)) return refuse('readonly');
     if (stat?.isDirectory === true || fs.refusesWrite(path)) return refuse('cant-open');
-    if (stat !== null && !force) return refuse('exists');
+    if (stat !== null && !force && !own) return refuse('exists');
     try {
       await fs.writeFile(path, text);
     } catch (error) {
@@ -388,7 +450,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     }
     const files = await fs.snapshot();
     lastFiles = JSON.stringify(files);
-    return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files };
+    return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files, ...(own ? { own } : {}) };
   }
 
   return {

@@ -68,7 +68,7 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
   let pending: Pending | null = null;
   let completing: { id: number; resolve: (completion: Completion | null) => void; timer: ReturnType<typeof setTimeout> } | null = null;
   let completeIds = 0;
-  const writes = new Map<number, { resolve: (outcome: WriteOutcome) => void; timer: ReturnType<typeof setTimeout> }>();
+  const writes = new Map<number, { path: string; resolve: (outcome: WriteOutcome) => void; timer: ReturnType<typeof setTimeout> }>();
   // What a restarted worker is given back (research R26).
   let state: ShellState | null = null;
   let files: VisitorFiles = NO_FILES;
@@ -85,11 +85,31 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
     readyTimer = null;
   };
 
+  // The worker is gone: a running line ends with nothing, its state as
+  // before it, and a waiting Tab or write gets no answer, so the failure
+  // line and its `try again` show at once rather than after the watchdog.
   const fail = () => {
     clearReady();
     worker?.terminate();
     worker = null;
     setStatus('failed');
+    if (pending !== null) {
+      const { request, resolve, timer } = pending;
+      clearTimeout(timer);
+      pending = null;
+      resolve(stopped(request, null));
+    }
+    if (completing !== null) {
+      const { resolve, timer } = completing;
+      clearTimeout(timer);
+      completing = null;
+      resolve(null);
+    }
+    for (const [id, { path, resolve, timer }] of writes) {
+      clearTimeout(timer);
+      resolve({ id, ok: false, error: 'cant-open', path });
+    }
+    writes.clear();
   };
 
   const onMessage = (message: FromWorker) => {
@@ -217,7 +237,7 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
           writes.delete(request.id);
           resolve(refused);
         }, TIMING.answer);
-        writes.set(request.id, { resolve, timer });
+        writes.set(request.id, { path: request.path, resolve, timer });
         worker.postMessage({ type: 'write', request });
       });
     },

@@ -128,10 +128,12 @@ export class TerminalFs extends InMemoryFs {
     return this.locked.has(this.canonical(path));
   }
 
-  // Refused when the path, or the folder it is in, is protected; writing to
-  // /dev/null is allowed.
-  private guard(path: string) {
-    if (this.refusesWrite(path)) throw denied();
+  // Refused when the path, or the folder it is in, is protected. Writing to
+  // /dev/null is allowed; removing, moving or making anything there isn't.
+  private guard(path: string, writing = false) {
+    const at = this.canonical(path);
+    if (!writing && (at === '/dev/null' || at.startsWith('/dev/null/'))) throw denied();
+    if (this.refusesWrite(at)) throw denied();
   }
 
   // Whether a write to `path` would be refused, for the adapter's redirect
@@ -180,7 +182,7 @@ export class TerminalFs extends InMemoryFs {
 
   override async writeFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
     const at = this.canonical(path);
-    this.guard(at);
+    this.guard(at, true);
     if (at === '/dev/null') return;
     if (!(await this.folderExists(parentOf(at)))) throw missing();
     const exists = await super.exists(at);
@@ -190,7 +192,7 @@ export class TerminalFs extends InMemoryFs {
 
   override async appendFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
     const at = this.canonical(path);
-    this.guard(at);
+    this.guard(at, true);
     if (at === '/dev/null') return;
     if (!(await this.folderExists(parentOf(at)))) throw missing();
     await this.room(at, byteLength(content), false);
@@ -228,7 +230,8 @@ export class TerminalFs extends InMemoryFs {
   override async cp(src: string, dest: string, options?: CpOptions) {
     const from = this.canonical(src);
     const to = this.canonical(dest);
-    this.guard(to);
+    this.guard(to, true);
+    if (to === '/dev/null') return;
     if (!(await this.folderExists(parentOf(to)))) throw missing();
     await this.room(to, await this.sizeOf(from), await super.exists(to));
     return super.cp(from, to, options);
