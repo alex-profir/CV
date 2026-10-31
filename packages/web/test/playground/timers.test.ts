@@ -122,7 +122,6 @@ describe('008-typescript-playground-FR-037: the rest of the browser\'s own work 
   test.each([
     ['a FileReader', 'const r = new FileReader();\nr.onload = () => console.log(r.result);\nr.readAsText(new Blob(["hi"]));', 'hi'],
     ['an OffscreenCanvas', 'const canvas = new OffscreenCanvas(1, 1);\ncanvas.getContext("2d");\ncanvas.convertToBlob().then((blob) => console.log(blob.size > 0 ? "hi" : "none"));', 'hi'],
-    ['a message between two BroadcastChannels', 'const a = new BroadcastChannel("c");\nconst b = new BroadcastChannel("c");\nb.onmessage = (event) => console.log(event.data);\na.postMessage("hi");', 'hi'],
   ])('%s: the run waits for it', async (_name, code, logged) => {
     const page = await openPlaygroundPage();
     await setCode(page, code);

@@ -320,6 +320,20 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
     if (!(await until(async () => (await editorText(page)) !== fixable))) found.push(problem('quick-fix', 'Ctrl+.', 'choosing the fix left the code as it was'));
   }
 
+  // A refactoring, from the same key, on a selected line (FR-082).
+  const refactorable = 'function total() {\n  const a = 1;\n  console.log(a + 1);\n}';
+  await putCode(page, refactorable);
+  await cursorAt(page, 3, 3);
+  await page.keyboard.press('Shift+End');
+  await page.keyboard.press(`${key}+Period`);
+  await page.waitForSelector('.action-widget', { timeout: 10_000 });
+  const extract = page.locator('.action-widget').getByText(/^Extract to function/).first();
+  if (!(await until(async () => (await extract.count()) > 0))) found.push(problem('quick-fix', 'Ctrl+.', 'a selected line offers no Extract to function'));
+  else {
+    await extract.click();
+    if (!(await until(async () => (await editorText(page)).includes('newFunction')))) found.push(problem('quick-fix', 'Ctrl+.', 'extracting a function left the code as it was'));
+  }
+
   const untidy = 'const  a=1;\nfunction  f( ){return a}';
   await putCode(page, untidy);
   await page.keyboard.press('Shift+Alt+KeyF');

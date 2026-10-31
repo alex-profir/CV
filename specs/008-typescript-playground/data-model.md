@@ -139,7 +139,7 @@ In Cache Storage (R4):
 ```ts
 type DownloadState =
   | { kind: 'idle' }                                   // the window isn't open on desktop
-  | { kind: 'checking' }                               // looking for a stored copy
+  | { kind: 'checking'; nothingStored?: true }         // looking for a stored copy; or none, and asking for the manifest
   | { kind: 'downloading'; received: number; total: number; announcedStep: 0 | 1 | 2 | 3 | 4 }
   | { kind: 'offline'; total: number; stopped: boolean; wontOpen?: boolean }   // FR-011: never started, stopped part way, or a whole copy that won't open
   | { kind: 'ready'; typescript: string; kept: boolean };  // kept: false is FR-014

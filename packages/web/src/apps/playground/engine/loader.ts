@@ -234,7 +234,7 @@ async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache |
   for (const file of manifest.files) {
     let response: Response;
     try {
-      response = await env.fetch(file.path, { cache: 'reload', signal });
+      response = await env.fetch(file.path, { cache: 'reload', headers: { 'x-playground-download': '1' }, signal });
     } catch (error) {
       if (signal.aborted) aborted(signal);
       throw new DownloadFailed(String(error));
@@ -259,6 +259,8 @@ async function download(env: LoaderEnv, manifest: EngineManifest, cache: Cache |
       if (signal.aborted) aborted(signal);
       throw new DownloadFailed(String(error));
     }
+    // A file cut short is a stopped download, however it was answered (FR-011).
+    if (body.size !== file.bytes) throw new DownloadFailed(`${file.path} is ${body.size} bytes of ${file.bytes}`);
     if (cache !== null) await cache.put(file.path, new Response(body, { status: 200, headers: response.headers }));
   }
 }
@@ -315,6 +317,9 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
   let stopped = false;
   let openFailed = false;
   let attempts = 0;
+  // Nothing stored: the window can say so while the manifest is on its way,
+  // though nothing is announced until a file answers.
+  if (env.onLine()) events.onState({ kind: 'checking', nothingStored: true });
   for (;;) {
     if (signal.aborted) aborted(signal);
     let manifest: EngineManifest | null = null;
@@ -378,4 +383,31 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
     attempts += 1;
     openFailed = false;
   }
+}
+
+// How long an engine may take to start before it counts as one that won't
+// (FR-011): a worker that never starts would otherwise leave the window waiting.
+export const ENGINE_START_LIMIT_MS = 60_000;
+
+// The engine, or a failure once the limit has passed; one that starts after
+// that is given to `late`.
+export function startWithin<T>(starting: Promise<T>, late: (engine: T) => void, limitMs = ENGINE_START_LIMIT_MS): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let over = false;
+    const timer = setTimeout(() => {
+      over = true;
+      reject(new Error('the engine did not start in time'));
+    }, limitMs);
+    starting.then(
+      (engine) => {
+        if (over) return late(engine);
+        clearTimeout(timer);
+        resolve(engine);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        if (!over) reject(error);
+      },
+    );
+  });
 }

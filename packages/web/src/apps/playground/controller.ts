@@ -14,7 +14,7 @@ import { welcome } from './examples/welcome.ts';
 import type { Example } from './examples/types.ts';
 import { createKeeper, readKept, removeKept, worthKeeping, writeKept } from './kept.ts';
 import type { EditorView, Engine, EngineCommand } from './engine/contract.ts';
-import { forgetCopy, loadEngine, requestRetry } from './engine/loader.ts';
+import { forgetCopy, loadEngine, requestRetry, startWithin } from './engine/loader.ts';
 import { runGoing, startRun, stopRun } from './running.ts';
 import { session } from './session.ts';
 import type { PlaygroundSession } from './session.ts';
@@ -264,7 +264,7 @@ export function startEngine(input: StartInput): void {
         onCursor: (cursor) => session.update({ cursor }),
         onTabFocus: (on) => session.update({ tabMovesFocus: on }),
       });
-      const created = await creating.catch(async (error: unknown) => {
+      const created = await startWithin(creating, (late) => late.dispose()).catch(async (error: unknown) => {
         await forgetCopy(manifest);
         throw error;
       });

@@ -13,6 +13,9 @@ type Import = { start: number; end: number; specifier: string };
 // errors it has, and whether TypeScript gave no JavaScript (`noEmitOnError`).
 export type Runnable = { code: string; map: string; imports: number; errors: number; skipped: boolean };
 
+// A refactoring TypeScript offers at a selection, with its edits to the code.
+export type Refactor = { title: string; kind: string; edits: { start: number; length: number; text: string }[] };
+
 // TypeScript's own errors for what an import names, dropped where the
 // packages message stands (R11): cannot find module, cannot find name
 // 'require', a dynamic import's module option, and the like.
@@ -85,6 +88,26 @@ class PlaygroundWorker extends TypeScriptWorker {
     return { line: from.line, column: from.column, endLine: to.line, endColumn: to.column, message, code, category };
   }
 
+  // What the Errors pane and the logs count (FR-022, FR-033): syntax, types,
+  // options and, through the language service, declarations; without what an
+  // import's mark stands for.
+  private found(fileName: string, file: any, imports: Import[]): Diagnostic[] {
+    const service = this.getLanguageService();
+    const onImport = (start: number, length: number) => imports.some((entry) => start < entry.end + 1 && start + length > entry.start - 1);
+    const raw = [...service.getSyntacticDiagnostics(fileName), ...service.getSemanticDiagnostics(fileName), ...service.getCompilerOptionsDiagnostics()];
+    const diagnostics: Diagnostic[] = [];
+    for (const entry of raw) {
+      const category = CATEGORY[entry.category] ?? 'error';
+      if (category !== 'error' && category !== 'warning') continue;
+      const start = entry.start ?? 0;
+      const length = entry.length ?? 0;
+      if (entry.file !== undefined && entry.file.fileName !== file.fileName) continue;
+      if (IMPORT_ERRORS.has(entry.code) && onImport(start, length)) continue;
+      diagnostics.push(this.diagnostic(file, start, length, ts.flattenDiagnosticMessageText(entry.messageText, '\n'), entry.code, category));
+    }
+    return diagnostics;
+  }
+
   // The bundled TypeScript's own version (FR-012).
   async getVersion(): Promise<string> {
     return ts.version;
@@ -99,18 +122,7 @@ class PlaygroundWorker extends TypeScriptWorker {
     const file = program?.getSourceFile(fileName);
     if (model === null || file === undefined) return null;
     const imports = findImports(file);
-    const onImport = (start: number, length: number) => imports.some((entry) => start < entry.end + 1 && start + length > entry.start - 1);
-    const raw = [...service.getSyntacticDiagnostics(fileName), ...service.getSemanticDiagnostics(fileName), ...service.getCompilerOptionsDiagnostics()];
-    const diagnostics: Diagnostic[] = [];
-    for (const entry of raw) {
-      const category = CATEGORY[entry.category] ?? 'error';
-      if (category !== 'error' && category !== 'warning') continue;
-      const start = entry.start ?? 0;
-      const length = entry.length ?? 0;
-      if (entry.file !== undefined && entry.file.fileName !== file.fileName) continue;
-      if (IMPORT_ERRORS.has(entry.code) && onImport(start, length)) continue;
-      diagnostics.push(this.diagnostic(file, start, length, ts.flattenDiagnosticMessageText(entry.messageText, '\n'), entry.code, category));
-    }
+    const diagnostics = this.found(fileName, file, imports);
     for (const entry of imports) diagnostics.push(this.diagnostic(file, entry.start, entry.end - entry.start, packagesMessage, 0, 'error'));
     diagnostics.sort((a, b) => a.line - b.line || a.column - b.column);
     const options = this.getCompilationSettings();
@@ -137,8 +149,9 @@ class PlaygroundWorker extends TypeScriptWorker {
     const program = service.getProgram();
     const file = program?.getSourceFile(fileName);
     if (file === undefined) return null;
-    const imports = findImports(file).length;
-    const errors = [...program.getSyntacticDiagnostics(file), ...program.getSemanticDiagnostics(file)].filter((entry: any) => entry.category === 1).length;
+    const found = findImports(file);
+    const imports = found.length;
+    const errors = this.found(fileName, file, found).filter((entry) => entry.category === 'error').length;
     let code = '';
     let map = '';
     const result = program.emit(
@@ -151,7 +164,9 @@ class PlaygroundWorker extends TypeScriptWorker {
       false,
       { after: [stripExports()] },
     );
-    if (result.emitSkipped) return { code: '', map: '', imports, errors, skipped: true };
+    // A declaration that can't be made skips the emit but leaves the JavaScript,
+    // which runs (FR-033); `noEmitOnError` with errors leaves none.
+    if (result.emitSkipped && code === '') return { code: '', map: '', imports, errors, skipped: true };
     return { code: withoutMapComment(code), map, imports, errors, skipped: false };
   }
 
@@ -162,6 +177,25 @@ class PlaygroundWorker extends TypeScriptWorker {
   async getNameKinds(fileName: string, start: number, length: number): Promise<number[]> {
     if (this.getLanguageService().getProgram()?.getSourceFile(fileName) === undefined) return [];
     return this.getLanguageService().getEncodedSemanticClassifications(fileName, { start, length }, ts.SemanticClassificationFormat.TwentyTwenty).spans;
+  }
+
+  // TypeScript's refactorings at a selection, each with its edits (FR-082):
+  // none that adds an import or reaches another file.
+  async getRefactors(fileName: string, start: number, end: number, invoked: boolean): Promise<Refactor[]> {
+    const service = this.getLanguageService();
+    if (service.getProgram()?.getSourceFile(fileName) === undefined) return [];
+    const range = { pos: start, end };
+    const format = { ...ts.getDefaultFormatCodeSettings('\n'), indentSize: 2, tabSize: 2, convertTabsToSpaces: true };
+    const found: Refactor[] = [];
+    for (const refactor of service.getApplicableRefactors(fileName, range, {}, invoked ? 'invoked' : 'implicit')) {
+      for (const action of refactor.actions) {
+        if (action.notApplicableReason !== undefined) continue;
+        const changes = service.getEditsForRefactor(fileName, format, range, refactor.name, action.name, {})?.edits ?? [];
+        if (changes.length === 0 || changes.some((change: any) => change.fileName !== fileName || change.textChanges.some((edit: any) => /^\s*import\b/m.test(edit.newText)))) continue;
+        found.push({ title: action.description, kind: action.kind ?? 'refactor', edits: changes.flatMap((change: any) => change.textChanges.map((edit: any) => ({ start: edit.span.start, length: edit.span.length, text: edit.newText }))) });
+      }
+    }
+    return found;
   }
 
   // TypeScript's fixes, without any that adds an import (FR-082). Monaco

@@ -221,8 +221,11 @@ define('confirm', () => {
   return false;
 });
 
-// A nested worker's loop couldn't be watched for the stuck popup (R18).
-for (const name of ['Worker', 'SharedWorker']) {
+// A nested worker's loop couldn't be watched for the stuck popup (R18). A loop
+// sending on a `BroadcastChannel` fills the browser's own memory, with nothing
+// to tell it to wait, and the code's `MessageChannel` does what one is for here
+// (FR-040).
+for (const name of ['Worker', 'SharedWorker', 'BroadcastChannel']) {
   try {
     delete scope[name];
   } catch {
@@ -401,6 +404,9 @@ define('cancelAnimationFrame', (id: unknown) => {
 // A request is pending from its start until it settles; a body being read
 // counts as one too (`countCalls` below), so `await (await fetch(…)).json()`
 // keeps the run going.
+// The code gets a promise of its own that settles as the browser's does: a
+// handler here on the browser's own would count as handling it, and a rejection
+// the code never handles would go unreported (FR-035).
 function counting<T>(promise: Promise<T>): Promise<T> {
   requests += 1;
   changed();
@@ -408,8 +414,16 @@ function counting<T>(promise: Promise<T>): Promise<T> {
     requests -= 1;
     changed();
   };
-  promise.then(done, done);
-  return promise;
+  return promise.then(
+    (value) => {
+      done();
+      return value;
+    },
+    (error: unknown) => {
+      done();
+      throw error;
+    },
+  );
 }
 
 // No request of the code's sends cookies or other credentials, whatever it
@@ -560,27 +574,19 @@ if (typeof scope['AbortSignal']?.timeout === 'function') {
 // port with a handler isn't pending by itself (a test sets this): nothing says
 // a message will ever come, and the run would never end.
 const MESSAGE_MS = 10;
-// A `BroadcastChannel`'s message goes through the browser, so it takes longer.
-const BROADCAST_MS = 50;
-function countMessages(holder: Record<string, unknown> | undefined, ms: number): void {
-  const post = holder?.['postMessage'];
-  if (holder === undefined || typeof post !== 'function') return;
-  Object.defineProperty(holder, 'postMessage', {
-    value(this: unknown, ...args: unknown[]) {
-      post.apply(this, args);
-      requests += 1;
+Object.defineProperty(MessagePort.prototype, 'postMessage', {
+  value(this: MessagePort, ...args: [message: unknown, options?: StructuredSerializeOptions]) {
+    realPost.apply(this, args);
+    requests += 1;
+    changed();
+    realSetTimeout(() => {
+      requests -= 1;
       changed();
-      realSetTimeout(() => {
-        requests -= 1;
-        changed();
-      }, ms);
-    },
-    writable: true,
-    configurable: true,
-  });
-}
-countMessages(MessagePort.prototype as unknown as Record<string, unknown>, MESSAGE_MS);
-countMessages(prototypeOf('BroadcastChannel'), BROADCAST_MS);
+    }, MESSAGE_MS);
+  },
+  writable: true,
+  configurable: true,
+});
 
 countCalls(prototypeOf('Response'), BODY_READS);
 countCalls(prototypeOf('Request'), BODY_READS);
@@ -722,6 +728,14 @@ const closeWorker = () => {
 };
 for (let holder: object | null = scope; holder !== null; holder = Object.getPrototypeOf(holder)) {
   if (holder === scope || Object.hasOwn(holder, 'close')) Object.defineProperty(holder, 'close', { value: closeWorker, writable: true, configurable: false, enumerable: false });
+}
+
+// Nothing listens to the code's own `postMessage`, and the frame's `Worker` has
+// no limit on it: a loop of them took the page down (FR-040). The runtime keeps
+// its own for the first message.
+const sendNothing = () => undefined;
+for (let holder: object | null = scope; holder !== null; holder = Object.getPrototypeOf(holder)) {
+  if (holder === scope || Object.hasOwn(holder, 'postMessage')) Object.defineProperty(holder, 'postMessage', { value: sendNothing, writable: true, configurable: false, enumerable: false });
 }
 
 // ---- The page ------------------------------------------------------------
