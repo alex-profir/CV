@@ -64,10 +64,11 @@ const SHELL_ENTRY = 'src/client/os.tsx';
 const SSR_ENTRY = 'src/render.tsx';
 
 // The os script's gzipped size may grow by at most 5% with the shell (006
-// SC-013): 113,581 bytes at `gzip -9` before the amendment, measured on
-// `main` at a3f9532 (with 007's inspector) when it was merged, plus 5%.
-// T127 measured 108,962 on the `main` it branched from.
-export const OS_BUDGET = 119_260;
+// SC-013): 142,646 bytes at `gzip -9` before the amendment, measured with
+// 008's Playground interface (008 at afe2bc2, before it was rebased on the
+// amendment), plus 5%. Before 008 the base was 113,581, on `main` at a3f9532
+// with 007's inspector; T127 measured 108,962 on the `main` it branched from.
+export const OS_BUDGET = 149_778;
 
 // The shell worker's file, and the words only the worker's code holds
 // (no-network.ts, no-zlib.ts): the os script holding them has the shell

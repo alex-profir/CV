@@ -109,6 +109,11 @@
   moves focus out of its command palette on every system, while FR-085 asks for every editor command
   there. Rebuild the palette, or amend FR-085? → A: Amend FR-085 to the reality: the palette lists
   the commands the editor offers it, and the list of keys holds every key, those five included.
+- Q (2026-10-31, rebasing on `main` with 006's amendments): the `os` script, with the Playground's
+  interface, is past 006's SC-013 budget of 119,260 bytes, measured before 008. And FR-088's "007's
+  plus 3 minutes" now gives 1,080 s. → A: SC-013's base is re-measured with 008's interface, as it
+  was when 007 merged: 142,646 bytes, so 149,778 (006's contract and research). FR-088 keeps
+  1,020 s and drops "007's plus 3 minutes".
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -980,7 +985,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   as 004's and 005's, give the same result locally and on the pull request, and name the state, the
   width and, for examples, the example in every failure.
 - **FR-088**: With the Playground's checks in it, `npm run site-check` MUST exit 0 within 1,020 s on
-  the owner's machine, 007's budget plus 3 minutes, as 006 and 007 set theirs.
+  the owner's machine, as 006 and 007 set budgets of their own. Amended 2026-10-31: it said "007's
+  budget plus 3 minutes", which 007's 900 s on `main` no longer gives.
 
 ### Key Entities
 
