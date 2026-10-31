@@ -44,8 +44,9 @@ fresh browser profile.
    `TypeScript 5.9.3` in the status bar.
 2. **Editing**: type `const n: number = "one";` — a wavy underline within a second, the message
    after the line, Errors ① lists `TS2322`. Hover a name; `Ctrl+Space`; F12, `Shift+F12`, F2,
-   `Ctrl+.` on an error, F1, `Shift+Alt+F` (`Cmd` and `Option` on a Mac). `Alt+Shift+M` from inside
-   the editor reaches the menu bar and types nothing.
+   `Ctrl+.` on an error TypeScript can fix (`interface Job { title: string; years: number }`, then
+   `const job: Job = {};`: Add missing properties), F1, `Shift+Alt+F` (`Cmd` and `Option` on a
+   Mac). `Alt+Shift+M` from inside the editor reaches the menu bar and types nothing.
 3. **Options**: turn off `strict`: strict-only errors go, the panes update.
 4. **Running** (story 2): Examples → Timers and promises → Run: "Running · 1 timer left", then
    "Finished in 5.0 s". An endless loop: the site stays usable; after 5 s the popup inside the

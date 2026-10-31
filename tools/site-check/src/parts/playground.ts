@@ -301,6 +301,9 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
   await page.keyboard.press('F2');
   const input = page.locator(`${PLAYGROUND.editor} .rename-box input`);
   await input.waitFor({ timeout: 10_000 });
+  // Monaco focuses the box 100 ms after showing it. An Enter sent before that
+  // is lost about once in 150 times, and a visitor can't be that quick.
+  await page.waitForFunction((selector) => document.activeElement === document.querySelector(selector), `${PLAYGROUND.editor} .rename-box input`, { timeout: 10_000 });
   await input.fill('surface');
   await page.keyboard.press('Enter');
   if (!(await until(async () => (await editorText(page)) === renamed))) found.push(problem('rename', 'F2', 'the code differs from what TypeScript renames'));
