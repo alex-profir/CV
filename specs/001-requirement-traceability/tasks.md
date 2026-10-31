@@ -1073,8 +1073,8 @@ during it, not after, so it can't merge without the sign-off it introduces (rese
 ## Phase 12: Convergence
 
 **Purpose**: Gaps found by `/speckit-converge` on 2026-10-29 in the amendment. The owner tasks
-T081 to T086 still stand and aren't repeated here. Any commit for these tasks lands on PR #28's
-branch, so T082 and T084 then run on the new head.
+T081 to T086 still stand and aren't repeated here. PR #28 merged without these tasks, so they ship
+in a follow-up pull request of their own, signed off locally like any other.
 
 - [X] T087 Remove the earlier `<sha>.json` before the first check of a local full run, so an interrupted or still-running run can't leave an earlier pass to sign off, per FR-033 (partial)
   - Today `verify()` in `tools/local-verify/src/verify.ts` empties `<sha>.log` and removes `<sha>.vitest.json` before the checks, but keeps `<sha>.json` until `writeResult` runs after the last check. If a second run on a commit that already passed shows a failing check and is then stopped (Ctrl-C, an outside SIGTERM), or `npm run signoff` is run while it's still going, `readPassingResult` still finds the old `pass`. data-model.md (States of a commit) says another `verify` on the same commit replaces its result, "so a later failure takes back a pass that wasn't signed off yet", and contracts/local-verify.md says a new run replaces all three files.
