@@ -64,11 +64,15 @@ export default defineConfig({
     manifest: true,
     assetsInlineLimit: 0,
     cssMinify: 'lightningcss',
+    // The `os` script's limit is its gzip budget, which build-site.ts checks
+    // (006 SC-013). Vite's own warning advises splitting a script that must
+    // stay one file.
+    chunkSizeWarningLimit: Number.POSITIVE_INFINITY,
     rolldownOptions: {
       // `os` is the shell's one script and its style sheet (005 research
-      // R14). It shares no module with the other entries and imports nothing
-      // dynamically, so Rolldown emits it as one file; build-site.ts fails
-      // if it ever doesn't.
+      // R14). It shares no module with the other entries and Rolldown sees no
+      // dynamic import, as the Playground's engine is opened by a computed
+      // address, so it emits one file; build-site.ts fails if it ever doesn't.
       input: { cv: 'src/styles/global.css', 'register-sw': 'src/client/register-sw.ts', os: 'src/client/os.tsx' },
       output: {
         // Font files keep their family directory in the name

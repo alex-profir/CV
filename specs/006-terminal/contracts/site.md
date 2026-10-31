@@ -25,7 +25,7 @@ file lists what 006 adds.
 
 | File | Change |
 |------|--------|
-| `assets/os-<hash>.js` | Holds the Terminal's interface, still one file with no import and no dynamic import. It creates the shell worker with `new Worker(new URL(…), { type: 'module' })` and loads nothing else. Gzipped, within 5% of its size before the amendment (SC-013) |
+| `assets/os-<hash>.js` | Holds the Terminal's interface, still one file with no import and no dynamic import but the Playground's (below). It creates the shell worker with `new Worker(new URL(…), { type: 'module' })` and loads nothing else. Gzipped, within 5% of its size before the amendment (SC-013) |
 | `assets/shell-<hash>.js` | New: the shell worker, one file with no import, about 1.34 MB, 368 KB gzip, 295 KB Brotli as built (just-bash alone: 1.26 MB, 343 KB, 274 KB). Loaded only when the Terminal first opens. Starts with a comment naming the license file |
 | `assets/shell-licenses-<hash>.txt` | New: the name, version and license text of every package the worker bundles (research R40) |
 | `assets/os-<hash>.css` | Holds the Terminal's and the pocket terminal's styles |
@@ -35,6 +35,16 @@ file lists what 006 adds.
 `build-site.ts` fails the build when the `os` entry imports anything (as today), when the worker
 isn't exactly one file with no import, or when the `os` script's gzipped size passes its budget:
 142,646 bytes (gzip -9, before the amendment, re-measured with 008's Playground interface; 113,581 at `a3f9532` with 007, and T127 measured 108,962 before 007) plus 5%, `OS_BUDGET = 149_778` (research R34). Amended 2026-10-31 by 008-typescript-playground: the base was 113,581 bytes and the budget 119,260.
+
+> **Amended 2026-10-31 by 008-typescript-playground.** The `os` script holds one `import()`: 008's
+> loader opens the engine from `/playground/<hash>/`, an address computed when it runs, so it is no
+> chunk and Vite's manifest doesn't list it (008 contracts/engine.md). Nothing else changes: the
+> script holds no other `import()`, none with a written address, and no part of the shell, which it
+> still starts only with `new Worker`. `build-site.ts` keeps its checks, which read the manifest
+> and the shell's mark, and `test/build.test.ts` holds the count on the built script. At 492 KB,
+> minified, the script nears Vite's 500 kB warning, whose advice to split it doesn't apply, so the
+> client build turns that warning off; the gzip budget is its limit.
+
 The license file and the worker's header comment are written by the worker build's
 `scripts/shell-licenses.ts` plugin.
 
