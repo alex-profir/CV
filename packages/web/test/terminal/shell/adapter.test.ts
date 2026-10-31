@@ -702,3 +702,81 @@ describe('006-terminal-FR-067 and 006-terminal-FR-068: failures worded as bash w
     expect((await runLine(shell, 'f')).stdout).toBe('declare -x d\n');
   });
 });
+
+describe('006-terminal-FR-067: Phase 40, lines that write or close, each as bash 5.3 gave it', () => {
+  const run = async (...lines: string[]) => {
+    const shell = shellFor('every-field');
+    const results = await runLines(shell, lines);
+    return results.at(-1)!;
+  };
+
+  test.each([
+    ['echo a > f; cat < f > f; wc -c f', '0 f\n'],
+    ['echo a > f; sort < f > f; wc -c f', '0 f\n'],
+    ['echo a > f; sort f > f; wc -c f', '0 f\n'],
+    ['echo a > f; cat ./f > f; wc -c f', '0 f\n'],
+    ['echo a > f; tee f < f | wc -c', '0\n'],
+    ['echo a > f; tee g < f | wc -c; cat g', '2\na\n'],
+    ['cat < nope > n2; echo $?; test -e n2; echo $?', '1\n1\n'],
+  ])('T355: %s', async (line, stdout) => {
+    expect((await run(line)).stdout).toBe(stdout);
+  });
+
+  test.each([
+    ['echo a > f; cat f >> f; echo $?; cat f', '1\na\n', 'cat: f: input file is output file\n'],
+    ['echo a > f; cat < f >> f; echo $?; cat f', '1\na\n', 'cat: -: input file is output file\n'],
+    ['echo a > f; cat f - >> f <<< b; echo $?; cat f', '1\na\nb\n', 'cat: f: input file is output file\n'],
+    ['echo a > f; grep a f >> f; echo $?; cat f', '2\na\n', 'grep: f: input file is also the output\n'],
+    ['echo a > f; grep a < f >> f; echo $?; cat f', '2\na\n', 'grep: (standard input): input file is also the output\n'],
+    ['echo a > f; grep a f > f; echo $?; wc -c f', '2\n0 f\n', 'grep: f: input file is also the output\n'],
+    ['echo a > f; echo b > g; grep . f g >> f; echo $?; cat f', '2\na\ng:b\n', 'grep: f: input file is also the output\n'],
+    ['echo a > f; grep -c a f >> f; echo $?; cat f', '0\na\n1\n', ''],
+    ['echo a > f; grep -q a f >> f; echo $?; cat f', '0\na\n', ''],
+  ])('T355: %s', async (line, stdout, stderr) => {
+    expect(await run(line)).toMatchObject({ stdout, stderr });
+  });
+
+  test('T354: `uniq` writes a file byte for byte', async () => {
+    expect((await run('uniq about o; diff o about; echo $?; wc -c o')).stdout).toBe(`0\n${(await run('wc -c < about')).stdout.trim()} o\n`);
+  });
+
+  test('T357: a word that is no number fails alone and the Terminal stays open', async () => {
+    const result = await run('x=1; exit nope; echo after $?');
+    expect(result).toMatchObject({ stdout: 'after 2\n', stderr: 'bash: exit: nope: numeric argument required\n', end: 'done' });
+  });
+
+  test('T357: too many words end the line and the Terminal stays open', async () => {
+    const shell = shellFor('every-field');
+    const [first, second] = await runLines(shell, ['x=1; exit 1 2; echo not', 'echo $x $?']);
+    expect(first).toMatchObject({ stdout: '', stderr: 'bash: exit: too many arguments\n', status: 1, end: 'done' });
+    expect(second!.stdout).toBe('1 1\n');
+  });
+
+  test.each(['exit 3', 'exit', 'exit -- 3', 'x=3; exit $x', 'f() { exit 4; }; f', 'builtin exit 2'])('T357: %s still closes the Terminal', async (line) => {
+    expect((await run(line)).end).toBe('exited');
+  });
+
+  test('T357: a variable that is no number is refused when it runs, and `exit` in a subshell says so too', async () => {
+    expect(await run('x=nope; exit $x; echo after')).toMatchObject({ stdout: 'after\n', end: 'done' });
+    expect(await run('(exit 1 2; echo sub); echo $?')).toMatchObject({ stdout: '1\n', stderr: 'bash: exit: too many arguments\n', end: 'done' });
+  });
+
+  test('T360: `mkdir -pv` and `cp -rv` name each thing, `cp -n` of a file on itself says nothing', async () => {
+    expect((await run('mkdir -pv x/y/z')).stdout).toBe("mkdir: created directory 'x'\nmkdir: created directory 'x/y'\nmkdir: created directory 'x/y/z'\n");
+    expect((await run('mkdir -p a; mkdir -pv a')).stdout).toBe('');
+    expect((await run('cp -rv work w')).stdout).toMatch(/^'work' -> 'w'\n(?:'work\/(\S+)' -> 'w\/\1'\n)+$/);
+    expect(await run('echo a > f; cp -n f f; echo $?')).toMatchObject({ stdout: '0\n', stderr: '' });
+  });
+
+  test('T360: `set -u` names a positional parameter as bash does', async () => {
+    expect((await run('set -u; echo $1')).stderr).toBe('bash: $1: unbound variable\n');
+  });
+
+  test('T349: `sort -o` writes the file, in the same order', async () => {
+    expect((await run("printf 'b\\nB\\n_\\n' | sort -o s; cat s")).stdout).toBe('B\n_\nb\n');
+  });
+
+  test('T346: `f();` is still a syntax error', async () => {
+    expect(await run('f();')).toMatchObject({ status: 2, end: 'syntax' });
+  });
+});

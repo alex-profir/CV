@@ -9,7 +9,8 @@ import { Bash, defineCommand } from 'just-bash/browser';
 import { commandNamed, engineContext, SITE_WORDS } from '../engine/commands.ts';
 import type { SiteInput } from '../engine/commands.ts';
 import { complete } from './complete.ts';
-import { CHECK_FILE, CLEARED, FATAL, GONE, HOME, MARK, OPENING, TerminalFs, WROTE } from './fs.ts';
+import { CASE_MARK, CHECK_FILE, CLEARED, FATAL, GONE, HOME, MARK, OPENING, TerminalFs, WROTE } from './fs.ts';
+import { INPUT_FILE, OUTPUT_FILE } from './gnu.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
 import { PIPED, RENAMED, SCREEN_COMMANDS, siteCommands, TYPED } from './site-commands.ts';
@@ -111,7 +112,7 @@ const literalWord = (value: string) => ({ type: 'Word', parts: [{ type: 'Literal
 // A hidden command under a path, so a visitor's PATH can't hide it (T286).
 const hidden = (name: string) => `/usr/bin/${name.startsWith(MARK) ? name : `${MARK}${name}`}`;
 
-type Tools = { parse: Parse; serialize: (node: unknown) => string; done: WeakSet<object>; builtinHelp: () => boolean; noCase: () => boolean; failGlob: () => boolean; integers: () => ReadonlySet<string> };
+type Tools = { parse: Parse; serialize: (node: unknown) => string; done: WeakSet<object>; builtinHelp: () => boolean; noCase: () => boolean; failGlob: () => boolean; integers: () => ReadonlySet<string>; holdsEntries: (typed: string) => boolean };
 
 // `${x:?word}` ends the line as `exit` does in just-bash; the mark tells them
 // apart (T286), and the name is bash's wording of it.
@@ -221,10 +222,12 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
           }
         }
         if (node.type === 'For') wrapSlashGlobs(node, 'words', tools);
+        if (node.type === 'CommandSubstitution' && holdsNul(node.body)) return withoutNul(node, tools);
         if (node.type !== 'SimpleCommand' || tools.done.has(node)) return;
         if ((node.args as never[]).some(slashGlob)) return wrapSlashGlobs(node, 'args', tools);
         const name = node.name as { parts?: AstNode[] } | null;
         if (name === null) return void checkInteger(node, tools);
+        if (readsFolder(node, tools)) return;
         if (tools.failGlob() && stopAtFailedGlob(node, tools)) return;
         const word = staticWord(name);
         if (word === null) return rewriteExpanded(node, piped, tools);
@@ -326,19 +329,67 @@ function markExits(node: unknown) {
   }
   if (node === null || typeof node !== 'object') return;
   const typed = node as AstNode;
-  if (typed.type === 'Subshell' || typed.type === 'CommandSubstitution' || typed.type === 'ProcessSubstitution') return;
-  if (typed.type === 'Pipeline' && (typed.commands as unknown[]).length > 1) return;
+  if (typed.type === 'Subshell' || typed.type === 'CommandSubstitution' || typed.type === 'ProcessSubstitution') return markInnerExits(typed);
+  if (typed.type === 'Pipeline' && (typed.commands as unknown[]).length > 1) return markInnerExits(typed);
   if (typed.type === 'SimpleCommand') {
     if (staticWord(typed.name as never) === 'exec') typed.ends = true;
     if (!runsExit(typed)) return;
     const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
+    const words = withoutDashes(typed);
     const command = { ...typed };
     for (const key of Object.keys(typed)) delete typed[key];
-    Object.assign(typed, { type: 'Group', body: [statement({ type: 'SimpleCommand', name: literalWord(hidden('exiting')), args: [LAST_RESULT()[0]], assignments: [], redirections: [] }), statement(command)], redirections: [] });
-    return;
+    const closing = { type: 'Group', body: [statement(simpleCommand(hidden('exiting'), [LAST_RESULT()[0]])), statement(command)], redirections: [] };
+    return void Object.assign(typed, mayBeRefused(words) ? refusedExit(words, closing) : closing);
   }
   for (const [key, value] of Object.entries(typed)) if (key !== 'type') markExits(value);
 }
+
+const simpleCommand = (name: string, args: unknown[]) => ({ type: 'SimpleCommand', name: literalWord(name), args, assignments: [], redirections: [] });
+
+// `exit`'s words, past `builtin` or `command` and a `--`, which just-bash refuses.
+function withoutDashes(node: AstNode) {
+  const args = node.args as { parts?: AstNode[] }[];
+  const words = staticWord(node.name as never) === 'exit' ? args : args.slice(1);
+  if (staticWord(words[0]) !== '--') return words;
+  node.args = args.filter((arg) => arg !== words[0]);
+  return words.slice(1);
+}
+
+// bash refuses it and stays open: a word that's no number fails alone, too many
+// ends the line there (T357).
+function refusedExit(words: readonly unknown[], closing: unknown) {
+  const pipeline = (one: unknown) => ({ type: 'Pipeline', commands: [one], negated: false, timed: false, timePosix: false });
+  const stop = { type: 'Group', body: [{ type: 'Statement', pipelines: [pipeline(simpleCommand(hidden('exit-stop'), [])), pipeline(simpleCommand('exit', [literalWord('1')]))], operators: ['&&'], background: false }], redirections: [] };
+  return { type: 'Group', body: [{ type: 'Statement', pipelines: [pipeline(simpleCommand(hidden('exit-check'), structuredClone(words) as unknown[])), pipeline(closing), pipeline(stop)], operators: ['&&', '||'], background: false }], redirections: [] };
+}
+
+// The same in a subshell or a pipe's part, where `exit` closes nothing.
+function markInnerExits(root: AstNode) {
+  const seen = new WeakSet<object>();
+  walk(root, (node) => {
+    if (node.type !== 'SimpleCommand' || seen.has(node) || !runsExit(node)) return;
+    const words = withoutDashes(node);
+    if (!mayBeRefused(words)) return;
+    const command = { ...node };
+    seen.add(command);
+    for (const key of Object.keys(node)) delete node[key];
+    Object.assign(node, refusedExit(words, command));
+  });
+}
+
+// Whether `exit` with these words may be refused: not when they have effects to
+// repeat, or are one plain number.
+function mayBeRefused(words: readonly { parts?: AstNode[] }[]): boolean {
+  if (words.length === 0) return false;
+  let effects = false;
+  walk(words, (part) => {
+    if (EFFECTS.has(part.type)) effects = true;
+  });
+  const first = staticWord(words[0]);
+  return !effects && first !== '--help' && !(words.length === 1 && first !== null && first !== undefined && EXIT_NUMBER.test(first));
+}
+
+const EXIT_NUMBER = /^\s*[-+]?\d+\s*$/;
 
 const runsExit = (node: AstNode) => {
   const word = staticWord(node.name as never);
@@ -630,7 +681,7 @@ function caselessGlob(word: AstNode) {
   if (!parts.some((part) => part.type === 'Glob')) return;
   word.parts = parts.flatMap((part) => {
     if (part.type !== 'Literal') return [part];
-    return [...(part.value as string)].map((char) => (char.toLowerCase() !== char.toUpperCase() ? { type: 'Glob', pattern: `[${char.toLowerCase()}${char.toUpperCase()}]` } : { type: 'Literal', value: char }));
+    return [...(part.value as string)].map((char) => (char.toLowerCase() !== char.toUpperCase() ? { type: 'Glob', pattern: `[${char}${CASE_MARK}${char === char.toLowerCase() ? char.toUpperCase() : char.toLowerCase()}]` } : { type: 'Literal', value: char }));
   });
 }
 
@@ -723,6 +774,108 @@ function rewriteCommandV(node: AstNode, word: string, tools: Tools): boolean {
   return true;
 }
 
+// `$(…)` in arithmetic and in an array's subscript, which just-bash runs in a
+// shell of its own, with none of the line's functions or variables (T348,
+// research G35): run before the command that holds it, in the line's shell, and
+// read from a variable.
+let hoisted = 0;
+const ARITHMETIC_HOLDERS = new Set(['SimpleCommand', 'ArithmeticCommand', 'ConditionalCommand', 'For', 'Case', 'CStyleFor']);
+const SUBSCRIPT_SUBSTITUTION = /\[([^\]]*)\$\(((?:[^()]|\([^()]*\))*)\)([^\]]*)\]/;
+
+function hoistArithmetic(node: unknown, parse: (text: string) => Script) {
+  if (Array.isArray(node)) {
+    for (const child of node) hoistArithmetic(child, parse);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const typed = node as AstNode;
+  if (ARITHMETIC_HOLDERS.has(typed.type)) {
+    const found: { name: string; command: string }[] = [];
+    const texts: AstNode[] = [];
+    const held = (command: string) => {
+      const name = `${MARK}n${(hoisted += 1)}`;
+      found.push({ name, command });
+      return name;
+    };
+    const scan = (value: unknown) => {
+      if (Array.isArray(value)) return value.forEach(scan);
+      if (value === null || typeof value !== 'object') return;
+      const part = value as AstNode;
+      if (part.type === 'CommandSubstitution' || part.type === 'ProcessSubstitution' || part.type === 'FunctionDef') return;
+      if (typeof part.originalText === 'string') texts.push(part);
+      if (part.type === 'ArithCommandSubst') {
+        const name = held(part.command as string);
+        delete part.command;
+        Object.assign(part, { type: 'ArithVariable', name, hasDollarPrefix: true });
+        return;
+      }
+      for (const field of ['name', 'parameter']) {
+        if (typeof part[field] !== 'string' || !(part.type === 'Assignment' || part.type === 'ParameterExpansion')) continue;
+        for (let match = SUBSCRIPT_SUBSTITUTION.exec(part[field]); match !== null; match = SUBSCRIPT_SUBSTITUTION.exec(part[field] as string)) part[field] = (part[field] as string).replace(match[0], `[${match[1]!}$${held(match[2]!)}${match[3]!}]`);
+      }
+      for (const [key, inner] of Object.entries(part)) if (key !== 'type') scan(inner);
+    };
+    // A loop's and a `case`'s own words, not what runs inside it.
+    if (typed.type === 'For') scan(typed.words);
+    else if (typed.type === 'Case') scan(typed.word);
+    else if (typed.type === 'CStyleFor') scan(typed.init);
+    else scan(typed);
+    if (found.length > 0) {
+      // just-bash reads the text again when it holds a `$x`.
+      for (const text of texts) for (const { name, command } of found) text.originalText = (text.originalText as string).replace(`$(${command})`, () => `$${name}`).replace(`\`${command}\``, () => `$${name}`);
+      const status = `${MARK}n${(hoisted += 1)}`;
+      const lines = found.map(({ name, command }) => `${name}=$(${command}) || :`).join('\n');
+      const { statements } = parse(`${status}=$?\n${lines}\n${hidden('hold')} "$${status}" && ((1))`);
+      const command = { ...typed };
+      for (const key of Object.keys(typed)) delete typed[key];
+      Object.assign(typed, { type: 'Group', body: [...(statements as unknown[]), { type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false }], redirections: [] });
+    }
+  }
+  for (const [key, value] of Object.entries(typed)) if (key !== 'type') hoistArithmetic(value, parse);
+}
+
+// A `$(…)` whose text can print a NUL, which bash drops with a warning (T360).
+function holdsNul(body: unknown): boolean {
+  let holds = false;
+  walk(body, (part) => {
+    if (typeof part.value === 'string' && /\\0|\\x00|^-print0$/.test(part.value)) holds = true;
+  });
+  return holds;
+}
+
+function withoutNul(node: AstNode, tools: Tools) {
+  const { statements } = tools.parse(`{ :; ${hidden('nul-status')} "$?"; } | ${hidden('nul')}`);
+  const group = statements[0]!.pipelines[0]!.commands[0] as unknown as { body: unknown[] };
+  group.body.splice(0, 1, ...((node.body as { statements: unknown[] }).statements));
+  node.body = { type: 'Script', statements };
+}
+
+// A command reading a folder on its standard input: its own error, where
+// just-bash can't open it (T360).
+const READS_FOLDER = new Set(['cat', 'wc', 'grep', 'read', 'sort', 'head', 'tail']);
+const folderChecked = new WeakSet<object>();
+
+function readsFolder(node: AstNode, tools: Tools): boolean {
+  if (folderChecked.has(node)) return false;
+  const word = staticWord(node.name as never);
+  const redirections = node.redirections as Redirection[];
+  const input = redirections.find((redirection) => redirection.operator === '<' && redirection.fd === null);
+  const target = input === undefined ? null : staticWord(input.target as never);
+  if (word === null || !READS_FOLDER.has(word) || target === null || !tools.holdsEntries(target)) return false;
+  const { statements } = tools.parse(`if ${hidden('folder')} x; then ${hidden('read-folder')} x; else :; fi`);
+  const branching = statements[0]!.pipelines[0]!.commands[0] as unknown as { clauses: { condition: { pipelines: { commands: AstNode[] }[] }[]; body: { pipelines: { commands: unknown[] }[] }[] }[]; elseBody: { pipelines: { commands: unknown[] }[] }[] };
+  branching.clauses[0]!.condition[0]!.pipelines[0]!.commands[0]!.args = [structuredClone(input!.target)];
+  const say = branching.clauses[0]!.body[0]!.pipelines[0]!.commands[0] as AstNode;
+  say.args = [literalWord(word), ...(node.args as unknown[])];
+  say.redirections = redirections.filter((redirection) => redirection !== input);
+  const command = { ...node };
+  folderChecked.add(command);
+  branching.elseBody[0]!.pipelines[0]!.commands[0] = command;
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+  return true;
+}
+
 // `~+` and `~+/x`: the working folder (T305).
 function expandTildePlus(word: AstNode) {
   const parts = word.parts as AstNode[];
@@ -799,6 +952,50 @@ function checkable(redirection: Redirection): boolean {
   return !effects;
 }
 
+const redirectTarget = (redirection: Redirection) => (redirection.target.type === 'Word' ? staticWord(redirection.target as never) : null);
+const plainPath = (path: string) => path.replace(/^(?:\.\/+)+/, '');
+const EMPTIES = new Set(['>', '>|', '&>']);
+
+// The redirects to open before a command that reads a file it also empties: its
+// own, or `tee`'s file given by name.
+function emptied(node: AstNode, redirections: readonly Redirection[]): Redirection[] {
+  const operands = node.type === 'SimpleCommand' ? (node.args as never[]).map((arg) => staticWord(arg)) : [];
+  if (node.type === 'SimpleCommand' && staticWord(node.name as never) === 'tee' && !operands.some((word) => word === '--append' || /^-[a-z]*a/.test(word ?? ''))) {
+    const input = redirections.find((redirection) => redirection.operator === '<');
+    const from = input === undefined ? null : redirectTarget(input);
+    const named = from === null ? null : operands.find((word) => word !== null && word !== undefined && plainPath(word) === plainPath(from));
+    if (input !== undefined && named !== null && named !== undefined) return [input, { type: 'Redirection', fd: null, operator: '>', target: literalWord(named) } as unknown as Redirection];
+  }
+  return redirections.filter((redirection) => redirection.operator === '<' || EMPTIES.has(redirection.operator));
+}
+
+function opensFirst(node: AstNode, redirections: readonly Redirection[]): boolean {
+  if (node.type !== 'SimpleCommand') return false;
+  const operands = (node.args as never[]).flatMap((arg) => staticWord(arg) ?? []).map(plainPath);
+  const inputs = redirections.filter((redirection) => redirection.operator === '<').flatMap((redirection) => redirectTarget(redirection) ?? []).map(plainPath);
+  if (staticWord(node.name as never) === 'tee' && inputs.some((input) => operands.includes(input)) && emptied(node, redirections).length === 2 && !redirections.some((redirection) => WRITES.has(redirection.operator))) return true;
+  return redirections.some((redirection) => {
+    if (!EMPTIES.has(redirection.operator)) return false;
+    const target = redirectTarget(redirection);
+    return target !== null && !target.startsWith('/dev/') && (inputs.includes(plainPath(target)) || operands.includes(plainPath(target)));
+  });
+}
+
+// What `cat`, `grep` and `wc` need of their redirects (T355, T360).
+function tellRedirects(node: AstNode, redirections: readonly Redirection[]) {
+  if (node.type !== 'SimpleCommand') return;
+  const word = staticWord(node.name as never);
+  if (word !== 'cat' && word !== 'grep' && word !== 'wc') return;
+  const assignments = node.assignments as unknown[];
+  const tell = (name: string, value: string) => assignments.unshift({ type: 'Assignment', name, value: literalWord(value), append: false, array: null });
+  const output = redirections.findLast((redirection) => WRITES.has(redirection.operator) && redirection.operator !== '>&' && (redirection.fd === null || redirection.fd === 1) && (word === 'grep' || redirection.operator.endsWith('>>')));
+  const to = output === undefined ? null : redirectTarget(output);
+  if (to !== null && !to.startsWith('/dev/')) tell(OUTPUT_FILE, to);
+  const input = redirections.findLast((redirection) => redirection.operator === '<' && redirection.fd === null);
+  const from = input === undefined ? null : redirectTarget(input);
+  if (from !== null) tell(INPUT_FILE, from);
+}
+
 const redirectPlugin: Plugin = {
   name: 'cv-redirect-check',
   transform(context) {
@@ -808,13 +1005,21 @@ const redirectPlugin: Plugin = {
       done.add(node);
       const redirections = node.redirections as Redirection[];
       redirections.forEach(namedStream);
-      if (!redirections.some((redirection) => WRITES.has(redirection.operator) && (redirection.operator !== '>&' || checkable(redirection)))) return;
+      tellRedirects(node, redirections);
+      const opens = opensFirst(node, redirections);
+      if (!opens && !redirections.some((redirection) => WRITES.has(redirection.operator) && (redirection.operator !== '>&' || checkable(redirection)))) return;
       node.redirections = redirections.flatMap((redirection) => (checkable(redirection) ? [{ type: 'Redirection', fd: CHECK_FD, operator: '>>', target: { type: 'Word', parts: [...redirection.target.parts!, { type: 'Literal', value: OPENING }] } }, redirection] : [redirection]));
       const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
       const wrote = { type: 'SimpleCommand', name: literalWord(hidden(WROTE)), args: LAST_RESULT(), assignments: [], redirections: [] };
       const command = { ...node };
       for (const key of Object.keys(node)) delete node[key];
-      Object.assign(node, { type: 'Group', body: [statement(command), statement(wrote)], redirections: [] });
+      const pipeline = (one: unknown) => ({ type: 'Pipeline', commands: [one], negated: false, timed: false, timePosix: false });
+      // bash opens a command's redirects before it runs, so a file it also reads
+      // is empty by then; just-bash writes after (T355).
+      const opening = { type: 'SimpleCommand', name: literalWord(hidden('open')), args: [], assignments: [], redirections: structuredClone(emptied(command, command.redirections as Redirection[])) };
+      done.add(opening);
+      const first = opens ? { type: 'Statement', pipelines: [pipeline(opening), pipeline(command)], operators: ['&&'], background: false } : statement(command);
+      Object.assign(node, { type: 'Group', body: [first, statement(wrote)], redirections: [] });
       done.add(command);
       done.add(node);
     });
@@ -883,7 +1088,9 @@ function openConstruct(line: string): string | null {
 
 // A `;` where bash needs a command or a word (T342), which just-bash reads as
 // the end of the input.
-const STRAY_SEMICOLON = /(?:&&|\|\||\||^\s*\(|(?:^|[;&|(]\s*)(?:\{|if|then|else|elif|while|until|do)|\bcase\s+\S+\s+in|\(\s*\)|;[ \t])\s*;(?!;)|(?<![&>;|])&[ \t]*;(?!;)/;
+const STRAY_SEMICOLON = /(?:&&|\|\||\||^\s*\(|(?:^|[;&|(]\s*)(?:\{|if|then|else|elif|while|until|do)|\bcase\s+\S+\s+in|(?<!=)\(\s*\)|;[ \t])\s*;(?!;)|(?<![&>;|])&[ \t]*;(?!;)/;
+
+const BARE_BODY = /((?:^|[;&|{(]\s*)(?:function\s+)?[A-Za-z_][\w-]*\s*\(\s*\)\s*)(\[\[.*?\]\]|\(\(.*?\)\))/g;
 
 // What's after `[[` where bash stops reading it, in its words.
 function conditionalMessage(test: string): string {
@@ -1062,6 +1269,42 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const cvExiting = own('exiting', async (args) => {
     exiting = true;
     return quiet(Number(args[0] ?? 0));
+  });
+  // `exit`'s words, as bash reads them before it goes (T357).
+  let tooManyExits = false;
+  const cvExitCheck = own('exit-check', async (args) => {
+    const words = args[0] === '--' ? args.slice(1) : args;
+    tooManyExits = false;
+    if (words.length === 0 || (EXIT_NUMBER.test(words[0]!) && words.length === 1)) return quiet();
+    if (!EXIT_NUMBER.test(words[0]!)) return { stdout: '', stderr: `bash: exit: ${words[0]!}: numeric argument required\n`, exitCode: 2 };
+    tooManyExits = true;
+    return { stdout: '', stderr: 'bash: exit: too many arguments\n', exitCode: 1 };
+  });
+  const cvExitStop = own('exit-stop', async () => quiet(tooManyExits ? 0 : 2));
+  // A command's redirects, opened ahead of it (T355).
+  const cvOpen = own('open', async () => quiet());
+  // What's left of `$(…)` once bash drops its NULs (T360).
+  let nulStatus = 0;
+  const cvNulStatus = own('nul-status', async (args) => {
+    nulStatus = Number(args[0] ?? 0);
+    return quiet(nulStatus);
+  });
+  const cvNul = own('nul', async (_args, ctx) => {
+    const text = String(ctx.stdin ?? '');
+    const kept = text.replaceAll('\0', '');
+    return { stdout: decodeLatin(kept), stderr: kept === text ? '' : 'bash: warning: command substitution: ignored null byte in input\n', exitCode: nulStatus };
+  });
+  const decodeLatin = (text: string) => new TextDecoder().decode(Uint8Array.from(text, (char) => char.charCodeAt(0)));
+  // A folder on a command's standard input, in its own words (T360).
+  const cvReadFolder = own('read-folder', async (args) => {
+    const [word, ...rest] = args as [string, ...string[]];
+    if (word === 'wc') {
+      const counts = rest.filter((arg) => /^-[a-zA-Z]/.test(arg)).join('').replace(/-/g, '').length || 3;
+      return { stdout: `${Array.from({ length: counts }, () => (counts === 1 ? '0' : '0'.padStart(7))).join(' ')}\n`, stderr: "wc: 'standard input': Is a directory\n", exitCode: 1 };
+    }
+    const says: Readonly<Record<string, [string, number]>> = { cat: ['cat: -: Is a directory', 1], grep: ['grep: (standard input): Is a directory', 2], read: ['bash: read: 0: read error: Is a directory', 1], sort: ['sort: read failed: -: Is a directory', 2], head: ["head: error reading 'standard input': Is a directory", 1], tail: ["tail: error reading 'standard input': Is a directory", 1] };
+    const [message, exitCode] = says[word]!;
+    return { stdout: '', stderr: `${message}\n`, exitCode };
   });
   const cvStop = own('stop', async () => {
     record.stopped = 'output';
@@ -1336,7 +1579,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       cwd: HOME,
       env: ENV,
       commands: [...STANDARD_COMMANDS],
-      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps, cvSetBad, cvRuns, cvListed, cvExportBare, cvInteger, cvExec, cvExecRan],
+      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps, cvSetBad, cvRuns, cvListed, cvExportBare, cvInteger, cvExec, cvExecRan, cvExitCheck, cvExitStop, cvOpen, cvNulStatus, cvNul, cvReadFolder],
       executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + overhead, maxOutputSize: limits.pipe, ...UNREACHED },
     });
     // Runs on the first parse only: a command's own `exec` is its own script.
@@ -1348,7 +1591,10 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
         return { ast: { type: 'Script', statements: [...pending.functions, ...pending.line] } as unknown as Script };
       },
     });
-    bash.registerTransformPlugin(sitePlugin(() => functions, () => pathChanged, { parse: parseOwn as unknown as Parse, serialize, done: new WeakSet(), builtinHelp: () => record.builtinHelp, noCase: () => noCase, failGlob: () => failGlob, integers: () => integers }));
+    bash.registerTransformPlugin(sitePlugin(() => functions, () => pathChanged, { parse: parseOwn as unknown as Parse, serialize, done: new WeakSet(), builtinHelp: () => record.builtinHelp, noCase: () => noCase, failGlob: () => failGlob, integers: () => integers, holdsEntries: (typed) => {
+      const path = fs.canonical(fs.resolvePath(starting.cwd, typed));
+      return fs.getAllPaths().some((other) => other.startsWith(`${path}/`));
+    } }));
     bash.registerTransformPlugin(redirectPlugin);
     bash.registerTransformPlugin({
       name: 'cv-check',
@@ -1571,9 +1817,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       try {
         ast = parse(source);
       } catch (error) {
+        // A function whose body is `[[ ]]` or `(( ))`, which only bash's parser
+        // takes bare (T360).
+        const braced = source.replace(BARE_BODY, '$1{ $2; }');
+        if (braced !== source) ast = parse(braced);
         // just-bash reads `!` at a word's start as the operator (T344).
-        if (!extglob || !source.includes('!(')) throw error;
-        ast = withoutMark(parse(source.replace(/(?<=[^\s;|&(]\s+)!\(/g, `${WORD_START}!(`)));
+        else if (!extglob || !source.includes('!(')) throw error;
+        else ast = withoutMark(parse(source.replace(/(?<=[^\s;|&(]\s+)!\(/g, `${WORD_START}!(`)));
       }
     } catch (error) {
       const message = parseMessage((error as Error).message, line);
@@ -1612,6 +1862,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     integers = new Set([...state.declarations.flatMap((text) => /^declare -\S*i\S* (\w+)/.exec(text)?.[1] ?? []), ...[...line.matchAll(/\b(?:declare|typeset|local)\s+-\w*i\w*\s+(\w+)/g)].map((match) => match[1]!)]);
     pathChanged = 'PATH' in state.variables || state.unset.includes('PATH') || /\bPATH\b/.test(line);
     const functionStatements = functionTexts.flatMap((text) => parseOwn(text).statements as unknown[]);
+    hoistArithmetic(functionStatements, parseOwn);
     markExits(functionStatements);
     expandBraces(functionStatements);
     const setsErrexit = errexitSet(ast);
@@ -1619,6 +1870,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     // Words for the messages, before the plugins change the tree.
     const wording = structuredClone(ast);
     reported(ast);
+    hoistArithmetic(ast, parseOwn);
     markOutOfPlace(ast);
     countSubshells(ast);
     countSubshells(functionStatements);
@@ -1678,6 +1930,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       // bash says nothing of a shift past the end, and names itself on `[`'s
       // and `test`'s errors (T305).
       .filter((entry) => entry !== 'bash: shift: shift count out of range')
+      .map((entry) => entry.replace(/^(?:bash: )?(\d+): unbound variable$/, 'bash: $$$1: unbound variable'))
       .map((entry) => (/\bcommand\s+-[a-zA-Z]*V/.test(line) ? entry.replace(/^([^:\s]+: not found)$/, 'bash: command: $1') : entry))
       .map((entry) => entry.replace(/^shopt: /, 'bash: shopt: ').replace(/^\[: /, 'bash: [: ').replace(/^test: /, `bash: ${/(^|[\s;|&(])\[\s/.test(line) ? '[' : 'test'}: `))
       .map((entry) => entry.replace(/^bash: line \d+: (.*\(error token is ".*"\))$/, 'bash: $1'))

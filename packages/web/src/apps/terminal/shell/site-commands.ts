@@ -607,7 +607,10 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       }, shell.fs)) as Output & { internalOutputAccounting?: unknown };
       // What it wrote to `/dev/stdout` and the like, by name (T332).
       const streamed = shell.fs.takeStreamed();
-      return streamed.stdout === '' && streamed.stderr === '' ? result : { ...result, stdout: `${result.stdout}${streamed.stdout}`, stderr: `${result.stderr}${streamed.stderr}` };
+      const whole = streamed.stdout === '' && streamed.stderr === '' ? result : { ...result, stdout: `${result.stdout}${streamed.stdout}`, stderr: `${result.stderr}${streamed.stderr}` };
+      // just-bash's redirects can't count a command's bytes beside an error, and
+      // drop the line (T347, research G34): the same output, as text.
+      return whole.stderr !== '' && (whole.stdoutKind === 'bytes' || whole.stdoutEncoding === 'binary') ? { ...whole, stdout: stdoutText(whole), stdoutKind: undefined, stdoutEncoding: undefined } as Output : whole;
     });
   return [...own.map((command) => (GNU[command.name] === undefined ? command : fixed(command.name, (args, ctx) => command.execute(args, ctx)))), ...Object.keys(GNU).filter((name) => !own.some((command) => command.name === name)).map((name) => fixed(name, (args, ctx) => ctx.origCommand!(args)))];
 }

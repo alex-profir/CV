@@ -209,7 +209,8 @@ function word(state: VimState, forward: boolean): VimState {
     if (found !== undefined) return { ...state, cursor: { line, column: found } };
     at += forward ? 1 : -1;
     if (at < 0) return moveTo(state, shown[0]!, 0);
-    if (at >= shown.length) return state;
+    // Past the last word: its last letter.
+    if (at >= shown.length) return moveTo(state, line, Math.max(0, lineText(state, line).length - 1));
     column = forward ? -1 : Number.POSITIVE_INFINITY;
   }
   return state;

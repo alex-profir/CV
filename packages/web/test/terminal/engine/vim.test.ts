@@ -493,3 +493,16 @@ describe('006-terminal-FR-080: a file of one blank line isn’t an empty file', 
     expect(written(command(keys(emptied, 'u'), 'w'))).toBe('x\n');
   });
 });
+
+describe('006-terminal-FR-060: a count of `w` past the last word (T360)', () => {
+  test.each([['20w', [1, 2]], ['5w', [1, 2]], ['w', [0, 4]]])('%s stops as vim does', (typed, cursor) => {
+    expect(at(keys(open('one two\nabc'), typed))).toEqual(cursor);
+  });
+
+  test('`w` on the last word goes to its last letter, and stays there', () => {
+    const last = keys(open('one two'), 'w');
+    expect(at(last)).toEqual([0, 4]);
+    expect(at(keys(last, 'w'))).toEqual([0, 6]);
+    expect(at(keys(last, 'ww'))).toEqual([0, 6]);
+  });
+});

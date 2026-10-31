@@ -37,6 +37,11 @@ export const CHECK_FILE = `/dev/${MARK}check`;
 // Starts the message of a `${x:?word}`, which tells it from `exit` (T286).
 export const FATAL = '\u0002';
 
+// Inside a `[zZ]` a `nocaseglob` word's letter became: with no match the word
+// prints as typed (T360).
+export const CASE_MARK = '\uF8FD';
+const CASELESS = new RegExp(`\\[(.)${CASE_MARK}.\\]`, 'gu');
+
 // `cd`, `eval` and `source` as the adapter runs them, and a `--help` it
 // answers, as `type` prints them.
 const FINISHED = new RegExp(`\\{ /usr/bin/${MARK}hold "\\$\\?" (\\S*) .*?/usr/bin/${MARK}after "\\$${MARK}l"; \\}`, 'g');
@@ -284,7 +289,7 @@ export class TerminalFs extends InMemoryFs {
     // The adapter's variables, where a name from an expansion runs `set` or
     // `declare -p` beside them (T297).
     if (body.includes(MARK)) body = body.replaceAll(GONE, '').replace(OWN_LINE, '');
-    body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '');
+    body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '').replace(CASELESS, '$1');
     if (!body.includes(OPENING)) return body;
     return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
   }
