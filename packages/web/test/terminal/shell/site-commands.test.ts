@@ -146,10 +146,10 @@ describe('006-terminal-FR-014 and 006-terminal-FR-019: open and clear return the
     expect((await runLine(shell, 'clear; open cv')).effects).toEqual([{ kind: 'clear' }, { kind: 'open', view: 'cv' }]);
   });
 
-  test('open settings replies listing cv and about as controls', async () => {
+  test('open settings replies listing cv, playground and about as controls', async () => {
     const result = await runLine(shellFor('every-field'), 'open settings');
     expect(result.effects).toEqual([]);
-    expect(nodes(result.recorded[0]!.block).flatMap((node) => (node.kind === 'command' ? [node.line] : []))).toEqual(['open cv', 'open about']);
+    expect(nodes(result.recorded[0]!.block).flatMap((node) => (node.kind === 'command' ? [node.line] : []))).toEqual(['open cv', 'open playground', 'open about']);
   });
 });
 

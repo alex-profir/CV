@@ -201,7 +201,7 @@ The amendment approved by the owner 2026-10-30.
 
 ### Session 2026-10-31 (amended by 008-typescript-playground)
 
-- Q: 006's 660 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+- Q: 006's 720 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
   allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
   feature's budget, now 008's 1,020 s (FR-042).
 
@@ -1263,7 +1263,8 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
   shell, the state, the width and the command in every failure. The whole check, with every later
   feature's parts, stays within the latest feature's budget on the owner's machine. Amended
-  2026-10-31 by 008-typescript-playground: it held the whole check to 660 s, 005's 8 minutes plus 3.
+  2026-10-31 by 008-typescript-playground: the plan held the whole check to 720 s, 005's 8 minutes
+  plus 4.
 
 ### Key Entities
 

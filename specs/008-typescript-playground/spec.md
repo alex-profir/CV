@@ -103,7 +103,7 @@
   limits, through dated amendments. The `site` job gets 20 minutes (001 SC-008). The site check gets
   a budget of 1,020 s, 007's plus 3 minutes (FR-088), and 005's whole-check time follows the latest
   budget (005 SC-010).
-- Q (2026-10-31): 006's 660 s and 007's 840 s read the same run as FR-088's 1,020 s. Which holds? → A:
+- Q (2026-10-31): 006's 720 s and 007's 900 s read the same run as FR-088's 1,020 s. Which holds? → A:
   The chain again: 006's FR-042 and 007's FR-034 follow the latest budget, through dated amendments.
 - Q (2026-10-31): Monaco leaves Go to definition, Peek definition, Every use, Quick fixes and Tab
   moves focus out of its command palette on every system, while FR-085 asks for every editor command
