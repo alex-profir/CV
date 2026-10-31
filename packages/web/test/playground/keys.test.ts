@@ -4,9 +4,10 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { SHORTCUTS, shortcutLabel } from '@cv/os-core';
-import { KEY_COMMANDS, RESERVED_KEYS, keyLabel, keysFor } from '../../src/apps/playground/keys.ts';
+import { KEY_COMMANDS, KEY_GROUPS, RESERVED_KEYS, keyLabel, keysFor, keysShown } from '../../src/apps/playground/keys.ts';
 import { siteText } from '../../src/site-text.ts';
-import { frontWindow } from '../helpers/shell.ts';
+import { zoomText } from '../../../../tools/site-check/src/parts/layout.ts';
+import { frontWindow, settle } from '../helpers/shell.ts';
 import { EDITOR, POPUP, editorText, engine, focusEditor, menu, openPlaygroundPage, primary, readLogs, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
@@ -75,6 +76,51 @@ async function paletteRows(page: Page): Promise<Map<string, string>> {
   return rows;
 }
 
+// Keys of the table that Monaco's palette has no row for, on any system.
+const NOT_IN_PALETTE: ReadonlySet<string> = new Set(['undo', 'redo', 'cursorWordPart']);
+const UNLISTED_BY_PALETTE: ReadonlySet<string> = new Set(['editor.action.revealDefinition', 'editor.action.peekDefinition', 'editor.action.goToReferences', 'editor.action.quickFix', 'editor.action.toggleTabFocusMode']);
+// Monaco's keys the signed table doesn't hold: an unsigned row at the end of
+// design/review.md proposes them. Nothing else may be missing from the list.
+const OUTSIDE_THE_TABLE: ReadonlySet<string> = new Set([
+  'Create Folding Range from Selection',
+  'Delete All Left',
+  'Delete All Right',
+  'Find Next',
+  'Find Previous',
+  'Find with Selection',
+  'Fold All Block Comments',
+  'Fold All Except Selected',
+  'Fold All Regions',
+  'Go to Next Problem (Error, Warning, Info)',
+  'Go to Previous Problem (Error, Warning, Info)',
+  'Insert Line Below',
+  'Join Lines',
+  'Move Last Selection to Next Find Match',
+  'Remove Manual Folding Ranges',
+  'Toggle Fold Recursively',
+  'Transpose Letters',
+  'Unfold All Except Selected',
+]);
+
+// One spelling for a key in the palette or the table; a chord's keys count as
+// the palette shows them, one after another.
+const spelled = (key: string) =>
+  key
+    .replace(/\bCommand\b|⌘/g, '+Cmd+')
+    .replace(/\bControl\b|⌃/g, '+Ctrl+')
+    .replace(/⌥/g, '+Option+')
+    .replace(/⇧/g, '+Shift+')
+    .replace(/(Up|Down|Left|Right)Arrow/g, '$1')
+    .replace(/↑/g, '+Up+')
+    .replace(/↓/g, '+Down+')
+    .replace(/←/g, '+Left+')
+    .replace(/→/g, '+Right+')
+    .replace(/ /g, '+')
+    .split('+')
+    .filter((part) => part !== '')
+    .sort()
+    .join('+');
+
 describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for the visitor\'s system', () => {
   for (const mac of systems) {
     test(`on ${named(mac)}, each key reaches the editor and acts`, async () => {
@@ -119,7 +165,6 @@ describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for 
   });
 });
 
-// Every CI job runs on Linux, and Monaco has keys of its own there.
 // Every CI job runs on Linux, and Monaco has keys of its own there.
 describe('008-typescript-playground-FR-083: on Linux the listed keys are the ones that work', () => {
   const linux = { platform: 'Linux' as const, userAgent: AGENTS[engine()]('X11; Linux x86_64') };
@@ -170,8 +215,8 @@ describe('008-typescript-playground-FR-083: on Linux the listed keys are the one
     const keys = new Set([...rows.values()].map(spell));
     // Monaco leaves these out of the palette on every system, as it registers
     // them otherwise: the next test presses them.
-    const unlisted = new Set(['editor.action.revealDefinition', 'editor.action.peekDefinition', 'editor.action.goToReferences', 'editor.action.quickFix', 'editor.action.toggleTabFocusMode']);
-    const wrong = KEY_COMMANDS.filter((command) => !unlisted.has(command.id)).flatMap((command) => keysFor(command, false).filter((key) => !key.includes(' ') && !keys.has(spell(key))).map((key) => `${command.id} ${key}`));
+    const unlisted = UNLISTED_BY_PALETTE;
+    const wrong = KEY_COMMANDS.filter((command) => !unlisted.has(command.id) && !NOT_IN_PALETTE.has(command.id)).flatMap((command) => keysFor(command, false, true).filter((key) => !key.includes(' ') && !keys.has(spell(key))).map((key) => `${command.id} ${key}`));
     expect(wrong.join(' | ')).toBe('');
     // What a key was Monaco's alone isn't left on Linux.
     for (const gone of ['Ctrl+Shift+I', 'Ctrl+Shift+Alt+Down', 'Ctrl+Shift+F10']) expect(keys.has(spell(gone)), gone).toBe(false);
@@ -183,7 +228,7 @@ describe('008-typescript-playground-FR-083: on Linux the listed keys are the one
     await code(page, 'const one = 1;\nconst two = one + 1;\nconsole.log(two);\n');
     const missed: string[] = [];
     for (const command of KEY_COMMANDS) {
-      for (const key of keysFor(command, false)) {
+      for (const key of keysFor(command, false, true)) {
         await page.locator(`${EDITOR} textarea.inputarea`).focus();
         if (!(await acted(page, key.split(' ')[0]!))) missed.push(`${command.id} ${key}`);
         await page.waitForTimeout(150);
@@ -294,14 +339,72 @@ describe('008-typescript-playground-FR-085: the palette lists the commands, and 
           keys: row.querySelector('kbd')?.textContent?.trim(),
         })),
       );
-      expect(rows.map((row) => [row.name, row.keys])).toEqual(KEY_COMMANDS.map((command) => [keyLabel(command), keysFor(command, mac).join(', ')]));
-      for (const [index, command] of KEY_COMMANDS.entries()) expect(rows[index]!.note !== null, command.id).toBe(command.differs !== undefined);
+      const listed = KEY_COMMANDS.filter((command) => keysFor(command, mac).length > 0);
+      expect(rows.map((row) => [row.name, row.keys])).toEqual(listed.map((command) => [keyLabel(command), keysShown(command, mac)]));
+      for (const [index, command] of listed.entries()) expect(rows[index]!.note !== null, command.id).toBe(command.differs !== undefined);
+      expect(await page.locator(`${POPUP} caption`).allInnerTexts()).toEqual(KEY_GROUPS.map((group) => words.popups.keys.groups[group]));
       expect(rows.find((row) => row.name === words.keyLabels['editor.action.quickCommand'])?.note).toContain(mac ? 'Shift+Cmd+P' : 'Ctrl+Shift+P');
       const text = await page.locator(POPUP).textContent();
       expect(text).toContain(mac ? words.popups.keys.lede.mac : words.popups.keys.lede.other);
       expect(text).toContain('F8');
     });
   }
+
+  const SYSTEMS = [
+    { name: 'a Mac', options: fake(true), mac: true, linux: false },
+    { name: 'Windows', options: fake(false), mac: false, linux: false },
+    { name: 'Linux', options: { platform: 'Linux' as const, userAgent: AGENTS[engine()]('X11; Linux x86_64') }, mac: false, linux: true },
+  ];
+  for (const { name, options, mac, linux } of SYSTEMS) {
+    test(`on ${name}, the list can't fall behind: the palette's keys are in it and its keys in the palette`, async () => {
+      const page = await openPlaygroundPage(options);
+      await focusEditor(page);
+      await openPalette(page);
+      const rows = await paletteRows(page);
+      const listed = new Set(KEY_COMMANDS.flatMap((command) => keysFor(command, mac, linux)).map(spelled));
+      const behind = [...rows].filter(([label, key]) => key !== '' && !OUTSIDE_THE_TABLE.has(label) && !listed.has(spelled(key))).map(([label, key]) => `${label}: ${key}`);
+      expect(behind.join(' | ')).toBe('');
+      const shown = new Set([...rows.values()].filter((key) => key !== '').map(spelled));
+      const gone = KEY_COMMANDS.filter((command) => !NOT_IN_PALETTE.has(command.id) && !UNLISTED_BY_PALETTE.has(command.id) && keysFor(command, mac, linux).length > 0 && !keysFor(command, mac, linux).some((key) => shown.has(spelled(key)))).map((command) => command.id);
+      expect(gone.join(' | ')).toBe('');
+      // A row under Monaco's own name shows Monaco's key for it.
+      for (const command of KEY_COMMANDS) {
+        const key = rows.get(keyLabel(command));
+        if (key !== undefined && key !== '') expect(keysFor(command, mac, linux).map(spelled), keyLabel(command)).toContain(spelled(key));
+      }
+    });
+  }
+
+  test('on a Mac, Cmd+K with the arrows moves by word part, as VoiceOver keeps Ctrl+Option with them', async () => {
+    const page = await openPlaygroundPage(fake(true));
+    await focusEditor(page);
+    await page.evaluate((value) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', value);
+      document.activeElement?.dispatchEvent(new ClipboardEvent('paste', { clipboardData, dataType: 'text/plain', data: value, bubbles: true, cancelable: true } as ClipboardEventInit));
+    }, '\n\nfooBar');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Meta+KeyK');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.type('_');
+    await expect.poll(() => editorText(page)).toContain('foo_Bar');
+  });
+
+  test('the list is in two columns, and in one with text zoomed to 200%', async () => {
+    const page = await openPlaygroundPage();
+    await menu(page, words.menu.keys);
+    await page.waitForSelector(POPUP);
+    await settle(page);
+    const lefts = () => page.locator(`${POPUP} table`).evaluateAll((tables) => [...new Set(tables.map((table) => Math.round(table.getBoundingClientRect().left)))].length);
+    const sideways = () => page.locator(POPUP).evaluate((popup) => popup.scrollWidth - popup.clientWidth);
+    expect(await lefts()).toBe(2);
+    expect(await sideways()).toBeLessThanOrEqual(0);
+    await zoomText(page, 2);
+    await settle(page);
+    expect(await lefts()).toBe(1);
+    expect(await sideways()).toBeLessThanOrEqual(0);
+  });
 
   test('focus goes to its close; Escape returns to the menu title from the menu and to the editor from Alt+F1', async () => {
     const page = await openPlaygroundPage();
