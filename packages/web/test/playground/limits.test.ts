@@ -219,6 +219,7 @@ describe('008-typescript-playground-FR-040: requests start by the clock, so a lo
       }
       const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
       expect(delays.length).toBeGreaterThan(0);
+      if (process.env['PROBE_OUT']) (await import('node:fs')).appendFileSync(process.env['PROBE_OUT'], `${name}: ${delays.map(Math.round).join(' ')}\n`);
       expect(Math.max(...delays)).toBeLessThan(100);
     });
   }
