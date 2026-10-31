@@ -3,7 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { counted, fill, siteText } from '../../src/site-text.ts';
-import { focusEditor, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { focusEditor, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, RUN_STATE, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -90,4 +90,66 @@ describe('008-typescript-playground-FR-044: the logs keep the latest 1,000 entri
       expect((await readLogs(page)).length).toBeLessThanOrEqual(1000);
     });
   }
+});
+
+describe('008-typescript-playground-FR-044: uncaught errors keep to the same limits', () => {
+  const lag = (page: Page) =>
+    page.evaluate(() => {
+      const scope = window as unknown as { lags: number[] };
+      scope.lags = [];
+      let last = performance.now();
+      setInterval(() => {
+        const at = performance.now();
+        scope.lags.push(at - last - 50);
+        last = at;
+      }, 50);
+    });
+
+  // A flood the page must keep up with, for 6 s: the timers throw a tick's
+  // worth, the rejections too, or both with a long message. (SC-005)
+  const floods: [string, string][] = [
+    ['200 throws a tick', 'function f() { for (let i = 0; i < 200; i++) setTimeout(() => { throw new Error("x"); }); setTimeout(f, 0); }\nf();'],
+    ['2,000 throws a tick of 9,000 characters', 'const m = "x".repeat(9000);\nfunction f() { for (let i = 0; i < 2000; i++) setTimeout(() => { throw new Error(m); }); setTimeout(f, 0); }\nf();'],
+    ['2,000 rejections a tick', 'function f() { for (let i = 0; i < 2000; i++) Promise.reject(new Error("x")); setTimeout(f, 0); }\nf();'],
+    ['2,000 timers logging 9,000 characters', 'const m = "x".repeat(9000);\nfunction f() { for (let i = 0; i < 2000; i++) setTimeout(() => console.log(m)); setTimeout(f, 0); }\nf();'],
+  ];
+  for (const [name, code] of floods) {
+    test(`${name}: the page answers, within its memory, with no stuck popup`, async () => {
+      const page = await openPlaygroundPage();
+      await start(page, code);
+      await lag(page);
+      await watchKeys(page);
+      await run(page, { wait: 'start' });
+      await focusEditor(page);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Performance.enable');
+      let heap = 0;
+      for (let i = 0; i < 12; i += 1) {
+        await page.waitForTimeout(500);
+        await page.keyboard.press('ArrowRight');
+        const { metrics } = await cdp.send('Performance.getMetrics');
+        heap = Math.max(heap, metrics.find((metric) => metric.name === 'JSHeapUsedSize')?.value ?? 0);
+      }
+      const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
+      const lags = await page.evaluate(() => (window as unknown as { lags: number[] }).lags);
+      expect(Math.max(...delays)).toBeLessThan(100);
+      // Its timers answered too. Under 40 ms alone; other runs on the machine
+      // can slow one, not by this much: it was 106 s before the counts' limit.
+      expect(Math.max(...lags)).toBeLessThan(1_000);
+      expect(heap).toBeLessThan(400e6);
+      expect(await page.locator(POPUP).count()).toBe(0);
+    });
+  }
+
+  test('5,000 uncaught errors keep the latest 1,000, count the rest as dropped, and all in the end\'s note', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'for (let i = 0; i < 5000; i++) setTimeout(() => { throw new Error("e" + i); });');
+    await run(page, { timeout: 60_000 });
+    const rows = await readLogs(page);
+    expect(rows).toHaveLength(1000);
+    expect(rows.at(-2)).toMatchObject({ level: 'error', text: 'Error: e4999', line: 1 });
+    const state = (await page.locator(RUN_STATE).textContent())?.trim() ?? '';
+    expect(state).toMatch(new RegExp(`^${fill(counted(siteText.playground.runState.errors, 5000), { n: 5000, s: '[\\d.]+' })}$`));
+    expect((await page.locator(`${PLAYGROUND} .pane-logs p.logs-dropped`).textContent())?.trim()).toBe(fill(counted(logs.dropped, 4002), { n: '4,002', limit: '1,000' }));
+  });
 });

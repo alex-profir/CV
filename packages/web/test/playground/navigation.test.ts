@@ -81,3 +81,24 @@ describe('008-typescript-playground-FR-081: definitions, uses and renames, as Ty
     await expect.poll(() => editorText(page)).toBe(expected);
   });
 });
+
+describe('008-typescript-playground-FR-081: going to a definition outside the code shows it in place', () => {
+  test.each([
+    ['cv', 'const n = cv.basics.name;', 11, 'cv'],
+    ['console', 'console.log(1);', 1, 'console'],
+  ])('F12 on %s peeks at its definition, and the cursor stays', async (_name, code, column, shown) => {
+    const page = await openPlaygroundPage();
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await page.keyboard.press('Control+KeyG');
+    await page.keyboard.type(`1:${column}`);
+    await page.keyboard.press('Enter');
+    await expect.poll(() => status(page)).toBe(`Ln 1, Col ${column}`);
+    await page.keyboard.press('F12');
+    await page.waitForSelector(`${EDITOR} .peekview-widget`, { timeout: 10_000 });
+    expect(await page.locator(`${EDITOR} .peekview-widget`).textContent()).toContain(shown);
+    expect(await status(page)).toBe(`Ln 1, Col ${column}`);
+    expect(await editorText(page)).toContain(code.split(' ')[0]);
+  });
+});

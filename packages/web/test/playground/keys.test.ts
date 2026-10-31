@@ -7,7 +7,7 @@ import { SHORTCUTS, shortcutLabel } from '@cv/os-core';
 import { KEY_COMMANDS, RESERVED_KEYS, keyLabel, keysFor } from '../../src/apps/playground/keys.ts';
 import { siteText } from '../../src/site-text.ts';
 import { frontWindow } from '../helpers/shell.ts';
-import { EDITOR, POPUP, editorText, engine, focusEditor, menu, openPlaygroundPage, primary, readLogs, setCode, waitChecked } from '../helpers/playground.ts';
+import { EDITOR, POPUP, editorText, engine, focusEditor, menu, openPlaygroundPage, primary, readLogs, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -116,6 +116,99 @@ describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for 
     await page.waitForTimeout(300);
     expect(await palette(page).isVisible()).toBe(false);
     expect(await readLogs(page)).toEqual([]);
+  });
+});
+
+// Every CI job runs on Linux, and Monaco has keys of its own there.
+// Every CI job runs on Linux, and Monaco has keys of its own there.
+describe('008-typescript-playground-FR-083: on Linux the listed keys are the ones that work', () => {
+  const linux = { platform: 'Linux' as const, userAgent: AGENTS[engine()]('X11; Linux x86_64') };
+
+  // As a paste event: a browser only pastes for its own system's key, which a
+  // user agent doesn't change.
+  async function code(page: Page, text: string): Promise<void> {
+    await focusEditor(page);
+    await page.keyboard.press('Control+KeyA');
+    await page.evaluate((value) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', value);
+      document.activeElement?.dispatchEvent(new ClipboardEvent('paste', { clipboardData, dataType: 'text/plain', data: value, bubbles: true, cancelable: true } as ClipboardEventInit));
+    }, text);
+    await waitForCode(page, text);
+    await waitChecked(page);
+  }
+
+  test("Shift+Alt+F formats, and Ctrl+Shift+I, the developer tools' key, does not", async () => {
+    const page = await openPlaygroundPage(linux);
+    await code(page, 'const   a=1');
+    await page.keyboard.press('Control+Shift+I');
+    await page.waitForTimeout(500);
+    expect(await editorText(page)).toContain('const   a=1');
+    await page.keyboard.press('Shift+Alt+F');
+    await expect.poll(() => editorText(page)).toContain('const a = 1');
+  });
+
+  test('Shift+Alt+Down copies the line, and Alt+F12 peeks', async () => {
+    const page = await openPlaygroundPage(linux);
+    await code(page, 'const a = 1;\nconsole.log(a);');
+    await page.keyboard.press('Shift+Alt+ArrowDown');
+    await expect.poll(async () => (await editorText(page)).match(/console\.log\(a\);/g)?.length).toBe(2);
+    await page.keyboard.press('Control+KeyZ');
+    await page.keyboard.press('Control+KeyG');
+    await page.keyboard.type('2:13');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Alt+F12');
+    await page.waitForSelector(`${EDITOR} .peekview-widget`, { timeout: 10_000 });
+  });
+
+  test('the palette shows the listed key for each command with one', async () => {
+    const page = await openPlaygroundPage(linux);
+    await code(page, 'const a = 1;\nconsole.log(a);');
+    await openPalette(page);
+    const rows = await paletteRows(page);
+    const spell = (key: string) => key.replace(/Control/g, 'Ctrl').replace(/(Up|Down|Left|Right)Arrow/g, '$1').split('+').sort().join('+');
+    const keys = new Set([...rows.values()].map(spell));
+    // Monaco leaves these out of the palette on every system, as it registers
+    // them otherwise: the next test presses them.
+    const unlisted = new Set(['editor.action.revealDefinition', 'editor.action.peekDefinition', 'editor.action.goToReferences', 'editor.action.quickFix', 'editor.action.toggleTabFocusMode']);
+    const wrong = KEY_COMMANDS.filter((command) => !unlisted.has(command.id)).flatMap((command) => keysFor(command, false).filter((key) => !key.includes(' ') && !keys.has(spell(key))).map((key) => `${command.id} ${key}`));
+    expect(wrong.join(' | ')).toBe('');
+    // What a key was Monaco's alone isn't left on Linux.
+    for (const gone of ['Ctrl+Shift+I', 'Ctrl+Shift+Alt+Down', 'Ctrl+Shift+F10']) expect(keys.has(spell(gone)), gone).toBe(false);
+    expect(rows.get('Add Cursor Below'), 'its key on Linux is the copy key now').not.toBe('Shift+Alt+DownArrow');
+  });
+
+  test('each listed key reaches the editor and acts, and no reserved key does', async () => {
+    const page = await openPlaygroundPage(linux);
+    await code(page, 'const one = 1;\nconst two = one + 1;\nconsole.log(two);\n');
+    const missed: string[] = [];
+    for (const command of KEY_COMMANDS) {
+      for (const key of keysFor(command, false)) {
+        await page.locator(`${EDITOR} textarea.inputarea`).focus();
+        if (!(await acted(page, key.split(' ')[0]!))) missed.push(`${command.id} ${key}`);
+        await page.waitForTimeout(150);
+        await page.keyboard.press('Escape');
+        await expect.poll(() => page.locator(POPUP).count(), { message: key }).toBe(0);
+        await page.keyboard.press('Escape');
+      }
+    }
+    expect(missed.join(' | ')).toBe('');
+    const taken: string[] = [];
+    for (const entry of RESERVED_KEYS.filter((reserved) => reserved.system !== 'mac')) {
+      await focusEditor(page);
+      if (await acted(page, entry.key)) taken.push(`${entry.key}: ${entry.source}`);
+      await page.keyboard.press('Escape');
+    }
+    expect(taken.join(' | ')).toBe('');
+  });
+
+  test('Ctrl+L, which the browser keeps, has given its command Ctrl+K L', async () => {
+    const page = await openPlaygroundPage(linux);
+    await code(page, 'const a = 1;\nconst b = 2;');
+    await page.keyboard.press('Control+KeyK');
+    await page.keyboard.press('KeyL');
+    await page.keyboard.press('Delete');
+    await expect.poll(() => editorText(page)).not.toContain('const b');
   });
 });
 

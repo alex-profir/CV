@@ -419,7 +419,9 @@ export async function copyCode(): Promise<void> {
     await navigator.clipboard.writeText(engine.getCode());
     showMessage('done', 'codeCopied');
   } catch {
-    // The message stays, so the visitor can copy the code from the editor.
+    // As the phone says it; its Copy stays to try again, or the visitor can
+    // copy the code from the editor.
+    showMessage('warn', 'codeRefused', ['copy-code']);
   }
 }
 

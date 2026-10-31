@@ -131,9 +131,29 @@ describe('008-typescript-playground-FR-047: nothing the code prints becomes mark
     const texts = (await entries(page)).map((row) => row.text);
     expect(texts[0]).toBe('<img src=x onerror="parent.hit = true">');
     expect(texts[1]).toBe('<a href="https://example.com">link</a>');
-    expect(texts[2]).toBe('%c<b>styled</b> color: red');
+    // `%c` takes the style, as a console does, and it styles nothing.
+    expect(texts[2]).toBe('<b>styled</b>');
     expect(await count()).toEqual(before);
     expect(await page.evaluate(() => (window as unknown as { hit: boolean }).hit)).toBe(false);
     expect(await page.evaluate(() => getComputedStyle(document.body).display)).not.toBe('none');
+  });
+});
+
+describe('008-typescript-playground-FR-034: the logs show what a browser\'s console shows', () => {
+  test('placeholders, groups with nothing to show, causes, symbol keys and holes', async () => {
+    const page = await openPlaygroundPage();
+    await runCode(
+      page,
+      [
+        'console.log("%s is %d", "a", 1);',
+        'console.group("g");',
+        'console.groupEnd();',
+        'console.log(new Error("outer", { cause: new Error("inner") }));',
+        'console.log(new AggregateError([new Error("a")], "all"));',
+        'console.log({ [Symbol("k")]: 1 });',
+        'console.log([1, , 3]);',
+      ].join('\n'),
+    );
+    expect((await entries(page)).map((row) => row.text)).toEqual(['a is 1', 'g', 'Error: outer { cause: Error: inner }', 'AggregateError: all { errors: [Error: a] }', '{ [Symbol(k)]: 1 }', '[1, , 3]']);
   });
 });

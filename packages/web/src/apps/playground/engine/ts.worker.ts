@@ -16,16 +16,18 @@ export type Runnable = { code: string; map: string; imports: number; errors: num
 // TypeScript's own errors for what an import names, dropped where the
 // packages message stands (R11): cannot find module, cannot find name
 // 'require', a dynamic import's module option, and the like.
-const IMPORT_ERRORS = new Set([2306, 2307, 2580, 2591, 2792, 1323, 1324, 2875, 7016]);
+const IMPORT_ERRORS = new Set([2306, 2307, 2580, 2591, 2688, 2792, 1323, 1324, 2875, 7016]);
 
 const CATEGORY: Record<number, Diagnostic['category']> = { 0: 'warning', 1: 'error', 2: 'suggestion', 3: 'message' };
 
 // Every place the code imports something (R11): import and export-from
-// declarations with a specifier, `import x = require(…)`, `import(…)` calls,
-// and calls to a `require` the code doesn't declare.
+// declarations with a specifier, `import x = require(…)`, `import(…)` calls and
+// types, `/// <reference types="…" />`, and calls to a `require` or an
+// `importScripts` the code doesn't declare.
 function findImports(file: any): Import[] {
-  const found: Import[] = [];
-  const declaresRequire = file.locals?.has?.('require') === true;
+  const found: Import[] = file.typeReferenceDirectives.map((directive: any) => ({ start: directive.pos, end: directive.end, specifier: directive.fileName }));
+  const declares = (name: string) => file.locals?.has?.(name) === true;
+  const isLoader = (name: any) => ts.isIdentifier(name) && (name.text === 'require' || name.text === 'importScripts') && !declares(name.text);
   const visit = (node: any): void => {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier !== undefined) {
       const specifier = node.moduleSpecifier;
@@ -33,7 +35,10 @@ function findImports(file: any): Import[] {
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
       const expression = node.moduleReference.expression;
       found.push({ start: expression.getStart(file), end: expression.getEnd(), specifier: ts.isStringLiteral(expression) ? expression.text : expression.getText(file) });
-    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || (!declaresRequire && ts.isIdentifier(node.expression) && node.expression.text === 'require'))) {
+    } else if (ts.isImportTypeNode(node)) {
+      const literal = ts.isLiteralTypeNode(node.argument) ? node.argument.literal : node.argument;
+      found.push({ start: literal.getStart(file), end: literal.getEnd(), specifier: ts.isStringLiteralLike(literal) ? literal.text : literal.getText(file) });
+    } else if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || isLoader(node.expression))) {
       const argument = node.arguments[0];
       const target = argument ?? node;
       found.push({ start: target.getStart(file), end: target.getEnd(), specifier: argument !== undefined && ts.isStringLiteralLike(argument) ? argument.text : target.getText(file) });

@@ -1,6 +1,6 @@
 // The runner's formatter (data-model.md Log book, research R18).
 import { describe, expect, test } from 'vitest';
-import { LIMITS, formatEntry, measure } from '../../../src/apps/playground/engine/runner/format.ts';
+import { LIMITS, formatEntry, measure, substitute } from '../../../src/apps/playground/engine/runner/format.ts';
 import { isShown } from '../../../src/apps/playground/engine/runner/messages.ts';
 
 const one = (value: unknown) => formatEntry([value]).values[0];
@@ -106,5 +106,48 @@ describe('008-typescript-playground-FR-044: long and deep values are cut', () =>
     expect(nested.cut).toBe(true);
     expect(measure(nested.values)).toBeLessThanOrEqual(LIMITS.chars);
     expect(formatEntry(['short', 1]).cut).toBe(false);
+  });
+});
+
+describe('008-typescript-playground-FR-034: as a console formats', () => {
+  test.each<[string, unknown[], unknown[]]>([
+    ['%s and %d', ['%s is %d', 'a', 1], ['a is 1']],
+    ['%i and %f', ['%i %f', '4.5', '4.5'], ['4 4.5']],
+    ['%d of what is not one', ['%d', {}], ['NaN']],
+    ['%%', ['100%% %s', 'x'], ['100% x']],
+    ['no rest, left alone', ['%s %%'], ['%s %%']],
+    ['more placeholders than values', ['%s %s', 'a'], ['a %s']],
+    ['more values than placeholders', ['%s', 'a', 'b'], ['a', 'b']],
+    ['%c shows nothing', ['%cstyled', 'color: red'], ['styled']],
+    ['not text first', [1, '%s'], [1, '%s']],
+  ])('%s', (_name, values, expected) => {
+    expect(substitute(values)).toEqual(expected);
+  });
+
+  test('an object for %o or %s stays a value, as its own code would have to run to be text', () => {
+    const object = { a: 1 };
+    expect(substitute(['x %o y', object])).toEqual(['x', object, 'y']);
+    expect(substitute(['%s', object])).toEqual([object]);
+  });
+
+  test('an error holds its cause and an aggregate its errors, and one that holds itself says so', () => {
+    const cause = new Error('inner');
+    expect(one(new Error('outer', { cause }))).toEqual({ t: 'err', name: 'Error', message: 'outer', cause: { t: 'err', name: 'Error', message: 'inner' } });
+    expect(one(new AggregateError([cause], 'all'))).toMatchObject({ t: 'err', name: 'AggregateError', errors: { t: 'arr', items: [{ t: 'err', message: 'inner' }] } });
+    const self = new Error('me');
+    self.cause = self;
+    const shown = one(self);
+    expect(shown).toEqual({ t: 'err', name: 'Error', message: 'me', cause: { t: 'circ' } });
+    expect(isShown(shown)).toBe(true);
+  });
+
+  test('symbol keys and holes', () => {
+    const shown = one({ a: 1, [Symbol('k')]: 2 });
+    expect(shown).toEqual({ t: 'obj', ctor: null, entries: [['a', { t: 'num', v: '1' }]], more: 0, symbols: [['Symbol(k)', { t: 'num', v: '2' }]] });
+    expect(isShown(shown)).toBe(true);
+    // eslint-disable-next-line no-sparse-arrays
+    const holes = one([1, , 3]);
+    expect(holes).toEqual({ t: 'arr', items: [{ t: 'num', v: '1' }, { t: 'hole' }, { t: 'num', v: '3' }], more: 0 });
+    expect(isShown(holes)).toBe(true);
   });
 });

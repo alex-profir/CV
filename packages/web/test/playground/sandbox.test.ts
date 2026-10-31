@@ -144,3 +144,15 @@ describe('008-typescript-playground-FR-039: a failure while rendering stays in t
     expect(await page.locator(`${PLAYGROUND} [role="alert"]`).count()).toBe(0);
   });
 });
+
+describe('008-typescript-playground-FR-041: what stays on the visitor\'s machine can be read', () => {
+  test('fetch of a data: and a blob: address work, with no page or site reached', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'console.log(await (await fetch("data:text/plain,hi")).text());\nconsole.log(await (await fetch(URL.createObjectURL(new Blob(["there"])))).text());';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level !== 'note').map((row) => row.text)).toEqual(['hi', 'there']);
+  });
+});

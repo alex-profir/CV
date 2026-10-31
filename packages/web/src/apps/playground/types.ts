@@ -51,13 +51,17 @@ export type Shown =
   | { t: 'undef' }
   | { t: 'fn'; name: string; cls: boolean }
   | { t: 'arr'; items: Shown[]; more: number }
-  | { t: 'obj'; ctor: string | null; entries: [string, Shown][]; more: number }
+  // An array's hole, as `[1, , 3]` writes it.
+  | { t: 'hole' }
+  // `symbols`: the entries whose keys are symbols, as text.
+  | { t: 'obj'; ctor: string | null; entries: [string, Shown][]; more: number; symbols?: [string, Shown][] }
   | { t: 'map'; entries: [Shown, Shown][]; more: number }
   | { t: 'set'; items: Shown[]; more: number }
   | { t: 'date'; v: string }
   // Text the formatter makes for a browser object, such as `/a+/g`.
   | { t: 'text'; v: string }
-  | { t: 'err'; name: string; message: string }
+  // `cause` and `errors` as the code set them.
+  | { t: 'err'; name: string; message: string; cause?: Shown; errors?: Shown }
   | { t: 'circ' }
   | { t: 'deep' };
 
@@ -117,7 +121,8 @@ export type MessageKey =
   | 'resetDone'
   | 'cantKeepCode'
   | 'cantKeepTypeScript'
-  | 'codeCopied';
+  | 'codeCopied'
+  | 'codeRefused';
 
 export type MessageAction = 'undo' | 'run' | 'share-with' | 'copy-code' | 'retry';
 

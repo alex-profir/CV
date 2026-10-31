@@ -60,7 +60,6 @@ function RunState() {
 export function Toolbar() {
   const panel = useSession((state) => state.panel);
   const going = useSession((state) => state.run !== null && state.run.outcome === null);
-  const options = useRef<HTMLButtonElement>(null);
   return (
     <div className="playground-toolbar" role="toolbar" aria-label={words.label}>
       <button type="button" className="button run" aria-keyshortcuts={onMac() ? 'Meta+Enter' : 'Control+Enter'} onClick={runCode} data-req="008-typescript-playground-FR-032 008-typescript-playground-FR-033 008-typescript-playground-FR-083">
@@ -93,7 +92,6 @@ export function Toolbar() {
         <ChevronGlyph />
       </button>
       <button
-        ref={options}
         type="button"
         className="button tool options"
         aria-pressed={panel === 'options'}
