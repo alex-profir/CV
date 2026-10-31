@@ -148,3 +148,33 @@ describe("008-typescript-playground-FR-035: a thrown value that isn't an Error h
     expect(errors).toHaveLength(3);
   });
 });
+
+describe('008-typescript-playground-FR-035: a rejection of a promise the runtime counts is the code\'s to handle', () => {
+  const start = async (code: string) => {
+    const page = await openPlaygroundPage();
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await run(page);
+    return { page, rows: await readLogs(page) };
+  };
+
+  test('a request the code never handles logs its error', async () => {
+    const { page, rows } = await start('fetch("http://127.0.0.1:1/nope");');
+    expect(rows.filter((row) => row.level === 'error')).toHaveLength(1);
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(new RegExp(`^${fill(counted(siteText.playground.runState.errors, 1), { n: 1, s: '[\\d.]+' })}$`));
+  });
+
+  test('another counted call the code never handles logs its error too', async () => {
+    const { rows } = await start('new Blob(["x"]).text().then(() => { throw new Error("in the then"); });\ncrypto.subtle.digest("nope", new Uint8Array(1));');
+    expect(rows.filter((row) => row.level === 'error').map((row) => row.text)).toContain('Error: in the then');
+    expect(rows.filter((row) => row.level === 'error')).toHaveLength(2);
+  });
+
+  test('one it handles, by catch or by await in a try, logs none, and gets the value', async () => {
+    const { rows } = await start('fetch("http://127.0.0.1:1/nope").catch(() => console.log("caught"));\ntry {\n  await fetch("http://127.0.0.1:1/nope");\n} catch {\n  console.log("caught too");\n}\nconsole.log(await new Blob(["held"]).text());');
+    expect(rows.filter((row) => row.level === 'error')).toEqual([]);
+    const shown = rows.filter((row) => row.level === 'log').map((row) => row.text);
+    expect(shown).toEqual(expect.arrayContaining(['caught', 'caught too', 'held']));
+  });
+});

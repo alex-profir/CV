@@ -3,11 +3,13 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { counted, fill, siteText } from '../../src/site-text.ts';
-import { focusEditor, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, RUN_STATE, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { engine, focusEditor, openPlaygroundPage, PLAYGROUND, POPUP, readLogs, run, RUN_STATE, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
 const logs = siteText.playground.logs;
+// The memory they read comes through Chromium's own protocol.
+const chromium = engine() === 'chromium';
 
 async function start(page: Page, code: string): Promise<void> {
   await setCode(page, code);
@@ -55,7 +57,7 @@ describe('008-typescript-playground-FR-044: the logs keep the latest 1,000 entri
   // Each loop stamps its entries, so the newest row shows how far behind the
   // page is: a queue that grew would show as an age that grows (it took the
   // browser down at about 5.7 GB). (SC-005)
-  for (const [size, name] of [[10_000, '10,000'], [1_000, '1,000']] as const) {
+  for (const [size, name] of chromium ? ([[10_000, '10,000'], [1_000, '1,000']] as const) : []) {
     test(`printing ${name} characters as fast as it can: the page keeps up, within its memory, and keys answer`, async () => {
       const page = await openPlaygroundPage();
       await start(page, `const s = "x".repeat(${size});\nwhile (true) console.log(Date.now() + " " + s);`);
@@ -113,7 +115,7 @@ describe('008-typescript-playground-FR-044: uncaught errors keep to the same lim
     ['2,000 rejections a tick', 'function f() { for (let i = 0; i < 2000; i++) Promise.reject(new Error("x")); setTimeout(f, 0); }\nf();'],
     ['2,000 timers logging 9,000 characters', 'const m = "x".repeat(9000);\nfunction f() { for (let i = 0; i < 2000; i++) setTimeout(() => console.log(m)); setTimeout(f, 0); }\nf();'],
   ];
-  for (const [name, code] of floods) {
+  for (const [name, code] of chromium ? floods : []) {
     test(`${name}: the page answers, within its memory, with no stuck popup`, async () => {
       const page = await openPlaygroundPage();
       await start(page, code);
@@ -151,5 +153,48 @@ describe('008-typescript-playground-FR-044: uncaught errors keep to the same lim
     const state = (await page.locator(RUN_STATE).textContent())?.trim() ?? '';
     expect(state).toMatch(new RegExp(`^${fill(counted(siteText.playground.runState.errors, 5000), { n: 5000, s: '[\\d.]+' })}$`));
     expect((await page.locator(`${PLAYGROUND} .pane-logs p.logs-dropped`).textContent())?.trim()).toBe(fill(counted(logs.dropped, 4002), { n: '4,002', limit: '1,000' }));
+  });
+});
+
+describe('008-typescript-playground-FR-040: a flood of the worker\'s own messages reaches nothing', () => {
+  for (const [name, code] of [
+    ['while (true) postMessage(1)', 'while (true) postMessage(1);'],
+    ['a long string, as fast as it can', 'const s = "x".repeat(1000);\nwhile (true) postMessage(s);'],
+    ['through self and its prototype', 'const post = Object.getPrototypeOf(self).postMessage ?? self.postMessage;\nwhile (true) post.call(self, 1);'],
+  ] as const) {
+    test(`${name}: the page keeps answering, and Stop ends it`, async () => {
+      const page = await openPlaygroundPage();
+      await start(page, code);
+      await watchKeys(page);
+      await run(page, { wait: 'start' });
+      await focusEditor(page);
+      for (let i = 0; i < 8; i += 1) {
+        await page.waitForTimeout(500);
+        await page.keyboard.press('ArrowRight');
+      }
+      const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
+      expect(Math.max(...delays)).toBeLessThan(100);
+      await page.locator(`${PLAYGROUND} .playground-toolbar button.stop`).click();
+      await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${PLAYGROUND} .playground-toolbar button.stop`);
+    });
+  }
+
+  test('two million messages in a loop take no time on the page', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'for (let i = 0; i < 2e6; i++) postMessage(i);\nconsole.log("done");');
+    await watchKeys(page);
+    await run(page, { timeout: 30_000 });
+    await focusEditor(page);
+    await page.keyboard.press('ArrowRight');
+    const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
+    expect(Math.max(...delays)).toBeLessThan(100);
+    expect((await readLogs(page)).map((row) => row.text)).toContain('done');
+  });
+
+  test('a BroadcastChannel is an error the logs show, so its sends can\'t flood the browser', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'const b = new BroadcastChannel("a");\nwhile (true) b.postMessage(1);');
+    await run(page, { timeout: 10_000 });
+    expect((await readLogs(page)).filter((row) => row.level === 'error')).toHaveLength(1);
   });
 });

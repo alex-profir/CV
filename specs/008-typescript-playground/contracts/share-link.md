@@ -54,7 +54,7 @@ On hydration, before the first render of the shell's windows (contracts/shell.md
 | `#playground=1.<p>.<c>` with a matching check, a payload that inflates, JSON with a string `c` and, if present, an object `o` | `{ kind: 'code', … }`; options not in the table, or of the wrong kind, go to `unknown` and are left out |
 | anything else after `#playground=` | `{ kind: 'broken' }` |
 
-Reading never throws and never runs anything. It stops inflating at 1 MiB of output and calls
+Reading never throws and never runs anything. It stops inflating at what a link of the longest length can hold, 6,000 bytes at deflate's most of 1,032 times (about 6.2 MB), and calls
 the link broken, so a crafted link can't exhaust memory.
 
 ## Opening a link

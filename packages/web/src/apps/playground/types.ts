@@ -19,7 +19,7 @@ export type EngineManifest = {
 // data-model.md Download state.
 export type DownloadState =
   | { kind: 'idle' }
-  | { kind: 'checking' }
+  | { kind: 'checking'; nothingStored?: true }
   | { kind: 'downloading'; received: number; total: number; announcedStep: 0 | 1 | 2 | 3 | 4 }
   | { kind: 'offline'; total: number; stopped: boolean; wontOpen?: boolean }
   | { kind: 'ready'; typescript: string; kept: boolean };

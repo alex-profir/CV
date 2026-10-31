@@ -435,3 +435,25 @@ describe('008-typescript-playground-FR-057: a shared link replaces the visitor\'
     expect(await editorText(page)).toBe(own);
   });
 });
+
+describe('008-typescript-playground-SC-007: every code a link holds opens again', () => {
+  test('1.2 MB of code that compresses well, made by Share, opens from its link', async () => {
+    const code = 'const a = 1;\n'.repeat(100_000);
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    await setCode(page, code);
+    await waitForCode(page, 'const a = 1;');
+    await share(page);
+    expect(await messageText(page)).not.toBe(messages.brokenLink);
+    const link = await clipboard(page);
+    expect(link.length).toBeLessThanOrEqual(8000);
+    const other = await freshProfile();
+    await other.goto(link);
+    await waitForReady(other);
+    await settle(other);
+    await other.waitForSelector(MESSAGE, { timeout: 60_000 });
+    expect(await messageText(other)).not.toBe(messages.brokenLink);
+    await waitForCode(other, 'const a = 1;');
+  });
+});

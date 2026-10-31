@@ -1,7 +1,7 @@
 // The engine's loader and its download state (data-model.md Download state,
 // research R4), with fake Cache Storage and network.
 import { describe, expect, test } from 'vitest';
-import { forgetCopy, loadEngine, requestRetry, retryDelay, stepOf, waitForNetwork } from '../../../src/apps/playground/engine/loader.ts';
+import { forgetCopy, loadEngine, requestRetry, retryDelay, startWithin, stepOf, waitForNetwork } from '../../../src/apps/playground/engine/loader.ts';
 import type { LoaderEnv } from '../../../src/apps/playground/engine/loader.ts';
 import type { DownloadState, EngineManifest } from '../../../src/apps/playground/types.ts';
 
@@ -415,5 +415,51 @@ describe("008-typescript-playground-FR-014: when the browser can't keep TypeScri
       expect(loaded.kept, failure).toBe(false);
       expect(states.at(-1), failure).toEqual({ kind: 'ready', typescript: '5.9.3', kept: false });
     }
+  });
+});
+
+describe('008-typescript-playground-FR-011: a file cut short is a stopped download, and an engine that never starts has a limit', () => {
+  test('a file answered 200 at half its size stores no marker, says stopped, and a whole answer completes it', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    const net: Net = { online: true, requests: [] };
+    const base = env(caches, [current], net);
+    let cut = true;
+    const worker = current.files[2]!.path;
+    const { states, events } = record();
+    const loading = loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, {
+      ...base,
+      fetch: async (url: string, init?: RequestInit) => (cut && url === worker ? new Response(new Uint8Array(250)) : base.fetch(url, init)),
+    });
+    await expect.poll(() => states.some((state) => state.kind === 'offline')).toBe(true);
+    expect(states.find((state) => state.kind === 'offline')).toMatchObject({ stopped: true, total: 1000 });
+    expect(caches.stores.get('playground-aaaa')!.entries.has('/playground/aaaa/complete')).toBe(false);
+    cut = false;
+    await loading;
+    expect(caches.stores.get('playground-aaaa')!.entries.has('/playground/aaaa/complete')).toBe(true);
+  });
+
+  test('with nothing stored the window can say so while the manifest is on its way, and with a copy stored it never does', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    const net: Net = { online: true, requests: [] };
+    const first = record();
+    await loadEngine('/playground/aaaa/files.json', 1000, first.events, new AbortController().signal, env(caches, [current], net));
+    expect(first.states[1]).toEqual({ kind: 'checking', nothingStored: true });
+    const again = record();
+    await loadEngine('/playground/aaaa/files.json', 1000, again.events, new AbortController().signal, env(caches, [current], net));
+    expect(again.states.map((state) => state.kind)).toEqual(['checking', 'ready']);
+  });
+
+  test('an engine past the limit fails, and is given back when it starts after all', async () => {
+    const waiting = startWithin(new Promise<never>(() => undefined), () => undefined, 5);
+    await expect(waiting).rejects.toThrow('in time');
+    let finish: (value: string) => void = () => undefined;
+    const given: string[] = [];
+    const slow = startWithin(new Promise<string>((resolve) => (finish = resolve)), (engine) => given.push(engine), 5);
+    await expect(slow).rejects.toThrow('in time');
+    finish('engine');
+    await expect.poll(() => given).toEqual(['engine']);
+    await expect(startWithin(Promise.resolve('at once'), () => undefined, 5)).resolves.toBe('at once');
   });
 });

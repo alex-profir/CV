@@ -24,6 +24,8 @@ export function Loading() {
       </div>
     );
   }
+  // Looking for a stored copy, or opening one, is too short to say anything.
+  if (download.kind !== 'downloading' && !(download.kind === 'checking' && download.nothingStored === true)) return <div className="playground-loading" aria-busy="true" data-req="008-typescript-playground-FR-008" />;
   const received = download.kind === 'downloading' ? download.received : 0;
   const total = download.kind === 'downloading' ? download.total : 0;
   const progress = fill(words.progress, { received: megabytes(received), total: megabytes(total) });

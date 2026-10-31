@@ -116,6 +116,109 @@ describe('008-typescript-playground-FR-008: TypeScript downloads once, and is ke
   });
 });
 
+describe('008-typescript-playground-FR-008: an open from a stored copy never says it is downloading', () => {
+  test('a later open shows no download words, and a first open does', async () => {
+    const page = await freshProfile();
+    const held = await holdEngine(page);
+    await openPlayground(page);
+    await expect.poll(() => page.locator(`${LOADING} h2`).textContent()).toBe(siteText.playground.loading.downloading);
+    held.release();
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+    await page.reload();
+    await page.waitForSelector('#os[data-ready]', { state: 'attached' });
+    await settle(page);
+    await page.evaluate(() => {
+      const scope = window as unknown as { saidDownloading: boolean };
+      scope.saidDownloading = false;
+      new MutationObserver(() => {
+        if (document.querySelector('#os .playground-loading h2, #os .playground-loading progress') !== null) scope.saidDownloading = true;
+      }).observe(document.body, { subtree: true, childList: true });
+    });
+    await openPlayground(page);
+    await waitReady(page);
+    expect(await page.evaluate(() => (window as unknown as { saidDownloading: boolean }).saidDownloading)).toBe(false);
+  });
+});
+
+describe('008-typescript-playground-FR-011: a file cut short stops the download, and an engine that never starts is given up', () => {
+  const words = siteText.playground.loading;
+  const RETRY = `${LOADING} button.playground-retry`;
+
+  test('the worker answered 200 at half its size: stopped, with Retry, no marker, and Retry opens the editor', async () => {
+    const manifest = engineManifest(builtSite());
+    const worker = manifest.files.find((file) => /ts\.worker/.test(file.path))!;
+    const page = await freshProfile();
+    let cut = true;
+    await page.route(`**${worker.path}`, async (route: Route) => {
+      if (!cut) return route.continue();
+      const response = await route.fetch();
+      const body = await response.body();
+      await route.fulfill({ response, body: body.subarray(0, body.length >> 1) });
+    });
+    await openPlayground(page);
+    await page.waitForSelector(RETRY, { timeout: 60_000 });
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.stopped);
+    expect(await markerKept(page, engineFolder())).toBe(false);
+    cut = false;
+    await page.locator(RETRY).click();
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+  });
+
+  test('a stored worker cut short, with its marker, as an earlier visit could leave it, is given up and downloaded whole on Retry', async () => {
+    const manifest = engineManifest(builtSite());
+    const worker = manifest.files.find((file) => /ts\.worker/.test(file.path))!;
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+    await page.evaluate(
+      async ({ path, name }) => {
+        const cache = await caches.open(name);
+        const whole = await (await cache.match(path))!.arrayBuffer();
+        await cache.put(path, new Response(whole.slice(0, whole.byteLength >> 1), { headers: { 'content-type': 'text/javascript' } }));
+      },
+      { path: worker.path, name: `playground-${/\/playground\/([^/]+)$/.exec(engineFolder())![1]}` },
+    );
+    await page.clock.install();
+    await page.reload();
+    await waitForReady(page);
+    await settle(page);
+    await openPlayground(page);
+    await expect.poll(async () => {
+      await page.clock.fastForward(5_000);
+      return page.locator(RETRY).count();
+    }, { timeout: 60_000 }).toBe(1);
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.wontOpen);
+    await page.locator(RETRY).click();
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+  });
+
+  test('an engine that never starts: past the limit, "TypeScript won\'t open", no marker, and Retry opens the editor', async () => {
+    const manifest = engineManifest(builtSite());
+    const page = await freshProfile();
+    let broken = true;
+    await page.route(`**${manifest.entry}*`, async (route: Route) => {
+      const bytes = manifest.files.find((file) => file.path === manifest.entry)!.bytes;
+      if (broken) await route.fulfill({ status: 200, contentType: 'text/javascript', body: 'export const api = 1; export function createEngine() { return new Promise(() => {}); }'.padEnd(bytes) });
+      else await route.continue();
+    });
+    await page.clock.install();
+    await openPlayground(page);
+    await expect.poll(async () => {
+      await page.clock.fastForward(5_000);
+      return page.locator(RETRY).count();
+    }, { timeout: 60_000 }).toBe(1);
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.wontOpen);
+    expect(await markerKept(page, engineFolder())).toBe(false);
+    broken = false;
+    await page.locator(RETRY).click();
+    await waitReady(page);
+  });
+});
+
 describe('008-typescript-playground-FR-011: an engine that won\'t open says so, and Retry starts over', () => {
   const words = siteText.playground.loading;
   const RETRY = `${LOADING} button.playground-retry`;
@@ -124,7 +227,9 @@ describe('008-typescript-playground-FR-011: an engine that won\'t open says so, 
     const manifest = engineManifest(builtSite());
     let broken = true;
     await page.route(`**${manifest.entry}*`, async (route: Route) => {
-      if (broken) await route.fulfill({ status: 200, contentType: 'text/javascript', body: script });
+      // At the file's real size, as a download checks that.
+      const bytes = manifest.files.find((file) => file.path === manifest.entry)!.bytes;
+      if (broken) await route.fulfill({ status: 200, contentType: 'text/javascript', body: script.padEnd(bytes) });
       else await route.continue();
     });
     return () => {

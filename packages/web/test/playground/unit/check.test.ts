@@ -61,6 +61,16 @@ describe('008-typescript-playground-FR-016: errors are checked once typing pause
     expect(asked.at(-1)).toBe(3);
   });
 
+  test('a result long after its check was counted lost still shows, and ends the checking state', () => {
+    const { checker, checking, change } = setUp();
+    change();
+    vi.advanceTimersByTime(CHECKING_AFTER_MS);
+    expect(checking).toEqual([true]);
+    for (let lost = 0; lost < LOST_CHECK_RETRIES + 1; lost += 1) checker.lost();
+    expect(checker.result(1)).toBe(true);
+    expect(checking).toEqual([true, false]);
+  });
+
   test('a result for an older version is dropped; the current one is kept', () => {
     const { checker, change } = setUp();
     change();

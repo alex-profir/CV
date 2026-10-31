@@ -102,3 +102,36 @@ describe('008-typescript-playground-FR-081: going to a definition outside the co
     expect(await editorText(page)).toContain(code.split(' ')[0]);
   });
 });
+
+describe('008-typescript-playground-FR-029: what Peek shows of another file is read-only', () => {
+  const peek = `${EDITOR} .peekview-widget`;
+  const typeInPeek = async (page: Page) => {
+    await page.locator(`${peek} .monaco-editor .view-lines`).first().click();
+    await page.keyboard.type('zz');
+    await page.waitForTimeout(200);
+  };
+
+  test("F12 on `cv` shows its types, and typing in the preview changes nothing", async () => {
+    const page = await openPlaygroundPage();
+    const code = 'const n = cv.basics.name;';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await page.keyboard.press('Control+KeyG');
+    await page.keyboard.type('1:11');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('F12');
+    await page.waitForSelector(peek, { timeout: 10_000 });
+    await typeInPeek(page);
+    expect(await page.locator(`${peek} .monaco-editor .view-lines`).first().textContent()).not.toContain('zz');
+  });
+
+  test("a peek of the code's own definition stays editable", async () => {
+    const page = await openPlaygroundPage();
+    await ready(page);
+    await page.keyboard.press('Alt+F12');
+    await page.waitForSelector(peek, { timeout: 10_000 });
+    await typeInPeek(page);
+    await expect.poll(() => page.locator(`${peek} .monaco-editor .view-lines`).first().textContent()).toContain('zz');
+  });
+});

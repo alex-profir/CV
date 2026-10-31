@@ -147,12 +147,20 @@ describe('008-typescript-playground-FR-056: a cut-off, altered or garbled link i
     expect(await readLink(href)).toEqual({ kind: 'code', code: 'let a = 1;', options: { target: 'ES2017', noUnusedLocals: true }, unknown: ['fancyMode', 'strict'], href });
   });
 
-  test('reading stops inflating at 1 MiB and calls the link broken', async () => {
-    expect(INFLATE_LIMIT).toBe(1024 * 1024);
+  test('every code a link can hold inflates: 1.2 MB and more, compressing as well as code can', async () => {
+    for (const code of ['a'.repeat(1_200_000), 'const a = 1;\n'.repeat(100_000)]) {
+      const link = await made(code, {});
+      expect(link.length).toBeLessThanOrEqual(LINK_LIMIT);
+      expect(await readLink(link)).toEqual({ kind: 'code', code, options: {}, unknown: [], href: link });
+    }
+  });
+
+  test('the longest link deflate can make stays within the limit, and reading stops there and calls a longer one broken', async () => {
+    expect(INFLATE_LIMIT).toBeGreaterThanOrEqual(Math.ceil((LINK_LIMIT * 3) / 4) * 1032);
     const under = 'a'.repeat(INFLATE_LIMIT - 16);
     const fits = jsonLink(JSON.stringify({ c: under }));
     expect(await readLink(fits)).toMatchObject({ kind: 'code', code: under });
-    const huge = jsonLink(JSON.stringify({ c: 'a'.repeat(64 * INFLATE_LIMIT) }));
+    const huge = jsonLink(JSON.stringify({ c: 'a'.repeat(4 * INFLATE_LIMIT) }));
     expect(huge.length).toBeLessThan(200_000);
     expect(await readLink(huge)).toEqual({ kind: 'broken', href: huge });
   });
