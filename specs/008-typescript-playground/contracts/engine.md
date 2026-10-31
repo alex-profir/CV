@@ -104,5 +104,5 @@ and Retry, because the `online` event can be missed, spent on a fetch that still
 fire. The first try shows `downloading` at once; later tries show it only once a file answers, so
 they neither flicker nor announce.
 An entry or style that fails to open, or a `createEngine` that rejects, removes the copy's marker
-and shows `offline { stopped: true }`. Only Retry or `online` tries that again, since a whole copy
+and shows `offline { stopped: true, wontOpen: true }`. Only Retry or `online` tries that again, since a whole copy
 that won't open won't by waiting. Retry imports the entry under a new URL (`?retry=<n>`).

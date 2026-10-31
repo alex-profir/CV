@@ -396,7 +396,9 @@ export const siteText = deepFreeze({
       offline: 'TypeScript needs one download',
       offlineText: "The Playground runs TypeScript in your browser, and downloads it once, with a connection: {total} MB. You're offline, so the download starts by itself when you're back online.",
       stopped: 'The download stopped',
-      stoppedText: "TypeScript arrived only in part, so the Playground won't use it. The download starts again by itself when you're back online, or now with Retry.",
+      stoppedText: "TypeScript arrived only in part, so the Playground won't use it. It needs one whole download with a connection: {total} MB. The download starts again by itself when you're back online, or now with Retry.",
+      wontOpen: "TypeScript won't open",
+      wontOpenText: "The Playground has TypeScript but couldn't start it. Retry downloads it again with a connection: {total} MB.",
       retry: 'Retry',
     },
     failed: {
@@ -451,6 +453,7 @@ export const siteText = deepFreeze({
       noErrors: 'No errors in the code. Running.',
       errorsNote: { one: 'The code has {n} error. Running the JavaScript anyway.', other: 'The code has {n} errors. Running the JavaScript anyway.' },
       nothingRan: 'Nothing ran: {option} is on and the code has errors.',
+      cantRead: { one: "Nothing ran: the code has {n} error, and its JavaScript can't be read.", other: "Nothing ran: the code has {n} errors, and its JavaScript can't be read." },
       prompt: "{name} isn't available in the Playground, so it returned null.",
       confirm: "{name} isn't available in the Playground, so it returned false.",
       closed: 'The code closed its own worker with close(), so the run ended.',
@@ -572,6 +575,8 @@ export const siteText = deepFreeze({
       shareLink: 'Share link',
       copyLink: 'Copy link',
       copied: 'Link copied.',
+      tooLongCopied: 'This code is too long to share as a link, so the code itself was copied.',
+      tooLongRefused: "This code is too long to share as a link, and it couldn't be copied.",
     },
     // The commands in the list of keys, by the editor's command id (FR-085).
     keyLabels: {

@@ -141,7 +141,7 @@ type DownloadState =
   | { kind: 'idle' }                                   // the window isn't open on desktop
   | { kind: 'checking' }                               // looking for a stored copy
   | { kind: 'downloading'; received: number; total: number; announcedStep: 0 | 1 | 2 | 3 | 4 }
-  | { kind: 'offline'; total: number; stopped: boolean }   // FR-011: never started, or stopped part way
+  | { kind: 'offline'; total: number; stopped: boolean; wontOpen?: boolean }   // FR-011: never started, stopped part way, or a whole copy that won't open
   | { kind: 'ready'; typescript: string; kept: boolean };  // kept: false is FR-014
 ```
 
@@ -222,7 +222,7 @@ type Run = {
   stuck: 'no' | 'due' | 'shown' | 'kept-waiting';   // FR-048 to FR-050
   askAgainAt: number | null;           // Keep waiting: blockedSince-independent, 5 s after the choice
   uncaught: number;                    // FR-035
-  outcome: null | { kind: 'finished' | 'stopped' | 'errors' | 'crashed' | 'nothing-ran'; ms: number; reason?: string };
+  outcome: null | { kind: 'finished' | 'stopped' | 'errors' | 'crashed' | 'nothing-ran'; ms: number; reason?: string; errors?: number };
 };
 ```
 

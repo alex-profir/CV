@@ -70,6 +70,8 @@ function noteText(note: NoteKey): string {
       return fill(counted(logs.errorsNote, note.n), { n: note.n });
     case 'nothingRan':
       return note.reason === 'packages' ? words.editor.packages : fill(logs.nothingRan, { option: 'noEmitOnError' });
+    case 'cantRead':
+      return fill(counted(logs.cantRead, note.n), { n: note.n });
     case 'prompt':
     case 'confirm':
       return fill(logs[note.key], { name: note.key });
