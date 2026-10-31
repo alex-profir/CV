@@ -31,6 +31,9 @@ if (isScript) {
     process.exitCode = 2;
   } else {
     try {
+      // One test run at a time on this machine. Exiting releases the lock.
+      const { acquireTestLock } = await import('../../speckit-auto/test-lock.ts');
+      await acquireTestLock();
       await import('./cli.ts');
     } catch (error) {
       process.stderr.write(`site check could not start: ${error instanceof Error ? error.message : String(error)}\n`);
