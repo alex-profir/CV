@@ -21,9 +21,9 @@ const words = siteText.terminal.pocket;
 // A vim key is a normal mode key: from insert mode it leaves it first.
 function vimKey(key: string) {
   if (session.get().vim?.mode === 'insert') session.vim({ key: 'Escape' });
+  // A `/` or `:` being typed would take the key: drop it first (FR-066).
+  if (key.startsWith(':') || session.get().vim?.entry != null) session.vim({ cancel: true });
   if (key.startsWith(':')) {
-    // A `/` or `:` being typed would take the command: drop it first (FR-066).
-    session.vim({ cancel: true });
     session.vim({ key: ':' });
     session.vim({ submit: key.slice(1) });
     return;

@@ -9,7 +9,7 @@ import type { JsonFold, VimFile } from './block.ts';
 import { keyName } from './json.ts';
 
 // The worker's answer to a write, as far as the view reads it.
-type WriteOutcome = { ok: true; path: string; created: boolean; lines: number; bytes: number } | { ok: false; error: 'exists' | 'cant-open' | 'full'; path: string };
+type WriteOutcome = { ok: true; path: string; created: boolean; lines: number; bytes: number; own?: true } | { ok: false; error: 'exists' | 'cant-open' | 'full' | 'readonly'; path: string };
 
 export type VimSource = { file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' };
 
@@ -62,7 +62,8 @@ export type VimState = {
   // The buffer as it was when insert mode began, for its one undo step.
   entered: Step | null;
   // A write on its way to the worker, for its `{ wrote }` answer.
-  writing: { name: string; own: boolean; then: 'stay' | 'quit' } | null;
+  // `lines` are those written, for `saved` when the answer comes.
+  writing: { name: string; own: boolean; then: 'stay' | 'quit'; lines: readonly string[] } | null;
 };
 
 // `page`: the lines Page Up and Page Down move, from the view's height.
@@ -79,7 +80,7 @@ export type VimInput =
 
 // The worker fills in the request's id and working folder. `state` is the
 // buffer while the write is on its way.
-export type VimWrite = { write: { path: string; text: string; force: boolean }; then: 'stay' | 'quit'; state: VimState };
+export type VimWrite = { write: { path: string; text: string; force: boolean; own?: string }; then: 'stay' | 'quit'; state: VimState };
 export type VimOutput = VimState | 'quit' | VimWrite;
 
 const DEFAULT_PAGE = 20;
@@ -144,9 +145,24 @@ function lastColumn(state: VimState, line: number): number {
   return state.mode === 'insert' ? length : Math.max(0, length - 1);
 }
 
+// Whether `text[at]` is the second half of a surrogate pair.
+const isLowSurrogate = (text: string, at: number) => /[\uDC00-\uDFFF]/.test(text[at] ?? '') && /[\uD800-\uDBFF]/.test(text[at - 1] ?? '');
+
+// The index `count` characters on from `at`, a character outside the BMP
+// counting once.
+function charsOn(text: string, at: number, count: number): number {
+  let end = at;
+  for (let left = count; left > 0 && end < text.length; left -= 1) end += /[\uD800-\uDBFF]/.test(text[end]!) && isLowSurrogate(text, end + 1) ? 2 : 1;
+  return end;
+}
+
 function moveTo(state: VimState, line: number, column = state.cursor.column): VimState {
   const target = shownLine(state, Math.max(0, Math.min(line, state.lines.length - 1)));
-  return { ...state, cursor: { line: target, column: Math.max(0, Math.min(column, lastColumn(state, target))) } };
+  const last = lastColumn(state, target);
+  let at = Math.max(0, Math.min(column, last));
+  // Never inside a surrogate pair: past it moving right, else onto its start.
+  if (isLowSurrogate(lineText(state, target), at)) at = target === state.cursor.line && column > state.cursor.column && at + 1 <= last ? at + 1 : at - 1;
+  return { ...state, cursor: { line: target, column: at } };
 }
 
 // Moves `by` shown lines.
@@ -375,7 +391,7 @@ function deleteChars(state: VimState, count: number): VimState {
   const { line, column } = open.cursor;
   const text = lineText(open, line);
   if (text === '') return open;
-  const end = Math.min(text.length, column + count);
+  const end = charsOn(text, column, count);
   return { ...change(open, replaceLine(open, line, text.slice(0, column) + text.slice(end)), { line, column }), register: { text: text.slice(column, end), lines: false } };
 }
 
@@ -408,8 +424,10 @@ function replaceChars(state: VimState, char: string, count: number): VimState {
   const { line, column } = open.cursor;
   const text = lineText(open, line);
   // vim refuses when fewer characters are left than the count.
-  if (char.length !== 1 || column + count > text.length) return state;
-  return change(open, replaceLine(open, line, text.slice(0, column) + char.repeat(count) + text.slice(column + count)), { line, column: column + count - 1 });
+  if (char.length !== 1) return state;
+  const end = charsOn(text, column, count);
+  if ([...text.slice(column, end)].length < count) return state;
+  return change(open, replaceLine(open, line, text.slice(0, column) + char.repeat(count) + text.slice(end)), { line, column: column + count - 1 });
 }
 
 function join(state: VimState, count: number): VimState {
@@ -473,7 +491,9 @@ function writeCommand(state: VimState, then: 'stay' | 'quit', force: boolean, ta
     if (file.readonly && !force) return vimMessage(state, 'E45');
   }
   const name = own ? file.name : target!;
-  return { write: { path: own ? file.path! : target!, text: fileText(state), force: own || force }, then, state: { ...state, writing: { name, own, then } } };
+  // Another name may still be the open file; the worker resolves it.
+  const alias = !own && file.path !== null ? { own: file.path } : {};
+  return { write: { path: own ? file.path! : target!, text: fileText(state), force: own || force, ...alias }, then, state: { ...state, writing: { name, own, then, lines: state.lines } } };
 }
 
 function wrote(state: VimState, outcome: WriteOutcome): VimOutput {
@@ -482,20 +502,25 @@ function wrote(state: VimState, outcome: WriteOutcome): VimOutput {
   const done: VimState = { ...state, writing: null };
   if (!outcome.ok) {
     if (outcome.error === 'exists') return vimMessage(done, 'E13');
+    if (outcome.error === 'readonly') return vimMessage(done, 'E45');
     return vimMessage(done, outcome.error === 'full' ? 'E514' : 'E212', writing.name);
   }
   const { file } = done.source;
   const unnamed = file.path === null;
-  const named = writing.own || unnamed;
-  const source = named ? { ...done.source, file: { ...file, name: writing.name, path: outcome.path, new: false, readonly: unnamed ? false : file.readonly } } : done.source;
+  const own = writing.own || outcome.own === true;
+  const named = own || unnamed;
+  const source = named ? { ...done.source, file: { ...file, name: own ? file.name : writing.name, path: outcome.path, new: false, readonly: unnamed ? false : file.readonly } } : done.source;
+  // Keys pressed while the write was on its way changed the buffer again:
+  // it stays modified, and `:wq` stays open rather than lose them.
+  const changed = !sameLines(writing.lines, done.lines);
   const next: VimState = {
     ...done,
     source,
-    saved: named ? done.lines : done.saved,
-    modified: named ? false : done.modified,
+    saved: named ? writing.lines : done.saved,
+    modified: named ? changed : done.modified,
     message: { kind: 'written', name: writing.name, created: outcome.created, lines: outcome.lines, bytes: outcome.bytes },
   };
-  return writing.then === 'quit' ? 'quit' : next;
+  return writing.then === 'quit' && !(named && changed) ? 'quit' : next;
 }
 
 function command(state: VimState, typed: string): VimOutput {

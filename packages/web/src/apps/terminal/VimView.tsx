@@ -56,12 +56,14 @@ function tokenRuns(tokens: readonly JsonToken[], from: number, to: number, caret
           runs.push(<Bar key={`${index}c`} />);
           runs.push(piece(caret.at, end, `${index}b`));
         } else {
+          // The block covers a whole character, one outside the BMP too.
+          const after = Math.min(end, caret.at + (/[\uD800-\uDBFF]/.test(token.text[caret.at - at] ?? '') ? 2 : 1));
           runs.push(
             <span key={`${index}c`} className="vim-cursor">
-              {piece(caret.at, caret.at + 1, `${index}b`)}
+              {piece(caret.at, after, `${index}b`)}
             </span>,
           );
-          if (caret.at + 1 < end) runs.push(piece(caret.at + 1, end, `${index}d`));
+          if (after < end) runs.push(piece(after, end, `${index}d`));
         }
       } else runs.push(piece(start, end, `${index}`));
     }
@@ -292,6 +294,9 @@ export function VimView({ state, shell, send }: Props) {
     if (field === null) return undefined;
     const before = (event: InputEvent) => {
       if (event.isComposing || !event.cancelable) return;
+      // Over a selection, or a suggestion replacing a word, the edit isn't
+      // at the cursor: it is read on `input` instead.
+      if (field.selectionStart !== field.selectionEnd || event.inputType === 'insertReplacementText') return;
       const typed = event.data ?? event.dataTransfer?.getData('text/plain') ?? null;
       if (event.inputType === 'insertLineBreak' || event.inputType === 'insertParagraph') send({ lineBreak: true });
       else if (event.inputType === 'deleteContentBackward') send({ delete: 'backward' });
@@ -304,15 +309,21 @@ export function VimView({ state, shell, send }: Props) {
       const held = field.dataset.buffer ?? '';
       const value = field.value;
       if (value === held) return;
+      const high = (char: string | undefined) => char !== undefined && /[\uD800-\uDBFF]/.test(char);
       let start = 0;
       while (start < value.length && start < held.length && value[start] === held[start]) start += 1;
+      // Never between the halves of a surrogate pair.
+      if (start > 0 && high(held[start - 1])) start -= 1;
       let tail = 0;
       while (tail < value.length - start && tail < held.length - start && value[value.length - 1 - tail] === held[held.length - 1 - tail]) tail += 1;
-      const removed = held.length - start - tail;
-      const upTo = held.slice(0, start + removed).split('\n');
+      if (tail > 0 && high(held[held.length - tail - 1])) tail -= 1;
+      const end = held.length - tail;
+      const upTo = held.slice(0, end).split('\n');
       send({ point: { line: upTo.length - 1, column: upTo.at(-1)!.length } });
+      // One backspace per character: the engine's removes a whole pair.
+      const removed = [...held.slice(start, end)].length;
       for (let times = 0; times < removed; times += 1) send({ delete: 'backward' });
-      const added = value.slice(start, value.length - tail);
+      const added = value.slice(start, Math.max(start, value.length - tail));
       if (added !== '') send({ text: added });
     };
     const input = (event: Event) => {
@@ -370,6 +381,8 @@ export function VimView({ state, shell, send }: Props) {
   };
 
   const insertKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Keys that pick or end an IME's composition are the IME's.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || !INSERT_KEYS.has(event.key)) return;
     event.preventDefault();
     send({ key: event.key });
@@ -490,7 +503,7 @@ export function VimView({ state, shell, send }: Props) {
               spellCheck={false}
               enterKeyHint={state.entry.kind === '/' ? 'search' : 'go'}
               onKeyDown={(event) => {
-                if (event.key !== 'Escape') return;
+                if (event.key !== 'Escape' || event.nativeEvent.isComposing) return;
                 event.preventDefault();
                 send({ cancel: true });
                 text.current?.focus();
