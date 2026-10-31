@@ -341,6 +341,12 @@
   align-items: start;
 }
 
+/* The field's name and hint are for screen readers: select all and a copy
+   leave them out (FR-075). */
+.prompt-line .visually-hidden {
+  user-select: none;
+}
+
 /* The mirror sets the field's height, wrapping a long line; the input lies
    over it, so no rule places a box out of the page's order (004 FR-027). */
 .command-field {

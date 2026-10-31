@@ -190,7 +190,11 @@ export function createSession(client: ShellClient = createShellClient()) {
       }
     }
     if (result.end === 'exited' && waiting.actions !== null) acts.push(waiting.actions.exit);
-    set({ ...next, shell: statusOf(null) });
+    // The worker failed while the line ran: the failure is announced now,
+    // as it would have been with no line running (FR-070).
+    const shell = statusOf(null);
+    if (shell === 'failed' && state.shell !== 'failed') next = { ...next, announcement: say(siteText.terminal.shellFailed) };
+    set({ ...next, shell });
     for (const act of acts) act();
   }
 
@@ -198,7 +202,9 @@ export function createSession(client: ShellClient = createShellClient()) {
   function pump() {
     if (state.running !== null || queue.length === 0) return;
     const waiting = queue[0]!;
-    if (waiting.entry.line.trim() === '') {
+    // An empty line, or one ended with Ctrl+C while others waited, runs
+    // nothing: it takes its place in order.
+    if (waiting.entry.line.trim() === '' || waiting.entry.cancelled === true) {
       queue = queue.slice(1);
       set({ ...state, entries: [...state.entries, { ...waiting.entry, cwd: state.cwd }], waiting: queue.map((each) => each.entry) });
       pump();
@@ -244,7 +250,8 @@ export function createSession(client: ShellClient = createShellClient()) {
     const { history, stepping, draft } = state;
     if (direction === 'up') {
       if (history.length === 0) return;
-      const index = stepping === null ? history.length - 1 : Math.max(0, stepping.index - 1);
+      // `history -c` may have emptied the history since the last step.
+      const index = stepping === null ? history.length - 1 : Math.max(0, Math.min(history.length, stepping.index) - 1);
       set({ ...state, draft: history[index]!, stepping: { index, saved: stepping?.saved ?? draft } });
       return;
     }
@@ -266,7 +273,14 @@ export function createSession(client: ShellClient = createShellClient()) {
       return;
     }
     const typed: Entry = { ...entry(state.draft), block: [], cancelled: true };
-    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement: say(siteText.terminal.announce.cancelled) });
+    const announcement = say(siteText.terminal.announce.cancelled);
+    // Lines still wait for the shell: it follows them, as typed.
+    if (queue.length > 0) {
+      queue = [...queue, { entry: typed, shell: 'desktop', actions: null, history: state.history }];
+      set({ ...state, waiting: queue.map((each) => each.entry), draft: '', stepping: null, announcement });
+      return;
+    }
+    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement });
   }
 
   // A second Tab's list: an entry like Ctrl+C's, the line as typed and not in
@@ -292,9 +306,9 @@ export function createSession(client: ShellClient = createShellClient()) {
 
   // A write from the vim view, from the working folder (research R49). The
   // files it answers with are the session's, for a restarted worker.
-  async function write(path: string, text: string, force: boolean): Promise<WriteOutcome> {
+  async function write(path: string, text: string, force: boolean, own?: string): Promise<WriteOutcome> {
     const at = generation;
-    const outcome = await client.write({ id: (ids += 1), path, text, force, cwd: state.cwd });
+    const outcome = await client.write({ id: (ids += 1), path, text, force, cwd: state.cwd, ...(own === undefined ? {} : { own }) });
     if (outcome.ok && at === generation) set({ ...state, files: outcome.files });
     return outcome;
   }
@@ -309,7 +323,7 @@ export function createSession(client: ShellClient = createShellClient()) {
     if ('write' in next) {
       const at = generation;
       set({ ...state, vim: next.state });
-      void write(next.write.path, next.write.text, next.write.force).then((outcome) => {
+      void write(next.write.path, next.write.text, next.write.force, next.write.own).then((outcome) => {
         if (at === generation) vim({ wrote: outcome });
       });
       return;

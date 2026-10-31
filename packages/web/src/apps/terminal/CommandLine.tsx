@@ -100,6 +100,12 @@ export async function tabComplete(input: HTMLInputElement) {
   }
 }
 
+// Whether `text[at]` is the second half of a surrogate pair.
+const isLowSurrogate = (text: string, at: number) => {
+  const code = text.charCodeAt(at);
+  return code >= 0xdc00 && code <= 0xdfff;
+};
+
 // The mirror's text: runs of the line, plain or selected, and the cursor's
 // block, which draws no text past the line's end.
 type Part = { text: string; kind: 'plain' | 'selected' | 'cursor' };
@@ -110,9 +116,12 @@ function parts(text: string, start: number, end: number, cursor: number): Part[]
     if (last !== undefined && last.kind === kind && kind !== 'cursor') last.text += value;
     else out.push({ text: value, kind });
   };
-  for (let at = 0; at <= text.length; at += 1) {
-    if (at === cursor) push(text[at] ?? '', 'cursor');
-    else if (at < text.length) push(text[at]!, at >= start && at < end ? 'selected' : 'plain');
+  // By code point, so a character outside the BMP stays whole.
+  for (let at = 0; at <= text.length; ) {
+    const char = at < text.length ? String.fromCodePoint(text.codePointAt(at)!) : '';
+    if (at === cursor || (cursor > at && cursor < at + char.length)) push(char, 'cursor');
+    else if (at < text.length) push(char, at >= start && at < end ? 'selected' : 'plain');
+    at += Math.max(1, char.length);
   }
   return out;
 }
@@ -257,11 +266,13 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
         move(length);
         return true;
       case 'b':
-        move(Math.max(0, caret - 1));
+        move(Math.max(0, caret - (caret >= 2 && isLowSurrogate(input.value, caret - 1) ? 2 : 1)));
         return true;
-      case 'f':
-        move(Math.min(length, (input.selectionEnd ?? caret) + 1));
+      case 'f': {
+        const from = input.selectionEnd ?? caret;
+        move(Math.min(length, from + (isLowSurrogate(input.value, from + 1) ? 2 : 1)));
         return true;
+      }
       case 'k':
         deleteRange(input, caret, length);
         return true;
@@ -284,9 +295,12 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
 
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     wake();
+    // Keys that pick or end an IME's composition are the IME's.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const plain = !event.ctrlKey && !event.altKey && !event.metaKey;
     // A question takes one key: y lists, any other adds nothing.
-    if (asked !== null && plain && !event.shiftKey && !['Shift'].includes(event.key)) {
+    // Shift+Tab still leaves (SC-016); Shift+Y answers as y does.
+    if (asked !== null && plain && event.key !== 'Shift' && !(event.shiftKey && event.key === 'Tab')) {
       const { matches } = asked;
       asked = null;
       if (event.key !== 'Escape') event.preventDefault();
