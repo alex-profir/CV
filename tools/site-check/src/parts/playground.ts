@@ -237,6 +237,9 @@ async function atUse(page: Page): Promise<void> {
   await cursorAt(page, AT_USE.line, AT_USE.column);
 }
 
+// Monaco keeps a closed list in the page, hidden, beside the one it opens next.
+const ACTIONS = '.action-widget:visible';
+
 async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<void> {
   // The TypeScript the Playground bundles, loaded only for this check.
   const { bundled, CODE_FILE, ts } = await import('../../../../packages/web/test/helpers/bundled-typescript.ts');
@@ -312,8 +315,8 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
   await putCode(page, fixable);
   await cursorAt(page, 2, 7);
   await page.keyboard.press(`${key}+Period`);
-  await page.waitForSelector('.action-widget', { timeout: 10_000 });
-  const fix = page.locator('.action-widget').getByText('Add missing properties', { exact: true });
+  await page.waitForSelector(ACTIONS, { timeout: 10_000 });
+  const fix = page.locator(ACTIONS).getByText('Add missing properties', { exact: true });
   if (!(await until(async () => (await fix.count()) > 0))) found.push(problem('quick-fix', 'Ctrl+.', 'the list holds no Add missing properties'));
   else {
     await fix.click();
@@ -326,8 +329,8 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
   await cursorAt(page, 3, 3);
   await page.keyboard.press('Shift+End');
   await page.keyboard.press(`${key}+Period`);
-  await page.waitForSelector('.action-widget', { timeout: 10_000 });
-  const extract = page.locator('.action-widget').getByText(/^Extract to function/).first();
+  await page.waitForSelector(ACTIONS, { timeout: 10_000 });
+  const extract = page.locator(ACTIONS).getByText(/^Extract to function/).first();
   if (!(await until(async () => (await extract.count()) > 0))) found.push(problem('quick-fix', 'Ctrl+.', 'a selected line offers no Extract to function'));
   else {
     await extract.click();
