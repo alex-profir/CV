@@ -154,7 +154,7 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     expect((await runLine(shell, 'help work')).stdout).toContain(fullText.terminal.commands.work.help);
     const nosuch = await runLine(shell, 'help nosuch');
     expect(nosuch.status).toBe(1);
-    expect(nosuch.stderr).toBe(`${fill(siteText.terminal.replies.helpUnknown, { name: 'nosuch', help: 'help' })}\n`);
+    expect(nosuch.stderr).toBe(`${fill(fullText.terminal.replies.helpUnknown, { name: 'nosuch', help: 'help' })}\n`);
   });
 
   test('no name runs that help doesn’t list', async () => {

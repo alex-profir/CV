@@ -85,13 +85,8 @@ export const siteText = deepFreeze({
       unknown: '{typed}: command not found.',
       unknownRun: 'Run {help} to see them all, or try:',
       unknownRunAlone: 'Run {help} to see them all.',
-      helpUnknown: 'help: no command is named {name}. Run {help} to see them all.',
-      usage: '{command} takes {what}. Usage: {usage}',
-      noSuchPath: '{path}: no such file or folder.',
       isFile: '{path} is a file. Try {command}.',
       isFolder: '{path} is a folder. Try {command}.',
-      open: 'open takes {cv} or {about}.',
-      emptySection: 'The CV lists no {section}.',
       // A line the shell stopped (FR-069, FR-075).
       stopped: {
         time: 'stopped: it ran for 5 seconds, the longest a command line runs here.',
@@ -154,7 +149,6 @@ export const siteText = deepFreeze({
       notFound: '/{text}   not found',
       entry: { '/': 'Search', ':': 'Command' },
       chips: { help: ':help', quit: ':q' },
-      helpName: 'keys',
       keysHeading: 'KEYS FOR {file}',
       keysSuffix: { piped: ' · :w <path> writes it to a file', readonly: ' · read only: :w <path> keeps a copy' },
       helpRows: [

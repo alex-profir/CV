@@ -164,15 +164,13 @@ function columnBy(text: string, column: number, by: number): number {
   return Math.max(0, Math.min(at, text.length));
 }
 
-// Whether `text[at]` is the second half of a surrogate pair.
-const isLowSurrogate = (text: string, at: number) => /[\uDC00-\uDFFF]/.test(text[at] ?? '') && /[\uD800-\uDBFF]/.test(text[at - 1] ?? '');
 
 function moveTo(state: VimState, line: number, column = state.cursor.column): VimState {
   const target = shownLine(state, Math.max(0, Math.min(line, state.lines.length - 1)));
   const last = lastColumn(state, target);
   let at = Math.max(0, Math.min(column, last));
   // Never inside a surrogate pair: past it moving right, else onto its start.
-  if (isLowSurrogate(lineText(state, target), at)) at = target === state.cursor.line && column > state.cursor.column && at + 1 <= last ? at + 1 : at - 1;
+  if (lineText(state, target).codePointAt(at - 1)! > 0xffff) at += target === state.cursor.line && column > state.cursor.column && at < last ? 1 : -1;
   return { ...state, cursor: { line: target, column: at } };
 }
 

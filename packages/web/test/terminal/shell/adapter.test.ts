@@ -2,6 +2,7 @@
 // carried from line to line, syntax checked first, the site's command words
 // matched in any case, `exit` detected, and reset and restore.
 import { fill, siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { describe, expect, test } from 'vitest';
 import { INITIAL_STATE, QUOTA } from '../../../src/apps/terminal/shell/protocol.ts';
 import { LANGUAGE_CASES, runLine, runLines, shellFor } from './context.ts';
@@ -184,7 +185,7 @@ describe('006-terminal-FR-008: exit, and the adapter’s own commands', () => {
   });
 
   test('help on an unknown name says so, with bash’s status (T304)', async () => {
-    expect(await runLine(shellFor('every-field'), 'help nope')).toMatchObject({ stderr: `${fill(siteText.terminal.replies.helpUnknown, { name: 'nope', help: 'help' })}\n`, status: 1 });
+    expect(await runLine(shellFor('every-field'), 'help nope')).toMatchObject({ stderr: `${fill(fullText.terminal.replies.helpUnknown, { name: 'nope', help: 'help' })}\n`, status: 1 });
   });
 
   test('the directory stack and PIPESTATUS carry, and through a restarted worker (T305)', async () => {

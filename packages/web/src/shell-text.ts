@@ -5,6 +5,13 @@ import { deepFreeze } from './freeze.ts';
 import { siteText } from './site-text.ts';
 
 const shellText = deepFreeze({
+  replies: {
+    ...siteText.terminal.replies,
+    helpUnknown: 'help: no command is named {name}. Run {help} to see them all.',
+    usage: '{command} takes {what}. Usage: {usage}',
+    open: 'open takes {cv} or {about}.',
+    emptySection: 'The CV lists no {section}.',
+  },
   // By command name, in `help`'s order: the arguments `help` shows after
   // the name, the one-line description and the command's own help.
   commands: {

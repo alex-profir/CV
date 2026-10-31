@@ -309,14 +309,13 @@ export function VimView({ state, shell, send }: Props) {
       const held = field.dataset.buffer ?? '';
       const value = field.value;
       if (value === held) return;
-      const high = (char: string | undefined) => char !== undefined && /[\uD800-\uDBFF]/.test(char);
       let start = 0;
       while (start < value.length && start < held.length && value[start] === held[start]) start += 1;
       // Never between the halves of a surrogate pair.
-      if (start > 0 && high(held[start - 1])) start -= 1;
+      if (held.codePointAt(start - 1)! > 0xffff) start -= 1;
       let tail = 0;
       while (tail < value.length - start && tail < held.length - start && value[value.length - 1 - tail] === held[held.length - 1 - tail]) tail += 1;
-      if (tail > 0 && high(held[held.length - tail - 1])) tail -= 1;
+      if (tail > 0 && held.codePointAt(held.length - tail - 1)! > 0xffff) tail -= 1;
       const end = held.length - tail;
       const upTo = held.slice(0, end).split('\n');
       send({ point: { line: upTo.length - 1, column: upTo.at(-1)!.length } });
