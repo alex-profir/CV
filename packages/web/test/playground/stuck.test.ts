@@ -54,7 +54,10 @@ describe('008-typescript-playground-FR-048: code that runs 5 s without a pause g
 
   test('code that closes its own worker ends the run and says so, with no popup', async () => {
     const page = await openPlaygroundPage();
-    await start(page, 'console.log("before");\nself.close();');
+    // It ends too soon for `start` to see it going.
+    await setCode(page, 'console.log("before");\nself.close();');
+    await waitChecked(page);
+    await run(page);
     await expect.poll(() => running(page), { timeout: 3_000 }).toBe(false);
     const logs = await readLogs(page);
     expect(logs.map((row) => row.text)).toContain('before');
@@ -169,5 +172,35 @@ describe('008-typescript-playground-FR-051: the popup is an alert dialog with fo
     expect(await running(page)).toBe(true);
     await page.keyboard.press('Alt+Shift+KeyM');
     await expect.poll(() => page.evaluate(() => document.activeElement?.closest('[role="menubar"]') !== null)).toBe(true);
+  });
+});
+
+describe('008-typescript-playground-FR-051: the stuck popup in place of another popup', () => {
+  test('over Keys, it closes Keys, takes focus to Stop, and Escape keeps waiting and gives focus back', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, ENDLESS);
+    await menu(page, siteText.playground.menu.keys);
+    await page.waitForSelector(`${POPUP}.keys`);
+    await page.waitForSelector(`${POPUP}[role="alertdialog"]`, { timeout: 8_000 });
+    expect(await page.locator(`${POPUP}.keys`).count()).toBe(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent)).toBe(words.stop);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => popupShown(page)).toBe(0);
+    expect(await running(page)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('menu-title-app');
+  });
+
+  test("Reset and Keys can't be chosen while it shows, and no popup comes after Stop", async () => {
+    const page = await openPlaygroundPage();
+    await start(page, ENDLESS);
+    await page.waitForSelector(POPUP, { timeout: 8_000 });
+    await page.click('#menu-title-app');
+    for (const item of [siteText.playground.menu.reset, siteText.playground.menu.keys]) expect(await page.getByRole('menuitem', { name: item, exact: true }).getAttribute('aria-disabled'), item).toBe('true');
+    await page.keyboard.press('Escape');
+    await page.locator(POPUP).getByRole('button', { name: words.stop }).click();
+    await expect.poll(() => running(page)).toBe(false);
+    await page.waitForTimeout(300);
+    expect(await popupShown(page)).toBe(0);
   });
 });

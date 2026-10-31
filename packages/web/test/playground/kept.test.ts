@@ -119,6 +119,51 @@ describe('008-typescript-playground-FR-019: the starting example first, then the
     await expect.poll(() => editorText(page)).toBe(`${code} `);
   });
 
+  test('after one failed write the next change is kept, the message goes, and a later failure says so again', async () => {
+    const page = await freshProfile({
+      beforeGoto: async (target) => {
+        await target.addInitScript(() => {
+          const real = Storage.prototype.setItem;
+          Storage.prototype.setItem = function (key: string, value: string) {
+            if ((self as unknown as { refuseWrites?: boolean }).refuseWrites === true) throw new DOMException('full', 'QuotaExceededError');
+            return real.call(this, key, value);
+          };
+        });
+      },
+    });
+    await reopen(page);
+    const refuse = (on: boolean) => page.evaluate((value) => void ((self as unknown as { refuseWrites?: boolean }).refuseWrites = value), on);
+    await refuse(true);
+    await setCode(page, 'let first = 1;');
+    await expect.poll(async () => (await page.locator(MESSAGE).textContent())?.trim() ?? '').toContain(messages.cantKeepCode);
+    await refuse(false);
+    await setCode(page, 'let second = 2;');
+    await expect.poll(async () => JSON.parse((await kept(page)) ?? '{}').code).toBe('let second = 2;');
+    await expect.poll(() => page.locator(MESSAGE).count()).toBe(0);
+    await refuse(true);
+    await setCode(page, 'let third = 3;');
+    await expect.poll(async () => (await page.locator(MESSAGE).textContent())?.trim() ?? '').toContain(messages.cantKeepCode);
+  });
+
+  test('a strict check ticked under strict: false is still on after a reload', async () => {
+    const page = await freshProfile();
+    await reopen(page);
+    await openOptions(page);
+    const box = (name: string) => page.locator(`${PLAYGROUND} section.options-panel #playground-option-${name}`);
+    await box('strict').click();
+    await box('noImplicitAny').click();
+    await expect.poll(() => box('noImplicitAny').isChecked()).toBe(true);
+    await expect.poll(async () => JSON.parse((await kept(page)) ?? '{}').options?.noImplicitAny).toBe(true);
+    await page.reload();
+    await page.waitForSelector('#os[data-ready]', { state: 'attached' });
+    await settle(page);
+    await reopen(page);
+    await openOptions(page);
+    expect(await box('strict').isChecked()).toBe(false);
+    expect(await box('noImplicitAny').isChecked()).toBe(true);
+    expect(await box('strictNullChecks').isChecked()).toBe(false);
+  });
+
   test('a kept option this version doesn\'t know is left out and named', async () => {
     const page = await freshProfile({
       beforeGoto: async (target) => {

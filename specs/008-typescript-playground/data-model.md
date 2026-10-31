@@ -43,8 +43,9 @@ type ChangedOptions = Partial<{ target: Target } & Record<Exclude<OptionName, 't
   (R13), `noEmit: false`, `isolatedModules: false`, `jsx: none`, `types: []`, `allowJs: false`.
 - **Reading** a written set (kept code or a link): a name not in `OptionName` is left out and
   named in the message of FR-019 or FR-056; a value of the wrong kind is left out the same way;
-  a flag set to its default is dropped. `strict: false` with no strict check written turns every
-  strict check off, as the panel does.
+  a flag set to its default is dropped, but for a strict check under `strict: false`. There, a strict
+  check not written is off, as the panel does and older links mean, so writing sets each strict check
+  that is on while `strict` is off, default or not (T206).
 
 Validation: the table is checked against TypeScript's own option list in a test, so a name the
 compiler doesn't know fails the build's tests (`options.test.ts`).
@@ -332,7 +333,10 @@ type MessageKey =
   | 'sharedReplaced' | 'exampleReplaced' | 'resetDone' | 'cantKeepCode' | 'cantKeepTypeScript';
 ```
 
-A new message replaces the one shown. Each is announced politely (FR-052, FR-064).
+A new message replaces the one shown. Each is announced politely (FR-052, FR-064). The notices a
+visitor must read (`unknownKeptOptions`, `unknownOptions`, `cantKeepTypeScript`, `cantKeepCode`) aren't
+lost that way: each waits its turn behind what shows, comes back after a message that replaces it,
+and shows when the one before is dismissed. `cantKeepCode` goes once a write works (T213, T214).
 
 ## OS state
 

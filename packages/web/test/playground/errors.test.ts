@@ -56,3 +56,17 @@ describe('008-typescript-playground-FR-035: uncaught errors are logged with thei
     expect(await page.evaluate((selector) => document.querySelector(selector)?.contains(document.activeElement), EDITOR)).toBe(true);
   });
 });
+
+describe("008-typescript-playground-FR-035: an error thrown through the runtime's wrappers has the visitor's line", () => {
+  test('new WebSocket with a bad address logs its line in the code', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'console.log("before");\nnew WebSocket("not a url");';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    const errors = (await readLogs(page)).filter((row) => row.level === 'error');
+    expect(errors).toHaveLength(1);
+    expect(errors[0]!.line).toBe(2);
+  });
+});

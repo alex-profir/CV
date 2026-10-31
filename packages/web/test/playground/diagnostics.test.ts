@@ -4,7 +4,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { bundled } from '../helpers/bundled-typescript.ts';
-import { EDITOR, editorText, errorMarks, openPlaygroundPage, PLAYGROUND, readErrors, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, editorText, errorMarks, openPlaygroundPage, PLAYGROUND, readErrors, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -56,6 +56,18 @@ describe('008-typescript-playground-FR-016: errors are marked within a second of
       expect(text).toContain(entry.message.replace(/\s+/g, ' '));
       expect(text).toContain(`TS${entry.code}`);
     }
+  });
+
+  test('a change of option on long code reads Checking… until its result comes', async () => {
+    const page = await openPlaygroundPage();
+    const code = Array.from({ length: 30_000 }, (_, i) => `const name${i} = ${i};`).join('\n');
+    await setCode(page, code);
+    await waitChecked(page);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).check();
+    const status = `${PLAYGROUND} .playground-status`;
+    await page.waitForFunction((selector) => (document.querySelector(selector)?.textContent ?? '').includes('Checking'), status, { timeout: 5_000 });
+    await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('Checking'), status, { timeout: 120_000 });
   });
 
   test('with checking slowed by a 2,000-line paste, the status reads Checking… and the marks and the Errors pane dim until the result', async () => {

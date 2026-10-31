@@ -94,3 +94,24 @@ describe('008-typescript-playground-FR-005: Show specs and Back from the phone\'
     expect(await page.locator('#os .full-screen[data-view="playground"] button.show-specs').isVisible()).toBe(true);
   });
 });
+
+describe('008-typescript-playground-FR-085: the menu offers only what can show while the specs show', () => {
+  test('what opens inside the Playground is off while its specs show, and on again after Back', async () => {
+    const page = await openPlaygroundPage();
+    const words = siteText.playground.menu;
+    const items = [words.examples, words.options, words.palette, words.keys, words.reset];
+    const states = async () => {
+      await page.click('#menu-title-app');
+      const found = await Promise.all(items.map((item) => page.getByRole('menuitem').filter({ hasText: item }).getAttribute('aria-disabled')));
+      await page.keyboard.press('Escape');
+      return found;
+    };
+    expect(await states()).toEqual(items.map(() => null));
+    await menu(page, siteText.inspector.show);
+    await expect.poll(() => page.locator(PLAYGROUND).count()).toBe(0);
+    expect(await states()).toEqual(items.map(() => 'true'));
+    await menu(page, fill(siteText.inspector.back, { view: siteText.os.views.playground }));
+    await page.waitForSelector(`${EDITOR} .monaco-editor`);
+    expect(await states()).toEqual(items.map(() => null));
+  });
+});

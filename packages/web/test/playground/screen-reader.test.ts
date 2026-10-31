@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, setCode, showPane, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, run, setCode, showPane, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -102,5 +102,29 @@ describe('008-typescript-playground-FR-063: the editor is named, read line by li
     const second = await input.getAttribute('aria-activedescendant');
     expect(await page.locator(`[id="${second}"]`).getAttribute('role')).toBe('option');
     expect((await page.locator(`[id="${second}"]`).getAttribute('aria-label')) ?? '').not.toBe('');
+  });
+});
+
+describe('008-typescript-playground-FR-064: each summary counts only the entries since the last', () => {
+  test('the summaries add up to what was logged, rather than each giving the running total', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'let sent = 0;\nconst timer = setInterval(() => {\n  for (let i = 0; i < 200; i++) console.log(i);\n  sent += 200;\n  if (sent === 6000) clearInterval(timer);\n}, 100);';
+    await setCode(page, code);
+    await waitChecked(page);
+    await page.evaluate(() => {
+      const said: string[] = [];
+      (window as unknown as { said: string[] }).said = said;
+      const region = document.querySelector('#os [role="status"][data-req="005-os-shell-FR-041"]')!;
+      new MutationObserver(() => said.push(region.textContent ?? '')).observe(region, { childList: true, subtree: true, characterData: true });
+    });
+    await run(page, { timeout: 30_000 });
+    await page.waitForTimeout(1_500);
+    const said = await page.evaluate(() => (window as unknown as { said: string[] }).said);
+    const counts = said.flatMap((text) => [...text.matchAll(/^([\d,]+) new log entr/g)].map((match) => Number(match[1]!.replaceAll(',', ''))));
+    expect(counts.length).toBeGreaterThan(1);
+    const total = counts.reduce((sum, n) => sum + n, 0);
+    // The 6,000, and the notes at the start and at the end.
+    expect(total).toBeGreaterThanOrEqual(6_000);
+    expect(total).toBeLessThanOrEqual(6_002);
   });
 });

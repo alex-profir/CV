@@ -18,6 +18,13 @@ import { onMac } from './text.ts';
 
 const words = siteText.playground.menu;
 
+// Whether the window shows the Playground, not its specs (FR-005): what opens
+// inside it can't show otherwise.
+const showing = () => document.querySelector('#os section.playground') !== null;
+const canOpenPanel = () => currentEngine() !== null && showing();
+// A popup can't open over the stuck popup, or it would wait behind it (FR-051).
+const canOpenPopup = () => showing() && session.get().run?.stuck !== 'shown';
+
 // Run's key, as the list of keys gives it for the visitor's system.
 const runKey = () => KEY_COMMANDS.find((command) => command.id === 'playground.run')!.keys[onMac() ? 'mac' : 'other'][0]!;
 
@@ -32,20 +39,20 @@ export const playgroundApp: App = {
   menuItems: [
     { key: 'run', label: words.run, shortcut: runKey, disabled: () => currentEngine() === null, run: runCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-032' },
     { key: 'stop', label: words.stop, disabled: () => !canStop(), run: stopCode, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-038' },
-    { key: 'examples', label: words.examples, separatorBefore: true, disabled: () => currentEngine() === null, run: openExamplesPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-027' },
-    { key: 'options', label: words.options, disabled: () => currentEngine() === null, run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
+    { key: 'examples', label: words.examples, separatorBefore: true, disabled: () => !canOpenPanel(), run: openExamplesPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-027' },
+    { key: 'options', label: words.options, disabled: () => !canOpenPanel(), run: openOptionsPanel, 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-024' },
     { key: 'share', label: words.share, disabled: () => currentEngine() === null, run: () => void shareCode(), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-052' },
     {
       key: 'palette',
       label: words.palette,
       shortcut: 'F1',
       separatorBefore: true,
-      disabled: () => currentEngine() === null,
+      disabled: () => !canOpenPanel(),
       run: () => requestAnimationFrame(() => currentEngine()?.runCommand('editor.action.quickCommand')),
       'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-085',
     },
-    { key: 'keys', label: words.keys, run: () => session.update({ popup: 'keys' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-085' },
-    { key: 'reset', label: words.reset, separatorBefore: true, separatorAfter: true, disabled: () => currentEngine() === null, run: () => session.update({ popup: 'reset' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-080' },
+    { key: 'keys', label: words.keys, disabled: () => !canOpenPopup(), run: () => session.update({ popup: 'keys' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-085' },
+    { key: 'reset', label: words.reset, separatorBefore: true, separatorAfter: true, disabled: () => !(canOpenPanel() && canOpenPopup()), run: () => session.update({ popup: 'reset' }), 'data-req': '008-typescript-playground-FR-003 008-typescript-playground-FR-080' },
   ],
   onClose: closePlayground,
   // A shared link opens the Playground. On the desktop its session holds the

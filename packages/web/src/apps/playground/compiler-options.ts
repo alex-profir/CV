@@ -38,7 +38,8 @@ export type OptionSpec =
   | { name: 'target'; group: 'language'; kind: 'choice'; values: readonly Target[]; default: Target }
   | { name: FlagName; group: Exclude<OptionGroup, 'language'>; kind: 'flag'; default: boolean; underStrict: boolean };
 
-// What the visitor chose: only options that differ from the defaults.
+// What the visitor chose: the options that differ from the defaults, and with
+// `strict` off every strict check, since one left out then reads as off.
 export type ChangedOptions = Partial<{ target: Target } & Record<FlagName, boolean>>;
 
 export const TARGETS: readonly Target[] = Object.freeze(['ES2015', 'ES2016', 'ES2017', 'ES2018', 'ES2019', 'ES2020', 'ES2021', 'ES2022', 'ES2023', 'ES2024', 'ESNext'] as const);
@@ -85,20 +86,28 @@ export function settle(changed: ChangedOptions): Settled {
   return { ...values, ...changed };
 }
 
-// Only the options that differ from the defaults, in the table's order.
+// What to write of a set of values, in the table's order: the options that
+// differ from the defaults, and a strict check that is on while `strict` is
+// off, which `readOptions` would otherwise read as off.
 export function changedOptions(values: Partial<Settled>): ChangedOptions {
   const changed: Record<string, unknown> = {};
   for (const spec of OPTION_TABLE) {
     const value = values[spec.name];
-    if (value !== undefined && value !== spec.default) changed[spec.name] = value;
+    if (value === undefined) continue;
+    if (value !== spec.default || (values.strict === false && spec.kind === 'flag' && spec.underStrict)) changed[spec.name] = value;
   }
   return changed as ChangedOptions;
 }
 
+// The names the visitor sees as changed: those that differ from the defaults.
+export function differingNames(changed: ChangedOptions): OptionName[] {
+  return OPTION_TABLE.filter((spec) => changed[spec.name] !== undefined && changed[spec.name] !== spec.default).map((spec) => spec.name);
+}
+
 // A set written in kept code or a link. A name not in the table, or a value
 // of the wrong kind, is left out and named in `unknown`; a flag set to its
-// default is dropped. `strict: false` with no strict check written turns
-// every strict check off, as the panel does.
+// default is dropped, but for a strict check under `strict: false`. There, a
+// strict check not written is off, as the panel does and older links mean.
 export function readOptions(written: unknown): { options: ChangedOptions; unknown: string[] } {
   const unknown: string[] = [];
   if (written === null || typeof written !== 'object' || Array.isArray(written)) return { options: {}, unknown };
