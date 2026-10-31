@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import { FAST_TEST_GLOBS, OWNER_MAC_TESTS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS } from './tools/traceability/src/files.ts';
+import { FAST_TEST_GLOBS, LEFT_OUT_HERE, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS } from './tools/traceability/src/files.ts';
 import { cvTypesPlugin } from './packages/web/scripts/cv-types.ts';
 import { specListPlugin } from './packages/web/scripts/spec-list.ts';
 
@@ -38,7 +38,7 @@ export default defineConfig({
         test: {
           name: 'slow',
           include: TEST_INCLUDE_GLOBS,
-          exclude: [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS, ...(process.platform === 'linux' ? OWNER_MAC_TESTS : [])],
+          exclude: [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS, ...LEFT_OUT_HERE],
           // Builds the site once per run into a temporary directory, for the
           // page tests (004 research R21). A run of `fast` alone never starts it.
           globalSetup: [TEST_LOCK, 'packages/web/test/helpers/site.ts'],

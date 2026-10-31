@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { FAST_TEST_GLOBS, OWNER_MAC_TESTS } from '../src/files.ts';
+import { FAST_TEST_GLOBS, LEFT_OUT_HERE, OWNER_MAC_TESTS } from '../src/files.ts';
 import { REPO_ROOT } from './helpers/project.ts';
 
 const isFastTest = (file: string) => FAST_TEST_GLOBS.some((glob) => path.posix.matchesGlob(file, glob));
@@ -198,13 +198,13 @@ describe('001-requirement-traceability-FR-041: every test runs every day on the 
   });
 
   test('what it leaves out is a short list of real test files, none of the fast set or the site check, left out on Linux alone', () => {
-    expect(OWNER_MAC_TESTS).toHaveLength(3);
+    expect(OWNER_MAC_TESTS).toHaveLength(4);
     for (const file of OWNER_MAC_TESTS) {
       expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
       expect(file.startsWith('tools/site-check/'), file).toBe(false);
       expect(isFastTest(file), file).toBe(false);
     }
-    expect(fs.readFileSync(path.join(REPO_ROOT, 'vitest.config.ts'), 'utf8')).toContain("process.platform === 'linux' ? OWNER_MAC_TESTS : []");
+    expect(LEFT_OUT_HERE).toEqual(process.platform === 'linux' ? OWNER_MAC_TESTS : []);
   });
 });
 

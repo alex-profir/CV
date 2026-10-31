@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import config from '../../../vitest.config.ts';
-import { EXCLUDED_DIR_NAMES, FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, isTestFile, listFiles } from '../src/files.ts';
+import { EXCLUDED_DIR_NAMES, FAST_TEST_GLOBS, LEFT_OUT_HERE, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, isTestFile, listFiles } from '../src/files.ts';
 import { makeProject } from './helpers/project.ts';
 
 describe('001-requirement-traceability-FR-014: only the project own files are examined', () => {
@@ -78,7 +78,7 @@ describe('001-requirement-traceability-FR-014: only the project own files are ex
     const projects = config.test?.projects as { test: { name: string; include?: string[]; exclude?: string[] } }[];
     expect(projects.map((project) => [project.test.name, project.test.include, project.test.exclude])).toEqual([
       ['fast', FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS],
-      ['slow', TEST_INCLUDE_GLOBS, [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]],
+      ['slow', TEST_INCLUDE_GLOBS, [...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS, ...LEFT_OUT_HERE]],
     ]);
     expect(config.test).not.toHaveProperty('include');
     expect(config.test).not.toHaveProperty('exclude');

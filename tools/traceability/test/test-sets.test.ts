@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import config from '../../../vitest.config.ts';
-import { FAST_TEST_GLOBS, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, listFiles } from '../src/files.ts';
+import { FAST_TEST_GLOBS, LEFT_OUT_HERE, TEST_EXCLUDE_GLOBS, TEST_INCLUDE_GLOBS, listFiles } from '../src/files.ts';
 import { forbiddenReach } from './helpers/imports.ts';
 import type { ReachRules } from './helpers/imports.ts';
 import { REPO_ROOT, makeProject } from './helpers/project.ts';
@@ -41,7 +41,7 @@ describe('001-requirement-traceability-FR-030: the full set is every test, and t
   test('every test file is in the full set exactly once, in the fast or the slow project', () => {
     const files = list().map((entry) => entry.file);
     expect(new Set(files).size).toBe(files.length);
-    expect([...files].sort(compare)).toEqual(listFiles(REPO_ROOT).testFiles);
+    expect([...files].sort(compare)).toEqual(listFiles(REPO_ROOT).testFiles.filter((file) => !LEFT_OUT_HERE.includes(file)));
     expect(list().filter((entry) => entry.project !== 'fast' && entry.project !== 'slow')).toEqual([]);
     expect(list().some((entry) => entry.project === 'fast')).toBe(true);
     expect(list().some((entry) => entry.project === 'slow')).toBe(true);
@@ -74,7 +74,7 @@ describe('001-requirement-traceability-FR-030: the full set is every test, and t
     // Both take the test lock, which starts no browser and no build.
     expect(fast!.test.globalSetup).toEqual(['tools/speckit-auto/test-lock.ts']);
     expect(slow!.test.include).toEqual(TEST_INCLUDE_GLOBS);
-    expect(slow!.test.exclude).toEqual([...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]);
+    expect(slow!.test.exclude).toEqual([...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS, ...LEFT_OUT_HERE]);
     expect(slow!.test.globalSetup).toEqual(['tools/speckit-auto/test-lock.ts', 'packages/web/test/helpers/site.ts']);
     expect(config.test).not.toHaveProperty('include');
     expect(config.test).not.toHaveProperty('exclude');

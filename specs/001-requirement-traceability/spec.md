@@ -462,7 +462,8 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
 - **FR-041** *(added 2026-10-31)*: Every test MUST run every day on the main branch, in CI, and it
   MUST be possible to start that run by hand. The only exceptions are tests that hold only on the
   owner's Mac, which a feature's local run MUST still cover: the parity test against real commands,
-  the line-keys test and the public-data test.
+  the line-keys test, the public-data test and the
+  Terminal's performance test.
 
 ### Key Entities
 
