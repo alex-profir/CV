@@ -107,8 +107,8 @@ describe("006-terminal-FR-039 and SC-015: the flow's new steps check the cursor,
       replaceIn(
         copy,
         'packages/web/src/apps/terminal/session.ts',
-        "    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement: say(siteText.terminal.announce.cancelled) });",
-        '    void typed;\n    set({ ...state, announcement: say(siteText.terminal.announce.cancelled) });',
+        "    set({ ...state, entries: [...state.entries, typed], draft: '', stepping: null, announcement });",
+        '    void typed;\n    set({ ...state, announcement });',
       ),
     );
     expect(lines).toEqual([expect.stringMatching(stepLine('cancel', 'Ctrl\\+C on a typed line', 'Ctrl\\+C added no run of "cat cv\\.json \\| x" ending in \\^C'))]);
@@ -137,7 +137,7 @@ describe('006-terminal-FR-039 and SC-016: the flow proves Tab, the ways out and 
   });
 
   test('a copy where :wq writes nothing fails, naming the step', async () => {
-    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force)', "void write(next.write.path, '', next.write.force)"));
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force, next.write.own)', "void write(next.write.path, '', next.write.force, next.write.own)"));
     expect(await problems(root)).toContainEqual(expect.stringMatching(stepLine('not-written', 'cat the file', 'cat todo prints .+ after :wq, where it should print "ship it"')));
   });
 });
