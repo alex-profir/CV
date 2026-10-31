@@ -8,8 +8,11 @@ import type { ReadLink } from './types.ts';
 
 // The longest link Share makes, origin included (FR-055).
 export const LINK_LIMIT = 8000;
-// Reading stops inflating here and calls the link broken.
-export const INFLATE_LIMIT = 1024 * 1024;
+// Reading stops inflating here and calls the link broken: what a link of the
+// longest length can hold, as base64url carries 3 bytes in 4 characters and
+// deflate grows them by at most 1,032 times. A forged longer one stops here too.
+const DEFLATE_MOST = 1032;
+export const INFLATE_LIMIT = Math.ceil((LINK_LIMIT * 3) / 4) * DEFLATE_MOST;
 
 const FRAGMENT = 'playground';
 const FORMAT = '1';

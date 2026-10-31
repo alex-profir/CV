@@ -98,7 +98,9 @@ rendering stays in the Playground's window, with a Try again that clears the log
 | `Worker`, `SharedWorker` | Not offered (R18) |
 | Stream reads, `scheduler.postTask`, locks and the like | Pending until they settle; a read of a stream that never ends keeps the run going until Stop, as a request that never answers does (FR-037) |
 | `AbortSignal.timeout` | A pending timer once the code listens for its `abort`; a signal only passed to `fetch` holds nothing (FR-037) |
-| A message to the code's own port or `BroadcastChannel` | Pending until it has arrived, by a short wait (10 ms and 50 ms); one with a handler and no message isn't pending (FR-037) |
+| A message to the code's own port | Pending until it has arrived, by a short wait (10 ms); one with a handler and no message isn't pending (FR-037) |
+| `BroadcastChannel` | Taken away, as `Worker` is: a loop of sends grew the browser's memory by gigabytes, with nothing to pace it. Using one is an error the logs show (FR-040) |
+| The worker's own `postMessage` | Sends nothing, on the scope and every holder: nothing listens, and a loop of them took the page down (FR-040) |
 | `FileReader`, `OffscreenCanvas.convertToBlob`, `FontFace` and `FontFaceSet`'s `load`, `ImageDecoder.decode`, the codecs' `flush`, `navigator.gpu.requestAdapter` | Pending until they end (FR-037) |
 | `setTimeout` and `setInterval` given a string | The browser's refusal, as `eval`'s, is logged as an uncaught error; they return 0 and run nothing (FR-037, T228) |
 

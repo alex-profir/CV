@@ -173,7 +173,11 @@ async function cacheFirst(request: Request, url: URL): Promise<Response> {
 }
 
 // Any cache's copy of an engine file, else the network.
+// The page's download says so, as it needs the network, to replace a stored
+// file that was cut short or won't open. `request.cache` can't tell: a browser's
+// reload, or its tools, set it too, and those must be answered offline.
 async function engineFile(request: Request): Promise<Response> {
+  if (request.headers.has('x-playground-download')) return fetch(request);
   return (await caches.match(request, { ignoreVary: true })) ?? fetch(request);
 }
 

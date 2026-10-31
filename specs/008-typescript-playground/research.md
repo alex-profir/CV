@@ -8,6 +8,8 @@ implementation, with the fallback named. Package facts were read from the packag
 
 ## R1. The editor: Monaco
 
+Refactorings (FR-082, T233): Monaco's TypeScript features ask only for fixes to marked errors, so a code action provider of our own, over `getApplicableRefactors` and `getEditsForRefactor` in `ts.worker.ts`, offers them, leaving out any that adds an import or reaches another file.
+
 **Decision**: `monaco-editor` 0.57.0, Microsoft's editor of VS Code, imported through its
 tree-shakable ESM entry points (`monaco-editor/editor`, `…/languages/definitions/typescript/register`,
 `…/languages/features/typescript/register` and the `features/<name>/register` modules that FR-015

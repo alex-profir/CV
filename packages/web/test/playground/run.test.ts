@@ -106,6 +106,52 @@ describe('008-typescript-playground-FR-033: code with errors runs, and the logs 
   });
 });
 
+describe('008-typescript-playground-FR-033: the logs count what the Errors pane counts, and only noEmitOnError stops a run', () => {
+  const CANT_DECLARE = 'export const f = () => { class L { private x = 1; } return new L(); };\nconsole.log("ran");';
+  const option = async (page: Page, name: string, on: boolean) => {
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} #playground-option-${name}`).setChecked(on);
+    await page.keyboard.press('Escape');
+  };
+
+  test('code whose declarations alone can\'t be made runs, and the logs count that error', async () => {
+    const page = await openPlaygroundPage();
+    await withCode(page, CANT_DECLARE);
+    await run(page);
+    const rows = await readLogs(page);
+    expect(rows[0]).toMatchObject({ level: 'note', text: fill(counted(logs.errorsNote, 1), { n: 1 }) });
+    expect(await values(page)).toEqual(['ran']);
+  });
+
+  test('with noEmitOnError on, the same code does not run', async () => {
+    const page = await openPlaygroundPage();
+    await option(page, 'noEmitOnError', true);
+    await withCode(page, CANT_DECLARE);
+    await run(page);
+    expect(await notes(page)).toEqual([fill(logs.nothingRan, { option: 'noEmitOnError' })]);
+    expect(await values(page)).toEqual([]);
+  });
+
+  test('an options error counts in the logs as in the status bar', async () => {
+    const page = await openPlaygroundPage();
+    await option(page, 'strictNullChecks', false);
+    await withCode(page, 'console.log("ran");');
+    await run(page);
+    const status = (await page.locator(`${PLAYGROUND} .playground-status .check`).textContent())?.trim();
+    const shown = Number(/\d+/.exec(status ?? '')?.[0]);
+    expect(shown).toBeGreaterThan(0);
+    expect((await readLogs(page))[0]).toMatchObject({ level: 'note', text: fill(counted(logs.errorsNote, shown), { n: shown }) });
+    expect(await values(page)).toEqual(['ran']);
+  });
+
+  test('a mark on an import counts once in the logs\' reason, not twice', async () => {
+    const page = await openPlaygroundPage();
+    await withCode(page, 'import x from "lodash";\nconsole.log(x);');
+    await run(page);
+    expect(await notes(page)).toEqual([siteText.playground.editor.packages]);
+  });
+});
+
 describe('008-typescript-playground-FR-036: the toolbar shows the run, its pending timers and its end', () => {
   test('a 2 s timer shows one timer left, then Finished in about 2 s', async () => {
     const page = await openPlaygroundPage();

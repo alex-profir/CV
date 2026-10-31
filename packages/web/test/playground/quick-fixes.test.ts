@@ -57,6 +57,32 @@ describe('008-typescript-playground-FR-082: quick fixes as TypeScript offers the
     await expect.poll(() => editorText(page)).toBe(CODE);
   });
 
+  test("a selected line offers TypeScript's refactorings; extracting a function is one edit, and Undo takes it back", async () => {
+    const page = await openPlaygroundPage();
+    const code = 'function total() {\n  const a = 1;\n  console.log(a + 1);\n}';
+    await onLine(page, code, 3, 3);
+    await page.keyboard.press('Shift+End');
+    await openFixes(page);
+    await expect.poll(async () => (await fixes(page)).some((title) => /^Extract to function/.test(title))).toBe(true);
+    expect((await fixes(page)).filter((title) => /import|Move to/i.test(title))).toEqual([]);
+    await page.locator(MENU).getByText(/^Extract to function/).first().click();
+    await expect.poll(() => editorText(page)).toContain('newFunction');
+    await page.keyboard.press(`${(await onMac(page)) ? 'Meta' : 'Control'}+KeyZ`);
+    await expect.poll(() => editorText(page)).toBe(code);
+  });
+
+  test('the same is offered from a pointer, through the lightbulb, at the selection', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'function total() {\n  const a = 1;\n  console.log(a + 1);\n}';
+    await onLine(page, code, 3, 3);
+    await page.keyboard.press('Shift+End');
+    const bulb = page.locator(`${EDITOR} :is(.lightBulbWidget, [class*="codicon-light-bulb"], [class*="codicon-gutter-lightbulb"])`).first();
+    await bulb.waitFor({ state: 'visible', timeout: 10_000 });
+    await bulb.click();
+    await page.waitForSelector(MENU, { timeout: 10_000 });
+    await expect.poll(async () => (await fixes(page)).some((title) => /^Extract to function/.test(title))).toBe(true);
+  });
+
   test('no fix imports a package for a missing name', async () => {
     const page = await openPlaygroundPage();
     await onLine(page, 'const value = readFileSync("a.txt");', 1, 15);

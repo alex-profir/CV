@@ -55,7 +55,7 @@ import 'monaco-editor/features/wordPartOperations/register';
 import { TabFocus } from 'monaco-editor/editor/browser/config/tabFocus';
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker';
 import TsWorker from './ts.worker.ts?worker';
-import type { Runnable } from './ts.worker.ts';
+import type { Refactor, Runnable } from './ts.worker.ts';
 import { compilerOptions } from '../compiler-options.ts';
 import type { ChangedOptions, CheckResult } from '../types.ts';
 import { mendListAria } from './aria.ts';
@@ -93,6 +93,7 @@ type WorkerProxy = {
   getCheck(fileName: string, packagesMessage: string): Promise<CheckResult | null>;
   getNameKinds(fileName: string, start: number, length: number): Promise<number[]>;
   getRunnable(fileName: string): Promise<Runnable | null>;
+  getRefactors(fileName: string, start: number, end: number, invoked: boolean): Promise<Refactor[]>;
   getVersion(): Promise<string>;
 };
 
@@ -173,15 +174,58 @@ export function createEditing(init: EngineInit) {
     },
   });
 
+  // What Peek shows of another file can't be typed in: only the code has a
+  // check, and a change there would show nowhere (FR-015, FR-029).
+  const peeks = editor.onDidCreateEditor((created) => {
+    const lock = (shown: ReturnType<typeof created.getModel>) => {
+      if (shown !== null && shown !== model) (created as editor.IStandaloneCodeEditor).updateOptions({ readOnly: true });
+      else if (shown === model) (created as editor.IStandaloneCodeEditor).updateOptions({ readOnly: false });
+    };
+    created.onDidChangeModel(() => lock(created.getModel()));
+  });
+
   const worker = async (): Promise<WorkerProxy> => {
     const get = await getTypeScriptWorker();
     return (await get(model.uri)) as unknown as WorkerProxy;
   };
 
-  // Whether a result came.
-  async function checkOnce(asked: symbol): Promise<boolean> {
+  // TypeScript's refactorings, at the selection, from the keyboard and the
+  // lightbulb (FR-082): Monaco's own features ask only for fixes to marked errors.
+  const refactors = languages.registerCodeActionProvider(
+    'typescript',
+    {
+      provideCodeActions: async (asked, range, context) => {
+        if (asked.uri.toString() !== model.uri.toString()) return { actions: [], dispose: () => undefined };
+        const version = asked.getVersionId();
+        const start = asked.getOffsetAt(range.getStartPosition());
+        const found = await (await worker()).getRefactors(asked.uri.toString(), start, asked.getOffsetAt(range.getEndPosition()), context.trigger === languages.CodeActionTriggerType.Invoke);
+        if (asked.isDisposed() || asked.getVersionId() !== version) return { actions: [], dispose: () => undefined };
+        return {
+          actions: found.map((action) => ({
+            title: action.title,
+            kind: action.kind,
+            edit: {
+              edits: action.edits.map((change) => {
+                const from = asked.getPositionAt(change.start);
+                const to = asked.getPositionAt(change.start + change.length);
+                return { resource: asked.uri, versionId: version, textEdit: { range: { startLineNumber: from.lineNumber, startColumn: from.column, endLineNumber: to.lineNumber, endColumn: to.column }, text: change.text } };
+              }),
+            },
+          })),
+          dispose: () => undefined,
+        };
+      },
+    },
+    { providedCodeActionKinds: ['refactor'] },
+  );
+
+  // Whether a result came. One past the limit still counts while it's for the
+  // code and options as they are; only a worker that restarted never answers.
+  async function checkOnce(asked: symbol, optionsAsked: string): Promise<boolean> {
     const result = await (await worker()).getCheck(CODE_URI.toString(), init.text.packages);
-    if (asked !== checking || model.isDisposed()) return true;
+    if (model.isDisposed()) return true;
+    const late = asked !== checking;
+    if (late && (result === null || optionsAsked !== optionsSet || result.version !== model.getVersionId())) return true;
     if (result === null) return false;
     if (result.version === model.getVersionId()) {
       editor.setModelMarkers(
@@ -196,7 +240,7 @@ export function createEditing(init: EngineInit) {
 
   // One check at a time; a change while one is out queues one more (R7). A
   // check on a worker that restarted may never settle, so one that takes too
-  // long is given up as lost, and one that was left behind is ignored.
+  // long counts as lost, and is still taken if it comes.
   function check(): void {
     if (checking !== null) {
       again = true;
@@ -214,7 +258,7 @@ export function createEditing(init: EngineInit) {
       }
     };
     const limit = setTimeout(() => settled(false), CHECK_LIMIT_MS);
-    void checkOnce(mine)
+    void checkOnce(mine, optionsSet)
       .catch(() => false)
       .then(settled);
   }
@@ -450,6 +494,8 @@ export function createEditing(init: EngineInit) {
       view?.dispose();
       names.dispose();
       opener.dispose();
+      peeks.dispose();
+      refactors.dispose();
       model.dispose();
     },
   };
