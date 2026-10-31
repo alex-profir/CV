@@ -2271,7 +2271,7 @@ Builds the amendment of Session 2026-10-31 and carries Phases 35 to 42 to `main`
 - [X] T401 Test it, in `packages/web/test/terminal/shell/jq.test.ts`, `packages/web/test/terminal/shell/limits.test.ts` and the parity lines of `packages/web/test/terminal/shell/bash-parity.test.ts`, per FR-056 and FR-069.
 - [X] T402 Record the amendment: spec Session 2026-10-31, FR-067 and FR-068 amended, research R53, R54 and the gaps' rows, and the plan's table.
 - [X] T403 Merge PR #32's reviewed head into the converge work. The converge design stays for the shell's state, exits and checkpoints; the review's other fixes stay; `/dev/null` takes writes only; Ctrl+C on a typed line drops what waits (T308) and follows it (the review).
-- [ ] T404 Run `npm run site-check` and a full `npm test`, push, and open one pull request naming the amendments of 2026-10-29, 2026-10-30 and 2026-10-31, linking `specs/006-terminal/spec.md` and `specs/006-terminal/tasks.md`, with no dependency added.
+- [X] T404 Run `npm run site-check` and a full `npm test`, push, and open one pull request naming the amendments of 2026-10-29, 2026-10-30 and 2026-10-31, linking `specs/006-terminal/spec.md` and `specs/006-terminal/tasks.md`, with no dependency added.
 - [ ] T405 Owner action: the `local-verify` sign-off and the merge of T404's pull request.
 
 - Phase 43 result (2026-10-31): on `d0c6caf`, with GNU tools first on PATH, `site-check` 14 of 14, and `npm test` 4,670 passed, 2 skipped, 1 failed: a stopped loop's `(5000ms)` line, which that commit had removed. Put back in `3088fd6`, with `main` merged after it; `typecheck`, the build and the 4 affected test files pass there. The whole suite wasn't run again: the `local-verify` sign-off runs it (T405).
