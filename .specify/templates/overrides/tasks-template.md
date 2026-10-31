@@ -155,7 +155,7 @@ Examples of other foundational tasks (adjust based on your project):
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Owner action, by hand: the checks only a person can do, such as screen readers, forced colors and comparing the built pages with the design exports. Record each result here and in the PR. Under the interim provision on deferred manual checks, they may wait for the final testing phase: record that here, list them in the PR and leave the task open
 - [ ] TXXX Open the PR linking spec.md and tasks.md, with Conventional Commits: one PR for a new feature, also linking any older spec it amends; for an amendment of its own, one PR per part it ships in, each naming the amendment by its date (Constitution XI)
-- [ ] TXXX Owner action: run the full suite locally on the PR's clean head commit and sign it off, so the required `local-verify` status passes (Constitution, Merge requirements). Run it again after every new commit, a merge of the default branch included
+- [ ] TXXX New features only: run `npm run verify:feature` once on any commit of the PR, use `--failed` after a fix, and name the commit and result in the PR description (Constitution, Merge requirements)
 
 ---
 
