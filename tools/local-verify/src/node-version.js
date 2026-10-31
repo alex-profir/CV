@@ -1,4 +1,4 @@
-// The Node-version gate of `npm run verify` and `npm run signoff`, apart
+// The Node-version gate of `npm run verify`, `verify:feature` and `signoff`, apart
 // from main.js so a fast-set test can import it: main.js loads the site
 // check's Chromium probe, which the fast set must not reach (research R14,
 // rule 3).
@@ -15,6 +15,7 @@ import { REQUIRED_NODE_MAJOR } from '../../traceability/src/node-version.js';
  */
 export function nodeVersionProblem(version, command) {
   if (Number(version.split('.')[0]) >= REQUIRED_NODE_MAJOR) return null;
-  const name = command === 'verify' || command === 'signoff' ? `npm run ${command}` : 'local full run';
+  const names = { quick: 'npm run verify', verify: 'npm run verify:feature', signoff: 'npm run signoff' };
+  const name = (command !== undefined && Object.hasOwn(names, command) && names[/** @type {keyof typeof names} */ (command)]) || 'local full run';
   return `${name} needs Node ${REQUIRED_NODE_MAJOR} or later (see .nvmrc), but this is Node ${version}: run nvm use`;
 }

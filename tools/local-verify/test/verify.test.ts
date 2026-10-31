@@ -70,6 +70,7 @@ const resultDir = (repo: Repo) => path.join(repo.root, '.git/local-verify');
 const readResult = (repo: Repo, sha = repo.sha): LocalRunResult => JSON.parse(fs.readFileSync(path.join(resultDir(repo), `${sha}.json`), 'utf8'));
 const porcelain = (repo: Repo) => repo.git(['status', '--porcelain=v1', '--untracked-files=all']);
 const npmScripts = (fake: ReturnType<typeof fakeBin>) => fake.log().filter((entry) => entry.command === 'npm').map((entry) => (entry.args[0] === 'test' ? 'test' : entry.args.at(-1)));
+const testedFiles = (fake: ReturnType<typeof fakeBin>) => fake.log().find((entry) => entry.command === 'npm' && entry.args[0] === 'test')?.args.filter((arg) => arg.endsWith('.test.ts'));
 
 describe('001-requirement-traceability-FR-032: the local full run starts only on a clean commit with its prerequisites', { timeout: 30_000 }, () => {
   const dirty: [string, (repo: Repo) => void, string][] = [
@@ -169,21 +170,22 @@ describe('001-requirement-traceability-FR-032: the local full run starts only on
     expect(fake.log()).toEqual([]);
   });
 
-  test("the checks are the pull request's run commands, with the full set for the fast one, in the contract's order", () => {
+  test("the checks are the pull request's run commands, with listed files for the fast set and no site check, in the contract's order", () => {
     const runs = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci.yml'), 'utf8').split('\n').flatMap((line) => /^\s*(?:-\s+)?run:\s*(.+?)\s*$/.exec(line)?.[1] ?? []);
-    const pullRequest = runs
-      .filter((command) => command !== 'npm ci' && !command.startsWith('npx playwright install'))
-      .map((command) => (command.includes('npm run --silent site-check') ? 'npm run --silent site-check' : command === 'npm run test:fast' ? 'npm test' : command));
-    const local = checks('/results/sha.vitest.json');
-    // `engines` is the local run's own (008 research R25): pull requests run those tests in Chromium only.
-    const comparable = local.filter((check) => check.name !== 'engines').map((check) => (check.name === 'test' ? 'npm test' : commandLine(check)));
+    const pullRequest = runs.filter((command) => command !== 'npm ci' && !command.startsWith('npx playwright install') && !command.includes('site-check')).map((command) => (command === 'npm run test:fast' ? 'npm test' : command));
+    const local = checks('/results/sha.vitest.json', ['a.test.ts']);
+    const comparable = local.map((check) => (check.name === 'test' ? 'npm test' : commandLine(check)));
     expect([...new Set(pullRequest)].sort()).toEqual([...comparable].sort());
-    expect(local.map((check) => check.name)).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines', 'site']);
-    expect(local.find((check) => check.name === 'engines')).toEqual({ name: 'engines', command: 'npm', args: ['run', 'test:engines'] });
-    expect(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).scripts['test:engines']).toBe('node tools/local-verify/src/engines.js');
-    expect(local.find((check) => check.name === 'test')).toEqual({ name: 'test', command: 'npm', args: ['test', '--', '--reporter=default', '--reporter=json', '--outputFile.json=/results/sha.vitest.json'] });
-    expect(local.find((check) => check.name === 'site')).toEqual({ name: 'site', command: 'npm', args: ['run', '--silent', 'site-check'] });
-    expect(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).scripts.verify).toBe('node tools/local-verify/src/main.js verify');
+    expect(local.map((check) => check.name)).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test']);
+    expect(local.find((check) => check.name === 'test')).toEqual({ name: 'test', command: 'npm', args: ['test', '--', '--bail=1', '--reporter=default', '--reporter=json', '--outputFile.json=/results/sha.vitest.json', 'a.test.ts'] });
+    // `engines` is verify:feature's own (008 research R25): pull requests run those tests in Chromium only.
+    const feature = checks('/results/sha.vitest.json', ['a.test.ts'], true);
+    expect(feature.map((check) => check.name)).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines']);
+    expect(feature.find((check) => check.name === 'engines')).toEqual({ name: 'engines', command: 'npm', args: ['run', 'test:engines'] });
+    const scripts = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')).scripts;
+    expect(scripts['test:engines']).toBe('node tools/local-verify/src/engines.js');
+    expect(scripts.verify).toBe('node tools/local-verify/src/main.js quick');
+    expect(scripts['verify:feature']).toBe('node tools/local-verify/src/main.js verify');
   });
 
   test("each check's output follows its header, on the terminal and in the log", async () => {
@@ -197,9 +199,8 @@ describe('001-requirement-traceability-FR-032: the local full run starts only on
       ['traceability', 'run traceability'],
       ['content', 'run content-check'],
       ['tokens', 'run token-check'],
-      ['test', `test -- --reporter=default --reporter=json --outputFile.json=${vitest}`],
+      ['test', `test -- --bail=1 --reporter=default --reporter=json --outputFile.json=${vitest} src/a.test.ts src/b.test.ts`],
       ['engines', 'run test:engines'],
-      ['site', 'run --silent site-check'],
     ]) {
       const block = `== ${name}: npm ${args}\nfake npm ${args}\n`;
       expect(stdout).toContain(block);
@@ -208,7 +209,7 @@ describe('001-requirement-traceability-FR-032: the local full run starts only on
   });
 });
 
-describe('001-requirement-traceability-FR-033: every check runs and the run ends naming each failure', { timeout: 30_000 }, () => {
+describe('001-requirement-traceability-FR-033: a passing run can be signed off and a failing one names its failure', { timeout: 30_000 }, () => {
   test('with every check passing it exits 0 and records a passing result', async () => {
     const repo = sample();
     const fake = fakes(repo);
@@ -216,7 +217,7 @@ describe('001-requirement-traceability-FR-033: every check runs and the run ends
     expect(code).toBe(0);
     const summary = stdout.slice(stdout.indexOf(`Local full run on ${repo.sha} (001-local-verify)\n`));
     const lines = summary.trimEnd().split('\n');
-    expect(lines.slice(1, 8).map((line) => /^ {2}(\w+) +(pass|fail) +\d+ s/.exec(line)?.slice(1))).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines', 'site'].map((name) => [name, 'pass']));
+    expect(lines.slice(1, 7).map((line) => /^ {2}(\w+) +(pass|fail) +\d+ s/.exec(line)?.slice(1))).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines'].map((name) => [name, 'pass']));
     expect(lines[5]).toMatch(/^ {2}test +pass +\d+ s {3}4 tests in 2 files passed$/);
     expect(lines.at(-1)).toBe(`PASS: every check passed on ${repo.sha}. Sign off with: npm run signoff`);
     const result = readResult(repo);
@@ -226,34 +227,40 @@ describe('001-requirement-traceability-FR-033: every check runs and the run ends
       branch: '001-local-verify',
       clean: { atStart: true, atEnd: true, changed: [] },
       tests: { files: 2, expectedFiles: 2, passed: 4, failed: 0, skipped: 0 },
-      siteCheck: 'pass',
       node: process.versions.node,
       os: `${os.type()} ${os.release()} ${process.arch}`,
       result: 'pass',
     });
-    expect(result.checks.map((check) => [check.name, check.status, check.exitCode, check.detail])).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines', 'site'].map((name) => [name, 'pass', 0, null]));
+    expect(result.checks.map((check) => [check.name, check.status, check.exitCode, check.detail])).toEqual(['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines'].map((name) => [name, 'pass', 0, null]));
     expect(Date.parse(result.finishedAt)).toBeGreaterThanOrEqual(Date.parse(result.startedAt));
   });
 
-  test('failing checks do not stop the others, and each one is named', async () => {
+  test('001-requirement-traceability-FR-040: the first failing check stops the run, and it is named', async () => {
     const repo = sample();
-    const fake = fakes(repo, { npm: { traceability: { exitCode: 1 }, 'site-check': { exitCode: 1 } } });
+    const fake = fakes(repo, { npm: { traceability: { exitCode: 1 } } });
     const { code, stdout } = await run(repo, fake);
     expect(code).toBe(1);
-    expect(npmScripts(fake)).toEqual(['typecheck', 'traceability', 'content-check', 'token-check', 'test', 'test:engines', 'site-check']);
+    expect(npmScripts(fake)).toEqual(['typecheck', 'traceability']);
     expect(stdout).toMatch(/\n {2}traceability +fail +\d+ s\n/);
-    expect(stdout.trimEnd().split('\n').at(-1)).toBe(`FAIL: 2 checks failed on ${repo.sha}: traceability, site. Nothing can be signed off for this commit.`);
-    expect(readResult(repo)).toMatchObject({ result: 'fail', siteCheck: 'fail' });
-    expect(readResult(repo).checks.filter((check) => check.status === 'fail').map((check) => [check.name, check.exitCode])).toEqual([['traceability', 1], ['site', 1]]);
+    expect(stdout.trimEnd().split('\n').at(-1)).toBe(`FAIL: 1 check failed on ${repo.sha}: traceability. Nothing can be signed off for this commit.`);
+    expect(readResult(repo)).toMatchObject({ result: 'fail' });
+    expect(readResult(repo).checks.map((check) => [check.name, check.status])).toEqual([['typecheck', 'pass'], ['traceability', 'fail']]);
   });
 
-  test('SC-010: the test check runs npm test with no project or file filter', async () => {
+  test('001-requirement-traceability-FR-040: the test check stops at its first failing test', async () => {
     const repo = sample();
     const fake = fakes(repo);
     await run(repo, fake);
-    const testCall = fake.log().find((entry) => entry.command === 'npm' && entry.args[0] === 'test');
-    expect(testCall?.args).toEqual(['test', '--', '--reporter=default', '--reporter=json', `--outputFile.json=${path.join(resultDir(repo), `${repo.sha}.vitest.json`)}`]);
-    expect(testCall?.args.some((arg) => arg.startsWith('--project') || arg.endsWith('.test.ts'))).toBe(false);
+    expect(fake.log().find((entry) => entry.args[0] === 'test')?.args).toContain('--bail=1');
+  });
+
+  test("SC-010: the test check lists every test file but the site check's own, with no project filter", async () => {
+    const repo = sample({ 'tools/site-check/test/slow.test.ts': '', 'tools/other/test/c.test.ts': '' });
+    const fake = fakes(repo, { npm: { test: { report: { files: ['src/a.test.ts', 'src/b.test.ts', 'tools/other/test/c.test.ts'] } } } });
+    const { code } = await run(repo, fake);
+    expect(code).toBe(0);
+    expect(testedFiles(fake)).toEqual(['src/a.test.ts', 'src/b.test.ts', 'tools/other/test/c.test.ts']);
+    expect(fake.log().find((entry) => entry.args[0] === 'test')?.args.some((arg) => arg.startsWith('--project'))).toBe(false);
   });
 
   test('SC-010: a report that ran fewer test files than the check lists fails the test check', async () => {
@@ -331,7 +338,7 @@ describe('001-requirement-traceability-FR-037: the result stays outside the work
 
   test('a second run on the same commit replaces the result', async () => {
     const repo = sample();
-    expect((await run(repo, fakes(repo, { npm: { 'site-check': { exitCode: 1 } } }))).code).toBe(1);
+    expect((await run(repo, fakes(repo, { npm: { 'token-check': { exitCode: 1 } } }))).code).toBe(1);
     expect(readResult(repo).result).toBe('fail');
     expect((await run(repo, fakes(repo))).code).toBe(0);
     expect(readResult(repo).result).toBe('pass');
@@ -344,11 +351,12 @@ describe('001-requirement-traceability-FR-032: npm run verify through its entry 
 
   test('an argument after the subcommand is a usage error', () => {
     const result = main(sample(), ['verify', 'extra']);
-    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 2, stderr: 'usage: npm run verify | npm run signoff (takes no arguments)\n' });
+    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 2, stderr: 'usage: npm run verify [-- --failed] | npm run verify:feature [-- --failed] | npm run signoff\n' });
   });
 
   test('Node older than 26 names the command run and says to run nvm use, before any check', () => {
-    expect(nodeVersionProblem('24.21.0', 'verify')).toBe('npm run verify needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
+    expect(nodeVersionProblem('24.21.0', 'quick')).toBe('npm run verify needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
+    expect(nodeVersionProblem('24.21.0', 'verify')).toBe('npm run verify:feature needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
     expect(nodeVersionProblem('24.21.0', 'signoff')).toBe('npm run signoff needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
     expect(nodeVersionProblem('24.21.0', undefined)).toBe('local full run needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use');
     expect(nodeVersionProblem('26.0.0', 'verify')).toBeNull();

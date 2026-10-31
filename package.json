@@ -20,7 +20,8 @@
     "build": "node packages/web/scripts/build-site.ts",
     "serve": "node tools/site-check/src/server.ts",
     "site-check": "npm run build && node tools/site-check/src/main.js",
-    "verify": "node tools/local-verify/src/main.js verify",
+    "verify": "node tools/local-verify/src/main.js quick",
+    "verify:feature": "node tools/local-verify/src/main.js verify",
     "signoff": "node tools/local-verify/src/main.js signoff"
   },
   "devDependencies": {

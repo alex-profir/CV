@@ -4,7 +4,10 @@
 [research.md](../research.md) (R14 to R18) | **Data model**:
 [data-model.md](../data-model.md#the-local-full-run-and-the-sign-off-added-2026-10-29)
 
-Four npm scripts make up the interface: the two test sets and the two commands the owner runs
+**Amended 2026-10-31**: this contract's "local full run" is now a new feature's run, `npm run
+verify:feature`. `npm run verify` is the quick run, and both take `--failed` (FR-038 to FR-040).
+
+Five npm scripts make up the interface: the two test sets and the two commands the owner runs
 before merge. The pull-request side is in [ci.md](./ci.md).
 
 ## Scripts (`package.json`)
@@ -13,18 +16,29 @@ before merge. The pull-request side is in [ci.md](./ci.md).
 |--------|---------|--------------|
 | `test` | `vitest run` | The full set: every test file, both Vitest projects. Unchanged |
 | `test:fast` | `vitest run --project fast` | The fast set (FR-030). What the `test` job runs on a pull request |
-| `verify` | `node tools/local-verify/src/main.js verify` | The local full run (FR-032, FR-033) |
+| `verify` | `node tools/local-verify/src/main.js quick` | The quick run: the quick checks and the tests a change touches, on any working copy (FR-038) |
+| `verify:feature` | `node tools/local-verify/src/main.js verify` | A new feature's run (FR-032, FR-033) |
 | `signoff` | `node tools/local-verify/src/main.js signoff` | Signing off the head commit (FR-033 to FR-036) |
 
 `main.js` is plain JavaScript and checks the Node version first, like the other tools'
-entry points: below Node 26 it prints `npm run <verify|signoff> needs Node 26 or later (see
-.nvmrc), but this is Node <version>: run nvm use` (`local full run` for any other subcommand)
-and exits 2. Any argument after the subcommand is a usage error (exit 2).
+entry points: below Node 26 it prints `npm run <verify|verify:feature|signoff> needs Node 26 or
+later (see .nvmrc), but this is Node <version>: run nvm use` (`local full run` for any other
+subcommand) and exits 2. Any argument after the subcommand but `--failed` is a usage error (exit 2).
 
 ## `npm run verify`
 
-Runs every check of a pull request, with the full set instead of the fast set, on the commit
-checked out, on the owner's machine. It needs no network.
+Runs the checks below up to `tokens`, then `npm test` on the test files `AREAS` in
+`tools/local-verify/src/affected.ts` gives for the files that differ from where the branch left
+`main`, untracked files included. It takes any working copy, stops at the first failure and
+writes nothing that can be signed off. `--failed` takes what the last quick run on this branch
+left, plus any test file changed since.
+
+## `npm run verify:feature`
+
+Runs every check of a pull request but the site's, with every test file but
+`tools/site-check/test/`, on the commit checked out, on the owner's machine. It needs no network.
+`--failed` takes only what the last such run on this branch left, plus any test file changed since,
+and its pass can be signed off on the commit it ends on.
 
 ### Before anything runs
 
@@ -42,7 +56,7 @@ prerequisite is listed together. Either way, no check runs.
 
 ### Checks
 
-Run in this order. Every check runs, whatever the ones before it returned (FR-033).
+Run in this order, up to the first that fails (FR-040).
 
 | Name | Command | Same as the pull request's job |
 |------|---------|--------------------------------|
@@ -50,9 +64,8 @@ Run in this order. Every check runs, whatever the ones before it returned (FR-03
 | `traceability` | `npm run traceability` | `traceability` |
 | `content` | `npm run content-check` | `content` |
 | `tokens` | `npm run token-check` | `tokens` |
-| `test` | `npm test -- --reporter=default --reporter=json --outputFile.json=<result dir>/<sha>.vitest.json` | `test`, which runs `npm run test:fast` |
-| `engines` | `npm run test:engines` | none: the Playground's sandbox, memory and key tests in Firefox and WebKit, local only (added by 008, research R25) |
-| `site` | `npm run --silent site-check` | `site` |
+| `test` | `npm test -- --bail=1 --reporter=default --reporter=json --outputFile.json=<result dir>/<sha>.vitest.json <files>` | `test`, which runs `npm run test:fast` |
+| `engines` | `npm run test:engines` | none: the Playground's sandbox, memory and key tests in Firefox and WebKit, `verify:feature` only (added by 008, research R25); `--failed` runs it again |
 
 - Each check's own output goes to the terminal as it runs, after a header line
   `== <name>: <command>`, and to `<sha>.log`.
@@ -73,15 +86,15 @@ Local full run on 3f2a…c9e1 (001-local-verify)
   tokens        pass     2 s
   test          pass   612 s   3124 tests in 152 files passed
   engines       pass    95 s
-  site          pass   201 s
 
 PASS: every check passed on 3f2a…c9e1. Sign off with: npm run signoff
 ```
 
-The summary prints the full SHA. On failure, every failing check is listed:
+The summary prints the full SHA. On failure, the failing check is named:
 
 ```text
-FAIL: 2 checks failed on 3f2a…c9e1: test, site. Nothing can be signed off for this commit.
+After a fix, take only what's left with: npm run verify:feature -- --failed
+FAIL: 1 check failed on 3f2a…c9e1: test. Nothing can be signed off for this commit.
 ```
 
 | Exit | Meaning |
@@ -93,7 +106,8 @@ FAIL: 2 checks failed on 3f2a…c9e1: test, site. Nothing can be signed off for 
 ### The result (FR-037)
 
 Written to `$(git rev-parse --git-common-dir)/local-verify/<sha>.json`, with `<sha>.log` and
-`<sha>.vitest.json` beside it, whenever the checks ran (exit 0 or 1). Its fields are in
+`<sha>.vitest.json` beside it, whenever the checks ran (exit 0 or 1), and `plan-<feature|quick>-<branch>.json`,
+which `--failed` reads. Its fields are in
 data-model.md (LocalRunResult). Nothing is written in the working copy, and a new run on the
 same commit replaces all three files.
 
@@ -126,9 +140,8 @@ gh api --method POST repos/<owner>/<repo>/statuses/<sha> \
 
 - `<owner>/<repo>` from `git remote get-url origin`: `https://github.com/<owner>/<repo>(.git)` or
   `git@github.com:<owner>/<repo>(.git)`.
-- `<description>`: `<passed> tests in <files> files passed; site check passed; Node <version>;
-  <os>`, at most 140 characters. Example:
-  `3124 tests in 152 files passed; site check passed; Node 26.1.0; Darwin 25.1.0 arm64`.
+- `<description>`: `<passed> tests in <files> files passed; Node <version>; <os>`, at most 140
+  characters. Example: `3124 tests in 152 files passed; Node 26.1.0; Darwin 25.1.0 arm64`.
 - No `target_url`.
 
 ## Guarantees

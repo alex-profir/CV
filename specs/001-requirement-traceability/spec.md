@@ -17,6 +17,11 @@ Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
 **Amended**: 2026-10-30 by 008-typescript-playground: the `site` job's limit in SC-008 becomes 20
 minutes (see Clarifications, Session 2026-10-30). Approved by the owner 2026-10-30.
 
+**Amended**: 2026-10-31: green CI is what merges a pull request. The local run becomes a quick run
+of the tests a change touches, a new feature's run once per pull request, and a daily full run in
+CI (see Clarifications, Session 2026-10-31, and Constitution 2.0.0, Speed First). Approved by the
+owner 2026-10-31.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -93,6 +98,18 @@ minutes (see Clarifications, Session 2026-10-30). Approved by the owner 2026-10-
 - Q: Does this change the traceability check itself? → A: No. FR-001 to FR-029 are unchanged.
   The amendment adds the run around the tests and the sign-off; the check still reads every
   test, wherever it runs (FR-030).
+
+### Session 2026-10-31 (speed first)
+
+- Q: The full run has grown from 11 to as much as 75 minutes, every commit restarts it, and a
+  failure runs everything else first. Should it stay a merge gate? → A: No. Green CI merges a pull
+  request. A new feature passes a local run once, on any of its commits, and every test runs daily
+  on the default branch (FR-035, FR-041).
+- Q: What should the local run do? → A: Run the quick checks and the tests of the areas a change
+  touches, on any working copy, and stop at the first failure (FR-038, FR-040). After a fix, take
+  only what failed or never ran (FR-039).
+- Q: Does the site check run locally? → A: No. Every pull request already runs it in CI. Its own
+  tests take most of the full run's time, so they run when it changes and in the daily full run.
 
 ### Session 2026-10-30 (from 006-terminal)
 
@@ -205,7 +222,10 @@ each is reported with its file and line.
 
 ---
 
-### User Story 4 - Prove the full test run before merge (Priority: P4) *(added 2026-10-29)*
+### User Story 4 - Prove the full test run before merge (Priority: P4) *(added 2026-10-29, amended 2026-10-31)*
+
+**Amended 2026-10-31**: the story below is what shipped on 2026-10-29. Now no sign-off is needed to
+merge, a new commit keeps a feature's earlier run, and scenario 4 no longer applies (FR-035).
 
 The owner finishes a change and pushes it. The pull request's checks finish in a few minutes:
 type checking, the fast tests, this check, the content and token checks, and the site's checks.
@@ -280,8 +300,8 @@ Break one browser test and confirm the run fails and records no passing sign-off
 - **A skipped, disabled or placeholder test that references a requirement**, either marked
   itself or inside a group that is marked: does not count as coverage. Its references are still
   checked for unknown, removed and malformed IDs.
-- **A sign-off and a rewritten commit** (amended or rebased): the new commit has no sign-off, as
-  any new commit (FR-034).
+- **A sign-off and a rewritten commit** (amended or rebased) *(amended 2026-10-31)*: the new commit
+  has no sign-off, and needs none to merge (FR-034, FR-035).
 - **The local full run without the browser it needs installed**: it says what is missing and how
   to install it, and records nothing (FR-032).
 - **Signing off with no connection** to the repository's host: it says so and records nothing.
@@ -289,8 +309,7 @@ Break one browser test and confirm the run fails and records no passing sign-off
 - **Signing off a commit whose last local full run failed, or that never ran**: refused, naming
   the commit (FR-033, FR-036).
 - **A pull request that changes only the project's documents outside `specs/`**, such as the
-  constitution: its checks still run, and it still needs a sign-off. Its local full run passes as
-  the default branch's does.
+  constitution *(amended 2026-10-31)*: its checks still run, and it needs nothing else.
 - **Sample specs, tests and markup that exist only to test the check itself**: not treated as
   the project's own specs, tests or UI source, so their deliberately broken IDs don't fail the
   real check.
@@ -404,27 +423,44 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
 - **FR-031**: Every pull request MUST run type checking, the fast set, this check, the content
   check (002), the token check (003) and the site's checks on the built site (004 FR-048), and
   no test outside the fast set.
-- **FR-032**: The owner MUST be able to run the full set and every check of FR-031 on their own
-  machine with one command, the local full run. It MUST refuse to start, naming the files, when
+- **FR-032** *(Amended 2026-10-31; it said the local full run covers the full set and every check
+  of FR-031)*: The owner MUST be able to run a new feature's local run with one command: every
+  check of FR-031 but the site's, and every test but the site check's own. It MUST refuse to start, naming the files, when
   the working copy holds any change or untracked file that isn't in the current commit, so it
   runs exactly that commit. When something it needs isn't installed, it MUST say what and how to
   install it, and run nothing.
-- **FR-033**: When every check of a local full run passes, the owner MUST be able to sign off its
-  commit: a passing check named `local-verify`, recorded on that commit where the pull requests'
-  checks are shown, naming the number of tests passed, the site check's result, the runtime's
-  version and the operating system. When any check fails, the run MUST name every failure, and
-  no passing sign-off may be recorded for that commit.
-- **FR-034**: A sign-off MUST be recorded only by signing off after a passing local full run, with
-  the owner's own credentials, and never by the pull requests' checks. It MUST belong to one
-  commit: a new commit, a merge of the main branch or a rewritten commit included, has none
-  until a local full run passes on it.
-- **FR-035**: A pull request MUST NOT be mergeable by anyone, the owner included, until its head
-  commit has a passing sign-off and every check of FR-031 passes, as FR-025 sets for this check.
+- **FR-033** *(Amended 2026-10-31; it said the sign-off names the site check's result, and that a
+  failing run names every failure)*: When every check of a feature's local run passes, the owner
+  MUST be able to sign off its commit: a passing check named `local-verify`, recorded on that
+  commit, naming the number of tests passed, the runtime's version and the operating system. When
+  a check fails, the run MUST name it, and no passing sign-off may be recorded for that commit.
+- **FR-034** *(Amended 2026-10-31; it said a new commit has no sign-off until a local full run
+  passes on it)*: A sign-off MUST be recorded only by signing off after a passing local run, with
+  the owner's own credentials, and never by the pull requests' checks. It MUST belong to the one
+  commit that run ended on. Later commits MUST NOT need another one.
+- **FR-035** *(Amended 2026-10-31; it said a pull request can't merge until its head commit has a
+  passing sign-off and every check of FR-031 passes)*: A pull request MUST NOT be mergeable by
+  anyone, the owner included, until every check of FR-031 passes, as FR-025 sets for this check. No
+  sign-off MUST be required, and its branch need not be up to date with the main branch.
 - **FR-036**: Signing off MUST NOT run the tests again when a local full run already passed on that
   commit. When the commit isn't on the repository's host yet, signing off MUST push its branch
   first. When it can't reach the host or push, it MUST say so and record nothing.
 - **FR-037**: A local full run's result MUST stay on the owner's machine, outside the project's
   tracked files, until it is signed off. Nothing of it may be committed.
+
+**Speed first** (added 2026-10-31)
+
+- **FR-038** *(added 2026-10-31)*: The owner MUST be able to run, with one command and on any
+  working copy, the quick checks (type checking, this check, the content and token checks) and the
+  tests of the areas the branch's changes touch. A change no area names MUST take every test but
+  the site check's own. Nothing can be signed off from this run.
+- **FR-039** *(added 2026-10-31)*: After a failed run, the owner MUST be able to take only the tests
+  that failed or never ran, and the test files that changed since. When this completes a feature's
+  run, the commit it ended on MUST be able to be signed off, without running again what passed.
+- **FR-040** *(added 2026-10-31)*: A local run MUST stop at the first failing check, and its test
+  check at the first failing test.
+- **FR-041** *(added 2026-10-31)*: Every test MUST run every day on the main branch, in CI, and it
+  MUST be possible to start that run by hand.
 
 ### Key Entities
 
@@ -492,10 +528,14 @@ and `/cv` remains a plain server-rendered page.
   within 20 minutes. Before the amendment the slowest took about 19 minutes. Amended 2026-10-30
   by 006-terminal: every job, `site` included, had to finish within 6 minutes. Amended 2026-10-30
   by 008-typescript-playground: the `site` job had to finish within 12 minutes.
-- **SC-009** *(added 2026-10-29)*: No pull request merges without a passing sign-off on its head
-  commit, whoever merges it, the owner included.
-- **SC-010** *(added 2026-10-29)*: The local full run runs 100% of the project's test files, and
-  gives the same pass or fail as running every test, every time.
+- **SC-009** *(added 2026-10-29, amended 2026-10-31; it said no pull request merges without a
+  passing sign-off on its head commit)*: No pull request merges without every check of FR-031
+  passing, whoever merges it, the owner included.
+- **SC-010** *(added 2026-10-29, amended 2026-10-31; it said the local full run runs 100% of the
+  test files)*: A feature's local run covers 100% of the test files but the site check's own, and
+  the daily full run covers 100% of them.
+- **SC-011** *(added 2026-10-31)*: After a failure, a local run takes no test file that passed
+  unless that file changed, and a bug fix can go from push to mergeable in 10 minutes.
 
 ## Assumptions
 

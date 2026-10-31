@@ -102,7 +102,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
       {
         type: 'required_status_checks',
         parameters: {
-          strict_required_status_checks_policy: true,
+          strict_required_status_checks_policy: false,
           do_not_enforce_on_create: false,
           required_status_checks: [
             { context: 'traceability', integration_id: 15368 },
@@ -110,7 +110,6 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
             { context: 'content', integration_id: 15368 },
             { context: 'tokens', integration_id: 15368 },
             { context: 'site', integration_id: 15368 },
-            { context: 'local-verify' },
           ],
         },
       },
@@ -164,21 +163,35 @@ describe("001-requirement-traceability-FR-034: the workflow can't record a sign-
   });
 });
 
-describe("001-requirement-traceability-FR-035: merging needs the owner's sign-off", () => {
+describe('001-requirement-traceability-FR-035: green CI is what merges a pull request', () => {
   const rule = RULESET.rules.find((entry: { type: string }) => entry.type === 'required_status_checks');
 
-  test('local-verify is required last, bound to no app, and is no job', () => {
-    expect(REQUIRED.at(-1)).toEqual({ context: 'local-verify' });
-    expect(Object.keys(REQUIRED.at(-1)!)).toEqual(['context']);
-    expect(REQUIRED.filter((check) => !('integration_id' in check)).map((check) => check.context)).toEqual(['local-verify']);
-    expect(JOB_IDS.map((id) => job(id).name)).not.toContain('local-verify');
-    expect(JOB_IDS).not.toContain('local-verify');
+  test('no sign-off is required, and every required check is a workflow job bound to GitHub Actions', () => {
+    expect(REQUIRED.map((check) => check.context)).not.toContain('local-verify');
+    expect(REQUIRED.filter((check) => check.integration_id !== 15368)).toEqual([]);
   });
 
-  test('the branch must be up to date, nobody can bypass and there is no update rule', () => {
-    expect(rule.parameters.strict_required_status_checks_policy).toBe(true);
+  test('the branch need not be up to date, nobody can bypass and there is no update rule', () => {
+    expect(rule.parameters.strict_required_status_checks_policy).toBe(false);
     expect(RULESET.bypass_actors).toEqual([]);
     expect(RULESET.rules.map((entry: { type: string }) => entry.type)).not.toContain('update');
+  });
+});
+
+describe('001-requirement-traceability-FR-041: every test runs every day on the default branch', () => {
+  const FULL = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/full.yml'), 'utf8');
+  const lines = FULL.split('\n');
+
+  test('it runs on a daily schedule and on demand, not on pull requests', () => {
+    expect(lines).toContain("    - cron: '17 3 * * *'");
+    expect(lines).toContain('  workflow_dispatch:');
+    expect(FULL).not.toMatch(/pull_request|^\s+push:/m);
+  });
+
+  test('it runs the whole test set with no filter, with a read-only token', () => {
+    expect(lines).toContain('      - run: npm test');
+    expect(lines).toContain('      - run: npx playwright install --with-deps chromium');
+    expect(block(lines, /^permissions:\s*$/).filter((line) => line.trim() !== '')).toEqual(['  contents: read']);
   });
 });
 
