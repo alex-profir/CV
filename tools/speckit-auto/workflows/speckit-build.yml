@@ -133,7 +133,11 @@ steps:
             you go. Commit after each completed phase with a Conventional Commit
             message. If a task is blocked, add "BLOCKED: <reason>" under it in
             tasks.md, leave it unticked and move on. Node 26 is already on PATH;
-            do not load nvm.
+            do not load nvm. Only one test run at a time is allowed on this
+            machine, so Vitest and the site check wait for a lock while another
+            loop tests. Run them in the background or with a long timeout, wait
+            for them, and never kill a waiting run to retry it or get around the
+            lock.
 
       - id: after_implement
         type: shell
@@ -166,7 +170,8 @@ steps:
         exit 1
       }
 
+  # Long enough for the test lock's three-hour wait limit and then a full run.
   - id: checks
     type: shell
-    timeout: 1800
+    timeout: 14400
     run: "tools/speckit-auto/checks.sh"
