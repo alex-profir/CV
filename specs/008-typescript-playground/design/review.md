@@ -1,6 +1,6 @@
 # Design Review: The TypeScript Playground
 
-**Status**: Approved (mockup `1188830`). The amendment of 2026-10-30 at the end is awaiting the owner's sign-off.
+**Status**: Approved (mockup `1188830`). Amended 2026-10-30, extended 2026-10-31: the amendment at the end is approved (mockup `7d141a4`).
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -85,11 +85,11 @@ colors, with the site's three fonts.
   and the owner confirms the look is original as recorded above. Changes found later are made as
   amendments.
 
-## Amendment of 2026-10-30, extended 2026-10-31: awaiting sign-off
+## Amendment of 2026-10-30, extended 2026-10-31: approved
 
 The second convergence (T192) found site text and states added or needed since the sign-off. These
-are drawn in `wireframes.md` and in the new exports below. Until the owner signs, T195, T201's
-visible part, T204, T207 and T216 stay unbuilt. The rows marked Built are already in the code, ahead
+are drawn in `wireframes.md` and in the new exports below. T195, T201's visible part, T204, T207
+and T216 waited for the owner's signature, given 2026-10-31. The rows marked Built are already in the code, ahead
 of the gate. On 2026-10-31 every string of `siteText.playground` was compared with the design,
 leaving out plural forms and `{}` values, and what was missing added here (T205), so one signature
 covers it.
@@ -119,6 +119,7 @@ The accessibility check gains the contained state when it can be reached by real
 
 ### Sign-off of the amendment
 
-- Reviewed mockup version: not signed
-- Date: not signed
-- Approved by: not signed
+- Reviewed mockup version: interim local mockup, `mockup/` and `wireframes.md` at commit `7d141a4`
+- Date: 2026-10-31
+- Approved by: Alex Profir (project owner)
+- Notes: Approved as drawn, every row of the table above, including the rows already built.
