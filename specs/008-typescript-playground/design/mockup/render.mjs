@@ -26,6 +26,7 @@ const extra = {
   'phone-2-best-on-desktop': [[320, 568, '320'], [812, 375, 'landscape-812']],
   'phone-3-shared-link': [[320, 568, '320']],
   'phone-4-link-field': [[320, 568, '320']],
+  'phone-5-too-long': [[320, 568, '320']],
 };
 const only = process.argv.slice(2);
 const pages = fs.readdirSync(here).filter((f) => f.endsWith('.html')).map((f) => f.slice(0, -5))

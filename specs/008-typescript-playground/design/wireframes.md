@@ -317,6 +317,25 @@ each key that differs from VS Code. Export: `desktop-11-keys-1440.png`.
 
 On Windows and Linux the list shows those systems' keys (`Ctrl` for `Cmd`, `Alt` for `Option`).
 
+Amendment of 2026-10-31: the list as built holds every command with its own name, and a second
+paragraph on leaving the editor, where `desktop-11` draws a shorter list with earlier names. It
+scrolls when the window is short, as `desktop-11` does. Export: `desktop-39-keys-all-1440.png`.
+
+- The second paragraph: "To leave the editor, press Ctrl+Shift+M and then Tab. To move to the next
+  error, press F8; to hear the type of a name, press Cmd+K Cmd+I." On Windows and Linux, with
+  `Ctrl+M` and `Ctrl+K Ctrl+I`, and the first paragraph reads "The editor uses VS Code's keys, for
+  Windows and Linux. The menu bar, the dock and the other windows keep their own shortcuts,
+  Alt+Shift with a letter, even from inside the editor."
+- The commands, in order: Run the code · Command palette · Suggestions · Parameter hints · Show the
+  type · Go to definition · Peek definition · Every use · Rename · Quick fixes · Next error ·
+  Previous error · Format document · Format selection · Comment out lines · Find · Replace · Go to
+  line · Go to symbol · Add the next match · Move line up · Move line down · Copy line down · Delete
+  line · Expand selection · Fold · Unfold · Tab moves focus · Accessibility help and keys.
+- The notes under a key that differs: "Not a VS Code command: the official Playground's key." ·
+  "Not VS Code's key: a browser keeps [key] for itself." Two more are held for a key that may have
+  to move, and no command shows them today: "Not VS Code's key: the shell keeps its own shortcuts."
+  · "Not VS Code's key: screen readers keep [key] for themselves."
+
 ### The Playground menu (FR-003, FR-085)
 
 Export: `desktop-12-menu-1440.png`.
@@ -408,6 +427,9 @@ Every option has its name in code type and a short description. Changing one app
 | | `experimentalDecorators` | off | Use the older, experimental decorators |
 | | `preserveConstEnums` | off | Keep `const enum` declarations in the JavaScript |
 
+Amendment of 2026-10-31: with every option at its default, the panel's foot reads "Every option is
+at its default." Export: `desktop-38-options-default-1440.png`.
+
 Options for modules, files, paths, packages, JSX, source maps and the project are not offered
 (FR-024). `declaration` off makes the Declarations pane say "No declarations: `declaration` is off
 in Compiler options." `noEmitOnError` with errors makes the JavaScript pane say "No JavaScript:
@@ -481,6 +503,14 @@ Timers and promises, 2.4 s in. The Logs pane opened by itself, emptied at the st
   the latest 1,000." An entry cut short ends with "… cut at 10,000 characters" (FR-044).
 - `prompt` and `confirm` log a note: "`prompt` isn't available in the Playground, so it returned
   `null`." / "`confirm` … so it returned `false`." (FR-043).
+- Amendment of 2026-10-31: before a run the Logs pane reads "Nothing logged yet. Run the code to see
+  what it logs." Export: `desktop-33-no-logs-1440.png`.
+- Amendment of 2026-10-31: a value that holds itself shows `[circular]`, a function with no name
+  `function (anonymous)` and a class with no name `class (anonymous)`, and `confirm` has its note
+  in full. Export: `desktop-34-log-values-1440.png`.
+- Amendment of 2026-10-31: a run the browser ends reads "Stopped unexpectedly after 3.1 s" or, when
+  it says memory ran out, "Ran out of memory after 3.1 s", in the toolbar and as the last note
+  (FR-045). Exports: `desktop-31-crashed-1440.png`, `desktop-32-out-of-memory-1440.png`.
 - Amendment of 2026-10-30: code that calls `close()` logs a note, "The code closed its own worker
   with close(), so the run ended." and the run ends as finished (FR-045, FR-048). Export:
   `desktop-29-worker-closed-1440.png`.
@@ -488,6 +518,9 @@ Timers and promises, 2.4 s in. The Logs pane opened by itself, emptied at the st
   with the note "Nothing ran: the code has 1 error, and its JavaScript can't be read." ("2 errors",
   and so on), then the parser's message as an `error` entry that ends with its `line 2` button, and
   the toolbar reads "Nothing ran" (FR-033, FR-035). Export: `desktop-28-cant-parse-1440.png`.
+  Amendment of 2026-10-31: the same applies to JavaScript TypeScript accepts and the browser refuses
+  (`import.meta`, T207). The message is then the browser's, and it counts in the note's number, so
+  code TypeScript finds no error in reads "the code has 1 error".
 
 ### A CV example, run (FR-027, FR-029)
 
@@ -546,6 +579,10 @@ message reads "Copy this link:" with the link in a field, selected (FR-052). Ame
 2026-10-30: `Share with…` shows beside the field too, where the device has its own sharing. Export:
 `desktop-30-link-field-1440.png`.
 
+### Share: the code copied (FR-055, amendment of 2026-10-31)
+
+After Copy the code, the message reads "Code copied." Export: `desktop-36-code-copied-1440.png`.
+
 ### Share: too long for a link (FR-055)
 
 Export: `desktop-19-too-long-1440.png`.
@@ -594,6 +631,22 @@ From the menu's `Reset…`. Focus is on Reset. Export: `desktop-22-reset-1440.pn
 | :::: | ((Reset))  [Cancel]                          | :::: |
 | :::: +----------------------------------------------+ :::: |
 ```
+
+### Reset: done (FR-080, amendment of 2026-10-31)
+
+The message reads "The Playground was reset to the starting example and the default options." with
+Undo. Export: `desktop-35-reset-done-1440.png`.
+
+### Messages about kept code (FR-019, amendment of 2026-10-31)
+
+- Kept code with an option this version doesn't know: "Your kept code set 1 option this version
+  doesn't know, `oldFlag`, so it was left out." ("2 options … so they were left out"). Export:
+  `desktop-37-kept-options-1440.png`.
+- When several messages are due at once, as a shared link's over this one, each shows in turn:
+  dismissing one brings the next (T213).
+- "This browser can't keep your code" shows at a failed write. Every later change tries again; once
+  a write works, the message goes and a reload brings back the code as it was last written. While
+  writes fail, a reload brings back the last copy that was written, if any (T214).
 
 ### The Playground's spec view (FR-005)
 
@@ -700,6 +753,11 @@ Exports: `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568) and `-landsc
 |  [ https://…/#playground    ] |
 ```
 
+Amendment of 2026-10-31: when the visitor's code is too long for a link (FR-055), Share link and
+Copy link copy the code and the note reads "This code is too long to share as a link, so the code
+itself was copied." If the clipboard refuses, it reads "This code is too long to share as a link,
+and it couldn't be copied." Exports: `phone-5-too-long-375.png` and `-320.png`.
+
 ### Best on a desktop, from a shared link (FR-060)
 
 Exports: `phone-3-shared-link-375.png` and `-320.png`.
@@ -781,3 +839,16 @@ All of it is in the states above. The longer pieces:
   Playground runs one file of code, with no packages."
 - **Editor's name and description** (FR-063): "Code editor" · "TypeScript code. Press F1 for
   commands, Option+F1 for accessibility help, and Ctrl+Shift+M to make Tab move focus."
+
+Amendment of 2026-10-31. These are read or heard, and take no room of their own:
+
+- **Names**: "Playground tools" (the toolbar) · "Go to line [n]" (a log's line button) · "Link to
+  this code" (the link field) · "Close compiler options" · "Close examples" · "Editor status" ·
+  "TypeScript download" (the progress bar)
+- **Editor, on Windows and Linux** (FR-063): "TypeScript code. Press F1 for commands, Alt+F1 for
+  accessibility help, and Ctrl+M to make Tab move focus."
+- **The palette's own commands**: "Run the code" · "Keys and accessibility help"
+- **Announced** (FR-064 to FR-066): "Downloading TypeScript." · "TypeScript download [n]% done." ·
+  "TypeScript downloaded." · "The TypeScript download stopped." · "The code is running." · "The code
+  is running again." · "[n] new log entry" · "[n] new log entries" · "No timers left." · "[n] timer
+  left." · "[n] timers left."
