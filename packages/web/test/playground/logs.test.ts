@@ -157,3 +157,62 @@ describe('008-typescript-playground-FR-034: the logs show what a browser\'s cons
     expect((await entries(page)).map((row) => row.text)).toEqual(['a is 1', 'g', 'Error: outer { cause: Error: inner }', 'AggregateError: all { errors: [Error: a] }', '{ [Symbol(k)]: 1 }', '[1, , 3]']);
   });
 });
+
+describe('008-typescript-playground-FR-034: what the code logged shows, whatever comes after it', () => {
+  async function start(page: Page, code: string): Promise<void> {
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await run(page, { wait: 'start' });
+  }
+  const shown = (page: Page, count: number) => expect.poll(async () => (await entries(page)).map((row) => row.text).slice(0, count), { timeout: 2_000 });
+
+  test('three lines before an endless loop all show while it blocks', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'console.log("one");\nconsole.log("two");\nconsole.log("three");\nwhile (true) {}');
+    await shown(page, 3).toEqual(['one', 'two', 'three']);
+    await page.locator(`${PLAYGROUND} .playground-toolbar button.stop`).click();
+  });
+
+  test('five lines before a 3 s calculation show before it ends', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'for (let i = 0; i < 5; i++) console.log("line", i);\nconst end = Date.now() + 3000;\nwhile (Date.now() < end) {}\nconsole.log("after");');
+    await shown(page, 5).toEqual(['line 0', 'line 1', 'line 2', 'line 3', 'line 4']);
+    expect((await entries(page)).map((row) => row.text)).not.toContain('after');
+    await expect.poll(async () => (await entries(page)).at(-1)?.text, { timeout: 10_000 }).toBe('after');
+  });
+
+  test('two long lines before a block both show, and a clear before one empties the logs', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'const long = "x".repeat(10_000);\nconsole.log(long);\nconsole.log(long);\nwhile (true) {}');
+    await expect.poll(async () => (await entries(page)).length, { timeout: 2_000 }).toBe(2);
+    await start(page, 'console.log("gone");\nconsole.clear();\nwhile (true) {}');
+    await expect.poll(async () => (await entries(page)).length, { timeout: 2_000 }).toBe(0);
+    await page.locator(`${PLAYGROUND} .playground-toolbar button.stop`).click();
+  });
+
+  test('an uncaught error in a timer before a block shows with its line', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'setTimeout(() => {\n  throw new Error("in a timer");\n});\nsetTimeout(() => {\n  while (true) {}\n}, 100);');
+    await expect.poll(async () => (await entries(page)).at(0), { timeout: 2_000 }).toMatchObject({ level: 'error', text: expect.stringContaining('in a timer'), line: 2 });
+    await page.locator(`${PLAYGROUND} .playground-toolbar button.stop`).click();
+  });
+
+  test("the browser's own objects at the deepest level keep the entry and what follows", async () => {
+    const page = await openPlaygroundPage();
+    await runCode(
+      page,
+      [
+        'console.log({ a: { b: { c: { d: new ArrayBuffer(8) } } } }, "tail");',
+        'console.log([[[[new URL("http://x.test/")]]]], "tail");',
+        'console.log([[[[new DataView(new ArrayBuffer(8))]]]], "tail");',
+        'console.log([[[[new Date(0)]]]], [[[[/a/]]]]);',
+      ].join('\n'),
+    );
+    const rows = (await entries(page)).map((row) => row.text);
+    expect(rows.slice(0, 3).every((row) => row.endsWith(' tail'))).toBe(true);
+    expect(rows[0]).toContain('[…]');
+    expect(rows[3]).toContain('1970-01-01T00:00:00.000Z');
+    expect(rows[3]).toContain('/a/');
+  });
+});

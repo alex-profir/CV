@@ -33,7 +33,9 @@ onmessage = (event: MessageEvent<FromPage>) => {
       );
       // Chromium gives the browser's message and place; Firefox and WebKit give
       // a bare event, and the page finds them (`refused`).
+      // Told to the page here, so it isn't the frame's own uncaught error too.
       made.addEventListener('error', (error) => {
+        error.preventDefault();
         if (loaded) tell({ worker: 'died', message: String(error.message ?? '') });
         else if (error.lineno > 0) tell({ worker: 'unreadable', message: String(error.message ?? ''), line: error.lineno, column: error.colno });
         else tell({ worker: 'refused' });

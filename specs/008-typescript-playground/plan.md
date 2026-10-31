@@ -96,7 +96,8 @@ dock, with its menu. Mobile: the "best on desktop" screen, full screen, from the
 
 **Offline Approach**: the interface is in the precached `os` script, so the mobile screen and the
 offline state work offline after one visit (005 FR-052). The engine is downloaded once on the first
-desktop open into its own cache, which the service worker answers from, offline too; a site update
+desktop open into its own cache, which the service worker answers from, offline too, all but the
+download's own requests, which go to the network so Retry can replace a bad file (R4, T236); a site update
 keeps the stored engine until a newer one is whole (R4). The runner needs no network: a `srcdoc`
 frame and a `blob:` worker (R17). Kept code is in `localStorage`. Shared links are fragments of
 the site root, which the service worker already answers offline.

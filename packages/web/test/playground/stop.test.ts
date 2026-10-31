@@ -44,3 +44,32 @@ describe('008-typescript-playground-FR-038: Stop ends the run at once and keeps 
     expect(await page.locator(`${TOOLBAR} button.stop`).getAttribute('aria-disabled')).toBe('true');
   });
 });
+
+describe('008-typescript-playground-FR-038: Stop keeps what was logged before the code blocked', () => {
+  test('lines logged just before an endless loop stay after Stop', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'console.log("one");\nconsole.log("two");\nconsole.log("three");\nwhile (true) {}');
+    await page.waitForTimeout(500);
+    await stop(page, 1_000);
+    const rows = (await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text);
+    expect(rows).toEqual(['one', 'two', 'three']);
+  });
+});
+
+describe('008-typescript-playground-FR-038: Stop answers while the code starts requests without end (SC-003)', () => {
+  for (const [name, code] of [
+    ['fetch of data:', 'while (true) fetch("data:text/plain,hi");'],
+    ['fetch of a closed port', 'while (true) fetch("http://127.0.0.1:1/x");'],
+    ['XMLHttpRequest of a closed port', 'while (true) { const x = new XMLHttpRequest(); x.open("GET", "http://127.0.0.1:1/x"); x.send(); }'],
+  ] as const) {
+    test(`${name}: within 1 s`, async () => {
+      const page = await openPlaygroundPage();
+      await start(page, code);
+      await page.waitForTimeout(3_000);
+      const pressed = Date.now();
+      await stop(page, 1_000);
+      expect(Date.now() - pressed).toBeLessThan(1_000);
+      expect(await page.locator(RUNNER).count()).toBe(0);
+    });
+  }
+});

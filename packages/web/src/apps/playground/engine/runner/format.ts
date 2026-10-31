@@ -104,11 +104,10 @@ function show(value: unknown, depth: number, parents: Set<object>, budget: Budge
   }
 }
 
-// An object of the browser's own whose state isn't in its keys.
+// An object of the browser's own whose state isn't in its keys, and which holds
+// entries as any object does, so it's shortened at the limit as one is.
 function builtIn(object: object, budget: Budget): Shown | null {
   const number = (name: string, value: number): [string, Shown] => [name, { t: 'num', v: text(String(value), budget) }];
-  if (object instanceof RegExp) return { t: 'text', v: text(RegExp.prototype.toString.call(object), budget) };
-  if (object instanceof Promise) return { t: 'text', v: text('Promise', budget) };
   if (object instanceof ArrayBuffer) return { t: 'obj', ctor: 'ArrayBuffer', entries: [number('byteLength', object.byteLength)], more: 0 };
   if (object instanceof DataView) return { t: 'obj', ctor: 'DataView', entries: [number('byteLength', object.byteLength), number('byteOffset', object.byteOffset)], more: 0 };
   if (typeof URL === 'function' && object instanceof URL) return { t: 'obj', ctor: 'URL', entries: [['href', { t: 'str', v: text(object.href, budget) }]], more: 0 };
@@ -157,9 +156,11 @@ function showValue(value: unknown, depth: number, parents: Set<object>, budget: 
   if (parents.has(object)) return spend(budget, MARKER), { t: 'circ' };
   if (object instanceof Error) return showError(object, depth, parents, budget);
   if (object instanceof Date) return { t: 'date', v: text(Number.isNaN(object.getTime()) ? 'Invalid Date' : object.toISOString(), budget) };
+  if (object instanceof RegExp) return { t: 'text', v: text(RegExp.prototype.toString.call(object), budget) };
+  if (object instanceof Promise) return { t: 'text', v: text('Promise', budget) };
+  if (depth >= LIMITS.depth) return spend(budget, MARKER), { t: 'deep' };
   const known = builtIn(object, budget);
   if (known !== null) return known;
-  if (depth >= LIMITS.depth) return spend(budget, MARKER), { t: 'deep' };
   parents.add(object);
   try {
     if (object instanceof Map) {

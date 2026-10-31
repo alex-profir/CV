@@ -143,6 +143,8 @@ export function Os({ resume, siteData, apps }: OsProps) {
       if (fromAddress === undefined) return;
       fromAddress.onOpenFromAddress?.(shell);
       const view = fromAddress.id as ViewId;
+      // Out of its specs, if they show, or the link's result stays out of sight.
+      dispatch({ type: 'showApp', view });
       dispatch(shell === 'desktop' ? { type: 'open', view } : { type: 'mobileOpen', view });
     };
     addEventListener('hashchange', onHashChange);

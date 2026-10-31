@@ -111,7 +111,11 @@ FR-010.
   (written by the build), so the size shows with no network. The `online` event and Retry start
   the download again.
 - **The service worker**: `/playground/` paths are answered from any cache with
-  `caches.match(request)`, then the network; `activate` deletes only `cv-` caches, as today, so a
+  `caches.match(request)`, then the network, except the loader's own download of a file, which says
+  so with the header `x-playground-download` and goes to the network, so Retry can replace a stored
+  file cut short or one that won't open (T236). 005's offline behaviour is unchanged: the branch is
+  only in the worker's `/playground/` path, nothing but the download sends the header, and a download
+  offline fails into the offline state as it did; `activate` deletes only `cv-` caches, as today, so a
   Playground copy outlives a site update (FR-013). The precache list leaves them out (FR-009).
 - **Several versions** (FR-008, FR-013): the loader uses the current hash's complete copy; failing
   that, the newest complete `playground-*` copy whose manifest `api` equals the interface's
@@ -119,6 +123,8 @@ FR-010.
   a download. Online, the new copy is then stored behind it with nothing shown, and used from the
   next open, which deletes the others. An open Playground keeps the engine it loaded until the page
   goes.
+- **A copy that won't start** (FR-011): `createEngine` has 60 s (`startWithin` in `engine/loader.ts`).
+  Past that the copy counts as one that won't open, and one that starts late is disposed of (T236).
 - **Can't keep** (FR-014): `caches` missing, `caches.open` or `put` throwing (a private window,
   storage off, a full quota): the loader imports the entry straight from the network (the
   service worker then answers from the network), and the message `cantKeepTypeScript` shows.
@@ -371,12 +377,18 @@ embedded in the engine (with the bootstrap, whose hash the build computes). Befo
   entry; `clear` empties the logs), formatting values into `Shown` trees (data-model.md Log book)
   with the limits there: depth 4, 100 items, 10,000 characters per entry, circular parts marked,
   functions and classes by name (FR-034, FR-044, FR-047);
-- sends entries in batches: at once if 50 ms have passed since the last send, else on the next
-  task, keeping at most the latest 1,000 between sends and counting the rest as dropped, so a
-  printing loop still shows its latest output and the page receives at most 20 batches a second.
-  A loop can't hear back from the page, so the clock limits it too: after a batch, the next waits
-  until 4,000 characters a millisecond would have sent it, and the end sends what's left. The page
-  draws the logs at most every 250 ms, and only the rows in view are laid out (T193);
+- sends each entry at once while within the limit, since a task never comes for code that blocks,
+  and a blocked worker's entries would be lost, even after Stop (T242). A loop can't hear back from
+  the page, so the clock sets the limit: 4,000 characters a millisecond with 50 ms' worth at once,
+  and 200 sends a second with 200 at once. Past it, the entries wait in a batch 50 ms or until the
+  characters have had their time, keeping at most the latest 1,000 and counting the rest as dropped,
+  so a printing loop still shows its latest output; what's waiting when the code blocks stays unsent,
+  and the end sends what's left. The page draws the logs at most every 250 ms, and only the rows in
+  view are laid out (T193);
+- starts `fetch` and asynchronous `XMLHttpRequest`s by the clock too, 100 at once and then one a
+  millisecond (contracts/runner.md, T243), as a loop of starts stopped the page answering: with
+  this off, in Chromium, a loop of them to a closed port left the page taking over 30 s to answer;
+  with it on, 1 to 4 ms, and Stop under 40 ms;
 - gives `alert` (an `alert` entry), `prompt` (a note, returns `null`) and `confirm` (a note, returns
   `false`), FR-043;
 - wraps `setTimeout`, `setInterval`, `clear*`, `requestAnimationFrame`, `fetch`, `XMLHttpRequest`,

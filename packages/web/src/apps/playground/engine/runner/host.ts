@@ -15,7 +15,8 @@ import type { LogEntry, RunOutcome } from '../../types.ts';
 export const HEARTBEAT_MS = 250;
 
 // The worker's script: the runtime, then the code as one async function,
-// in strict mode as a module is, so top-level `await` works (R13).
+// in strict mode as a module is, so top-level `await` works (R13). The arrow
+// would see the worker's `this`: `ts.worker.ts` leaves the code's top level none.
 const PRELUDE_LINES = runtime.split('\n').length + 1;
 const workerSource = (code: string) => `${runtime}\nself.__playgroundMain = async () => { "use strict";\n${code}\n};\n`;
 
