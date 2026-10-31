@@ -215,7 +215,7 @@ function announceDownload(previous: DownloadState, next: DownloadState): void {
     if (previous.kind !== 'downloading') announce(words.announce.downloadStarted);
     else if (next.announcedStep > previous.announcedStep && next.announcedStep < 4) announce(fill(words.announce.downloadStep, { percent: next.announcedStep * 25 }));
   } else if (next.kind === 'ready' && previous.kind === 'downloading') announce(words.announce.downloadDone);
-  else if (next.kind === 'offline' && previous.kind === 'downloading') announce(words.announce.downloadFailed);
+  else if (next.kind === 'offline' && previous.kind === 'downloading') announce(next.wontOpen === true ? words.loading.wontOpen : words.announce.downloadFailed);
 }
 
 export type StartInput = { manifest: string; bytes: number; mac: boolean };
@@ -283,10 +283,9 @@ export function startEngine(input: StartInput): void {
     .catch(() => {
       if (loading === controller) loading = null;
       if (controller.signal.aborted) return;
-      // The engine won't open, as a stopped download can't: the same state
-      // and the same Retry (FR-011).
-      session.update({ download: { kind: 'offline', total: input.bytes, stopped: true } });
-      announce(words.announce.downloadFailed);
+      // The engine won't open: Retry starts over (FR-011).
+      session.update({ download: { kind: 'offline', total: input.bytes, stopped: true, wontOpen: true } });
+      announce(words.loading.wontOpen);
       startAgain = () => startEngine(input);
     });
 }
@@ -395,7 +394,7 @@ export async function shareCode(): Promise<void> {
   try {
     await navigator.clipboard.writeText(result.link);
   } catch {
-    showMessage('info', 'linkField', [], undefined, result.link);
+    showMessage('info', 'linkField', canShareWith(result.link) ? ['share-with'] : [], undefined, result.link);
     return;
   }
   showMessage('done', 'linkCopied', canShareWith(result.link) ? ['share-with'] : [], { n: differingNames(options).length });

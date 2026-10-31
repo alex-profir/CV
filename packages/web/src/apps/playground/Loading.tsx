@@ -16,8 +16,8 @@ export function Loading() {
     return (
       <div className="playground-loading" data-req="008-typescript-playground-FR-011 008-typescript-playground-FR-069">
         <OfflineGlyph />
-        <h2>{download.stopped ? words.stopped : words.offline}</h2>
-        <p>{download.stopped ? words.stoppedText : fill(words.offlineText, { total: megabytes(download.total) })}</p>
+        <h2>{download.wontOpen === true ? words.wontOpen : download.stopped ? words.stopped : words.offline}</h2>
+        <p>{fill(download.wontOpen === true ? words.wontOpenText : download.stopped ? words.stoppedText : words.offlineText, { total: megabytes(download.total) })}</p>
         <button type="button" className="button primary playground-retry" onClick={retryDownload} data-req="008-typescript-playground-FR-011">
           {words.retry}
         </button>

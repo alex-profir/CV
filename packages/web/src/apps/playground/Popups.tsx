@@ -96,10 +96,7 @@ function StuckPopup() {
       if (document.activeElement === null || document.activeElement === document.body) goBack();
     };
   }, []);
-  const wait = () => {
-    keepWaiting();
-    requestAnimationFrame(goBack);
-  };
+  const wait = () => keepWaiting();
   const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
@@ -125,10 +122,7 @@ function StuckPopup() {
             ref={stop}
             type="button"
             className="button danger"
-            onClick={() => {
-              stopCode();
-              requestAnimationFrame(goBack);
-            }}
+            onClick={stopCode}
           >
             {words.stuck.stop}
           </button>

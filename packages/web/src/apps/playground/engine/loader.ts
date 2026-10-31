@@ -372,7 +372,7 @@ export async function loadEngine(manifestPath: string, totalBytes: number, event
         await forgetMarker(older.cache, older.folder);
       }
     }
-    events.onState({ kind: 'offline', total: manifest?.total ?? totalBytes, stopped });
+    events.onState({ kind: 'offline', total: manifest?.total ?? totalBytes, stopped, ...(openFailed ? { wontOpen: true } : {}) });
     // A copy that arrived whole and won't open won't by trying again alone.
     await env.waitForRetry(signal, openFailed ? null : retryDelay(attempts));
     attempts += 1;

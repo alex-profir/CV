@@ -9,6 +9,9 @@ type FromPage = { nonce?: unknown; start?: boolean; stop?: boolean; source?: unk
 
 let worker: Worker | null = null;
 let nonce: string | null = null;
+// Whether the worker's script has started: until then, an error with a place
+// is the browser refusing the script (FR-033, FR-035).
+let loaded = false;
 
 const tell = (message: Record<string, unknown>) => parent.postMessage({ ...message, nonce }, '*');
 
@@ -20,8 +23,21 @@ onmessage = (event: MessageEvent<FromPage>) => {
     try {
       const url = URL.createObjectURL(new Blob([data.source], { type: 'text/javascript' }));
       const made = new Worker(url);
-      made.addEventListener('message', () => URL.revokeObjectURL(url), { once: true });
-      made.addEventListener('error', (error) => tell({ worker: 'died', message: String(error.message ?? '') }));
+      made.addEventListener(
+        'message',
+        () => {
+          loaded = true;
+          URL.revokeObjectURL(url);
+        },
+        { once: true },
+      );
+      // Chromium gives the browser's message and place; Firefox and WebKit give
+      // a bare event, and the page finds them (`refused`).
+      made.addEventListener('error', (error) => {
+        if (loaded) tell({ worker: 'died', message: String(error.message ?? '') });
+        else if (error.lineno > 0) tell({ worker: 'unreadable', message: String(error.message ?? ''), line: error.lineno, column: error.colno });
+        else tell({ worker: 'refused' });
+      });
       made.postMessage({ port: data.port, nonce: data.nonce }, [data.port]);
       worker = made;
       tell({ worker: 'started' });

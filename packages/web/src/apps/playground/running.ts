@@ -185,11 +185,11 @@ export function startRun(engine: Engine, cv: unknown): void {
         if (!isCurrent(id)) return;
         handle = null;
         updateRun(id, () => ({ state: 'ended', outcome, stuck: 'no', blockedSince: null, askAgainAt: null }));
-        addEntries([{ id: 0, level: 'note', values: [], note: outcome.kind === 'nothing-ran' ? { key: 'nothingRan', reason: outcome.reason === 'packages' ? 'packages' : 'noEmitOnError' } : { key: 'ended', outcome } }]);
+        addEntries([{ id: 0, level: 'note', values: [], note: outcome.reason === 'unreadable' ? { key: 'cantRead', n: outcome.errors ?? 1 } : outcome.kind === 'nothing-ran' ? { key: 'nothingRan', reason: outcome.reason === 'packages' ? 'packages' : 'noEmitOnError' } : { key: 'ended', outcome } }]);
         // The end shows at once, with everything that came before it.
         drawLogs();
         updateRun(id, () => ({ uncaught: outcome.uncaught ?? 0 }));
-        announce(outcome.kind === 'nothing-ran' ? (outcome.reason === 'packages' ? words.editor.packages : fill(words.logs.nothingRan, { option: 'noEmitOnError' })) : outcomeText(outcome));
+        announce(outcome.reason === 'unreadable' ? fill(counted(words.logs.cantRead, outcome.errors ?? 1), { n: outcome.errors ?? 1 }) : outcome.kind === 'nothing-ran' ? (outcome.reason === 'packages' ? words.editor.packages : fill(words.logs.nothingRan, { option: 'noEmitOnError' })) : outcomeText(outcome));
       },
     },
   );

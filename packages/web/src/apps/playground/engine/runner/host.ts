@@ -33,6 +33,39 @@ function runnerHost(): HTMLElement {
 
 export type Runnable = { code: string; map: string };
 
+const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
+
+const placeOf = (error: unknown): { line: number; column: number } | null => {
+  const { lineNumber, line, columnNumber, column } = error as { lineNumber?: number; line?: number; columnNumber?: number; column?: number };
+  const at = lineNumber ?? line;
+  return typeof at === 'number' ? { line: at, column: columnNumber ?? column ?? 1 } : null;
+};
+
+// Why the browser refuses the code, with its line in the code, for a browser
+// whose worker error doesn't say (Firefox, WebKit). It only parses: the
+// function is never called, so nothing of the code runs on the page.
+function refusal(code: string): { message: string; at: { line: number; column: number } | null } | null {
+  const built = (text: string) => new AsyncFunction(`"use strict";\n${text}`);
+  try {
+    built(code);
+    return null;
+  } catch (error) {
+    // Browsers count a built function's lines from different places: a refusal
+    // on the code's first line says where this one starts.
+    let first: { line: number } | null = null;
+    try {
+      built(')');
+    } catch (known) {
+      first = placeOf(known);
+    }
+    const place = placeOf(error);
+    if (place === null || first === null) return { message: `SyntaxError: ${(error as Error).message}`, at: null };
+    // WebKit reads one token on, past the end of the code at its last line.
+    const line = Math.min(place.line - first.line + 1, code.trimEnd().split('\n').length);
+    return { message: `SyntaxError: ${(error as Error).message}`, at: { line: line + PRELUDE_LINES, column: place.column } };
+  }
+}
+
 // The worker runs the visitor's code, so every field is checked before use.
 type FromWorker = {
   nonce?: unknown;
@@ -127,6 +160,16 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
     return mapped === null ? entry : { ...entry, line: mapped.line };
   }
 
+  // JavaScript the browser refused, so none of the worker's script ran: the
+  // note, then the browser's message at its line (FR-033, FR-035). The browser's
+  // message counts when TypeScript found no error.
+  function unreadable(message: string, at: unknown): void {
+    const text = message.replace(/^Uncaught /, '');
+    const [, name, rest] = /^(\w*Error): ([^]*)$/.exec(text) ?? [null, 'SyntaxError', text];
+    finish({ kind: 'nothing-ran', ms: elapsed(), reason: 'unreadable', errors: Math.max(errors, 1) });
+    events.onLogs({ entries: [withLine({ id: 0, level: 'error', values: [{ t: 'err', name: name!, message: rest! }] }, at)], dropped: 0 });
+  }
+
   port.onmessage = (event: MessageEvent<FromWorker>) => {
     const data = event.data;
     if (over || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
@@ -143,9 +186,15 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
     } else if (data.end === true) finish({ kind: uncaught > 0 ? 'errors' : 'finished', ms: elapsed(), uncaught });
   };
 
-  function fromFrame(event: MessageEvent<{ nonce?: unknown; worker?: string; message?: string }>): void {
+  function fromFrame(event: MessageEvent<{ nonce?: unknown; worker?: string; message?: string; line?: unknown; column?: unknown }>): void {
     if (event.source !== frame.contentWindow || event.data === null || typeof event.data !== 'object' || event.data.nonce !== nonce) return;
     if (event.data.worker === 'started') port.postMessage({ run: true, nonce, cv, prelude: PRELUDE_LINES });
+    else if (event.data.worker === 'unreadable') unreadable(event.data.message ?? '', { line: event.data.line, column: event.data.column });
+    else if (event.data.worker === 'refused') {
+      const found = refusal(runnable.code);
+      if (found === null) crashed('');
+      else unreadable(found.message, found.at);
+    }
     else if (event.data.worker === 'failed' || event.data.worker === 'died') crashed(event.data.message ?? '');
   }
 

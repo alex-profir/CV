@@ -21,7 +21,7 @@ export type DownloadState =
   | { kind: 'idle' }
   | { kind: 'checking' }
   | { kind: 'downloading'; received: number; total: number; announcedStep: 0 | 1 | 2 | 3 | 4 }
-  | { kind: 'offline'; total: number; stopped: boolean }
+  | { kind: 'offline'; total: number; stopped: boolean; wontOpen?: boolean }
   | { kind: 'ready'; typescript: string; kept: boolean };
 
 // data-model.md Diagnostic and check result.
@@ -65,6 +65,7 @@ export type NoteKey =
   | { key: 'noErrors' }
   | { key: 'errorsNote'; n: number }
   | { key: 'nothingRan'; reason: 'noEmitOnError' | 'packages' }
+  | { key: 'cantRead'; n: number }
   | { key: 'prompt' | 'confirm' }
   | { key: 'closed' }
   | { key: 'ended'; outcome: RunOutcome };
@@ -81,7 +82,7 @@ export type LogEntry = {
 export type LogBook = { entries: LogEntry[]; dropped: number; newSinceAnnounce: number };
 
 // data-model.md Run.
-export type RunOutcome = { kind: 'finished' | 'stopped' | 'errors' | 'crashed' | 'nothing-ran'; ms: number; reason?: string; uncaught?: number };
+export type RunOutcome = { kind: 'finished' | 'stopped' | 'errors' | 'crashed' | 'nothing-ran'; ms: number; reason?: string; uncaught?: number; errors?: number };
 
 export type Run = {
   id: number;

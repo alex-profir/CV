@@ -5,12 +5,14 @@
 // TypeScript isn't downloaded and nothing runs.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { siteText } from '../../site-text.ts';
+import { announce } from '../../os/announce.ts';
 import { phoneLink } from './controller.ts';
 import { CopyGlyph, ShareGlyph } from './Glyphs.tsx';
 import { PlaygroundIcon } from './PlaygroundIcon.tsx';
 import { holdsCode } from './share.ts';
 
 const words = siteText.playground.mobile;
+const linkField = siteText.playground.messages.linkField;
 
 // Whether the page was opened with a link that holds code.
 const fromLink = () => holdsCode(location.href);
@@ -27,12 +29,24 @@ export function BestOnDesktop() {
   const linked = useSyncExternalStore(onAddress, fromLink, () => false);
   const text = linked ? words.link : words.app;
   const [note, setNote] = useState<string>(text.note);
+  // The link to copy by hand, when the clipboard refuses it (FR-052).
+  const [field, setField] = useState<string | null>(null);
+  const fieldInput = useRef<HTMLInputElement>(null);
   const frame = useRef(0);
-  useEffect(() => setNote(text.note), [text]);
+  useEffect(() => {
+    setNote(text.note);
+    setField(null);
+  }, [text]);
+  useEffect(() => {
+    if (field === null) return;
+    fieldInput.current?.select();
+    announce(linkField);
+  }, [field]);
 
   // The note is a status region: cleared, then set on the next frame, so the
   // same words twice are read twice.
   const say = (sentence: string) => {
+    setField(null);
     cancelAnimationFrame(frame.current);
     setNote('');
     frame.current = requestAnimationFrame(() => setNote(sentence));
@@ -41,16 +55,13 @@ export function BestOnDesktop() {
   // Copies the link, or the code when its link would be too long (FR-055).
   async function copy(): Promise<void> {
     const made = await phoneLink();
+    const text = 'link' in made ? made.link : made.code;
     try {
-      if ('link' in made) {
-        await navigator.clipboard.writeText(made.link);
-        say(words.copied);
-      } else {
-        await navigator.clipboard.writeText(made.code);
-        say(siteText.playground.messages.codeCopied);
-      }
+      await navigator.clipboard.writeText(text);
+      say('link' in made ? words.copied : words.tooLongCopied);
     } catch {
-      // The clipboard refused; the note stays as it was.
+      if ('link' in made) setField(made.link);
+      else say(words.tooLongRefused);
     }
   }
 
@@ -83,9 +94,16 @@ export function BestOnDesktop() {
             <span>{words.copyLink}</span>
           </button>
         </div>
-        <p className="playground-mobile-note" role="status">
-          {note}
-        </p>
+        {field !== null ? (
+          <label className="playground-mobile-link">
+            <span>{linkField}</span>
+            <input ref={fieldInput} type="text" readOnly value={field} />
+          </label>
+        ) : (
+          <p className="playground-mobile-note" role="status">
+            {note}
+          </p>
+        )}
       </div>
     </section>
   );

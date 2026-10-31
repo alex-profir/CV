@@ -8,7 +8,8 @@
 
 **Amended**: 2026-10-29: `open` accepts `playground`, for the TypeScript playground (008) (see
 Clarifications, Session 2026-10-29, and 008-typescript-playground FR-087). Approved 2026-10-27;
-the amendment approved by the owner 2026-10-29.
+the amendment approved by the owner 2026-10-29. Amended 2026-10-31 by 008-typescript-playground:
+FR-042's time follows the latest feature's budget (see Clarifications, Session 2026-10-31).
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -71,6 +72,12 @@ the amendment approved by the owner 2026-10-29.
   file is read only (FR-060).
 - Q: What happens to `cv` and the per-section commands? → A: `cv` opens the vim view. `work`,
   `about` and the other section commands keep their short text output (FR-008, FR-009, FR-059).
+
+### Session 2026-10-31 (amended by 008-typescript-playground)
+
+- Q: 006's 660 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+  allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
+  feature's budget, now 008's 1,020 s (FR-042).
 
 ### Session 2026-10-29 (amended by 008-typescript-playground)
 
@@ -827,7 +834,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   online one.
 - **FR-042**: The checks of this spec MUST run in the same one command and on the same pull
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
-  shell, the state, the width and the command in every failure.
+  shell, the state, the width and the command in every failure. The whole check, with every later
+  feature's parts, stays within the latest feature's budget on the owner's machine. Amended
+  2026-10-31 by 008-typescript-playground: it held the whole check to 660 s, 005's 8 minutes plus 3.
 
 ### Key Entities
 

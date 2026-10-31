@@ -133,12 +133,13 @@ export async function running(page: Page): Promise<boolean> {
 }
 
 // Presses Run. With `wait: 'end'` (the default), waits until the run has
-// ended; with `'start'`, until it has started; with `'none'`, returns at once.
+// ended; with `'start'`, until it has started, or has already ended, which a
+// short run can do between two looks; with `'none'`, returns at once.
 export async function run(page: Page, { wait = 'end', timeout = 30_000 }: { wait?: 'end' | 'start' | 'none'; timeout?: number } = {}): Promise<void> {
   await page.locator(`${TOOLBAR} button.run`).click();
   if (wait === 'none') return;
   if (wait === 'start') {
-    await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') !== 'true', `${TOOLBAR} button.stop`, { timeout });
+    await page.waitForFunction(({ button, state }) => document.querySelector(button)?.getAttribute('aria-disabled') !== 'true' || (document.querySelector(state)?.textContent ?? '') !== '', { button: `${TOOLBAR} button.stop`, state: RUN_STATE }, { timeout });
     return;
   }
   await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${TOOLBAR} button.stop`, { timeout });

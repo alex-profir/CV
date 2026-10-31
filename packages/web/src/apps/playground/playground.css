@@ -1044,6 +1044,29 @@
   color: var(--token-color-shell-text-secondary);
 }
 
+/* The link to copy by hand: the card's width, or it overflows at 320 px. */
+.playground-mobile-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--token-space-1);
+  font-size: var(--token-font-size-small);
+  color: var(--token-color-shell-text-secondary);
+  text-align: start;
+}
+
+.playground-mobile-link input {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: var(--token-space-1) var(--token-space-2);
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-code-text);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
 /* In landscape, the icon on the left and the rest beside it, the buttons
    side by side (wireframes, Phone screen). */
 @media (orientation: landscape) {

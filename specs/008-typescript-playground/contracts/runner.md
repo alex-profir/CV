@@ -24,6 +24,15 @@ type RunHandle = { stop(): void };                 // FR-038; idempotent
 no JavaScript (FR-023, `noEmitOnError`), it ends at once with `nothing-ran` and the reason, and no
 frame is made (FR-033, FR-042). A new `run` stops the one going first (FR-032).
 
+JavaScript the browser refuses fails the worker's whole script before the runtime starts, whatever
+TypeScript made of it (T195, T207). The bootstrap tells it apart: an `error` event before the worker's
+first message. Chromium's event has the message and line; Firefox's and WebKit's are bare, so the bootstrap
+says `refused`, and the page finds them by building, and never calling, an async function of the code,
+which a future site-wide policy would have to allow. The frame's policy keeps `blob:` out of `script-src`
+(R17), so `importScripts` can't find them in the frame. The run then ends as `nothing-ran` with the reason `unreadable`, the note
+`cantRead` counting TypeScript's errors or, with none, this one, and the browser's message logged at
+its line in the code (FR-033, FR-035).
+
 ## The frame
 
 ```html
@@ -53,7 +62,7 @@ run's nonce; a message without it is ignored.
 | From → to | Message | Meaning |
 |-----------|---------|---------|
 | host → bootstrap | `{ start, nonce, source, port }` (by `postMessage` to the frame, the port transferred) | Make the worker from `source` and hand it the port |
-| bootstrap → host | `{ worker: 'started' \| 'failed' \| 'died', nonce, message }` | The worker exists, couldn't be made, or died (an `error` event reached the frame, R24) |
+| bootstrap → host | `{ worker: 'started' \| 'failed' \| 'died' \| 'unreadable' \| 'refused', nonce, message?, line?, column? }` | The worker exists, couldn't be made, or died (an `error` event reached the frame, R24) |
 | host → worker | `{ run, nonce, cv, prelude }` | Set `cv` and run the code; `prelude` is the script's lines before the code, so an error's line skips the runtime's wrappers (FR-035) |
 | host → worker | `{ ping, nonce, n }` every 250 ms | Heartbeat (R19) |
 | worker → host | `{ pong, nonce, n }` | Answered as soon as the worker's event loop is free |
