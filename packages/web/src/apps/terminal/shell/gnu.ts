@@ -2285,93 +2285,6 @@ const cat: Fix = async (typed, ctx, next, fs) => {
   return { ...result, stderr: `${refused}${result.stderr}`, exitCode: 1 };
 };
 
-// `jq`'s listed `-j` and `-a`, which just-bash takes and doesn't do (T359).
-const JQ_VALUED = new Set(['--arg', '--argjson', '--rawfile', '--slurpfile']);
-const asciiJson = (text: string) => text.replace(/[\u0080-\uffff]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
-
-const JQ_LETTERS = 'RrcesnjaSCM';
-const JQ_LONG = new Set(['--raw-input', '--raw-output', '--compact-output', '--exit-status', '--slurp', '--null-input', '--join-output', '--ascii', '--ascii-output', '--sort-keys', '--color', '--color-output', '--monochrome', '--monochrome-output', '--tab', '--args', '--jsonargs', ...JQ_VALUED]);
-const JQ_UNKNOWN = (option: string) => failed(`jq: Unknown option ${option}\nUse jq --help for help with command-line options,\nor see the jq manpage, or online docs  at https://jqlang.github.io/jq\n`, 2);
-// What's an option of jq's, and not a filter that starts with `-` (T382).
-const jqOption = (arg: string) => /^--?[a-zA-Z]/.test(arg);
-
-// `jq`, by the filter's place (T376): each option with its values, the first other
-// word the filter, and only what follows it a file.
-const jq: Fix = async (typed, ctx, next, fs) => {
-  if (typed.includes('--help')) return next(typed);
-  const args = [...typed];
-  let filterAt = -1;
-  let positional = false;
-  const files: string[] = [];
-  for (let at = 0; at < args.length; at += 1) {
-    const arg = args[at]!;
-    if (arg === '--args' || arg === '--jsonargs') positional = true;
-    else if (arg === '--') positional = positional || filterAt >= 0;
-    else if (JQ_VALUED.has(arg)) at += 2;
-    else if (jqOption(arg)) {
-      const known = arg.startsWith('--') ? JQ_LONG.has(arg) : [...arg.slice(1)].every((letter) => JQ_LETTERS.includes(letter));
-      if (!known) return JQ_UNKNOWN(arg);
-    } else if (filterAt < 0) {
-      filterAt = at;
-      // Past the first word, jq's parser reads it, not an option's.
-      if (arg.startsWith('-') && arg !== '-') args[at] = ` ${arg}`;
-    } else if (!positional) files.push(arg);
-  }
-  // A folder fails where jq reads it: what comes before it goes first.
-  const folderAt = await (async () => {
-    for (const [at, file] of files.entries()) if (await isFolder(fs, ctx, file)) return at;
-    return -1;
-  })();
-  if (folderAt === 0) return failed('jq: error: Input error: Is a directory\n', 2);
-  if (folderAt > 0) {
-    const kept = args.filter((arg) => !files.slice(folderAt).includes(arg));
-    const before = await jq(kept, ctx, next, fs);
-    return before.exitCode !== 0 ? before : { ...before, stderr: `${before.stderr}jq: error: Input error: Is a directory\n`, exitCode: 2 };
-  }
-  const exitStatus = args.some((arg, at) => at !== filterAt && (arg === '--exit-status' || /^-[a-zA-Z]*e/.test(arg)));
-  const answered = (result: Output) => (exitStatus && result.exitCode === 1 && result.stdout === '' && result.stderr === '' ? { ...result, exitCode: 4 } : result);
-  const list: string[] = [];
-  let [join, ascii, raw, compact] = [false, false, false, false];
-  for (let at = 0; at < args.length; at += 1) {
-    const arg = args[at]!;
-    if (JQ_VALUED.has(arg)) {
-      list.push(...args.slice(at, at + 3));
-      at += 2;
-    } else if (arg === '--join-output') join = true;
-    else if (arg === '--ascii' || arg === '--ascii-output') ascii = true;
-    else if (/^-[a-zA-Z]+$/.test(arg)) {
-      const letters = arg.slice(1).replace(/[ja]/g, (letter) => {
-        if (letter === 'j') join = true;
-        else ascii = true;
-        return '';
-      });
-      if (letters !== '') list.push(`-${letters}`);
-      raw ||= letters.includes('r');
-      compact ||= letters.includes('c');
-    } else {
-      raw ||= arg === '--raw-output';
-      compact ||= arg === '--compact-output';
-      list.push(arg);
-    }
-  }
-  if (!join && !ascii) return next(args).then(answered);
-  // -a's strings stay JSON, even under `-r`; `-j` prints each with no line end.
-  const asRaw = (join || raw) && !ascii;
-  if (!join) {
-    const result = await next(list.filter((arg) => arg !== '-r' && arg !== '--raw-output'));
-    return { ...result, stdout: asciiJson(result.stdout) };
-  }
-  const result = await next(['-c', ...list.filter((arg) => arg !== '-r' && arg !== '--raw-output' && arg !== '-c' && arg !== '--compact-output')]);
-  if (result.stdout === '') return result;
-  const stdout = result.stdout.split('\n').slice(0, -1).map((text) => {
-    const value = JSON.parse(text) as unknown;
-    if (typeof value === 'string' && asRaw) return value;
-    const shown = compact ? text : JSON.stringify(value, null, 2);
-    return ascii ? asciiJson(shown) : shown;
-  }).join('');
-  return { ...result, stdout };
-};
-
 // `tee` to a folder says so, and writes the rest (T365).
 const tee: Fix = async (args, ctx, next, fs) => {
   if (args.includes('--help')) return next(args);
@@ -2542,7 +2455,6 @@ const FIXES: Readonly<Record<string, Fix>> = {
   basename: bundled('s', needsValue('basename', 's', basename)),
   dirname,
   cat,
-  jq,
   tee,
   which,
   rm,

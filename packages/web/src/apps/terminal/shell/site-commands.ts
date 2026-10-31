@@ -13,6 +13,7 @@ import { COMMANDS, CV_PIPE, CV_PRINT, SITE_WORDS, usage } from '../engine/comman
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
 import { printJson } from '../engine/json.ts';
+import { runJq } from './jq.ts';
 import { fill } from '../../../site-text.ts';
 import { CLEARED, fileText, HOME, MARK } from './fs.ts';
 import { GNU } from './gnu.ts';
@@ -43,12 +44,15 @@ export type RunRecord = {
   builtinHelp: boolean;
   // A limit a command met without just-bash stopping the line (T315).
   stopped: Limit | null;
+  // When the line's time is up, by `Date.now()`, for what runs on its own (`jq`).
+  deadline: number;
 };
 
 export type SiteShell = {
   context: RunContext;
   fs: TerminalFs;
   run: () => RunRecord;
+  limits: { output: number; pipe: number };
 };
 
 // Set by the adapter on a command whose output goes into a pipe: what it
@@ -495,19 +499,33 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return changed ? ({ ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output) : result;
   });
 
-  // `jq`: what it printed, when it is one JSON value, as JSON rows (R31).
+  // `jq`, the site's own (research R53, G39): what it printed, when it is one
+  // JSON value, as JSON rows (R31).
   const jq = defineCommand('jq', async (args, ctx) => {
-    const result = await ctx.origCommand!(args);
-    // jq never ends where just-bash runs out of room (T315, research R25).
-    if (result.exitCode !== 0 && /too many iterations|limit exceeded|Maximum call stack/.test(result.stderr)) {
-      shell.run().stopped = 'time';
-      return ok('', '', result.exitCode);
+    if (args.includes('--help') || args.includes('-h')) return ctx.origCommand!(['--help']);
+    const stdin = decode(ctx.stdin);
+    const result = await runJq(args, {
+      stdin,
+      read: async (file) => {
+        if (file === '/dev/stdin' || file === '/dev/fd/0') return { text: stdin };
+        const path = ctx.fs.resolvePath(ctx.cwd, file);
+        const stat = await shell.fs.stat(path).catch(() => null);
+        if (stat === null) return 'missing';
+        return stat.isDirectory ? 'folder' : { text: await shell.fs.readFile(path) };
+      },
+      env: new Map([...ctx.env].filter(([name]) => !name.includes(MARK))),
+      deadline: shell.run().deadline,
+      maxOutput: piped(ctx) ? shell.limits.pipe : shell.limits.output,
+    });
+    if (result.stopped !== undefined) {
+      shell.run().stopped = result.stopped;
+      return ok('', '', 1);
     }
-    if (result.exitCode !== 0 || result.stdout === '' || piped(ctx)) return result;
-    const printed = stdoutText(result);
-    const json = printJson(printed);
-    if (!('error' in json)) shell.run().recorded.push({ text: printed, block: [{ kind: 'json', rows: json.rows }] });
-    return result;
+    const { stopped: _none, ...printed } = result;
+    if (printed.exitCode !== 0 || printed.stdout === '' || piped(ctx)) return printed;
+    const json = printJson(printed.stdout);
+    if (!('error' in json)) shell.run().recorded.push({ text: printed.stdout, block: [{ kind: 'json', rows: json.rows }] });
+    return printed;
   });
 
 

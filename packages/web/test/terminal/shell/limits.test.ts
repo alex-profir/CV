@@ -104,10 +104,14 @@ describe('006-terminal-FR-069: a line is stopped once it has run 10,000 commands
 
   test('a list too long to hold, and a jq that never ends, stop with the site’s text and none of just-bash’s (T315)', async () => {
     expect(await runLine(shellFor('every-field'), 'echo {1..2000000} | wc -w')).toMatchObject({ end: 'limit', limit: 'output', stderr: '' });
-    for (const filter of ['[limit(3;repeat(1))]', 'first(range(10;infinite))', 'def f: f; f']) {
+    for (const filter of ['def f: f; f', 'repeat(empty)']) {
       expect(await runLine(shellFor('every-field'), `jq -n '${filter}'`), filter).toMatchObject({ end: 'limit', limit: 'time', stderr: '' });
     }
-  });
+    // jq is lazy now, so what a limit stopped before ends by itself (G26).
+    expect(await runLine(shellFor('every-field'), `jq -nc '[limit(3;repeat(1))]'`)).toMatchObject({ stdout: '[1,1,1]\n', end: 'done' });
+    expect(await runLine(shellFor('every-field'), `jq -n 'first(range(10;infinite))'`)).toMatchObject({ stdout: '10\n', end: 'done' });
+    expect(await runLine(shellFor('every-field'), `jq -n 'repeat(1)'`)).toMatchObject({ end: 'limit', limit: 'output', stdout: '' });
+  }, 30_000);
 
   test('checks keep to their own output: exec neither gets their text nor hears their failure (T326)', async () => {
     const shell = shellFor('every-field');

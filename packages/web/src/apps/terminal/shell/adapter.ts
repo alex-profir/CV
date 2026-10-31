@@ -1491,7 +1491,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const limits: Limits = { ...LIMITS, ...options.limits };
   const context = engineContext(input);
   const fs = new TerminalFs(context.fs);
-  let record: RunRecord = { line: '', history: [], shell: 'desktop', recorded: [], effects: [], pipe: null, pipedFunctions: 0, builtinHelp: false, stopped: null };
+  let record: RunRecord = { line: '', history: [], shell: 'desktop', recorded: [], effects: [], pipe: null, pipedFunctions: 0, builtinHelp: false, stopped: null, deadline: 0 };
   // The last checkpoint the line reached, and whether it was the one after
   // the line (T286).
   let captured: Captured | null = null;
@@ -1975,7 +1975,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { stdout: '', stderr: full.map((target) => `bash: ${target}: No space left on device\n`).join(''), exitCode: full.length > 0 ? 1 : Number(args[0] ?? 0) };
   });
 
-  const commands = siteCommands({ context, fs, run: () => record });
+  const commands = siteCommands({ context, fs, run: () => record, limits });
 
   // The visitor's functions, which win over a site command in another case.
   let functions: ReadonlySet<string> = new Set();
@@ -2227,7 +2227,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   async function runLine(request: RunRequest): Promise<RunResult> {
     const { id, state } = request;
     const base = { id, recorded: [], effects: [], state };
-    record = { line: request.line, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], pipe: null, pipedFunctions: 0, builtinHelp: false, stopped: null };
+    record = { line: request.line, history: request.history, shell: request.shell ?? 'desktop', recorded: [], effects: [], pipe: null, pipedFunctions: 0, builtinHelp: false, stopped: null, deadline: Date.now() + limits.time };
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     const { line } = request;
     let ast: Script;
