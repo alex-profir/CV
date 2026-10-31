@@ -44,12 +44,14 @@ The `srcdoc`:
 ```html
 <!doctype html>
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'sha256-<bootstrap>'; worker-src blob:; connect-src *">
+      content="default-src 'none'; script-src 'sha256-<bootstrap>'; worker-src blob:; connect-src * data: blob:">
 <script>/* bootstrap */</script>
 ```
 
 - No `allow-same-origin`, `allow-popups`, `allow-modals`, `allow-top-navigation`, `allow-forms` or
   `allow-downloads`. One frame per run, removed when the run ends.
+- `connect-src` allows `data:` and `blob:` as well as any site: `fetch` of either reads only what's
+  already in the worker, reaches no site and runs nothing, as `script-src` still keeps `blob:` out (R17).
 - `<bootstrap>`'s hash is computed by the build; a test fails if the policy and the script differ.
 - A future site-wide Content Security Policy must allow the bootstrap's hash and `worker-src blob:`
   for the frame, since a `srcdoc` document inherits its parent's policy.
@@ -67,9 +69,8 @@ run's nonce; a message without it is ignored.
 | host → worker | `{ ping, nonce, n }` every 250 ms | Heartbeat (R19) |
 | worker → host | `{ pong, nonce, n }` | Answered as soon as the worker's event loop is free |
 | worker → host | `{ started, nonce }` | The code is about to run; the heartbeat starts |
-| worker → host | `{ logs, nonce, entries, dropped, cleared }` | A batch (R18); `cleared` when `console.clear` emptied the logs before it |
-| worker → host | `{ pending, nonce, timers, requests }` | When the counts change |
-| worker → host | `{ uncaught, nonce, entry, at }` | An uncaught error or rejection, as a log entry, with its place in the worker's script (`at`), which the host maps to the code's line |
+| worker → host | `{ logs, nonce, entries, dropped, cleared, uncaught }` | A batch (R18); `cleared` when `console.clear` emptied the logs before it; `uncaught` counts the run's uncaught errors so far, dropped ones too. An uncaught error or rejection is an `error` entry under the same limit (T220), with its place in the worker's script (`at`), which the host maps to the code's line |
+| worker → host | `{ pending, nonce, timers, requests }` | When the counts change, at most once per 50 ms: thousands of timers froze the page otherwise (T220) |
 | worker → host | `{ end, nonce, uncaught }` | Nothing is left to do (R18) |
 | host → bootstrap | `{ stop, nonce }` | `worker.terminate()` (R24) |
 
@@ -97,7 +98,17 @@ rendering stays in the Playground's window, with a Try again that clears the log
 | `Worker`, `SharedWorker` | Not offered (R18) |
 | Stream reads, `scheduler.postTask`, locks and the like | Pending until they settle; a read of a stream that never ends keeps the run going until Stop, as a request that never answers does (FR-037) |
 | `AbortSignal.timeout` | A pending timer once the code listens for its `abort`; a signal only passed to `fetch` holds nothing (FR-037) |
-| A message to the code's own port | Pending until it has arrived; a port with a handler and no message isn't pending (FR-037) |
+| A message to the code's own port or `BroadcastChannel` | Pending until it has arrived, by a short wait (10 ms and 50 ms); one with a handler and no message isn't pending (FR-037) |
+| `FileReader`, `OffscreenCanvas.convertToBlob`, `FontFace` and `FontFaceSet`'s `load`, `ImageDecoder.decode`, the codecs' `flush`, `navigator.gpu.requestAdapter` | Pending until they end (FR-037) |
+| `setTimeout` and `setInterval` given a string | The browser's refusal, as `eval`'s, is logged as an uncaught error; they return 0 and run nothing (FR-037, T228) |
+
+Not counted, so a run with nothing else pending ends without them: what only an event can say has
+ended and the code itself starts with no call of its own to count, as a codec's output with no `flush`,
+a `WebTransport`, and work submitted to a GPU device. Awaiting them holds nothing, as with a promise
+of the code's own; a timer or Stop is the way to wait (FR-036, T221).
+
+A run ends 10 ms after nothing is left: the browser reports an unhandled rejection in a task of its
+own after the microtasks, which the end must not pass (FR-035, T218).
 
 `close()`, on the scope and its prototypes, logs the `closed` note and ends the run before closing
 the worker, so a closed worker doesn't read as blocked (T188).
@@ -107,3 +118,9 @@ the worker, so a closed worker doesn't read as blocked (T188).
 The runtime reports a thrown error's position in the worker script; the host subtracts the
 prelude's lines and maps it through the source map of `getRunnable` to the line in the visitor's
 code (R13). A position that maps to nothing gives no line, never a wrong one.
+
+A thrown value that isn't an `Error` has no stack, so in a callback its line is the browser's, from
+the `error` event (T227). Three cases have no line: a value that isn't an `Error` thrown in the code's
+own async body, a rejection with such a value, as nothing says where they came from, and in WebKit,
+one thrown in a callback, as its `error` event is muted to "Script error." from an opaque origin, so
+the runtime catches what its callbacks throw there, to keep the value.

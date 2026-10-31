@@ -413,6 +413,7 @@ export const siteText = deepFreeze({
       cantKeepTypeScript: "This browser can't keep TypeScript for offline use, so the Playground downloads it again on each visit.",
       actions: { undo: 'Undo', run: 'Run', 'share-with': 'Share with…', 'copy-code': 'Copy the code', retry: 'Retry' },
       codeCopied: 'Code copied.',
+      codeRefused: "This code is too long to share as a link, and it couldn't be copied.",
       dismiss: 'Dismiss',
     },
     popups: {

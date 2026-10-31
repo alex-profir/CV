@@ -68,6 +68,9 @@ export const CODE_URI = Uri.parse('file:///playground.ts');
 // service, so their text is never checked as code.
 const OUTPUT_LANGUAGE = 'playground-output';
 
+// Monaco reads Linux from the user agent too, and has keys of its own there.
+const LINUX = navigator.userAgent.includes('Linux');
+
 // How long a check may stay out before it counts as lost.
 const CHECK_LIMIT_MS = 15_000;
 
@@ -157,6 +160,16 @@ export function createEditing(init: EngineInit) {
         lastColumn = column;
       }
       return { data: new Uint32Array(data) };
+    },
+  });
+
+  // A definition in another file, as `cv`'s or `console`'s, can't open in an
+  // editor of its own: it shows in place, as Peek shows it (FR-081).
+  const opener = editor.registerEditorOpener({
+    openCodeEditor: (source, resource) => {
+      if (resource.toString() === model.uri.toString()) return false;
+      source.trigger('playground', 'editor.action.peekDefinition', null);
+      return true;
     },
   });
 
@@ -266,7 +279,33 @@ export function createEditing(init: EngineInit) {
       { keybinding: KeyMod.CtrlCmd | KeyCode.KeyL, command: '-expandLineSelection' },
       { keybinding: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.LeftArrow, command: '-cursorWordPartLeft' },
       { keybinding: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.RightArrow, command: '-cursorWordPartRight' },
+      // Each has another key, free of all of those (FR-084).
+      { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.KeyL), command: 'expandLineSelection', when: 'textInputFocus' },
+      ...(init.mac
+        ? [
+            { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.LeftArrow), command: 'cursorWordPartLeft', when: 'textInputFocus' },
+            { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.RightArrow), command: 'cursorWordPartRight', when: 'textInputFocus' },
+          ]
+        : []),
     ]);
+    // On Linux, the list's keys in place of Monaco's own (FR-083): its format
+    // key is Ctrl+Shift+I, the developer tools', and it gives Shift+Alt with the
+    // arrows to adding cursors, which keep Ctrl+Shift with the arrows.
+    if (LINUX) {
+      const editable = 'editorTextFocus && !editorReadonly';
+      editor.addKeybindingRules([
+        { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyI, command: '-editor.action.formatDocument' },
+        { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.KeyF, command: 'editor.action.formatDocument', when: `editorHasDocumentFormattingProvider && ${editable}` },
+        { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyMod.Alt | KeyCode.DownArrow, command: '-editor.action.copyLinesDownAction' },
+        { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.DownArrow, command: '-editor.action.insertCursorBelow' },
+        { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.DownArrow, command: 'editor.action.copyLinesDownAction', when: editable },
+        { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyMod.Alt | KeyCode.UpArrow, command: '-editor.action.copyLinesUpAction' },
+        { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.UpArrow, command: '-editor.action.insertCursorAbove' },
+        { keybinding: KeyMod.Shift | KeyMod.Alt | KeyCode.UpArrow, command: 'editor.action.copyLinesUpAction', when: editable },
+        { keybinding: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.F10, command: '-editor.action.peekDefinition' },
+        { keybinding: KeyMod.Alt | KeyCode.F12, command: 'editor.action.peekDefinition', when: 'editorHasDefinitionProvider && editorTextFocus && !isInEmbeddedEditor' },
+      ]);
+    }
     created.addAction({ id: 'playground.run', label: init.text.runCommand, keybindings: [KeyMod.CtrlCmd | KeyCode.Enter], run: () => init.onCommand('playground.run') });
     created.addAction({ id: 'playground.keys', label: init.text.keysCommand, keybindings: [KeyMod.Alt | KeyCode.F1], run: () => init.onCommand('playground.keys') });
     if (viewState !== null) created.restoreViewState(viewState as editor.ICodeEditorViewState);
@@ -410,6 +449,7 @@ export function createEditing(init: EngineInit) {
     dispose: () => {
       view?.dispose();
       names.dispose();
+      opener.dispose();
       model.dispose();
     },
   };

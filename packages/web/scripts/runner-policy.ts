@@ -8,7 +8,7 @@ export type RunnerScripts = { bootstrap: string; runtime: string; policy: string
 export const scriptHash = (text: string): string => `sha256-${crypto.createHash('sha256').update(text, 'utf8').digest('base64')}`;
 
 // The frame's Content Security Policy for a bootstrap script.
-export const runnerPolicy = (bootstrap: string): string => `default-src 'none'; script-src '${scriptHash(bootstrap)}'; worker-src blob:; connect-src *`;
+export const runnerPolicy = (bootstrap: string): string => `default-src 'none'; script-src '${scriptHash(bootstrap)}'; worker-src blob:; connect-src * data: blob:`;
 
 // The policy allows exactly this bootstrap, and the bootstrap can sit in the
 // frame's `<script>` element.

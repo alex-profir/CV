@@ -42,8 +42,12 @@ export function shownText(value: Shown, nested = false): string {
       return 'undefined';
     case 'fn':
       return fill(value.cls ? logs.className : logs.functionName, { name: value.name === '' ? logs.anonymous : value.name });
-    case 'err':
-      return value.message === '' ? value.name : `${value.name}: ${value.message}`;
+    case 'err': {
+      const held = [...(value.cause === undefined ? [] : [` cause: ${shownText(value.cause, true)}`]), ...(value.errors === undefined ? [] : [` errors: ${shownText(value.errors, true)}`])];
+      return `${value.message === '' ? value.name : `${value.name}: ${value.message}`}${held.length === 0 ? '' : ` {${held.join(',')} }`}`;
+    }
+    case 'hole':
+      return '';
     case 'circ':
       return logs.circular;
     case 'deep':
@@ -55,7 +59,7 @@ export function shownText(value: Shown, nested = false): string {
     case 'map':
       return `Map(${value.entries.length + value.more}) {${[...value.entries.map(([key, item]) => ` ${shownText(key, true)} => ${shownText(item, true)}`), ...more(value.more).map((text) => ` ${text}`)].join(',')}${value.entries.length + value.more > 0 ? ' ' : ''}}`;
     case 'obj': {
-      const body = [...value.entries.map(([key, item]) => ` ${IDENTIFIER.test(key) ? key : JSON.stringify(key)}: ${shownText(item, true)}`), ...more(value.more).map((text) => ` ${text}`)];
+      const body = [...value.entries.map(([key, item]) => ` ${IDENTIFIER.test(key) ? key : JSON.stringify(key)}: ${shownText(item, true)}`), ...(value.symbols ?? []).map(([key, item]) => ` [${key}]: ${shownText(item, true)}`), ...more(value.more).map((text) => ` ${text}`)];
       const open = value.ctor === null ? '{' : `${value.ctor} {`;
       return body.length === 0 ? `${open}}` : `${open}${body.join(',')} }`;
     }

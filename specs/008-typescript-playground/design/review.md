@@ -123,3 +123,17 @@ The accessibility check gains the contained state when it can be reached by real
 - Date: 2026-10-31
 - Approved by: Alex Profir (project owner)
 - Notes: Approved as drawn, every row of the table above, including the rows already built.
+
+## Amendment awaiting sign-off (2026-10-31)
+
+Not signed. Nothing here is built except where it says so.
+
+| Change | Why | Export | Code |
+|--------|-----|--------|------|
+| The list of keys holds every key, in groups, with the words in `wireframes.md` under "The list of keys" | FR-085 says every key and lists 29 of about 75; three commands had no key at all (FR-084, T223) | `desktop-39-keys-all-1440.png`, redrawn from the new table once the words are agreed | Not built; the three keys are |
+| The desktop's Copy the code says the clipboard refused, in the phone's signed words | The button seemed to do nothing (FR-055, T225) | Words in `wireframes.md` | Built, no new words |
+
+An owner decision comes with the first row: Monaco leaves Go to definition, Peek definition, Every use, Quick
+fixes and Tab moves focus out of the command palette on every system, against FR-085's "every editor
+command". The recommendation is to amend FR-085 to say the palette holds what the editor offers it
+and the list holds every key, rather than rebuild Monaco's palette.

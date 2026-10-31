@@ -86,15 +86,5 @@ export const keysFor = (command: KeyCommand, mac: boolean): string[] => (mac ? c
 
 export const vsCodeKeysFor = (command: KeyCommand, mac: boolean): string[] => (mac ? command.vsCode.mac : command.vsCode.other);
 
-// An `aria-keyshortcuts` value for a key label: `Cmd+Enter` → `Meta+Enter`.
-export function ariaKeys(label: string): string {
-  return label
-    .split(' ')
-    .map((chord) => chord.replace(/\bCmd\b/g, 'Meta').replace(/\bCtrl\b/g, 'Control').replace(/\bOption\b/g, 'Alt'))
-    .join(' ');
-}
-
-export const runKey = (mac: boolean) => (mac ? 'Cmd+Enter' : 'Ctrl+Enter');
-export const paletteKey = () => 'F1';
 export const tabFocusKey = (mac: boolean) => (mac ? 'Ctrl+Shift+M' : 'Ctrl+M');
 export const hoverKey = (mac: boolean) => (mac ? 'Cmd+K Cmd+I' : 'Ctrl+K Ctrl+I');

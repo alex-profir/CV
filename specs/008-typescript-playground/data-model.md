@@ -269,9 +269,10 @@ type Shown =
   | { t: 'null' } | { t: 'undef' }
   | { t: 'fn'; name: string; cls: boolean }
   | { t: 'arr'; items: Shown[]; more: number }
-  | { t: 'obj'; ctor: string | null; entries: [string, Shown][]; more: number }
+  | { t: 'hole' }  // an array's hole, as `[1, , 3]` writes it
+  | { t: 'obj'; ctor: string | null; entries: [string, Shown][]; more: number; symbols?: [string, Shown][] }
   | { t: 'map'; entries: [Shown, Shown][]; more: number } | { t: 'set'; items: Shown[]; more: number }
-  | { t: 'date'; v: string } | { t: 'err'; name: string; message: string }
+  | { t: 'date'; v: string } | { t: 'err'; name: string; message: string; cause?: Shown; errors?: Shown }
   | { t: 'circ' } | { t: 'deep' };   // a circular reference; a value below the depth limit
 ```
 

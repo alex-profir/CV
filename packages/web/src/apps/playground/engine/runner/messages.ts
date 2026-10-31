@@ -29,11 +29,12 @@ export function isShown(value: unknown, depth = 0): value is Shown {
     case 'undef':
     case 'circ':
     case 'deep':
+    case 'hole':
       return true;
     case 'fn':
       return typeof value['name'] === 'string' && typeof value['cls'] === 'boolean';
     case 'err':
-      return typeof value['name'] === 'string' && typeof value['message'] === 'string';
+      return typeof value['name'] === 'string' && typeof value['message'] === 'string' && (value['cause'] === undefined || nested(value['cause'])) && (value['errors'] === undefined || nested(value['errors']));
     case 'arr':
     case 'set':
       return isList(value['items']) && value['items'].every(nested) && isCount(value['more']);
@@ -44,6 +45,7 @@ export function isShown(value: unknown, depth = 0): value is Shown {
         isList(value['entries']) &&
         value['entries'].every((pair) => Array.isArray(pair) && pair.length === 2 && typeof pair[0] === 'string' && nested(pair[1])) &&
         isCount(value['more']) &&
+        (value['symbols'] === undefined || (isList(value['symbols']) && value['symbols'].every((pair) => Array.isArray(pair) && pair.length === 2 && typeof pair[0] === 'string' && nested(pair[1])))) &&
         (value['ctor'] === null || typeof value['ctor'] === 'string')
       );
     default:
@@ -59,6 +61,7 @@ const WORKER_NOTES: readonly unknown[] = ['prompt', 'confirm', 'closed'];
 
 export function isWorkerEntry(value: unknown): value is LogEntry {
   if (!isRecord(value) || typeof value['id'] !== 'number' || 'line' in value) return false;
+  // `at` is only ever read as a place, by the host.
   if (value['cut'] !== undefined && value['cut'] !== true) return false;
   if (!Array.isArray(value['values'])) return false;
   if (value['level'] === 'note') return value['values'].length === 0 && isRecord(value['note']) && WORKER_NOTES.includes(value['note']['key']);
