@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "git update-index --assume-unchanged vercel.json && npm run build",
+  "outputDirectory": "packages/web/dist/site",
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "headers": { "Cache-Control": "public, max-age=31536000, immutable" },
+      "continue": true
+    },
+    {
+      "src": "/(index|cv|404)\\.html",
+      "status": 404,
+      "headers": { "Cache-Control": "no-cache" },
+      "dest": "/404.html"
+    },
+    { "src": "/", "headers": { "Cache-Control": "no-cache" }, "dest": "/index.html" },
+    { "src": "/cv/?", "headers": { "Cache-Control": "no-cache" }, "dest": "/cv.html" },
+    { "src": "/sw\\.js", "headers": { "Cache-Control": "no-cache" }, "continue": true },
+    { "handle": "filesystem" },
+    {
+      "src": "/.*",
+      "status": 404,
+      "headers": { "Cache-Control": "no-cache" },
+      "dest": "/404.html"
+    }
+  ]
+}
