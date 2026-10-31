@@ -1,6 +1,6 @@
 # Design Review: The TypeScript Playground
 
-**Status**: Approved (mockup `1188830`). Amended 2026-10-30, extended 2026-10-31: the amendment at the end is approved (mockup `7d141a4`).
+**Status**: Approved (mockup `1188830`). Amended 2026-10-30, extended 2026-10-31 (mockup `7d141a4`), and amended again 2026-10-31 (`wireframes.md` at `e24316a`): both amendments at the end are approved.
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -124,9 +124,9 @@ The accessibility check gains the contained state when it can be reached by real
 - Approved by: Alex Profir (project owner)
 - Notes: Approved as drawn, every row of the table above, including the rows already built.
 
-## Amendment awaiting sign-off (2026-10-31)
+## Second amendment of 2026-10-31: approved
 
-Not signed. Nothing here is built except where it says so.
+Signed below. Nothing here is built except where it says so.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
@@ -136,4 +136,13 @@ Not signed. Nothing here is built except where it says so.
 An owner decision comes with the first row: Monaco leaves Go to definition, Peek definition, Every use, Quick
 fixes and Tab moves focus out of the command palette on every system, against FR-085's "every editor
 command". The recommendation is to amend FR-085 to say the palette holds what the editor offers it
-and the list holds every key, rather than rebuild Monaco's palette.
+and the list holds every key, rather than rebuild Monaco's palette. Decided 2026-10-31: FR-085 is
+amended so, as recommended.
+
+### Sign-off of the second amendment
+
+- Reviewed version: the rows above and `wireframes.md`'s "The list of keys", at commit `e24316a`
+- Date: 2026-10-31
+- Approved by: Alex Profir (project owner)
+- Notes: Approved as proposed. `desktop-39-keys-all-1440.png` is redrawn from the agreed table, and
+  T225's message gets its export, as T223 and T230 say; neither changes the agreed words.
