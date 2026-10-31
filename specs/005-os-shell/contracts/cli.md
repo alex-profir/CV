@@ -78,5 +78,5 @@ The summary lists the root's variants like any page's, for example:
 
 ## Timing
 
-The whole check, with the root's runs, stays under 8 minutes on the owner's machine with no
-internet connection (SC-010).
+The whole check, with the root's runs, stays within the latest feature's budget on the owner's
+machine with no internet connection (SC-010, amended 2026-10-30 by 008: it said under 8 minutes).

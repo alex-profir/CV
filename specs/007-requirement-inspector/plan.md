@@ -182,7 +182,7 @@ shells" means at 1440 × 900 and at 375 × 812 with touch. UI targets follow
 | 007-requirement-inspector-FR-031 | check `shell-states.test.ts`: the summary lists `/` under `accessibility` in every inspector state at both widths, and `other-sites` records every spec view in both shells | Non-UI |
 | 007-requirement-inspector-FR-032 | check `keyboard.test.ts`: the inspector flow passes on the real build; a copy where Back leaves focus on `body` fails, naming the step | Non-UI |
 | 007-requirement-inspector-FR-033 | check `offline.test.ts`: the spec views pass offline at both widths; a copy whose data file isn't precached fails, naming the view, shell and width | Non-UI |
-| 007-requirement-inspector-FR-034 | check `cli.test.ts`: the local command and the CI step are the same; every inspector problem line names the view, shell and width, and the requirement where there is one; two runs give the same result; with an untracked file in a copy, the result is the same as without; the whole check stays within 006's budget plus 3 minutes off CI | Non-UI |
+| 007-requirement-inspector-FR-034 | check `cli.test.ts`: the local command and the CI step are the same; every inspector problem line names the view, shell and width, and the requirement where there is one; two runs give the same result; with an untracked file in a copy, the result is the same as without; the whole check stays within the latest feature's budget off CI, 008's 1,020 s (spec FR-034, amended 2026-10-31 by 008-typescript-playground; it said 006's budget plus 3 minutes) | Non-UI |
 
 Success criteria without an FR of their own:
 

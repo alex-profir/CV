@@ -5,6 +5,7 @@
 // render is exactly what the build pre-rendered: both shells, with the CV
 // window open on the desktop.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { Resume, SiteData } from '@cv/content';
 import { initialState, osReducer, shellQuery, viewName as nameOf } from '@cv/os-core';
 import type { Area, OsAction, OsState, OsText, ReducerContext, ShellName, ViewId } from '@cv/os-core';
@@ -16,6 +17,8 @@ import { fill, siteText } from '../site-text.ts';
 import { Desktop } from '../shells/desktop/Desktop.tsx';
 import { Mobile } from '../shells/mobile/Mobile.tsx';
 import { Announcer } from './Announcer.tsx';
+import { onAnnounce } from './announce.ts';
+import { publishOsState } from './os-state.ts';
 import type { Announcement } from './Announcer.tsx';
 import { focusTarget, watchInput } from './focus.ts';
 import { METRICS } from './metrics.ts';
@@ -33,7 +36,12 @@ export type OsProps = { resume: Resume; siteData: SiteData; apps: readonly App[]
 
 const TEXT: OsText = { aboutName: siteText.os.views.about, ...siteText.os.announce };
 
-const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'about';
+const isView = (value: unknown): value is ViewId => value === 'cv' || value === 'terminal' || value === 'playground' || value === 'about';
+
+// The first app in the shell that says this address is its own.
+export function appFromAddress(apps: readonly App[], href: string, shell: 'desktop' | 'mobile'): App | undefined {
+  return apps.find((app) => app.shells.includes(shell) && app.opensFromAddress?.(href) === true);
+}
 
 // The desktop area: the viewport between the menu bar and the dock's space,
 // measured when the desktop is in the page.
@@ -115,8 +123,33 @@ export function Os({ resume, siteData, apps }: OsProps) {
     startLoading();
     const early = window.osEarlyView;
     delete window.osEarlyView;
-    if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
-  }, [state.shell, state.mobile.open]);
+    // An app's own address opens it: in front of the CV window on the desktop
+    // and full screen on a phone (008 contracts/shell.md Opening from a link).
+    const fromAddress = appFromAddress(apps, location.href, state.shell);
+    if (fromAddress !== undefined) {
+      fromAddress.onOpenFromAddress?.(state.shell);
+      const view = fromAddress.id as ViewId;
+      dispatch(state.shell === 'desktop' ? { type: 'open', view } : { type: 'mobileOpen', view });
+    } else if (state.shell === 'mobile' && state.mobile.open === null && isView(early)) dispatch({ type: 'mobileOpen', view: early });
+  }, [state.shell, state.mobile.open, apps]);
+
+  // A link pasted into a tab already on the site changes only the fragment:
+  // no load, so it is read here, as on hydration (008 FR-053, FR-060).
+  useEffect(() => {
+    if (state.shell === 'both') return undefined;
+    const shell = state.shell;
+    const onHashChange = () => {
+      const fromAddress = appFromAddress(apps, location.href, shell);
+      if (fromAddress === undefined) return;
+      fromAddress.onOpenFromAddress?.(shell);
+      const view = fromAddress.id as ViewId;
+      // Out of its specs, if they show, or the link's result stays out of sight.
+      dispatch({ type: 'showApp', view });
+      dispatch(shell === 'desktop' ? { type: 'open', view } : { type: 'mobileOpen', view });
+    };
+    addEventListener('hashchange', onHashChange);
+    return () => removeEventListener('hashchange', onHashChange);
+  }, [state.shell, apps]);
 
   // Focus moved after a key shows its indicator (FR-024).
   useEffect(() => watchInput(), []);
@@ -185,6 +218,14 @@ export function Os({ resume, siteData, apps }: OsProps) {
       history.back();
     }
   }, []);
+
+  // Apps' own announcements, through the same region (008 research R23). Each
+  // commits at once, from `announce`'s microtask: two waiting for one render
+  // would leave only the later for the Announcer to hear of (008 FR-064).
+  useEffect(() => onAnnounce((message) => flushSync(() => setAnnouncement((previous) => ({ message, id: (previous?.id ?? 0) + 1 })))), []);
+
+  // The state as rendered, for apps that read where their window is (008 FR-050).
+  useEffect(() => publishOsState(state), [state]);
 
   // The reducer's focus moves and announcements, once their elements exist.
   useEffect(() => {

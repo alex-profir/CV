@@ -52,10 +52,12 @@ describe('005-os-shell-FR-037: every control is at least 24 × 24 px, and Home 4
     await press(page, 'Escape', 'Alt+Shift+S');
     await page.locator(`${CV} .pad`).waitFor();
     await expectNoSmall(page, 'resize pad');
-    await press(page, 'Escape', 'Alt+Shift+F');
+    await press(page, 'Escape');
+    await page.getByRole('button', { name: 'Maximize CV' }).click();
     await expect.poll(() => page.locator(CV).getAttribute('data-maximized')).toBe('');
     await expectNoSmall(page, 'maximized');
-    await press(page, 'Alt+Shift+F', 'Alt+Shift+H');
+    await page.getByRole('button', { name: 'Restore CV' }).click();
+    await page.getByRole('button', { name: 'Minimize CV' }).click();
     await expect.poll(() => page.locator(CV).isHidden()).toBe(true);
     await expectNoSmall(page, 'minimized');
   });

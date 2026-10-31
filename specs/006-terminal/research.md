@@ -949,7 +949,10 @@ the typed text with `^C` after it, as an entry that isn't added to the history, 
   so the `os` script doesn't grow. SC-013's "within 5%" is checked by `build-site.ts` against a
   budget written next to the check: as built, the `os` script's size on `main` before the
   amendment plus 5%. T127 measured 108,962 bytes (gzip -9); merging 007's inspector from `main`
-  (`a3f9532`) raised that base to 113,581, so `OS_BUDGET = 119_260`.
+  (`a3f9532`) raised that base to 113,581, so `OS_BUDGET = 119_260`. Amended 2026-10-31 by
+  008-typescript-playground: 008 puts the Playground's interface in the `os` script (008 plan), so
+  the base is re-measured with it, 142,646 bytes before this amendment, and `OS_BUDGET = 149_778`.
+  With the amendment the script is 147,886, 3.7% over that base.
 - **Warm-up**: the worker runs `true` once before it answers `ready`, so the first visitor line
   doesn't pay just-bash's first-run cost (about 100 ms in Node) (SC-002).
 

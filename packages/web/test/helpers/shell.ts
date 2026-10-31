@@ -3,6 +3,7 @@
 // Chromium and drives it by clicks, drags, touch, keys and viewport changes,
 // never through a hook in the site.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { onTestFinished } from 'vitest';
 import type { Page } from 'playwright';
@@ -42,6 +43,10 @@ export type ShellOptions = {
   // Run before the page is opened, such as an init script that records
   // what the page does.
   beforeGoto?: (page: Page) => Promise<void>;
+  // Permissions for the site, such as the clipboard's.
+  permissions?: string[];
+  // Chromium by default (008 research R25).
+  engine?: OpenPageOptions['engine'];
 };
 
 export const PHONE_USER_AGENT =
@@ -51,7 +56,7 @@ export const PHONE_USER_AGENT =
 const OS_SCRIPT = /\/assets\/os-[\w-]{8}\.js$/;
 
 function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}): OpenPageOptions {
-  const { width, height, deviceScaleFactor, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform } = options;
+  const { width, height, deviceScaleFactor, javaScriptEnabled, reducedMotion, forcedColors, serviceWorkers, hasTouch, userAgent, cpuThrottling, platform, permissions, engine } = options;
   return {
     width,
     height,
@@ -62,6 +67,8 @@ function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}
     ...(serviceWorkers === undefined ? {} : { serviceWorkers }),
     ...(hasTouch === undefined ? {} : { hasTouch }),
     ...(userAgent === undefined ? {} : { userAgent }),
+    ...(permissions === undefined ? {} : { permissions }),
+    ...(engine === undefined ? {} : { engine }),
     ...extra,
     beforeGoto: async (page) => {
       if (cpuThrottling !== undefined) {
@@ -243,7 +250,7 @@ export function focusedElement(page: Page): Promise<string> {
   });
 }
 
-export type Indicator = { ok: boolean; changed: number; needed: number; coveredBy: string | null };
+export type Indicator = { ok: boolean; changed: number; needed: number; coveredBy: string | null; pictures?: string };
 
 // The focused element's indicator, measured as 004's keyboard part does:
 // the pixels that change by 3:1 or more against the same box unfocused,
@@ -281,7 +288,14 @@ export async function focusIndicator(page: Page): Promise<Indicator> {
   });
   const scale = decodePng(focused).width / clip.width;
   const changed = indicatorPixels(decodePng(unfocused), decodePng(focused)) / (scale * scale);
-  return { ok: changed >= needed && state.coveredBy === null, changed, needed, coveredBy: state.coveredBy };
+  // A reading under the threshold has only come in full runs: the two pictures say why.
+  let pictures: string | undefined;
+  if (changed < needed) {
+    pictures = fs.mkdtempSync(path.join(os.tmpdir(), 'focus-indicator-'));
+    fs.writeFileSync(path.join(pictures, 'focused.png'), focused);
+    fs.writeFileSync(path.join(pictures, 'unfocused.png'), unfocused);
+  }
+  return { ok: changed >= needed && state.coveredBy === null, changed, needed, coveredBy: state.coveredBy, ...(pictures === undefined ? {} : { pictures }) };
 }
 
 // Resizes the viewport and waits two frames for the shell to follow.

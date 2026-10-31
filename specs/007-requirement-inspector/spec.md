@@ -6,6 +6,9 @@
 
 **Status**: Approved
 
+**Amended**: 2026-10-31 by 008-typescript-playground: FR-034's time follows the latest feature's
+budget (see Clarifications, Session 2026-10-31).
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -22,6 +25,12 @@
 > Settings are separate features. See docs/vision.md and specs/005-os-shell.
 
 ## Clarifications
+
+### Session 2026-10-31 (amended by 008-typescript-playground)
+
+- Q: 007's 900 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+  allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
+  feature's budget, now 008's 1,020 s (FR-034).
 
 ### Session 2026-10-28
 
@@ -469,7 +478,9 @@ references `007-requirement-inspector-FR-###`. UI implementing a requirement car
   online one and says that its links need a connection.
 - **FR-034**: The checks of this spec MUST run in the same one command and on the same pull
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
-  app, the shell, the width and the requirement in every failure.
+  app, the shell, the width and the requirement in every failure. The whole check, with every later
+  feature's parts, stays within the latest feature's budget on the owner's machine. Amended
+  2026-10-31 by 008-typescript-playground: it held the whole check to 006's budget plus 3 minutes, 900 s.
 
 ### Key Entities
 

@@ -129,6 +129,21 @@ describe('004-cv-page-FR-045: the fonts are licensed, served by the site, and ke
   });
 });
 
+describe('008-typescript-playground-FR-068: the editor\'s icon font is the engine\'s own, not a text face', () => {
+  // Monaco's icon font (008 research R22) is loaded only with the engine, from
+  // its own folder: the engine's one style sheet declares it and nothing else.
+  test("the engine's style sheet holds one @font-face, Monaco's icon font, from the engine's folder", () => {
+    const sheets = builtSheets().filter((sheet) => sheet.file.startsWith('/playground/'));
+    expect(sheets).toHaveLength(1);
+    const folder = sheets[0]!.file.replace(/\/[^/]+$/, '');
+    const faces = fontFaces(sheets[0]!.css);
+    expect(faces).toHaveLength(1);
+    expect(faces[0]).toMatch(/font-family:\s*["']?codicon["']?\s*[;}]/);
+    expect(faces[0]).toContain(`url(${folder}/codicon-`);
+    for (const entry of fonts.families) expect(faces[0]!.includes(entry.family), entry.family).toBe(false);
+  });
+});
+
 describe('004-cv-page-FR-046: the fonts are declared without a literal the token check reports', () => {
   test('no style sheet in the repository holds an @font-face rule, and no style sheet or component names a family', () => {
     const { files } = siteFiles(REPO_ROOT);
@@ -140,7 +155,7 @@ describe('004-cv-page-FR-046: the fonts are declared without a literal the token
   });
 
   test('each built style sheet holds one @font-face per fonts.json file', () => {
-    const sheets = builtSheets();
+    const sheets = builtSheets().filter((sheet) => !sheet.file.startsWith('/playground/'));
     expect(sheets.length).toBeGreaterThan(0);
     const family = (face: string) => /font-family:\s*(["']?)([^;"'}]+)\1/.exec(face)?.[2]?.trim();
     for (const sheet of sheets) {

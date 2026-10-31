@@ -204,7 +204,7 @@ Success criteria without an FR are also tested:
 - SC-004: `performance.test.ts` runs 50 generated specs and 2,000 tests in under 10 s. The time
   is asserted off CI only, because SC-004 is about the owner's machine.
 - SC-003 and SC-007 are covered by FR-025 and FR-022 above, plus quickstart.md.
-- SC-008 (added 2026-10-29): `repo-settings.test.ts` asserts `timeout-minutes: 6` on every job
+- SC-008 (added 2026-10-29, amended 2026-10-30 by 008): `repo-settings.test.ts` asserts `timeout-minutes: 6` on every job but `site`, which has 20,
   and no browser install in `test`, so a job past the budget fails. Quickstart scenario 13
   measures a real run.
 - SC-009 (added 2026-10-29): covered by FR-035 and FR-034 above; quickstart scenarios 11 and 13
@@ -380,4 +380,6 @@ The amendment's re-check (2026-10-29) found none either.
   slow one. The `site` job's measured 3.5 minutes leaves room; if a hosted runner ever needs
   more, the fix is to make that job faster (or amend SC-008), not to raise the limit quietly.
   Amended 2026-10-30 by 006-terminal: SC-008 gives the `site` job 12 minutes, as it had grown to
-  about 5.5 minutes with the Terminal's lines and 007's inspector.
+  about 5.5 minutes with the Terminal's lines and 007's inspector. Amended 2026-10-30 by
+  008-typescript-playground: SC-008 gives it 20 minutes, as 008's part took the site check past 7
+  minutes before Lighthouse.

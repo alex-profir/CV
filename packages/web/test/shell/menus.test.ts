@@ -112,8 +112,8 @@ describe('005-os-shell-FR-029: menu commands show their shortcut and expose it',
         ['Show specs', '', null],
         ['Move…', `${modifier}+Shift+P`, 'Alt+Shift+P'],
         ['Resize…', `${modifier}+Shift+S`, 'Alt+Shift+S'],
-        ['Minimize', `${modifier}+Shift+H`, 'Alt+Shift+H'],
-        ['Maximize', `${modifier}+Shift+F`, 'Alt+Shift+F'],
+        ['Minimize', '', null],
+        ['Maximize', '', null],
         ['Close', `${modifier}+Shift+W`, 'Alt+Shift+W'],
       ]);
       await page.keyboard.press('Escape');
@@ -126,5 +126,36 @@ describe('005-os-shell-FR-029: menu commands show their shortcut and expose it',
       ]);
       await page.context().close();
     }
+  });
+});
+
+describe('005-os-shell-FR-063 005-os-shell-FR-065 008-typescript-playground-FR-086: the window menu minimizes and maximizes, with no key', () => {
+  const entry = (page: Page, name: string) => page.locator('#menu-app [role="menuitem"]').filter({ has: page.locator('.label', { hasText: new RegExp(`^${name}$`) }) });
+
+  test('Minimize and Maximize show no key and no aria-keyshortcuts, and both work', async () => {
+    const page = await openShell({ width: 1440, height: 900 });
+    const cv = page.locator('#os .window[data-view="cv"]');
+    await page.click('#menu-title-app');
+    for (const name of ['Minimize', 'Maximize']) {
+      expect((await entry(page, name).locator('.keys').textContent())?.trim(), name).toBe('');
+      expect(await entry(page, name).getAttribute('aria-keyshortcuts'), name).toBeNull();
+    }
+    await entry(page, 'Maximize').click();
+    await expect.poll(() => cv.getAttribute('data-maximized')).toBe('');
+    await page.click('#menu-title-app');
+    expect(await entry(page, 'Restore').getAttribute('aria-keyshortcuts')).toBeNull();
+    await entry(page, 'Restore').click();
+    await expect.poll(() => cv.getAttribute('data-maximized')).toBeNull();
+    await page.click('#menu-title-app');
+    await entry(page, 'Minimize').click();
+    await expect.poll(() => cv.isHidden()).toBe(true);
+  });
+
+  test('the controls are named for their window', async () => {
+    const page = await openShell({ width: 1440, height: 900 });
+    expect(await page.getByRole('button', { name: 'Minimize CV' }).count()).toBe(1);
+    expect(await page.getByRole('button', { name: 'Maximize CV' }).count()).toBe(1);
+    await page.getByRole('button', { name: 'Maximize CV' }).click();
+    expect(await page.getByRole('button', { name: 'Restore CV' }).count()).toBe(1);
   });
 });

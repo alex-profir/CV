@@ -6,6 +6,8 @@ import type { BrowserContext, Page, Request } from 'playwright';
 import type { Problem } from '../report.ts';
 import { waitForWorker } from './offline.ts';
 
+const IDLE_WAIT_MS = 10_000;
+
 const local = (address: string, origin: string) => address.startsWith('data:') || address.startsWith('blob:') || address.startsWith(`${origin}/`) || address === origin;
 
 const source = (request: Request) => (request.serviceWorker() !== null ? 'the service worker' : 'the page');
@@ -52,6 +54,8 @@ export async function otherSiteProblems(
     // What the step asked for, such as a font first used now.
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
   }
-  await page.waitForLoadState('networkidle');
+  // Only time for requests to be recorded, not a check: a runner frame removed
+  // while it loads can leave Playwright's idle state never firing.
+  await page.waitForLoadState('networkidle', { timeout: IDLE_WAIT_MS }).catch(() => undefined);
   return [...foreign].map(([address, from]) => ({ part: 'other-sites' as const, page: pageLabel, variant, type: 'other-site-request', subject: address, detail: `requested by ${from}` }));
 }

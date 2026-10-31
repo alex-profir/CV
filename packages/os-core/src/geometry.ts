@@ -111,7 +111,8 @@ function boxMeetsTitleBar(box: Geometry, other: Geometry, metrics: Metrics): boo
 // gives such a box, as when a window moved low leaves no room below its
 // title bar, the first step whose title bar is on no other window's stands.
 export function placeWindow(view: ViewId, windows: readonly WindowState[], area: Area, metrics: Metrics): Geometry {
-  if (view === 'terminal') return placeTerminal(windows, area, metrics);
+  if (view === 'terminal') return placeBeside(view, windows, { width: metrics.terminalWidth, height: metrics.terminalHeight }, metrics.terminalMargin, metrics.terminalOffset, area, metrics);
+  if (view === 'playground') return placeBeside(view, windows, { width: metrics.playgroundWidth, height: metrics.playgroundHeight }, metrics.playgroundMargin, metrics.playgroundOffset, area, metrics);
   const size =
     view === 'cv'
       ? fitSize(Math.min(metrics.cvWidth, area.width - 2 * metrics.sideMargin), area.height - metrics.bottomMargin, area, metrics)
@@ -147,28 +148,28 @@ export function placeWindow(view: ViewId, windows: readonly WindowState[], area:
   return clampMove(clearTitleBar ?? box, area, metrics);
 }
 
-// The Terminal's box (006 contracts/shell.md): `terminalWidth` ×
-// `terminalHeight`, fitted to the area with at least `firstTop` left below
-// it. With a shown window in front, its right edge `terminalMargin` inside
-// the area's and its top `terminalOffset` below the front window's, so that
-// title bar stays in view; shortened to keep `firstTop` below it, never under
-// the minimum, and moved up when even that doesn't fit. With none, centered.
-function placeTerminal(windows: readonly WindowState[], area: Area, metrics: Metrics): Geometry {
+// The Terminal's box (006 contracts/shell.md) and the Playground's (008):
+// `size`, fitted to the area with at least `firstTop` left below it. With a
+// shown window in front, its right edge `margin` inside the area's and its
+// top `offset` below the front window's, so that title bar stays in view;
+// shortened to keep `firstTop` below it, never under the minimum, and moved
+// up when even that doesn't fit. With none, centered.
+export function placeBeside(view: ViewId, windows: readonly WindowState[], size: Area, margin: number, offset: number, area: Area, metrics: Metrics): Geometry {
   const room = { width: area.width, height: Math.max(0, area.height - metrics.firstTop) };
-  const size = fitSize(metrics.terminalWidth, metrics.terminalHeight, room.height < minimumOf(area, metrics).height ? area : room, metrics);
-  const front = windows.find((window) => !window.minimized && window.view !== 'terminal' && window.placement === 'set');
+  const fitted = fitSize(size.width, size.height, room.height < minimumOf(area, metrics).height ? area : room, metrics);
+  const front = windows.find((window) => !window.minimized && window.view !== view && window.placement === 'set');
   if (front === undefined) {
-    const y = Math.max(0, Math.min(Math.round((area.height - size.height) / 2), room.height - size.height));
-    return clampMove({ x: Math.round((area.width - size.width) / 2), y, ...size }, area, metrics);
+    const y = Math.max(0, Math.min(Math.round((area.height - fitted.height) / 2), room.height - fitted.height));
+    return clampMove({ x: Math.round((area.width - fitted.width) / 2), y, ...fitted }, area, metrics);
   }
   const minimum = minimumOf(area, metrics).height;
-  let y = front.geometry.y + metrics.terminalOffset;
-  let height = size.height;
+  let y = front.geometry.y + offset;
+  let height = fitted.height;
   if (y + height > room.height) {
-    height = Math.max(Math.min(minimum, size.height), room.height - y);
+    height = Math.max(Math.min(minimum, fitted.height), room.height - y);
     y = Math.max(0, Math.min(y, room.height - height));
   }
   // Inside the area even when it is narrower than the margin needs: clampMove
   // alone would leave a box past the left edge (FR-018, FR-021).
-  return clampMove({ x: Math.max(0, area.width - metrics.terminalMargin - size.width), y, width: size.width, height }, area, metrics);
+  return clampMove({ x: Math.max(0, area.width - margin - fitted.width), y, width: fitted.width, height }, area, metrics);
 }

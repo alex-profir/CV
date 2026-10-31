@@ -87,4 +87,4 @@ real build. Each also runs it on a copy with one fault, which must fail with the
 - Back that leaves focus on `body`.
 - The requirement data left out of the precache list.
 
-Timing: the whole check stays within 006's budget plus 3 minutes, off CI (FR-034).
+Timing: the whole check stays within the latest feature's budget, off CI (FR-034, amended 2026-10-31 by 008; it said 006's budget plus 3 minutes).

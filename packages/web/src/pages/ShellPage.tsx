@@ -71,6 +71,8 @@ export function ShellPage({
           id="os"
           data-req="005-os-shell-FR-001 005-os-shell-FR-002 005-os-shell-FR-004"
           data-requirements={assets.requirements}
+          data-playground={assets.playground?.manifest}
+          data-playground-bytes={assets.playground?.bytes}
           dangerouslySetInnerHTML={{ __html: osHtml }}
         />
       </body>

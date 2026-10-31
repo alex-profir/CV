@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "just-bash": "3.6.0",
+    "monaco-editor": "0.57.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   }

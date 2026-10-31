@@ -36,7 +36,7 @@ export type ShellStatus = 'idle' | 'loading' | 'ready' | 'running' | 'failed';
 
 // What a line asks of the desktop or phone shell around the Terminal
 // (FR-008, FR-014).
-export type OsActions = { open(view: 'cv' | 'about'): void; exit(): void };
+export type OsActions = { open(view: 'cv' | 'playground' | 'about'): void; exit(): void };
 
 // A line waiting for the shell, with what it runs with.
 type Waiting = { entry: Entry; shell: Shell; actions: OsActions | null; history: readonly string[] };

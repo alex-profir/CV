@@ -4,7 +4,7 @@ import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, onTestFinished, test, vi } from 'vitest';
 import { launchChromium } from '../src/browser.ts';
 import { SITE_DIR, readManifest, runCheck } from '../src/check.ts';
-import { ENDLESS_LINE, INSPECTOR, INSPECTOR_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
+import { ENDLESS_LINE, INSPECTOR, INSPECTOR_SHELL_STATES, PLAYGROUND, PLAYGROUND_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, playgroundRunning, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
 import type { ShellState } from '../src/shell-states.ts';
 import { renderProblem, renderReport } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
@@ -190,6 +190,53 @@ const INSPECTOR_EXPECTED: Record<string, unknown> = {
 };
 
 // What each state's page shows, as a visitor would see it.
+// The Playground's states (008 contracts/cli.md States): the element each
+// shows, and whether a run is going on.
+const PLAYGROUND_SHOWN: Record<string, string> = {
+  'desktop/playground-downloading': PLAYGROUND.loading,
+  'desktop/playground-offline': PLAYGROUND.retry,
+  'desktop/playground-ready': `${PLAYGROUND.editor} .monaco-editor`,
+  'desktop/playground-errors': `${PLAYGROUND.root} li > button.error`,
+  'desktop/playground-hover': `${PLAYGROUND.editor} .monaco-hover:not(.hidden)`,
+  'desktop/playground-suggestions': `${PLAYGROUND.editor} .suggest-widget.visible`,
+  'desktop/playground-peek': `${PLAYGROUND.editor} .peekview-widget`,
+  'desktop/playground-rename': `${PLAYGROUND.editor} .rename-box input`,
+  'desktop/playground-quick-fixes': '.action-widget',
+  'desktop/playground-palette': `${PLAYGROUND.editor} .quick-input-widget`,
+  'desktop/playground-menu': SHELL.appMenu,
+  'desktop/playground-options': `${PLAYGROUND.root} section.options-panel`,
+  'desktop/playground-examples': `${PLAYGROUND.root} section.examples-panel`,
+  'desktop/playground-running': `${PLAYGROUND.editor} .monaco-editor`,
+  'desktop/playground-stuck': PLAYGROUND.popup,
+  'desktop/playground-shared': PLAYGROUND.message,
+  'desktop/playground-too-long': `${PLAYGROUND.message}[data-kind="warn"]`,
+  'desktop/playground-broken-link': `${PLAYGROUND.message}[data-kind="error"]`,
+  'desktop/playground-shared-opened': PLAYGROUND.message,
+  'desktop/playground-reset': PLAYGROUND.popup,
+  'desktop/playground-keys': PLAYGROUND.popup,
+  'desktop/playground-specs': '#os section.spec-view[data-view="playground"]',
+  'desktop/playground-narrow': `${PLAYGROUND.editor} .monaco-editor`,
+  'mobile/playground-best-on-desktop': PLAYGROUND.phoneScreen,
+  'mobile/playground-shared-link': PLAYGROUND.phoneScreen,
+  'mobile/playground-best-on-desktop-320': PLAYGROUND.phoneScreen,
+  'mobile/playground-best-on-desktop-landscape': PLAYGROUND.phoneScreen,
+};
+
+const PLAYGROUND_SHOWS: Record<string, (page: Page) => Promise<unknown>> = Object.fromEntries(
+  Object.entries(PLAYGROUND_SHOWN).map(([name, selector]) => [
+    name,
+    async (page: Page) => ({
+      shown: await shown(page, selector),
+      running: name.startsWith('desktop/') && (await count(page, `${PLAYGROUND.toolbar} button.stop`)) > 0 ? await playgroundRunning(page) : false,
+      width: name === 'desktop/playground-narrow' ? Math.round((await page.locator(PLAYGROUND.window).boundingBox())!.width) : null,
+    }),
+  ]),
+);
+
+const PLAYGROUND_EXPECTED: Record<string, unknown> = Object.fromEntries(
+  Object.keys(PLAYGROUND_SHOWN).map((name) => [name, { shown: true, running: name === 'desktop/playground-running' || name === 'desktop/playground-stuck', width: name === 'desktop/playground-narrow' ? 600 : null }]),
+);
+
 const SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'desktop/first-load': async (page) => ({ cv: await shown(page, SHELL.cvWindow), windows: await count(page, '#os .window'), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view') }),
   'desktop/no-window': async (page) => ({ windows: await count(page, '#os .window') }),
@@ -207,6 +254,7 @@ const SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'mobile/about': async (page) => ({ app: await shown(page, SHELL.aboutFullScreen) }),
   ...TERMINAL_SHOWS,
   ...INSPECTOR_SHOWS,
+  ...PLAYGROUND_SHOWS,
 };
 
 const EXPECTED: Record<string, unknown> = {
@@ -226,11 +274,12 @@ const EXPECTED: Record<string, unknown> = {
   'mobile/about': { app: true },
   ...TERMINAL_EXPECTED,
   ...INSPECTOR_EXPECTED,
+  ...PLAYGROUND_EXPECTED,
 };
 
 describe('005-os-shell-FR-048: the checks measure the root in every shell state', () => {
   test("the driver lists data-model.md's states at their sizes, and names each variant", () => {
-    expect(SHELL_STATES.filter((state) => !TERMINAL_STATES.includes(state) && !INSPECTOR_SHELL_STATES.includes(state)).map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
+    expect(SHELL_STATES.filter((state) => !TERMINAL_STATES.includes(state) && !INSPECTOR_SHELL_STATES.includes(state) && !PLAYGROUND_SHELL_STATES.includes(state)).map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
       'desktop/first-load/1440px 900',
       'desktop/no-window/1440px 900',
       'desktop/about/1440px 900',
@@ -352,6 +401,10 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
       'desktop/terminal-open/1440px',
       'mobile/pocket/375px',
       ...['desktop/%s-specs/1440px', 'mobile/%s-specs/375px'].flatMap((form) => ['cv', 'terminal', 'about'].map((view) => form.replace('%s', view))),
+      'desktop/playground-downloading/1440px',
+      'desktop/playground-running/1440px',
+      'desktop/playground-shared/1440px',
+      'mobile/playground-best-on-desktop/375px',
     ]);
     expect(report.problems).toEqual([]);
     expect(report.pages.find((page) => page.path === '/')).toEqual({ path: '/', status: 200, notFound: false });
@@ -359,7 +412,7 @@ describe('005-os-shell-FR-056: the checks cover the root in both shells', () => 
 
   test.skipIf(process.env.CI)('the report lists / under lighthouse on both profiles', { timeout: 600_000 }, async () => {
     const report = await runCheck(realSiteProject(), { parts: ['lighthouse'] });
-    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['mobile', 'desktop']);
+    expect(report.results.filter((result) => result.page === '/').map((result) => result.variant)).toEqual(['mobile', 'desktop', 'first-load']);
   });
 });
 
@@ -388,6 +441,29 @@ describe("007-requirement-inspector-FR-031: the checks measure the inspector in 
         ...['cv-specs', 'terminal-app-specs', 'about-specs'].flatMap((state) => [`mobile/${state}-200%-zoom/640px`, `mobile/${state}-400%-zoom/320px`, `desktop/${state}-text-spacing/1440px`, `mobile/${state}-text-spacing/375px`]),
       ]),
     );
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    const summary = renderReport(report);
+    for (const variant of states) expect(summary).toContain(variant);
+  });
+});
+
+describe('008-typescript-playground-FR-076: the checks measure the Playground in every state of contracts/cli.md', () => {
+  test('the driver lists 22 desktop states at 1440 × 900 and four mobile states, at 320 × 568 and 812 × 375 where named', () => {
+    expect(PLAYGROUND_SHELL_STATES.map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
+      ...Object.keys(PLAYGROUND_SHOWN)
+        .filter((name) => name.startsWith('desktop/'))
+        .map((name) => `${name}/1440px 900`),
+      'mobile/playground-best-on-desktop/375px 812',
+      'mobile/playground-shared-link/375px 812',
+      'mobile/playground-best-on-desktop-320/320px 568',
+      'mobile/playground-best-on-desktop-landscape/812px 375',
+    ]);
+  });
+
+  test('the summary lists / under accessibility in every Playground state, with no problem', { timeout: 1_800_000 }, async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['accessibility'] });
+    const states = PLAYGROUND_SHELL_STATES.map(({ shell, state, width }) => stateVariant(shell, state, width));
+    expect(report.results.filter((result) => result.part === 'accessibility' && result.page === '/').map((result) => result.variant)).toEqual(expect.arrayContaining(states));
     expect(report.problems.map(renderProblem)).toEqual([]);
     const summary = renderReport(report);
     for (const variant of states) expect(summary).toContain(variant);

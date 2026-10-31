@@ -104,6 +104,10 @@ On a phone it is a pocket terminal in the same glass.
 - **The unknown-command reply** offers only the suggestions as chips, with `help` as a control in
   the sentence, as FR-016 sets.
 - **`ls` and `help` rows** are 24 px tall, for FR-034's 24 × 24 px targets.
+- **2026-10-30, `open` lists `playground`** (amended by 008-typescript-playground FR-087; 006
+  FR-008 and FR-014). The reply to `open` with another name lists `cv`, `playground` and `about`.
+  Only the Site text row in [wireframes.md](wireframes.md) changes (commit `2a548c0`); no export
+  shows that reply, so none is rendered again. Approved by the owner on 2026-10-30.
 
 ## Sign-off
 
@@ -114,6 +118,8 @@ On a phone it is a pocket terminal in the same glass.
 - Notes: The look was approved first, on review of the first four exports. The full set of states,
   with the whole CV as JSON in the vim view, was approved on review of every export in
   `exports/`, and the owner confirms the look is original as recorded above.
+- Amended: 2026-10-30, by 008-typescript-playground FR-087 (`open` lists `playground`), commit
+  `2a548c0`. Approved by Alex Profir (project owner) on 2026-10-30.
 
 ## 2026-10-29 amendment
 

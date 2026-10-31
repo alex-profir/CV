@@ -65,6 +65,19 @@ async function openAboutByKeys(page: Page): Promise<void> {
   await page.locator(ABOUT).waitFor();
 }
 
+// A command of the focused window's own menu, by keys: the menu bar, the
+// window's menu, Down to the command, Enter.
+async function ownMenu(page: Page, command: string): Promise<void> {
+  await press(page, 'Alt+Shift+M', 'ArrowRight', 'Enter');
+  await page.locator('#menu-app').waitFor();
+  for (let presses = 0; presses < 20; presses += 1) {
+    const label = await page.evaluate(() => document.activeElement?.querySelector('.label')?.textContent?.trim());
+    if (label === command) break;
+    await press(page, 'ArrowDown');
+  }
+  await press(page, 'Enter');
+}
+
 describe('005-os-shell-FR-024: every desktop action works by keys alone, with a visible indicator', () => {
   test('menus, About, switching, moving, resizing, maximizing, minimizing, restoring and closing', async () => {
     const page = await desktop();
@@ -92,12 +105,14 @@ describe('005-os-shell-FR-024: every desktop action works by keys alone, with a 
     await press(page, 'ArrowDown', 'Enter');
     await expectFocus(page, CV_TITLE);
     await expectIndicator(page, 'resized');
-    await press(page, 'Alt+Shift+F');
+    await ownMenu(page, 'Maximize');
     await expect.poll(() => page.locator(CV).getAttribute('data-maximized')).toBe('');
+    // A menu that closes gives focus back to its title (FR-015).
+    await expectFocus(page, '#menu-title-app');
     await expectIndicator(page, 'maximized');
-    await press(page, 'Alt+Shift+F');
+    await ownMenu(page, 'Restore');
     await expect.poll(() => page.locator(CV).getAttribute('data-maximized')).toBeNull();
-    await press(page, 'Alt+Shift+H');
+    await ownMenu(page, 'Minimize');
     await expect.poll(() => page.locator(CV).isHidden()).toBe(true);
     await expectFocus(page, ABOUT_TITLE);
     await expectIndicator(page, 'minimized');
@@ -346,12 +361,60 @@ describe('005-os-shell-FR-062: a keyboard resize steps the window, announces it,
   test('minimizing the last window shown moves focus to its dock item, and Enter there restores it', async () => {
     const page = await desktop();
     await page.locator(CV_TITLE).focus();
-    await press(page, 'Alt+Shift+H');
+    await ownMenu(page, 'Minimize');
     await expect.poll(() => page.locator(CV).isHidden()).toBe(true);
     await expectFocus(page, `${CV_DOCK}[aria-label="CV, minimized"]`);
     await press(page, 'Enter');
     await expect.poll(() => page.locator(CV).isVisible()).toBe(true);
     await expectFocus(page, CV_TITLE);
+  });
+});
+
+describe('005-os-shell-FR-063 005-os-shell-FR-065 008-typescript-playground-FR-086: minimizing and maximizing have no shortcut, and the others work from a text input', () => {
+  test('Alt+Shift+H and Alt+Shift+F do nothing with a window focused', async () => {
+    const page = await desktop();
+    await page.locator(CV_TITLE).focus();
+    const before = await box(page, CV);
+    await press(page, 'Alt+Shift+H', 'Alt+Shift+F');
+    await page.waitForTimeout(300);
+    expect(await page.locator(CV).isVisible()).toBe(true);
+    expect(await page.locator(CV).getAttribute('data-maximized')).toBeNull();
+    expect(await box(page, CV)).toEqual(before);
+    expect(await focusIs(page, CV_TITLE)).toBe(true);
+  });
+
+  // An input stops the key from bubbling, as the Playground's editor does:
+  // only a listener in the capture phase still hears it (FR-084).
+  const input = async (page: Page) => {
+    await page.evaluate(() => {
+      const field = document.createElement('input');
+      field.id = 'typing';
+      field.addEventListener('keydown', (event) => event.stopPropagation());
+      document.querySelector('#os .window[data-view="cv"] .window-content')!.prepend(field);
+      field.focus();
+    });
+    await expectFocus(page, '#typing');
+  };
+  const typed = (page: Page) => page.evaluate(() => (document.querySelector('#typing') as HTMLInputElement | null)?.value ?? '');
+
+  test('the other six still work from inside a text input, and type nothing', async () => {
+    for (const [keys, check] of [
+      ['Alt+Shift+M', (page: Page) => expectFocus(page, SITE)],
+      ['Alt+Shift+D', (page: Page) => expectFocus(page, CV_DOCK)],
+      ['Alt+Shift+N', (page: Page) => expectFocus(page, ABOUT_TITLE)],
+      ['Alt+Shift+P', (page: Page) => expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(1)],
+      ['Alt+Shift+S', (page: Page) => expect.poll(() => page.locator(`${CV} .pad`).count()).toBe(1)],
+      ['Alt+Shift+W', (page: Page) => expect.poll(() => page.locator(CV).count()).toBe(0)],
+    ] as const) {
+      const page = await desktop();
+      await openAboutByKeys(page);
+      await input(page);
+      expect(await current(page), keys).toBe('cv');
+      await press(page, keys);
+      await check(page);
+      expect(await typed(page), keys).toBe('');
+      await page.context().close();
+    }
   });
 });
 

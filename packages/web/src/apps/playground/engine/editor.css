@@ -1,0 +1,382 @@
+/* The editor's look inside the Playground (research R22): Monaco's widgets
+   restyled to the design's raised panels. Every value is a token. */
+.playground-editor .monaco-editor,
+.playground-output .monaco-editor {
+  --vscode-font-family: var(--token-typography-small-font-family);
+}
+
+/* Monaco's own chrome in the body font, not the system's UI font; the
+   code sets its own. */
+.playground :is(.monaco-editor, .monaco-component) {
+  font-family: var(--token-font-family-body);
+}
+
+/* The message of the cursor's line's first mark, after the line (FR-016). */
+.playground-editor .playground-inline-message {
+  margin-inline-start: var(--token-space-4);
+  color: var(--token-color-code-error);
+}
+
+.playground-editor .playground-inline-message.is-warning {
+  color: var(--token-color-code-warning);
+}
+
+/* Its cross, or the warning's triangle, before the words. */
+.playground-editor .playground-inline-message::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  margin-inline-end: var(--token-space-1);
+  background-color: currentColor;
+  mask-image: url("./glyphs/error.svg");
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  vertical-align: middle;
+}
+
+.playground-editor .playground-inline-message.is-warning::before {
+  mask-image: url("./glyphs/warning.svg");
+}
+
+/* While a check is out, the marks and the message stay as they were,
+   dimmed under the popups' scrim color, as the panes are (FR-016). */
+.playground-editor.is-checking :is(.squiggly-error, .squiggly-warning)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--token-color-playground-scrim);
+}
+
+.playground-editor.is-checking .playground-inline-message {
+  background: var(--token-color-playground-scrim);
+}
+
+/* Monaco's widgets as the design's raised panels (research R22, wireframes
+   Hover, Suggestions, Peek, Rename, Quick fixes, Command palette): the
+   hairline border, the menu radius and shadow, the raised surface, and the
+   body font, with the selected row in the code's selection color and the
+   Playground's primary color as its border. */
+.playground-editor .monaco-editor :is(.monaco-hover, .suggest-widget, .parameter-hints-widget, .rename-box, .quick-input-widget, .find-widget),
+.playground .action-widget {
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-radius-menu);
+  background: var(--token-color-playground-raised);
+  box-shadow: var(--token-shadow-menu);
+  color: var(--token-color-shell-text);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+}
+
+.playground-editor .monaco-editor .monaco-hover {
+  max-inline-size: var(--token-size-playground-popover);
+}
+
+/* The type in code, the documentation under a hairline. */
+.playground-editor .monaco-editor .monaco-hover :is(code, .code) {
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .monaco-hover .hover-row:not(:first-child) {
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+  color: var(--token-color-shell-text-soft);
+}
+
+.playground-editor .monaco-editor .suggest-widget {
+  inline-size: calc(var(--token-size-playground-popover) - var(--token-space-16));
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list-row,
+.playground .action-widget .monaco-list-row,
+.playground-editor .monaco-editor .quick-input-widget .monaco-list-row {
+  border: var(--token-border-thin) solid transparent;
+  border-radius: var(--token-radius-small);
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list-row.focused,
+.playground .action-widget .monaco-list-row.focused,
+.playground-editor .monaco-editor .quick-input-widget .monaco-list-row.focused {
+  border-color: var(--token-color-playground-primary);
+  background: var(--token-color-code-selection);
+  color: var(--token-color-shell-text);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-highlighted-label .highlight,
+.playground-editor .monaco-editor .quick-input-widget .monaco-highlighted-label .highlight {
+  color: var(--token-color-code-function);
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.playground-editor .monaco-editor .suggest-widget :is(.details-label, .type-label) {
+  color: var(--token-color-shell-text-secondary);
+}
+
+.playground-editor .monaco-editor .suggest-details-container {
+  border-block-start: var(--token-border-thin) solid var(--token-color-shell-rule);
+}
+
+/* Peek: framed above and below in the primary color, on the panel. */
+.playground-editor .monaco-editor .peekview-widget {
+  border-block: var(--token-border-thick) solid var(--token-color-playground-primary);
+  background: var(--token-color-playground-panel);
+}
+
+.playground-editor .monaco-editor .peekview-widget .head {
+  border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
+  font-family: var(--token-font-family-body);
+  font-size: var(--token-font-size-small);
+}
+
+.playground-editor .monaco-editor .peekview-widget .head .peekview-title .dirname {
+  color: var(--token-color-shell-text-secondary);
+}
+
+/* Rename and the palette's field: the code's surface, framed in the
+   primary color with the shell's focus ring. */
+.playground-editor .monaco-editor .rename-box .rename-input,
+.playground-editor .monaco-editor .quick-input-widget .monaco-inputbox {
+  border: var(--token-border-thin) solid var(--token-color-playground-primary);
+  border-radius: var(--token-space-1);
+  outline: var(--token-border-thick) solid var(--token-color-focus-shell);
+  outline-offset: var(--token-border-thin);
+  background: var(--token-color-code-surface);
+  color: var(--token-color-code-text);
+  font-family: var(--token-typography-small-font-family);
+}
+
+.playground-editor .monaco-editor .quick-input-widget {
+  inline-size: var(--token-size-playground-dialog);
+}
+
+.playground-editor .monaco-editor .quick-input-widget .quick-input-list .monaco-keybinding-key {
+  border: var(--token-border-thin) solid var(--token-color-chrome-border);
+  border-radius: var(--token-space-1);
+  background: none;
+  box-shadow: none;
+  color: var(--token-color-shell-text-soft);
+  font-family: var(--token-font-family-mono);
+  font-size: var(--token-font-size-label);
+}
+
+/* The lightbulb, in the gutter, in the warning color. */
+.playground-editor .monaco-editor :is(.lightBulbWidget, .glyph-margin-widgets [class*="codicon-gutter-lightbulb"]) {
+  color: var(--token-color-code-warning);
+}
+
+.playground .action-widget :is(.codicon-lightbulb, .codicon-light-bulb, .codicon-lightbulb-autofix) {
+  color: var(--token-color-code-warning);
+}
+
+/* The design's glyphs in place of Monaco's icon font (research R22): the
+   lightbulb, close, and the error, warning and info marks, each drawn in
+   `glyphs/` and shown as a mask over the icon's own color, so each keeps
+   the color its widget gives it. */
+.playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close, .codicon-error, .codicon-warning, .codicon-info)::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  background-color: currentColor;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  vertical-align: middle;
+}
+
+.playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix)::before {
+  mask-image: url("./glyphs/lightbulb.svg");
+}
+
+.playground :is(.codicon-close, .codicon-widget-close)::before {
+  mask-image: url("./glyphs/close.svg");
+}
+
+.playground :is(.codicon-error, .codicon-warning, .codicon-info)::before {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+}
+
+.playground .codicon-error::before {
+  mask-image: url("./glyphs/error.svg");
+}
+
+.playground .codicon-warning::before {
+  mask-image: url("./glyphs/warning.svg");
+}
+
+.playground .codicon-info::before {
+  mask-image: url("./glyphs/info.svg");
+}
+
+.playground .codicon-error {
+  color: var(--token-color-code-error);
+}
+
+.playground .codicon-warning {
+  color: var(--token-color-code-warning);
+}
+
+.playground .codicon-info {
+  color: var(--token-color-code-info);
+}
+
+/* A suggestion's kind as the design's letter on a wash, in the color of
+   what it names, in place of Monaco's symbol icons. */
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon.codicon {
+  display: grid;
+  place-items: center;
+  inline-size: var(--token-space-4);
+  block-size: var(--token-space-4);
+  border-radius: var(--token-space-1);
+  background: var(--token-color-base-wash);
+  color: var(--token-color-code-property);
+  font-family: var(--token-typography-small-font-family);
+  font-size: var(--token-font-size-label);
+  font-weight: var(--token-font-weight-semibold);
+  line-height: var(--token-space-4);
+}
+
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-property, .codicon-symbol-field)::before { content: "P"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-method::before { content: "M"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-function, .codicon-symbol-constructor)::before { content: "F"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-variable, .codicon-symbol-constant)::before { content: "V"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-class::before { content: "C"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-interface::before { content: "I"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon:is(.codicon-symbol-enum, .codicon-symbol-enum-member)::before { content: "E"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-type-parameter::before { content: "T"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-module::before { content: "N"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-keyword::before { content: "K"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-snippet::before { content: "S"; }
+.playground-editor .monaco-editor .suggest-widget .suggest-icon.codicon-symbol-text::before { content: "W"; }
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-method, .codicon-symbol-function, .codicon-symbol-constructor) {
+  color: var(--token-color-code-function);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-class, .codicon-symbol-interface, .codicon-symbol-enum, .codicon-symbol-enum-member, .codicon-symbol-type-parameter, .codicon-symbol-module) {
+  color: var(--token-color-code-type);
+}
+
+.playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon:is(.codicon-symbol-keyword, .codicon-symbol-snippet) {
+  color: var(--token-color-code-keyword);
+}
+
+/* Reduced motion (FR-069, wireframes Accessibility): Monaco's widgets,
+   hovers and scrollbars, in the editor and the output panes, appear and go
+   at once, with no fade or slide. The Playground draws no motion of its own. */
+@media (prefers-reduced-motion: reduce) {
+  .playground *,
+  .playground *::before,
+  .playground *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Forced colors (FR-070, wireframes Accessibility): error and warning
+   marks stay wavy lines, in LinkText and CanvasText; the cursor, the
+   scrollbars and the selected row of a list show by their own lines, not
+   by a background forced colors remove. */
+@media (forced-colors: active) {
+  /* Monaco turns forced colors off for itself, for its own high-contrast
+     themes; here the system's colors apply, so the syntax colors drop to
+     CanvasText. The rules below that set `none` keep their system colors. */
+  .playground :is(.monaco-editor, .monaco-component) {
+    forced-color-adjust: auto;
+  }
+
+  /* The wavy line is the mark's bottom border, cut to a wave by the mask. */
+  .playground .monaco-editor :is(.squiggly-error, .squiggly-warning) {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border-block-end: var(--token-space-1) solid LinkText;
+    background: none;
+    mask-image: url("./glyphs/wavy.svg");
+    mask-position: left bottom;
+    mask-repeat: repeat-x;
+  }
+
+  .playground .monaco-editor .squiggly-warning {
+    border-block-end-color: CanvasText;
+  }
+
+  /* No scrim over the marks while a check is out: they stay as they were. */
+  .playground-editor.is-checking :is(.squiggly-error, .squiggly-warning)::after {
+    display: none;
+  }
+
+  .playground-editor.is-checking .playground-inline-message {
+    background: none;
+  }
+
+  .playground .monaco-editor .cursors-layer > .cursor {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border-inline-start: var(--token-border-thick) solid CanvasText;
+    background: none;
+  }
+
+  /* The selection and Monaco's other highlights (occurrences, find
+     matches, a definition's range, a quick fix's edit) are framed in
+     Highlight; the current find match by a thicker frame. */
+  .playground .monaco-editor :is(.selected-text, .selectionHighlight, .wordHighlight, .wordHighlightStrong, .wordHighlightText, .findMatch, .currentFindMatch, .findScope, .rangeHighlight, .quickfix-edit-highlight) {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border: var(--token-border-thin) solid Highlight;
+    background: none;
+  }
+
+  .playground .monaco-editor .currentFindMatch {
+    border-width: var(--token-border-thick);
+  }
+
+  .playground .monaco-editor :is(.margin, .margin-view-overlays .current-line.current-line-margin) {
+    background: none;
+  }
+
+  /* A suggestion's kind keeps its letter and loses its wash. */
+  .playground-editor .monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon.codicon {
+    background: none;
+  }
+
+  /* A widget's resize edge: the widget keeps its own border. */
+  .playground .monaco-sash,
+  .playground .monaco-editor .find-widget .monaco-sash {
+    background: none;
+  }
+
+  .playground .monaco-scrollable-element .slider {
+    box-sizing: border-box;
+    border: var(--token-border-thin) solid CanvasText;
+  }
+
+  .playground-editor .monaco-editor .suggest-widget .monaco-list-row.focused,
+  .playground .action-widget .monaco-list-row.focused,
+  .playground-editor .monaco-editor .quick-input-widget .monaco-list-row.focused {
+    border-width: var(--token-border-thick);
+    border-color: Highlight;
+  }
+
+  /* The masked glyphs are drawn as a border filling their box, in the text
+     color, and the cross of the cursor line's message in LinkText. */
+  .playground :is(.codicon-light-bulb, .codicon-lightbulb-autofix, .codicon-gutter-lightbulb, .codicon-gutter-lightbulb-auto-fix, .codicon-close, .codicon-widget-close)::before {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border: calc(var(--token-space-4) / 2) solid CanvasText;
+    background: none;
+  }
+
+  .playground :is(.codicon-error, .codicon-warning, .codicon-info)::before,
+  .playground-editor .playground-inline-message::before {
+    forced-color-adjust: none;
+    box-sizing: border-box;
+    border: calc(var(--token-space-3) / 2) solid CanvasText;
+    background: none;
+  }
+
+  .playground-editor .playground-inline-message:not(.is-warning)::before {
+    border-color: LinkText;
+  }
+}

@@ -7,7 +7,9 @@ import type { ReactNode } from 'react';
 
 // `requirements`: the root's requirement data file (007 research R9), on
 // `#os` for the inspector to fetch once the shell is ready.
-export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string };
+// `playground`: the Playground engine's manifest and its total size (008
+// contracts/site.md step 4).
+export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: { manifest: string; bytes: number } };
 
 export function Document({ title, description, assets, children }: { title: string; description?: string | undefined; assets: PageAssets; children: ReactNode }) {
   return (

@@ -3,6 +3,7 @@
 import { describe, expect, test } from 'vitest';
 import { initialState } from '../src/index.ts';
 import { APPS, AREA, METRICS, THREE_APPS, THREE_CONTEXT, desktop, mobile, run } from './helpers.ts';
+import { FOUR_APPS, FOUR_CONTEXT } from './__fixtures__/four-apps.ts';
 
 describe('005-os-shell-FR-005: the CV window is open and focused on first load, and the phone starts on its home screen', () => {
   test('initialState has the CV window open, placed by CSS until measured, focused, with no effect', () => {
@@ -540,5 +541,74 @@ describe('007-requirement-inspector-FR-004: which views show their specs lasts t
     const app = run(back, [{ type: 'effectsDone' }, { type: 'showApp', view: 'terminal' }], THREE_CONTEXT);
     expect(app.specs).toEqual({});
     expect(app.effects).toEqual([{ kind: 'focus', target: { kind: 'show-specs', view: 'terminal' } }]);
+  });
+});
+
+describe('008-typescript-playground-FR-003: the Playground window works as every other window, with four views', () => {
+  const four = (actions: Parameters<typeof run>[1]) => run(desktop(AREA, FOUR_CONTEXT), actions, FOUR_CONTEXT);
+
+  test('open adds it in front, focused, with its title focused; a second open brings it forward', () => {
+    const state = four([{ type: 'open', view: 'playground' }]);
+    expect(state.windows.map((window) => window.view)).toEqual(['playground', 'cv']);
+    expect(state.focused).toBe('playground');
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'window-title', view: 'playground' } }]);
+    const again = run(state, [{ type: 'effectsDone' }, { type: 'open', view: 'terminal' }, { type: 'open', view: 'playground' }], FOUR_CONTEXT);
+    expect(again.windows.map((window) => window.view)).toEqual(['playground', 'terminal', 'cv']);
+  });
+
+  test("close moves focus to the next window's title, or to the Playground's dock item when it was the only one", () => {
+    const state = four([{ type: 'open', view: 'playground' }, { type: 'effectsDone' }, { type: 'close', view: 'playground' }]);
+    expect(state.windows.map((window) => window.view)).toEqual(['cv']);
+    expect(state.effects).toEqual([{ kind: 'focus', target: { kind: 'window-title', view: 'cv' } }]);
+    const alone = four([{ type: 'close', view: 'cv' }, { type: 'open', view: 'playground' }, { type: 'effectsDone' }, { type: 'close', view: 'playground' }]);
+    expect(alone.windows).toEqual([]);
+    expect(alone.effects).toEqual([{ kind: 'focus', target: { kind: 'dock-item', app: 'playground' } }]);
+  });
+
+  test('minimize keeps it open and moves focus on; open restores it where it was', () => {
+    const open = four([{ type: 'open', view: 'playground' }, { type: 'effectsDone' }]);
+    const geometry = open.windows[0]!.geometry;
+    const minimized = run(open, [{ type: 'minimize', view: 'playground' }], FOUR_CONTEXT);
+    expect(minimized.windows.map((window) => [window.view, window.minimized])).toEqual([
+      ['cv', false],
+      ['playground', true],
+    ]);
+    expect(minimized.focused).toBe('cv');
+    const restored = run(minimized, [{ type: 'effectsDone' }, { type: 'open', view: 'playground' }], FOUR_CONTEXT);
+    expect(restored.windows[0]).toMatchObject({ view: 'playground', minimized: false, geometry });
+  });
+
+  test('maximize fills the area and restore brings its box back', () => {
+    const open = four([{ type: 'open', view: 'playground' }, { type: 'effectsDone' }]);
+    const box = open.windows[0]!.geometry;
+    const maximized = run(open, [{ type: 'toggleMaximize', view: 'playground' }], FOUR_CONTEXT);
+    expect(maximized.windows[0]).toMatchObject({ geometry: { x: 0, y: 0, ...AREA }, maximized: { restore: box } });
+    expect(maximized.effects).toEqual([{ kind: 'announce', message: 'Playground maximized.' }]);
+    const restored = run(maximized, [{ type: 'toggleMaximize', view: 'playground' }], FOUR_CONTEXT);
+    expect(restored.windows[0]).toMatchObject({ geometry: box, maximized: null });
+  });
+
+  test('next cycles through all four shown windows', () => {
+    let state = four([{ type: 'open', view: 'about' }, { type: 'open', view: 'terminal' }, { type: 'open', view: 'playground' }, { type: 'effectsDone' }]);
+    const seen: string[] = [];
+    for (let step = 0; step < 4; step += 1) {
+      state = run(state, [{ type: 'next' }, { type: 'effectsDone' }], FOUR_CONTEXT);
+      seen.push(state.focused!);
+    }
+    expect(new Set(seen)).toEqual(new Set(['cv', 'terminal', 'playground', 'about']));
+  });
+
+  test('showSpecs and showApp keep its place; mobileOpen opens it full screen; shellChanged keeps it', () => {
+    const open = four([{ type: 'open', view: 'playground' }, { type: 'effectsDone' }]);
+    const specs = run(open, [{ type: 'showSpecs', view: 'playground', appScroll: 12 }], FOUR_CONTEXT);
+    expect(specs.specs).toEqual({ playground: { appScroll: 12 } });
+    expect(run(specs, [{ type: 'effectsDone' }, { type: 'showApp', view: 'playground' }], FOUR_CONTEXT).specs).toEqual({});
+    const phone = run(mobile(FOUR_CONTEXT), [{ type: 'mobileOpen', view: 'playground' }], FOUR_CONTEXT);
+    expect(phone.mobile.open).toBe('playground');
+    expect(phone.effects).toEqual([{ kind: 'focus', target: { kind: 'mobile-title', view: 'playground' } }]);
+    const narrowed = run(open, [{ type: 'shellChanged', shell: 'mobile' }], FOUR_CONTEXT);
+    const widened = run(narrowed, [{ type: 'shellChanged', shell: 'desktop', area: AREA }], FOUR_CONTEXT);
+    expect(widened.windows.map((window) => window.view)).toContain('playground');
+    expect(FOUR_APPS.slice(0, THREE_APPS.length)).toEqual(THREE_APPS);
   });
 });

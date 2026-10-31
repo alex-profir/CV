@@ -1,0 +1,61 @@
+/* Tokens the Playground needs that the token export doesn't hold yet,
+   written as the token output writes them (README.md, Proposed tokens).
+   Once the design is approved, the plan adds them to
+   packages/tokens/penpot/tokens.json, in Penpot's form, under these names.
+   Every color refers to a base color; only two base colors are new. */
+:root {
+  --token-color-base-lilac-wash: #818cf840;
+  --token-color-base-rose-wash: #fda4af29;
+
+  /* The editor's syntax colors (FR-068), on color.shell-surface. */
+  --token-color-code-surface: #1b1c24;
+  --token-color-code-text: #ececf2;
+  --token-color-code-keyword: #818cf8;
+  --token-color-code-type: #5eead4;
+  --token-color-code-function: #a5b4fc;
+  --token-color-code-property: #c9cad6;
+  --token-color-code-string: #fda4af;
+  --token-color-code-number: #fcd34d;
+  --token-color-code-comment: #a3a3b0;
+  --token-color-code-punctuation: #a3a3b0;
+  --token-color-code-line-number: #a3a3b0;
+  --token-color-code-line-number-current: #ececf2;
+  --token-color-code-current-line: #ffffff0d;
+  --token-color-code-selection: #818cf840;
+  --token-color-code-occurrence: #fcd34d33;
+  --token-color-code-caret: #5eead4;
+  --token-color-code-error: #fda4af;
+  --token-color-code-error-band: #fda4af29;
+  --token-color-code-warning: #fcd34d;
+  --token-color-code-info: #a5b4fc;
+
+  /* The Playground's controls and panels. */
+  --token-color-playground-panel: #20212a;
+  --token-color-playground-raised: #262732;
+  --token-color-playground-primary: #a5b4fc;
+  --token-color-playground-primary-text: #0c0d12;
+  --token-color-playground-danger: #fda4af;
+  --token-color-playground-danger-text: #0c0d12;
+  --token-color-playground-scrim: #00000073;
+  --token-color-icon-playground-top: #fcd34d;
+  --token-color-icon-playground-bottom: #fda4af;
+  --token-color-icon-playground-glyph: #0c0d12;
+
+  --token-size-playground-window-width: 1040px;
+  --token-size-playground-window-height: 648px;
+  --token-size-playground-window-offset: 64px;
+  --token-size-playground-toolbar: 44px;
+  --token-size-playground-status: 28px;
+  --token-size-playground-side: 400px;
+  --token-size-playground-gutter: 48px;
+  --token-size-playground-popover: 380px;
+  --token-size-playground-dialog: 440px;
+  --token-size-playground-progress: 6px;
+  --token-size-playground-loading: 420px;
+  --token-size-playground-stacked-side: 240px;
+  --token-size-code-line: 20px;
+  --token-breakpoint-playground-stack: 720px;
+
+  /* The code's font is typography.small, and the window's right margin
+     size.terminal-window-margin, which the export already holds. */
+}

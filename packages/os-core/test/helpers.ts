@@ -27,6 +27,10 @@ export const METRICS: Metrics = {
   terminalHeight: 536,
   terminalMargin: 40,
   terminalOffset: 120,
+  playgroundWidth: 1040,
+  playgroundHeight: 648,
+  playgroundMargin: 40,
+  playgroundOffset: 64,
 };
 
 export const TEXT: OsText = {
