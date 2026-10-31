@@ -70,3 +70,28 @@ describe("008-typescript-playground-FR-035: an error thrown through the runtime'
     expect(errors[0]!.line).toBe(2);
   });
 });
+
+describe("008-typescript-playground-FR-035: JavaScript the browser refuses says so, with the browser's message and line", () => {
+  test.each([
+    ['a syntax error', 'console.log("a");\nconst x = ;', 2, 1],
+    ['a name declared twice', 'const a = 1;\nconst a = 2;', 2, 2],
+    ['a break outside a loop', 'console.log("a");\nbreak;', 2, 1],
+    ['import.meta, which TypeScript accepts', 'console.log(1);\nconsole.log(import.meta.url);', 2, 1],
+  ])('%s: nothing runs, the note and the error, and "Nothing ran"', async (_name, code, line, count) => {
+    const page = await openPlaygroundPage();
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    await expect.poll(async () => (await readLogs(page)).length).toBe(2);
+    const [note, error] = await readLogs(page);
+    expect(note!.level).toBe('note');
+    expect(note!.text.startsWith('Nothing ran: the code has ')).toBe(true);
+    expect(note!.text.endsWith("and its JavaScript can't be read.")).toBe(true);
+    expect(note!.text).toContain(`has ${count} error`);
+    expect(error!.level).toBe('error');
+    expect(error!.text).toMatch(/SyntaxError/);
+    expect(error!.line).toBe(line);
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toBe(siteText.playground.runState.nothingRan);
+  });
+});

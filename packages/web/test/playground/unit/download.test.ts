@@ -277,7 +277,7 @@ describe('008-typescript-playground-FR-011: a copy that won\'t open shows the st
       expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(false);
     };
     const loaded = await loadEngine('/playground/aaaa/files.json', 1000, events, new AbortController().signal, fake);
-    expect(states).toContainEqual({ kind: 'offline', total: 1000, stopped: true });
+    expect(states).toContainEqual({ kind: 'offline', total: 1000, stopped: true, wontOpen: true });
     expect(delays).toEqual([null]);
     expect(loaded.kept).toBe(true);
     expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(true);

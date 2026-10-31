@@ -1,7 +1,7 @@
 // The Playground on a phone (spec US5): the "best on desktop" screen, from
 // its icon and from a shared link, with Share link and Copy link; no editor,
 // no download and no run.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { deflateRawSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
@@ -218,5 +218,52 @@ describe('008-typescript-playground-FR-060: a shared link opened on a phone show
     const origin = new URL(page.url()).origin;
     await expect.poll(() => clipboard(page)).toBe(`${origin}${path}`);
     expect(engineRequests).toEqual([]);
+  });
+});
+
+const REFUSE_CLIPBOARD = () => Object.defineProperty(Clipboard.prototype, 'writeText', { configurable: true, value: () => Promise.reject(new DOMException('refused', 'NotAllowedError')) });
+const LINK_FIELD = '.playground-mobile-link input';
+
+describe('008-typescript-playground-FR-052: on a phone, a link that can\'t be copied shows in a field', () => {
+  test.each([[375], [320]])('at %i px: Copy link shows it selected, and the card still fits', async (width) => {
+    const { page } = await phone({
+      width,
+      beforeGoto: async (target) => {
+        await target.addInitScript(REFUSE_CLIPBOARD);
+      },
+    });
+    await openFromHome(page);
+    await page.locator(`${SCREEN} button.copy-link`).tap();
+    const field = page.locator(`${SCREEN} ${LINK_FIELD}`);
+    await field.waitFor();
+    const value = await field.inputValue();
+    expect(value).toMatch(/\/#playground$/);
+    expect(await field.evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([0, value.length]);
+    expect(await page.locator(NOTE).count()).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+});
+
+describe('008-typescript-playground-FR-055: on a phone, code too long for a link says so', () => {
+  const planted = (code: string, refuse: boolean) => async (target: Page) => {
+    await target.addInitScript((kept) => localStorage.setItem('cv-playground', kept), JSON.stringify({ format: 1, code, options: {} }));
+    if (refuse) await target.addInitScript(REFUSE_CLIPBOARD);
+  };
+  const longCode = () => `// ${randomBytes(100_000).toString('hex')}`;
+
+  test('Copy link copies the code and says why', async () => {
+    const code = longCode();
+    const { page } = await phone({ beforeGoto: planted(code, false) });
+    await openFromHome(page);
+    await page.locator(`${SCREEN} button.copy-link`).tap();
+    await expect.poll(() => page.locator(NOTE).textContent()).toBe(siteText.playground.mobile.tooLongCopied);
+    expect(await clipboard(page)).toBe(code);
+  });
+
+  test('Share link does the same, and a clipboard that refuses says so', async () => {
+    const { page } = await phone({ beforeGoto: planted(longCode(), true) });
+    await openFromHome(page);
+    await page.locator(`${SCREEN} button.share-link`).tap();
+    await expect.poll(() => page.locator(NOTE).textContent()).toBe(siteText.playground.mobile.tooLongRefused);
   });
 });

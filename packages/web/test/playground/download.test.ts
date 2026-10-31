@@ -116,7 +116,7 @@ describe('008-typescript-playground-FR-008: TypeScript downloads once, and is ke
   });
 });
 
-describe('008-typescript-playground-FR-011: an engine that won\'t open shows the stopped state, and Retry starts over', () => {
+describe('008-typescript-playground-FR-011: an engine that won\'t open says so, and Retry starts over', () => {
   const words = siteText.playground.loading;
   const RETRY = `${LOADING} button.playground-retry`;
   // Answers the engine's entry with this script until released.
@@ -135,13 +135,16 @@ describe('008-typescript-playground-FR-011: an engine that won\'t open shows the
   test.each([
     ['fails to import', 'throw new Error("broken engine");'],
     ['fails to start', 'export const api = 1; export async function createEngine() { throw new Error("broken engine"); }'],
-  ])('an engine that %s: "The download stopped" with Retry, no marker, and Retry opens the editor', async (_name, script) => {
+  ])('an engine that %s: "TypeScript won\'t open" with its size and Retry, no marker, and Retry opens the editor', async (_name, script) => {
     const page = await freshProfile();
     await page.evaluate(() => localStorage.setItem('cv-playground', JSON.stringify({ format: 1, code: 'console.log("kept through the failure");', options: {} })));
     const release = await brokenEntry(page, script);
     await openPlayground(page);
     await page.waitForSelector(RETRY, { timeout: 60_000 });
-    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.stopped);
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.wontOpen);
+    const [before, after] = words.wontOpenText.split('{total}');
+    const text = (await page.locator(`${LOADING} p`).first().textContent()) ?? '';
+    expect(text.startsWith(before!) && text.endsWith(after!) && /\d\.\d/.test(text), text).toBe(true);
     expect(await markerKept(page, engineFolder())).toBe(false);
     release();
     await page.locator(RETRY).click();

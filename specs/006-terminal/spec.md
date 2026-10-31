@@ -13,7 +13,8 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
 
 **Amended**: 2026-10-29: `open` accepts `playground`, for the TypeScript playground (008) (see
 Clarifications, Session 2026-10-29, and 008-typescript-playground FR-087). Approved 2026-10-27;
-the amendment approved by the owner 2026-10-29.
+the amendment approved by the owner 2026-10-29. Amended 2026-10-31 by 008-typescript-playground:
+FR-042's time follows the latest feature's budget (see Clarifications, Session 2026-10-31).
 
 **Amended**: 2026-10-30, after the owner tried the shell: Tab completes as in bash, with a way
 out, and vim edits files (see Clarifications, Session 2026-10-30 (owner review of the shell)).
@@ -150,6 +151,13 @@ The owner's decision of 2026-10-31 approves this amendment.
   itself? → A: No. A line runs 10,000 of its own commands before it is stopped (FR-069). Approved
   by the owner 2026-10-29.
 
+### Session 2026-10-29 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground (008) is a new app. Should `open` accept it? → A: Yes. `open
+  playground` opens the Playground, or brings it to the front, as its dock item or home-screen icon
+  does; on mobile that is its "best on desktop" screen. Running code from the Terminal is not part
+  of it (FR-008, FR-014).
+
 ### Session 2026-10-30
 
 - Q: With the Terminal's lines in both shells, the site check takes about 5.5 minutes on the
@@ -194,12 +202,12 @@ The owner's decision of 2026-10-31 approves this amendment.
   vim text; FR-076 lists keywords and the working folder's folders, without aliases the visitor
   defined; a new file shows `[New]` in the message line only (FR-058, FR-065, FR-076, SC-016).
   Approved by the owner 2026-10-30.
-### Session 2026-10-29 (amended by 008-typescript-playground)
 
-- Q: The TypeScript playground (008) is a new app. Should `open` accept it? → A: Yes. `open
-  playground` opens the Playground, or brings it to the front, as its dock item or home-screen icon
-  does; on mobile that is its "best on desktop" screen. Running code from the Terminal is not part
-  of it (FR-008, FR-014).
+### Session 2026-10-31 (amended by 008-typescript-playground)
+
+- Q: 006's 660 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+  allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
+  feature's budget, now 008's 1,020 s (FR-042).
 
 ### Session 2026-10-31
 
@@ -1278,7 +1286,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   online one.
 - **FR-042**: The checks of this spec MUST run in the same one command and on the same pull
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
-  shell, the state, the width and the command in every failure.
+  shell, the state, the width and the command in every failure. The whole check, with every later
+  feature's parts, stays within the latest feature's budget on the owner's machine. Amended
+  2026-10-31 by 008-typescript-playground: it held the whole check to 660 s, 005's 8 minutes plus 3.
 
 ### Key Entities
 

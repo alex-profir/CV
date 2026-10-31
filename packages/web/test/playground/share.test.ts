@@ -171,6 +171,25 @@ describe('008-typescript-playground-FR-052: Share copies a link with the code an
   });
 });
 
+describe('008-typescript-playground-FR-052: the link to copy by hand offers the device\'s sharing too', () => {
+  test('with a clipboard that refuses and a device that shares, Share with… shows beside the field', async () => {
+    const page = await freshProfile({
+      beforeGoto: async (target) => {
+        await target.addInitScript(() => {
+          Object.defineProperty(Clipboard.prototype, 'writeText', { configurable: true, value: () => Promise.reject(new DOMException('refused', 'NotAllowedError')) });
+          Object.defineProperty(navigator, 'share', { value: () => Promise.resolve(), configurable: true });
+          Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+        });
+      },
+    });
+    await openPlayground(page);
+    await waitReady(page);
+    await share(page);
+    expect(await messageText(page)).toBe(messages.linkField);
+    expect(await messageButtons(page)).toEqual([messages.actions['share-with']]);
+  });
+});
+
 describe('008-typescript-playground-FR-026: compiler options travel in shared links', () => {
   test('a link with an option this version does not know opens without it, then names it', async () => {
     const page = await openAt(pathFrom(JSON.stringify({ c: 'let a = 1;', o: { [OPTION]: true, fancyMode: true } })));

@@ -72,7 +72,9 @@ describe('008-typescript-playground-FR-011: offline before the download, the Pla
     await openPlayground(page);
     await page.waitForSelector(RETRY, { timeout: 30_000 });
     expect(await heading(page)).toBe(words.stopped);
-    expect(await page.locator(`${LOADING} p`).first().textContent()).toBe(words.stoppedText);
+    const [before, after] = words.stoppedText.split('{total}');
+    const text = (await page.locator(`${LOADING} p`).first().textContent()) ?? '';
+    expect(text.startsWith(before!) && text.endsWith(after!) && /\d\.\d/.test(text), text).toBe(true);
     expect(await page.locator(`${EDITOR} .monaco-editor`).count()).toBe(0);
     await page.locator(RETRY).click();
     await waitReady(page);
