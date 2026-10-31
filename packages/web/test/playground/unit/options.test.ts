@@ -2,7 +2,7 @@
 // checked against the TypeScript Monaco bundles, read in Node.
 import { describe, expect, test } from 'vitest';
 import { typescript as ts } from 'monaco-editor/languages/features/typescript/lib/typescriptServices';
-import { OPTIONS, changedOptions, compilerOptions, readOptions, settle, withStrict } from '../../../src/apps/playground/options.ts';
+import { OPTIONS, changedOptions, compilerOptions, differingNames, readOptions, settle, withStrict } from '../../../src/apps/playground/options.ts';
 
 const declarations = (ts as unknown as { optionDeclarations: { name: string; type: unknown }[] }).optionDeclarations;
 
@@ -85,7 +85,31 @@ describe('008-typescript-playground-FR-026: only changed options are written, an
   test('strict: false with no strict check written turns every strict check off', () => {
     expect(readOptions({ strict: false })).toEqual({ options: withStrict({}, false), unknown: [] });
     const { noImplicitAny: _kept, ...others } = withStrict({}, false);
-    expect(readOptions({ strict: false, noImplicitAny: true }).options).toEqual(others);
+    expect(readOptions({ ...others, noImplicitAny: true }).options).toEqual({ ...others, noImplicitAny: true });
+  });
+});
+
+describe('008-typescript-playground-FR-026: a strict check set on its own under strict: false stays set', () => {
+  const ticked = changedOptions({ ...settle(withStrict({}, false)), noImplicitAny: true });
+
+  test('it is written, read back as written, and written the same again', () => {
+    expect(ticked.noImplicitAny).toBe(true);
+    const { options, unknown } = readOptions(JSON.parse(JSON.stringify(ticked)));
+    expect(unknown).toEqual([]);
+    expect(options).toEqual(ticked);
+    expect(settle(options).noImplicitAny).toBe(true);
+    expect(changedOptions(settle(options))).toEqual(ticked);
+  });
+
+  test('it does not count as changed from the defaults, and the others do', () => {
+    expect(differingNames(ticked)).not.toContain('noImplicitAny');
+    expect(differingNames(ticked)).toContain('strict');
+    expect(differingNames(withStrict(ticked, true))).toEqual([]);
+  });
+
+  test('an older set with the check left out still reads it as off', () => {
+    const { noImplicitAny: _left, ...older } = withStrict({}, false);
+    expect(settle(readOptions(older).options).noImplicitAny).toBe(false);
   });
 });
 

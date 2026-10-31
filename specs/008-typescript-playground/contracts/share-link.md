@@ -22,7 +22,9 @@ https://<site>/#playground
 ## Payload
 
 1. `SharedContent` (data-model.md): `{ "c": <code> }`, plus `"o": <ChangedOptions>` when an
-   option differs from its default. Keys in that order; options in the table's order.
+   option differs from its default. Keys in that order; options in the table's order. With `strict`
+   off, a strict check that is on is written too, though on is its default: one left out reads as off
+   (data-model.md Compiler options).
 2. `JSON.stringify`, then UTF-8.
 3. `CompressionStream('deflate-raw')`.
 4. base64url (RFC 4648 §5), with no padding.

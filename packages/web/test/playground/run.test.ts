@@ -139,3 +139,19 @@ describe('008-typescript-playground-FR-036: the toolbar shows the run, its pendi
     expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(new RegExp(`^${fill(states.finished, { s: '[\\d.]+' })}$`));
   });
 });
+
+describe("008-typescript-playground-FR-032: the script body doesn't change the visitor's strings", () => {
+  test('a template literal holding export {} keeps it', async () => {
+    const page = await openPlaygroundPage();
+    await withCode(page, 'const s = `\nexport {}\n`;\nconsole.log(s.length);');
+    await run(page);
+    expect(await values(page)).toEqual(['11']);
+  });
+
+  test('code with no export of its own, and code with one, still run as a script', async () => {
+    const page = await openPlaygroundPage();
+    await withCode(page, 'export const a = 1;\nexport {};\nconsole.log(a);');
+    await run(page);
+    expect(await values(page)).toEqual(['1']);
+  });
+});

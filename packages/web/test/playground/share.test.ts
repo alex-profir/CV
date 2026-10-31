@@ -183,6 +183,19 @@ describe('008-typescript-playground-FR-026: compiler options travel in shared li
   });
 });
 
+describe('008-typescript-playground-FR-026: a link keeps a strict check set on its own under strict: false', () => {
+  test('written with the check, it reads as on; written without, as an older link, it reads as off', async () => {
+    const off = { strict: false, strictNullChecks: false, strictFunctionTypes: false, strictBindCallApply: false, strictPropertyInitialization: false, strictBuiltinIteratorReturn: false, noImplicitThis: false, useUnknownInCatchVariables: false };
+    const box = (page: Page) => page.locator(`${PLAYGROUND} section.options-panel #playground-option-noImplicitAny`);
+    for (const [options, on] of [[{ ...off, noImplicitAny: true }, true], [off, false]] as const) {
+      const page = await openAt(pathFrom(JSON.stringify({ c: 'let a = 1;', o: options })));
+      await waitForCode(page, 'let a = 1;');
+      await page.locator(`${TOOLBAR} button.options`).click();
+      expect(await box(page).isChecked()).toBe(on);
+    }
+  });
+});
+
 describe('008-typescript-playground-FR-053: a shared link opens the Playground in front of the CV window and never runs the code', () => {
   test('a fresh profile opens the CV window and the Playground in front, focused, with the code and the note; nothing runs; the address is / after', async () => {
     const code = 'console.log("this must not run");\nsetTimeout(() => console.log("nor this"), 10);';
@@ -334,6 +347,39 @@ describe("008-typescript-playground-FR-056: a broken link opens the starting exa
 });
 
 describe('008-typescript-playground-FR-057: a shared link replaces the visitor\'s code, says so, and Undo brings it back', () => {
+  test("Undo brings the visitor's options back from under the link's", async () => {
+    const own = 'const mine = "kept";';
+    const page = await withKeptCode(own);
+    await setOption(page);
+    await expect.poll(async () => JSON.parse((await kept(page)) ?? '{}').options?.[OPTION]).toBe(true);
+    await follow(page, `${originOf(page)}${pathFrom(JSON.stringify({ c: 'let a = 1;' }))}`);
+    await waitForCode(page, 'let a = 1;');
+    await page.locator(MESSAGE).getByRole('button', { name: messages.actions.undo }).click();
+    await expect.poll(() => editorText(page)).toBe(own);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    expect(await page.locator(`${PLAYGROUND} section.options-panel #playground-option-${OPTION}`).isChecked()).toBe(true);
+  });
+
+  // T213: kept code's notice waits behind the link's message, and comes after it.
+  test("kept code's notice isn't lost to a shared link's message", async () => {
+    const page = await freshProfile({
+      path: pathFrom(JSON.stringify({ c: 'let a = 1;', o: { fancyMode: true } })),
+      beforeGoto: async (target) => {
+        await target.addInitScript((key) => localStorage.setItem(key, JSON.stringify({ format: 1, code: 'let older = 1;', options: { oldOption: true } })), KEY);
+      },
+    });
+    await page.waitForSelector(PLAYGROUND, { state: 'visible' });
+    await waitReady(page);
+    await waitForCode(page, 'let a = 1;');
+    expect(await messageText(page)).toBe(messages.sharedReplaced);
+    await page.locator(`${MESSAGE} button.dismiss`).click();
+    expect(await messageText(page)).toBe(fill(messages.unknownOptions.one, { n: 1, names: 'fancyMode' }));
+    await page.locator(`${MESSAGE} button.dismiss`).click();
+    expect(await messageText(page)).toBe(fill(messages.unknownKeptOptions.one, { n: 1, names: 'oldOption' }));
+    await page.locator(`${MESSAGE} button.dismiss`).click();
+    expect(await page.locator(MESSAGE).count()).toBe(0);
+  });
+
   test('opened over kept code: the shared code with the longer note and Undo; Undo brings the kept code back', async () => {
     const own = 'const mine = "kept";';
     const page = await withKeptCode(own);

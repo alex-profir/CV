@@ -82,6 +82,21 @@ describe('008-typescript-playground-FR-016: errors are checked once typing pause
     expect(checking).toEqual([true, false]);
   });
 
+  test('a change of option shows checking after the same 300 ms, and goes with the result', () => {
+    const { checker, checking, change } = setUp();
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    checker.result(1);
+    checking.length = 0;
+    checker.optionsChanged();
+    vi.advanceTimersByTime(CHECKING_AFTER_MS - 1);
+    expect(checking).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(checking).toEqual([true]);
+    expect(checker.result(1)).toBe(true);
+    expect(checking).toEqual([true, false]);
+  });
+
   test('a result before 300 ms means checking never shows', () => {
     const { checker, checking, change } = setUp();
     change();

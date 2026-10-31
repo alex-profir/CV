@@ -8,7 +8,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { counted, fill, siteText } from '../../site-text.ts';
 import { setOptions } from './controller.ts';
 import { CloseGlyph } from './Glyphs.tsx';
-import { OPTIONS, changedOptions, settle, withStrict } from './options.ts';
+import { OPTIONS, changedOptions, differingNames, settle, withStrict } from './options.ts';
 import type { DescribedOption, OptionGroup, Target } from './options.ts';
 import { session, useSession } from './session.ts';
 import { focusOptionsButton } from './Toolbar.tsx';
@@ -76,7 +76,7 @@ export function OptionsPanel() {
   const options = useSession((state) => state.options);
   const values = settle(options);
   const panel = useRef<HTMLElement>(null);
-  const names = Object.keys(options);
+  const names = differingNames(options);
   useEffect(() => {
     if (!focusOnOpen) return;
     focusOnOpen = false;

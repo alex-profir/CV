@@ -145,7 +145,7 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
 
   function fromFrame(event: MessageEvent<{ nonce?: unknown; worker?: string; message?: string }>): void {
     if (event.source !== frame.contentWindow || event.data === null || typeof event.data !== 'object' || event.data.nonce !== nonce) return;
-    if (event.data.worker === 'started') port.postMessage({ run: true, nonce, cv });
+    if (event.data.worker === 'started') port.postMessage({ run: true, nonce, cv, prelude: PRELUDE_LINES });
     else if (event.data.worker === 'failed' || event.data.worker === 'died') crashed(event.data.message ?? '');
   }
 

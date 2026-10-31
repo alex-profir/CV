@@ -19,9 +19,16 @@ const words = siteText.playground.popups;
 // was cancelled.
 const focusMenuTitle = () => requestAnimationFrame(() => document.querySelector<HTMLElement>('#os #menu-title-app')?.focus());
 
+// Where the open popup sends focus when it closes, for the stuck popup to take
+// over when it replaces one.
+let popupGoesBack: () => void = focusMenuTitle;
+
 function ResetPopup() {
   const confirm = useRef<HTMLButtonElement>(null);
-  useEffect(() => confirm.current?.focus(), []);
+  useEffect(() => {
+    popupGoesBack = focusMenuTitle;
+    confirm.current?.focus();
+  }, []);
   const cancel = () => {
     session.update({ popup: 'none' });
     focusMenuTitle();
@@ -67,25 +74,31 @@ function ResetPopup() {
 function StuckPopup() {
   const stop = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLElement>(null);
-  const back = useRef<HTMLElement | null>(null);
+  // Read while rendering, while a popup this one replaces still holds focus;
+  // committing removes that popup.
+  const active = useRef(document.activeElement);
+  const fromWindow = useRef(active.current?.closest('.window, .full-screen') ?? null);
+  const fromPopup = useRef(active.current?.closest('.playground-scrim') != null);
+  const held = useRef(false);
+  const goBack = () => {
+    if (!held.current) return;
+    if (fromPopup.current) popupGoesBack();
+    else if (active.current instanceof HTMLElement && active.current.isConnected) active.current.focus();
+  };
   useEffect(() => {
-    const window = popup.current?.closest('.window, .full-screen');
-    const active = document.activeElement;
-    if (window !== null && window !== undefined && active instanceof HTMLElement && window.contains(active)) {
-      back.current = active;
+    if (fromWindow.current !== null && fromWindow.current === popup.current?.closest('.window, .full-screen')) {
+      held.current = true;
       stop.current?.focus();
     }
     // Closed by itself with focus in it: focus goes back where it was, as
     // the removed popup leaves it on the page's body.
     return () => {
-      const lost = document.activeElement === null || document.activeElement === document.body;
-      if (lost && back.current?.isConnected === true) back.current.focus();
+      if (document.activeElement === null || document.activeElement === document.body) goBack();
     };
   }, []);
   const wait = () => {
-    const to = back.current;
     keepWaiting();
-    if (to?.isConnected === true) requestAnimationFrame(() => to.focus());
+    requestAnimationFrame(goBack);
   };
   const onKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape') return;
@@ -113,9 +126,8 @@ function StuckPopup() {
             type="button"
             className="button danger"
             onClick={() => {
-              const to = back.current;
               stopCode();
-              if (to?.isConnected === true) requestAnimationFrame(() => to.focus());
+              requestAnimationFrame(goBack);
             }}
           >
             {words.stuck.stop}
@@ -170,7 +182,10 @@ function KeyTable({ commands, mac }: { commands: readonly KeyCommand[]; mac: boo
 function KeysPopup() {
   const close = useRef<HTMLButtonElement>(null);
   const fromEditor = useRef(document.activeElement?.closest('.playground-editor') != null);
-  useEffect(() => close.current?.focus(), []);
+  useEffect(() => {
+    popupGoesBack = fromEditor.current ? focusEditor : focusMenuTitle;
+    close.current?.focus();
+  }, []);
   const mac = onMac();
   const half = Math.ceil(KEY_COMMANDS.length / 2);
   const done = () => {
