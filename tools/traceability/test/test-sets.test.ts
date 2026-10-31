@@ -71,10 +71,11 @@ describe('001-requirement-traceability-FR-030: the full set is every test, and t
     const [fast, slow] = projects;
     expect(fast!.test.include).toEqual(FAST_TEST_GLOBS);
     expect(fast!.test.exclude).toEqual(TEST_EXCLUDE_GLOBS);
-    expect(fast!.test.globalSetup).toBeUndefined();
+    // Both take the test lock, which starts no browser and no build.
+    expect(fast!.test.globalSetup).toEqual(['tools/speckit-auto/test-lock.ts']);
     expect(slow!.test.include).toEqual(TEST_INCLUDE_GLOBS);
     expect(slow!.test.exclude).toEqual([...TEST_EXCLUDE_GLOBS, ...FAST_TEST_GLOBS]);
-    expect(slow!.test.globalSetup).toEqual(['packages/web/test/helpers/site.ts']);
+    expect(slow!.test.globalSetup).toEqual(['tools/speckit-auto/test-lock.ts', 'packages/web/test/helpers/site.ts']);
     expect(config.test).not.toHaveProperty('include');
     expect(config.test).not.toHaveProperty('exclude');
     expect(config.test).not.toHaveProperty('globalSetup');

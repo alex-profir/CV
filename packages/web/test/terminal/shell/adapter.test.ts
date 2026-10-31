@@ -120,6 +120,19 @@ describe('006-terminal-FR-008: exit, and the adapter’s own commands', () => {
     expect(await runLine(shell, 'echo bye; exit 3; echo not')).toMatchObject({ end: 'exited', status: 3, stdout: 'bye\n' });
   });
 
+  test('exit in a stored function ends the shell; an error that stops a line doesn’t, and the shell goes on as before it', async () => {
+    const shell = shellFor('every-field');
+    await runLines(shell, ['cd work', 'X=1', 'f() { exit 4; }', 'g() { f; }']);
+    for (const line of ['set -u; echo $nope', 'echo ${unset_var:?gone}', 'echo x > "about"', 'echo x > /tmp/nowhere/f']) {
+      const result = await runLine(shell, line);
+      expect(result.end, line).toBe('done');
+      expect(result.status, line).toBe(1);
+      expect(result.stderr, line).toMatch(/^bash: /);
+    }
+    expect(shell.state).toMatchObject({ cwd: '/home/guest/work', variables: { X: '1' }, options: ['nounset'] });
+    expect(await runLine(shell, 'g')).toMatchObject({ end: 'exited', status: 4 });
+  });
+
   test('a word that only looks like the adapter’s is any other word, and no expansion reaches its commands (T299)', async () => {
     const shell = shellFor('every-field');
     expect((await runLine(shell, 'echo __cv_x; __cv_y=1; echo $__cv_y'))).toMatchObject({ stdout: '__cv_x\n1\n', stderr: '', status: 0 });
@@ -216,6 +229,27 @@ describe('006-terminal-FR-067 and 006-terminal-FR-021: a variable over 1 MB', ()
     expect(await runLine(shell, 'unset x')).toMatchObject({ stdout: '', stderr: '', end: 'done' });
     expect(shell.state.variables.x).toBeUndefined();
     expect((await runLine(shell, 'echo ok')).stdout).toBe('ok\n');
+  });
+});
+
+describe('006-terminal-FR-067: a variable over 1 MB carries like any other', () => {
+  test('later lines run, unset removes it, and the command limit stays the line’s own', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'x=$(seq 200000)');
+    expect(await runLine(shell, 'echo ${#x}')).toMatchObject({ stdout: '1288894\n', end: 'done' });
+    expect(await runLine(shell, 'unset x; echo ${#x}')).toMatchObject({ stdout: '0\n', end: 'done' });
+    expect(shell.state.variables).not.toHaveProperty('x');
+    await runLine(shell, 'y=$(seq 50000)');
+    expect(await runLine(shell, 'for i in $(seq 15000); do :; done')).toMatchObject({ end: 'limit', limit: 'commands' });
+  });
+});
+
+describe('006-terminal-FR-073: a redirect after cd in the same line writes where the line is', () => {
+  test('from a protected folder, cd /tmp; echo x > f writes /tmp/f', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'cd work');
+    expect(await runLine(shell, 'cd /tmp; echo x > f')).toMatchObject({ stderr: '', status: 0 });
+    expect((await runLine(shell, 'cat /tmp/f')).stdout).toBe('x\n');
   });
 });
 
@@ -319,6 +353,17 @@ describe('006-terminal-FR-080, 006-terminal-FR-081 and 006-terminal-FR-073: a wr
     expect(await write(shell, 'todo', 'two\n')).toMatchObject({ ok: false, error: 'exists' });
     expect((await runLine(shell, 'cat todo')).stdout).toBe('one\n');
     expect(await write(shell, 'todo', 'two\n', true)).toMatchObject({ ok: true });
+  });
+
+  test('the open file under another name is the file itself: no exists, and readonly for a protected one without force', async () => {
+    const shell = shellFor('every-field');
+    await write(shell, 'todo', 'one\n');
+    const own = await shell.write({ id: 9, path: './todo', text: 'two\n', force: false, cwd: '/home/guest', own: '/home/guest/todo' });
+    expect(own).toMatchObject({ ok: true, own: true, path: '/home/guest/todo' });
+    expect((await runLine(shell, 'cat todo')).stdout).toBe('two\n');
+    expect(await shell.write({ id: 10, path: 'other', text: 'x\n', force: false, cwd: '/home/guest', own: '/home/guest/todo' })).not.toHaveProperty('own');
+    expect(await shell.write({ id: 11, path: '~/about', text: 'x\n', force: false, cwd: '/home/guest', own: '/home/guest/about' })).toMatchObject({ ok: false, error: 'readonly' });
+    expect(await shell.write({ id: 12, path: '~/about', text: 'x\n', force: true, cwd: '/home/guest', own: '/home/guest/about' })).toMatchObject({ ok: false, error: 'cant-open' });
   });
 
   test('a protected file, a folder and a path in a missing or protected folder give cant-open and change nothing', async () => {

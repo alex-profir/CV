@@ -105,6 +105,22 @@ describe('006-terminal-FR-060: moves, and what cancels them', () => {
 });
 
 describe('006-terminal-FR-079: editing', () => {
+  test('a character outside the BMP is one character to moves, x and r', () => {
+    const s = open('a😀b');
+    expect(at(keys(s, 'l'))).toEqual([0, 1]);
+    expect(at(keys(s, 'll'))).toEqual([0, 3]);
+    expect(at(keys(s, 'llh'))).toEqual([0, 1]);
+    expect(at(keys(s, '$'))).toEqual([0, 3]);
+    expect(text(keys(s, 'lx'))).toBe('ab');
+    expect(text(keys(s, 'l2x'))).toBe('a');
+    expect(text(keys(s, 'lrz'))).toBe('azb');
+    const end = open('a😀');
+    expect(at(keys(end, '$'))).toEqual([0, 1]);
+    const typed = inputs(keys(end, 'A'), { key: 'ArrowLeft' }, { text: 'Z' });
+    expect(text(typed)).toBe('aZ😀');
+    expect(at(inputs(keys(end, 'A'), Esc))).toEqual([0, 1]);
+  });
+
   const s = open('  hello world\nsecond line');
 
   test('i a I A o O enter insert mode at vim’s places', () => {
@@ -335,6 +351,28 @@ describe('006-terminal-FR-080: writing', () => {
     expect(fail('cant-open').message).toEqual({ kind: 'vim', code: 'E212', arg: 'todo' });
     expect(fail('full').message).toEqual({ kind: 'vim', code: 'E514', arg: 'todo' });
     expect(fail('full').modified).toBe(true);
+  });
+
+  test('keys pressed while a write is on its way keep the buffer modified, and :wq stays open', () => {
+    const sent = writeOf(command(keys(open('abc'), 'x'), 'w'));
+    expect(sent.write.text).toBe('bc\n');
+    const later = state(vimReducer(keys(sent.state, 'x'), written('todo')));
+    expect(text(later)).toBe('c');
+    expect(later.modified).toBe(true);
+    expect(state(command(later, 'q')).message).toEqual({ kind: 'vim', code: 'E37' });
+    const quitting = writeOf(command(keys(open('abc'), 'x'), 'wq'));
+    expect(state(vimReducer(keys(quitting.state, 'x'), written('todo'))).modified).toBe(true);
+  });
+
+  test('another name for the open file is the file itself, by the worker’s answer', () => {
+    const sent = writeOf(command(changed, 'w ./todo'));
+    expect(sent.write).toMatchObject({ path: './todo', force: false, own: FILE.path });
+    const own = state(vimReducer(sent.state, { wrote: { ...written('todo').wrote, own: true } }));
+    expect(own.modified).toBe(false);
+    expect(own.source.file.name).toBe('todo');
+    const ro = keys(open('a', { ...FILE, name: 'about', readonly: true }), 'x');
+    const refused = state(vimReducer(writeOf(command(ro, 'w ~/about')).state, { wrote: { ok: false, error: 'readonly', path: '/home/guest/about' } }));
+    expect(refused.message).toEqual({ kind: 'vim', code: 'E45' });
   });
 });
 

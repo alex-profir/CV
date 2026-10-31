@@ -102,10 +102,13 @@ export type Completion = { id: number; start: number; end: number; insert: strin
 
 // A write from the vim view (data-model.md Write request and outcome,
 // research R49). `path` as typed or the buffer's, resolved from `cwd`.
-export type WriteRequest = { id: number; path: string; text: string; force: boolean; cwd: string };
+// `own`: the open file's path, when `path` is another name and may still be
+// that file spelled another way (`:w ./a.txt` in `a.txt`); the outcome then
+// says whether it was.
+export type WriteRequest = { id: number; path: string; text: string; force: boolean; cwd: string; own?: string };
 export type WriteOutcome =
-  | { id: number; ok: true; path: string; created: boolean; lines: number; bytes: number; files: VisitorFiles }
-  | { id: number; ok: false; error: 'exists' | 'cant-open' | 'full'; path: string };
+  | { id: number; ok: true; path: string; created: boolean; lines: number; bytes: number; files: VisitorFiles; own?: true }
+  | { id: number; ok: false; error: 'exists' | 'cant-open' | 'full' | 'readonly'; path: string };
 
 // What the worker can't build alone: nothing on the site, a fixture CV in
 // a test.

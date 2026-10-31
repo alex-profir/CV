@@ -2410,10 +2410,13 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const { id, path: typed, text, force, cwd } = request;
     const home = typed === '~' || typed.startsWith('~/') ? `${HOME}${typed.slice(1)}` : typed;
     const path = fs.canonical(home.startsWith('/') ? home : `${cwd}/${home}`);
-    const refuse = (error: 'exists' | 'cant-open' | 'full'): WriteOutcome => ({ id, ok: false, error, path });
+    const refuse = (error: 'exists' | 'cant-open' | 'full' | 'readonly'): WriteOutcome => ({ id, ok: false, error, path });
+    // The open file under another name is the file itself, as in vim.
+    const own = request.own !== undefined && fs.canonical(request.own) === path;
     const stat = await fs.stat(path).catch(() => null);
+    if (own && !force && fs.isProtected(path)) return refuse('readonly');
     if (stat?.isDirectory === true || fs.refusesWrite(path)) return refuse('cant-open');
-    if (stat !== null && !force) return refuse('exists');
+    if (stat !== null && !force && !own) return refuse('exists');
     try {
       await fs.writeFile(path, text);
     } catch (error) {
@@ -2421,7 +2424,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     }
     const files = await fs.snapshot();
     lastFiles = JSON.stringify(files);
-    return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files };
+    return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files, ...(own ? { own } : {}) };
   }
 
   return {

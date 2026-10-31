@@ -9,6 +9,7 @@ import type { ClientStatus, ShellClient, WorkerLike } from '../../../src/apps/te
 import type { FromWorker, ToWorker } from '../../../src/apps/terminal/shell/protocol.ts';
 import { INITIAL_STATE, NO_FILES } from '../../../src/apps/terminal/shell/protocol.ts';
 import { shellFor } from '../shell/context.ts';
+import { siteText } from '../../../src/site-text.ts';
 
 type FakeClient = ShellClient & { ready(): void; resets: number; sent: string[] };
 
@@ -454,5 +455,74 @@ describe('006-terminal-FR-075: Ctrl+C drops the waiting lines', () => {
     session.cancel();
     expect(session.get().entries.map((each) => each.line)).toEqual(['typed']);
     expect(session.get().draft).toBe('');
+  });
+});
+
+describe('006-terminal-FR-070: the worker failing while a line runs', () => {
+  test('ends the line at once, its state as before it, and the failure shows and is announced', async () => {
+    vi.useFakeTimers();
+    const workers: ReturnType<typeof fakeWorker>[] = [];
+    const client = createShellClient(() => {
+      const worker = fakeWorker();
+      workers.push(worker);
+      return worker;
+    });
+    const session = createSession(client);
+    session.start();
+    workers[0]!.answer({ type: 'ready' });
+    session.run('sleep 3', 'desktop');
+    expect(session.get().running?.line).toBe('sleep 3');
+    const tab = client.complete('a', 1);
+    workers[0]!.onerror?.(new Event('error'));
+    await vi.waitFor(() => expect(session.get().running).toBeNull());
+    await expect(tab).resolves.toBeNull();
+    expect(session.get().shell).toBe('failed');
+    expect(session.get().announcement?.text).toBe(siteText.terminal.shellFailed);
+    expect(session.get().entries.map((entry) => entry.line)).toEqual(['sleep 3']);
+    expect(session.get().state).toEqual(INITIAL_STATE);
+    // The run's watchdog doesn't restart the failed worker later.
+    vi.advanceTimersByTime(TIMING.run);
+    expect(workers).toHaveLength(1);
+    expect(session.get().shell).toBe('failed');
+  });
+});
+
+describe('006-terminal-FR-075: Ctrl+C on a typed line while earlier lines wait', () => {
+  test('drops them, and its ^C line follows them, as typed', async () => {
+    const client = fakeClient('idle');
+    const session = createSession(client);
+    session.start();
+    session.run('pwd', 'desktop');
+    session.setDraft('foo');
+    session.cancel();
+    expect(session.get().draft).toBe('');
+    expect(session.get().waiting).toEqual([]);
+    expect(session.get().entries.map((entry) => [entry.line, entry.cancelled ?? false])).toEqual([
+      ['pwd', true],
+      ['foo', true],
+    ]);
+    client.ready();
+    await Promise.resolve();
+    expect(client.sent).toEqual([]);
+    expect(session.get().history).toEqual(['pwd']);
+  });
+});
+
+describe('006-terminal-FR-020: Up after history -c emptied the history mid-step', () => {
+  test('steps from the history as it is now', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo a', 'desktop');
+    session.run('echo b', 'desktop');
+    await settled(session);
+    // Stepping while `history -c` runs and another line waits.
+    session.run('history -c', 'desktop');
+    session.run('ls', 'desktop');
+    session.step('up');
+    session.step('up');
+    expect(session.get().draft).toBe('history -c');
+    await settled(session);
+    expect(session.get().history).toEqual(['ls']);
+    session.step('up');
+    expect(session.get().draft).toBe('ls');
   });
 });

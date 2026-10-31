@@ -4,6 +4,7 @@
 // selection and goes into the command line.
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
+import { siteText } from '../../src/site-text.ts';
 import { openShell } from '../helpers/shell.ts';
 import { COMMAND_LINE, commandLineFocused, openTerminal, runGroup, SHELL_PAGE } from '../helpers/terminal.ts';
 
@@ -52,6 +53,8 @@ describe.each([
     expect(copied).not.toMatch(/abc[  ]+$/);
     expect(copied).not.toContain('█');
     expect(copied).not.toContain('help awk');
+    // The command line's name and hint are for screen readers only.
+    expect(copied).not.toContain(siteText.terminal.commandLineHint);
     await page.keyboard.type('d');
     expect(await page.locator(COMMAND_LINE).inputValue()).toBe('abcd');
     expect((await selection(page)).text).toBe('');

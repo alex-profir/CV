@@ -135,7 +135,7 @@ describe("006-terminal-FR-040: the terminal part types the shell's lines in both
   });
 
   test('006-terminal-FR-040: a copy where :wq loses the typed line fails, naming the shell and cat notes', async () => {
-    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force)', "void write(next.write.path, '', next.write.force)"));
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force, next.write.own)', "void write(next.write.path, '', next.write.force, next.write.own)"));
     const lines = (await runCheck(root, { parts: ['terminal'] })).problems.map(renderProblem);
     for (const variant of variants('shell')) expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch cat notes: prints .+ after :wq, where it should print "a line of notes"$`)));
   });

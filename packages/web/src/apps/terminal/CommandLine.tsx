@@ -137,12 +137,12 @@ function parts(text: string, start: number, end: number, cursor: number): Part[]
     if (last !== undefined && last.kind === kind && kind !== 'cursor') last.text += value;
     else out.push({ text: value, kind });
   };
-  // By character: the cursor's block never holds half of one (T307).
+  // By code point, so a character outside the BMP stays whole.
   for (let at = 0; at <= text.length; ) {
     const char = at < text.length ? String.fromCodePoint(text.codePointAt(at)!) : '';
-    if (at === cursor) push(char, 'cursor');
+    if (at === cursor || (cursor > at && cursor < at + char.length)) push(char, 'cursor');
     else if (at < text.length) push(char, at >= start && at < end ? 'selected' : 'plain');
-    at += char.length || 1;
+    at += Math.max(1, char.length);
   }
   return out;
 }
@@ -314,11 +314,14 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
 
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     wake();
+    // Keys that pick or end an IME's composition are the IME's.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const plain = !event.ctrlKey && !event.altKey && !event.metaKey;
     // A question takes one key: y lists, any other adds nothing. A key the
     // browser can't name is read from what it types (`answerTyped`).
+    // Shift+Tab still leaves (SC-016); Shift+Y answers as y does.
     if (asked !== null && (event.key === 'Unidentified' || event.key === 'Process')) return;
-    if (asked !== null && plain && !event.shiftKey && !['Shift'].includes(event.key)) {
+    if (asked !== null && plain && event.key !== 'Shift' && !(event.shiftKey && event.key === 'Tab')) {
       const { matches } = asked;
       asked = null;
       if (event.key !== 'Escape') event.preventDefault();

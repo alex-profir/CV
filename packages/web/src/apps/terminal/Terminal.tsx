@@ -209,7 +209,7 @@ export function Terminal({ os }: AppProps) {
           ))}
           {state.running !== null && <Run key={state.running.id} entry={state.running} desktop={desktop} run={runControl} pending />}
           {state.waiting.map((entry) => (
-            <Run key={entry.id} entry={entry} desktop={desktop} run={runControl} pending />
+            <Run key={entry.id} entry={entry} desktop={desktop} run={runControl} pending={entry.cancelled !== true} />
           ))}
           <CommandLine
             draft={state.draft}

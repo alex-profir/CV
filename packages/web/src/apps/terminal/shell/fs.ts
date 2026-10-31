@@ -194,10 +194,12 @@ export class TerminalFs extends InMemoryFs {
     return this.locked.has(this.canonical(path));
   }
 
-  // Refused when the path, or the folder it is in, is protected; writing to
-  // /dev/null is allowed.
-  private guard(path: string) {
-    if (this.refusesWrite(path)) throw denied();
+  // Refused when the path, or the folder it is in, is protected. Writing to
+  // /dev/null is allowed; removing, moving or making anything there isn't.
+  private guard(path: string, writing = false) {
+    const at = this.canonical(path);
+    if (!writing && (at === '/dev/null' || at.startsWith('/dev/null/'))) throw denied();
+    if (this.refusesWrite(at)) throw denied();
   }
 
   // Whether a write to `path` would be refused, for the adapter's redirect
@@ -237,7 +239,7 @@ export class TerminalFs extends InMemoryFs {
     const typed = this.resolved?.path === path ? this.resolved.typed : path;
     if (opening) this.opened.set(at, typed);
     try {
-      this.guard(at);
+      this.guard(at, true);
       if (at !== '/dev/null' && !(await this.folderExists(parentOf(at)))) throw missing();
     } catch (error) {
       if (!opening) throw error;
@@ -419,7 +421,8 @@ export class TerminalFs extends InMemoryFs {
     const from = this.canonical(src);
     const to = this.canonical(dest);
     if (to in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[to]!, await super.readFile(from));
-    this.guard(to);
+    this.guard(to, true);
+    if (to === '/dev/null') return;
     if (!(await this.folderExists(parentOf(to)))) throw missing();
     await this.room(to, await this.sizeOf(from), await super.exists(to));
     return super.cp(from, to, options);
