@@ -1,6 +1,6 @@
 # Design Review: The TypeScript Playground
 
-**Status**: Approved (mockup `1188830`). Amended 2026-10-30, extended 2026-10-31 (mockup `7d141a4`), and amended again 2026-10-31 (`wireframes.md` at `e24316a`): both amendments at the end are approved.
+**Status**: Approved (mockup `1188830`). Amended 2026-10-30, extended 2026-10-31 (mockup `7d141a4`), and amended again 2026-10-31 (`wireframes.md` at `e24316a`): the amendments at the end are approved, the third signed 2026-10-31.
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -147,9 +147,9 @@ amended so, as recommended.
 - Notes: Approved as proposed. `desktop-39-keys-all-1440.png` is redrawn from the agreed table, and
   T225's message gets its export, as T223 and T230 say; neither changes the agreed words.
 
-## Awaiting sign-off
+## Third amendment of 2026-10-31: approved
 
-No row is built. Each needs the owner's signature here.
+No row was built before the signature below.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
@@ -157,3 +157,10 @@ No row is built. Each needs the owner's signature here.
 | Eighteen more rows in the list of keys, under Monaco's own names, in the groups already signed: Create Folding Range from Selection · Delete All Left · Delete All Right · Find Next · Find Previous · Find with Selection · Fold All Block Comments · Fold All Except Selected · Fold All Regions · Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning, Info) · Insert Line Below · Join Lines · Move Last Selection to Next Find Match · Remove Manual Folding Ranges · Toggle Fold Recursively · Transpose Letters · Unfold All Except Selected | Monaco binds keys to these and the signed table doesn't name them, so the list isn't yet "every key" (FR-085, T223). `keys.test.ts` holds them as `OUTSIDE_THE_TABLE` | Words here; `desktop-39` redrawn once signed | Not built |
 | The list's last line, "Every command is in the command palette, F1, with its key." | Untrue since FR-085's amendment: five commands aren't in the palette. Proposed: "The command palette, F1, lists the commands the editor offers it, with their keys." | Words here | Not built |
 | The Declarations pane's sentence when `noEmitOnError` is off and TypeScript can't write declarations: "No declarations: they can't be written for this code. The Errors pane says why." | The pane now blames `noEmitOnError`, "on and the code has errors", with the option off (FR-023, T245) | `desktop-42-no-declarations-1440.png` | Not built |
+
+### Sign-off of the third amendment
+
+- Reviewed version: the four rows above, with `desktop-41-broken-link-undo-1440.png` and `desktop-42-no-declarations-1440.png`, at commit `b6de427`
+- Date: 2026-10-31
+- Approved by: Alex Profir (project owner)
+- Notes: Approved as proposed, including the list's new last line: "The command palette, F1, lists the commands the editor offers it, with their keys."
