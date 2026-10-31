@@ -9,7 +9,7 @@ import { fill, siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
 import { frontWindow, settle, waitForReady } from '../helpers/shell.ts';
 import type { ShellOptions } from '../helpers/shell.ts';
-import { editorText, freshProfile, linkFrom, menu, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
+import { EDITOR, editorText, freshProfile, linkFrom, menu, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -407,6 +407,39 @@ describe("008-typescript-playground-FR-056: a broken link opens the starting exa
       expect(await readLogs(page)).toEqual([]);
       expect(JSON.parse((await kept(page))!).code).toBe(own);
     }
+  });
+
+  test("with the visitor's code held, Undo brings back the code and the options, and the first key takes Undo away", async () => {
+    const own = 'const mine = "kept";';
+    const page = await withKeptCode(own);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} section.options-panel #playground-option-${OPTION}`).check();
+    await expect.poll(async () => JSON.parse((await kept(page)) ?? '{}').options?.[OPTION]).toBe(true);
+    const broken = `${originOf(page)}/#playground=1.ZZZZ.ZZZZ`;
+    const start = welcome(await onMac(page)).code;
+    await follow(page, broken);
+    await waitForCode(page, start.split('\n')[0]!);
+    expect(await messageButtons(page)).toEqual([messages.actions.undo]);
+    await page.locator(`${MESSAGE} button`).filter({ hasText: messages.actions.undo }).click();
+    await waitForCode(page, own);
+    if ((await page.locator(`${TOOLBAR} button.options`).getAttribute('aria-pressed')) !== 'true') await page.locator(`${TOOLBAR} button.options`).click();
+    expect(await page.locator(`${PLAYGROUND} section.options-panel #playground-option-${OPTION}`).isChecked()).toBe(true);
+    expect(await page.locator(MESSAGE).count()).toBe(0);
+    await follow(page, broken);
+    await waitForCode(page, start.split('\n')[0]!);
+    await page.locator(`${EDITOR} textarea.inputarea`).focus();
+    await page.keyboard.type('x');
+    await expect.poll(() => messageButtons(page)).toEqual([]);
+    expect(await messageText(page)).toBe(messages.brokenLink);
+  });
+
+  test("with only the starting example held, there's nothing to bring back, so no Undo", async () => {
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    await follow(page, `${originOf(page)}/#playground=1.ZZZZ.ZZZZ`);
+    expect(await messageText(page)).toBe(messages.brokenLink);
+    expect(await messageButtons(page)).toEqual([]);
   });
 });
 

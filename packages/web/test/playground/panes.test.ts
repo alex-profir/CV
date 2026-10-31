@@ -132,4 +132,22 @@ describe('008-typescript-playground-FR-023: a pane with no output says why', () 
     await expect.poll(async () => (await showPane(page, 'javascript')).locator('p.empty').textContent()).toBe(fill(words.noJavaScript, { option: 'noEmitOnError' }));
     await expect.poll(async () => (await showPane(page, 'declarations')).locator('p.empty').textContent()).toBe(fill(words.noDeclarationsOnError, { option: 'noEmitOnError' }));
   });
+
+  const UNWRITABLE = 'export const f = () => { class L { private x = 1; } return new L(); };';
+
+  test("with noEmitOnError off and declarations TypeScript can't write, the pane says so, and the Errors pane says why", async () => {
+    const page = await openPlaygroundPage();
+    await ready(page, UNWRITABLE);
+    await expect.poll(async () => (await showPane(page, 'declarations')).locator('p.empty').textContent()).toBe(words.noDeclarationsUnwritable);
+    await expect.poll(() => outputText(page, 'javascript')).toContain('class L');
+    expect((await readErrors(page)).length).toBeGreaterThan(0);
+  });
+
+  test("with noEmitOnError on, the same code gives the option's sentences", async () => {
+    const page = await openPlaygroundPage();
+    await setOption(page, 'noEmitOnError', true);
+    await ready(page, UNWRITABLE);
+    await expect.poll(async () => (await showPane(page, 'declarations')).locator('p.empty').textContent()).toBe(fill(words.noDeclarationsOnError, { option: 'noEmitOnError' }));
+    await expect.poll(async () => (await showPane(page, 'javascript')).locator('p.empty').textContent()).toBe(fill(words.noJavaScript, { option: 'noEmitOnError' }));
+  });
 });

@@ -153,10 +153,10 @@ No row was built before the signature below.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
-| Undo on the broken link's message, where the Playground held the visitor's code | The first key after a broken link overwrites kept code, and the message offers no way back (FR-019, FR-056, T238) | `desktop-41-broken-link-undo-1440.png` | Not built |
-| Eighteen more rows in the list of keys, under Monaco's own names, in the groups already signed: Create Folding Range from Selection · Delete All Left · Delete All Right · Find Next · Find Previous · Find with Selection · Fold All Block Comments · Fold All Except Selected · Fold All Regions · Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning, Info) · Insert Line Below · Join Lines · Move Last Selection to Next Find Match · Remove Manual Folding Ranges · Toggle Fold Recursively · Transpose Letters · Unfold All Except Selected | Monaco binds keys to these and the signed table doesn't name them, so the list isn't yet "every key" (FR-085, T223). `keys.test.ts` holds them as `OUTSIDE_THE_TABLE` | Words here; `desktop-39` redrawn once signed | Not built |
-| The list's last line, "Every command is in the command palette, F1, with its key." | Untrue since FR-085's amendment: five commands aren't in the palette. Proposed: "The command palette, F1, lists the commands the editor offers it, with their keys." | Words here | Not built |
-| The Declarations pane's sentence when `noEmitOnError` is off and TypeScript can't write declarations: "No declarations: they can't be written for this code. The Errors pane says why." | The pane now blames `noEmitOnError`, "on and the code has errors", with the option off (FR-023, T245) | `desktop-42-no-declarations-1440.png` | Not built |
+| Undo on the broken link's message, where the Playground held the visitor's code | The first key after a broken link overwrites kept code, and the message offers no way back (FR-019, FR-056, T238) | `desktop-41-broken-link-undo-1440.png` | Built (T238) |
+| Eighteen more rows in the list of keys, under Monaco's own names, in the groups already signed: Create Folding Range from Selection · Delete All Left · Delete All Right · Find Next · Find Previous · Find with Selection · Fold All Block Comments · Fold All Except Selected · Fold All Regions · Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning, Info) · Insert Line Below · Join Lines · Move Last Selection to Next Find Match · Remove Manual Folding Ranges · Toggle Fold Recursively · Transpose Letters · Unfold All Except Selected | Monaco binds keys to these and the signed table doesn't name them, so the list isn't yet "every key" (FR-085, T223). `keys.test.ts` holds them as `OUTSIDE_THE_TABLE` | Words here; `desktop-39` redrawn | Built but Insert Line Below (T223, T254) |
+| The list's last line, "Every command is in the command palette, F1, with its key." | Untrue since FR-085's amendment: five commands aren't in the palette. Proposed: "The command palette, F1, lists the commands the editor offers it, with their keys." | Words here | Built (T223) |
+| The Declarations pane's sentence when `noEmitOnError` is off and TypeScript can't write declarations: "No declarations: they can't be written for this code. The Errors pane says why." | The pane now blames `noEmitOnError`, "on and the code has errors", with the option off (FR-023, T245) | `desktop-42-no-declarations-1440.png` | Built (T245) |
 
 ### Sign-off of the third amendment
 
@@ -164,3 +164,11 @@ No row was built before the signature below.
 - Date: 2026-10-31
 - Approved by: Alex Profir (project owner)
 - Notes: Approved as proposed, including the list's new last line: "The command palette, F1, lists the commands the editor offers it, with their keys."
+
+## Awaiting sign-off
+
+Found while building the third amendment's rows; nothing here is built.
+
+| Change | Why | Export | Code |
+|--------|-----|--------|------|
+| Insert Line Below gets its own key, `Cmd+K Enter` (`Ctrl+K Enter` on Windows and Linux), with the note "Not VS Code's key: Run takes {key}." | The signed row can't be built true as it stands. Monaco's key for it, `Cmd+Enter`, is Run's (FR-083), so pressing it never inserts a line, while the palette still shows it there. FR-084 wants a taken key replaced, and none of the four signed notes says why this one differs. Recommended. The other way: leave the command out of the list and take the key off it, so the palette shows it with none, against FR-084's "MUST get another key" | Words here; `desktop-39` redrawn once signed | Not built (T254) |

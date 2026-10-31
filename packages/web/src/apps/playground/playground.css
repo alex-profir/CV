@@ -848,8 +848,8 @@
   margin-block: var(--token-space-2) var(--token-space-3);
 }
 
-/* Two columns, as wide as their text; they wrap to one once zoomed text no
-   longer fits two. A note wraps to its row, and widens nothing. */
+/* Two columns of even width; they wrap to one once zoomed text's longest word
+   and key no longer fit two. A long name or a note wraps in its row. */
 .playground-popup .key-columns {
   display: flex;
   flex-wrap: wrap;
@@ -858,8 +858,8 @@
 }
 
 .playground-popup .key-column {
-  flex: 1 1 max-content;
-  min-inline-size: 0;
+  flex: 1 1 0;
+  min-inline-size: min-content;
 }
 
 .playground-popup .key-table {

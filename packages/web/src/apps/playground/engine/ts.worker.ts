@@ -156,7 +156,7 @@ class PlaygroundWorker extends TypeScriptWorker {
       version: model.version,
       diagnostics,
       javascript: blocked || js === undefined ? { none: 'noEmitOnError' } : { text: withoutMapComment(js.text), map: map?.text ?? '' },
-      declarations: options.declaration !== true ? { none: 'declaration-off' } : blocked || dts === undefined ? { none: 'noEmitOnError' } : { text: dts.text },
+      declarations: options.declaration !== true ? { none: 'declaration-off' } : blocked ? { none: 'noEmitOnError' } : dts === undefined ? { none: 'unwritable' } : { text: dts.text },
       imports: imports.map((entry) => ({ ...this.position(file, entry.start), specifier: entry.specifier })),
     };
   }

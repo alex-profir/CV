@@ -49,8 +49,10 @@ export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze<KeyCommand[]>([
   { id: 'editor.action.quickFix', group: 'types', ...same(['Cmd+.'], ['Ctrl+.']) },
   { id: 'editor.action.refactor', group: 'types', ...same(['Ctrl+Shift+R'], ['Ctrl+Shift+R']) },
 
-  { id: 'editor.action.marker.next', group: 'errors', ...same(['F8'], ['F8']) },
-  { id: 'editor.action.marker.prev', group: 'errors', ...same(['Shift+F8'], ['Shift+F8']) },
+  { id: 'editor.action.marker.nextInFiles', group: 'errors', ...same(['F8'], ['F8']) },
+  { id: 'editor.action.marker.prevInFiles', group: 'errors', ...same(['Shift+F8'], ['Shift+F8']) },
+  { id: 'editor.action.marker.next', group: 'errors', ...same(['Option+F8'], ['Alt+F8']) },
+  { id: 'editor.action.marker.prev', group: 'errors', ...same(['Shift+Option+F8'], ['Shift+Alt+F8']) },
 
   { id: 'undo', group: 'editing', ...same(['Cmd+Z'], ['Ctrl+Z']) },
   { id: 'redo', group: 'editing', ...same(['Shift+Cmd+Z'], ['Ctrl+Y', 'Ctrl+Shift+Z']) },
@@ -72,6 +74,10 @@ export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze<KeyCommand[]>([
   { id: 'editor.action.inPlaceReplace.down', group: 'editing', ...same(['Shift+Cmd+.'], ['Ctrl+Shift+.']) },
   { id: 'editor.action.inPlaceReplace.up', group: 'editing', ...same(['Shift+Cmd+,'], ['Ctrl+Shift+,']) },
   { id: 'editor.action.trimTrailingWhitespace', group: 'editing', ...same(['Cmd+K Cmd+X'], ['Ctrl+K Ctrl+X']) },
+  { id: 'deleteAllLeft', group: 'editing', ...same(['Cmd+Backspace'], []) },
+  { id: 'deleteAllRight', group: 'editing', ...same(['Ctrl+K', 'Cmd+Delete'], []) },
+  { id: 'editor.action.joinLines', group: 'editing', ...same(['Ctrl+J'], []) },
+  { id: 'editor.action.transposeLetters', group: 'editing', ...same(['Ctrl+T'], []) },
 
   { id: 'editor.action.smartSelect.expand', group: 'selecting', ...same(['Ctrl+Shift+Cmd+Right'], ['Shift+Alt+Right']) },
   { id: 'editor.action.smartSelect.shrink', group: 'selecting', ...same(['Ctrl+Shift+Cmd+Left'], ['Shift+Alt+Left']) },
@@ -84,11 +90,16 @@ export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze<KeyCommand[]>([
   { id: 'editor.action.insertCursorAtEndOfEachLineSelected', group: 'selecting', ...same(['Shift+Option+I'], ['Shift+Alt+I']) },
   { id: 'editor.action.setSelectionAnchor', group: 'selecting', ...same(['Cmd+K Cmd+B'], ['Ctrl+K Ctrl+B']) },
   { id: 'cursorUndo', group: 'selecting', ...same(['Cmd+U'], ['Ctrl+U']) },
+  { id: 'editor.action.moveSelectionToNextFindMatch', group: 'selecting', ...same(['Cmd+K Cmd+D'], ['Ctrl+K Ctrl+D']) },
 
   { id: 'actions.find', group: 'find', ...same(['Cmd+F'], ['Ctrl+F']) },
   { id: 'editor.action.startFindReplaceAction', group: 'find', ...same(['Option+Cmd+F'], ['Ctrl+H']) },
   { id: 'editor.action.nextSelectionMatchFindAction', group: 'find', ...same(['Cmd+F3'], ['Ctrl+F3']) },
   { id: 'editor.action.previousSelectionMatchFindAction', group: 'find', ...same(['Shift+Cmd+F3'], ['Ctrl+Shift+F3']) },
+  // Enter and Shift+Enter are for the find box, where they find the next and previous match.
+  { id: 'editor.action.nextMatchFindAction', group: 'find', ...same(['Cmd+G', 'F3', 'Enter'], ['F3', 'Enter']) },
+  { id: 'editor.action.previousMatchFindAction', group: 'find', ...same(['Shift+Cmd+G', 'Shift+F3', 'Shift+Enter'], ['Shift+F3', 'Shift+Enter']) },
+  { id: 'actions.findWithSelection', group: 'find', ...same(['Cmd+E'], []) },
 
   { id: 'editor.fold', group: 'folding', ...same(['Option+Cmd+['], ['Ctrl+Shift+[']) },
   { id: 'editor.unfold', group: 'folding', ...same(['Option+Cmd+]'], ['Ctrl+Shift+]']) },
@@ -105,6 +116,13 @@ export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze<KeyCommand[]>([
     ),
     shown: { mac: 'Cmd+K Cmd+1 to 7', other: 'Ctrl+K Ctrl+1 to 7' },
   },
+  { id: 'editor.createFoldingRangeFromSelection', group: 'folding', ...same(['Cmd+K Cmd+,'], ['Ctrl+K Ctrl+,']) },
+  { id: 'editor.removeManualFoldingRanges', group: 'folding', ...same(['Cmd+K Cmd+.'], ['Ctrl+K Ctrl+.']) },
+  { id: 'editor.foldAllBlockComments', group: 'folding', ...same(['Cmd+K Cmd+/'], ['Ctrl+K Ctrl+/']) },
+  { id: 'editor.foldAllExcept', group: 'folding', ...same(['Cmd+K Cmd+-'], ['Ctrl+K Ctrl+-']) },
+  { id: 'editor.unfoldAllExcept', group: 'folding', ...same(['Cmd+K Cmd+='], ['Ctrl+K Ctrl+=']) },
+  { id: 'editor.foldAllMarkerRegions', group: 'folding', ...same(['Cmd+K Cmd+8'], ['Ctrl+K Ctrl+8']) },
+  { id: 'editor.toggleFoldRecursively', group: 'folding', ...same(['Cmd+K Shift+Cmd+L'], ['Ctrl+K Ctrl+Shift+L']) },
 
   { id: 'editor.action.gotoLine', group: 'moving', ...same(['Ctrl+G'], ['Ctrl+G']) },
   { id: 'editor.action.quickOutline', group: 'moving', ...same(['Shift+Cmd+O'], ['Ctrl+Shift+O']) },

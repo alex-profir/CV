@@ -39,7 +39,7 @@ export type CheckResult = {
   version: number;
   diagnostics: Diagnostic[];
   javascript: { text: string; map: string } | { none: 'noEmitOnError' };
-  declarations: { text: string } | { none: 'declaration-off' | 'noEmitOnError' };
+  declarations: { text: string } | { none: 'declaration-off' | 'noEmitOnError' | 'unwritable' };
   imports: { line: number; column: number; specifier: string }[];
 };
 

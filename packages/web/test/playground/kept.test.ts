@@ -184,6 +184,33 @@ describe('008-typescript-playground-FR-019: the starting example first, then the
   });
 });
 
+describe('008-typescript-playground-FR-056: a broken link leaves kept code to come back', () => {
+  test("after a broken link's Undo the visitor's code is kept, and a reload holds it", async () => {
+    const page = await freshProfile();
+    await reopen(page);
+    const code = 'console.log("my kept code");';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await expect.poll(() => kept(page)).toContain('my kept code');
+    const origin = new URL(page.url()).origin;
+    await page.goto('about:blank');
+    await page.goto(`${origin}/#playground=1.ZZZZ.ZZZZ`);
+    await waitForReady(page);
+    await page.waitForSelector(PLAYGROUND, { state: 'visible' });
+    await waitReady(page);
+    await showsStartOf(page, welcome(await onMac(page)).code);
+    await expect.poll(() => kept(page)).toContain('my kept code');
+    await page.locator(`${MESSAGE} button`).filter({ hasText: messages.actions.undo }).click();
+    await waitForCode(page, code);
+    await expect.poll(() => kept(page)).toContain('my kept code');
+    await page.reload();
+    await waitForReady(page);
+    await settle(page);
+    await reopen(page);
+    await waitForCode(page, code);
+  });
+});
+
 describe('008-typescript-playground-FR-026: the compiler options are kept as the code is', () => {
   test('choosing Welcome or editing back to it keeps nothing, so a reload shows Welcome; Undo keeps the code again', async () => {
     const page = await freshProfile();

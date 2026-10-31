@@ -63,8 +63,9 @@ the link broken, so a crafted link can't exhaust memory.
   Playground in front, focused. `code`: once the editor is ready, the shared code replaces what the
   editor holds as one undoable edit, the options are set, and the message `sharedOpened` (with
   `sharedReplaced` when the visitor had code of their own) shows with Undo and Run. `broken`: the
-  starting example, the default options and the message `brokenLink`; the visitor's kept code isn't
-  touched. Unknown options: the message `unknownOptions` follows. Then
+  starting example, the default options and the message `brokenLink`, with Undo where the visitor
+  had code of their own, bringing back the code and options until the first edit (T238); the
+  visitor's kept code isn't touched until that edit. Unknown options: the message `unknownOptions` follows. Then
   `history.replaceState(history.state, '', '/')`, so the address carries no code and a reload shows
   the kept code (FR-053). Nothing runs: no code path from reading a link reaches the runner
   (R16, checked by FR-075's test).

@@ -427,7 +427,8 @@ export async function copyCode(): Promise<void> {
 
 // A link read on load (contracts/share-link.md Opening a link), once the
 // editor is ready: shared code replaces the editor's as one undoable edit;
-// a broken link shows the starting example and leaves kept code alone.
+// a broken link shows the starting example and leaves kept code alone, with
+// Undo where the Playground held the visitor's code (FR-056, T238).
 // Nothing here runs the code (FR-053).
 function openPendingLink(): void {
   const link = session.get().pendingLink;
@@ -441,11 +442,12 @@ function openPendingLink(): void {
     if (link.unknown.length > 0) showNotice('info', 'unknownOptions', { n: link.unknown.length, names: link.unknown.join(', ') }, true);
   } else if (link.kind === 'broken') {
     // The starting example is shown, not chosen, so kept code stays (FR-056).
+    const had = worthKeeping(engine.getCode(), session.get().options, startingExample().code);
     replaceCode(startingExample().code, {});
     keeper.cancel();
-    undoable = false;
+    undoable = had;
     session.update({ example: startingExample().id });
-    showMessage('error', 'brokenLink');
+    showMessage('error', 'brokenLink', had ? ['undo'] : []);
   }
   history.replaceState(history.state, '', '/');
   // The address no longer holds it: the same link pasted again is a new one.

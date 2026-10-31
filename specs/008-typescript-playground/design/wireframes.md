@@ -350,6 +350,16 @@ part (`Cmd+K Left`, `Cmd+K Right`: VoiceOver keeps `Ctrl+Option` with the arrows
 Run · Types and names · Errors · Editing · Selecting · Find · Folding · Moving around. In one column
 when text is zoomed to 200%. `build.mjs` draws this list from the table: `desktop-39-keys-all-1440.png`.
 
+Signed 2026-10-31 (third amendment, end of `review.md`): the list's last line reads "The command
+palette, F1, lists the commands the editor offers it, with their keys." Rows added, under Monaco's
+names: Errors: Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning,
+Info). Editing: on a Mac, Delete All Left · Delete All Right · Join Lines · Transpose Letters.
+Selecting: Move Last Selection to Next Find Match. Find: Find Next · Find Previous · on a Mac, Find
+with Selection. Folding: Create Folding Range from Selection · Remove Manual Folding Ranges · Fold
+All Block Comments · Fold All Except Selected · Unfold All Except Selected · Fold All Regions ·
+Toggle Fold Recursively. Insert Line Below, the eighteenth, waits: see "Awaiting sign-off" in
+`review.md`.
+
 Also signed: the Copy the code message on the desktop when the clipboard refuses, in the phone's
 signed words: "This code is too long to share as a link, and it couldn't be copied." Built (T225).
 Export: `desktop-40-code-refused-1440.png`.
@@ -449,7 +459,9 @@ Amendment of 2026-10-31: with every option at its default, the panel's foot read
 at its default." Export: `desktop-38-options-default-1440.png`.
 
 Options for modules, files, paths, packages, JSX, source maps and the project are not offered
-(FR-024). `declaration` off makes the Declarations pane say "No declarations: `declaration` is off
+(FR-024). Signed 2026-10-31 (third amendment): with `noEmitOnError` off and declarations TypeScript
+can't write, the Declarations pane says "No declarations: they can't be written for this code. The
+Errors pane says why." (`desktop-42-no-declarations-1440.png`). `declaration` off makes the Declarations pane say "No declarations: `declaration` is off
 in Compiler options." `noEmitOnError` with errors makes the JavaScript pane say "No JavaScript:
 `noEmitOnError` is on and the code has errors." (FR-023).
 
@@ -618,6 +630,10 @@ Export: `desktop-20-broken-link-1440.png`. The editor holds the starting example
 | ⊗ The shared code couldn't be read. The link may have been cut off or changed, so the      [x] |
 |   Playground opened with the starting example. Nothing ran.                             |
 ```
+
+Signed 2026-10-31 (third amendment): where the Playground held the visitor's code, the message has
+Undo before its close, which brings back the code and the options; the first edit takes Undo away,
+as on every message that has it. Export: `desktop-41-broken-link-undo-1440.png`.
 
 An option the link holds that this version doesn't know: "ⓘ The link set 1 option this version
 doesn't know, `[name]`, so it was left out." The same message names options left out of kept code

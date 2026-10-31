@@ -8,7 +8,7 @@ import { counted, fill, siteText } from '../../src/site-text.ts';
 import { OPTIONS } from '../../src/apps/playground/options.ts';
 import type { OptionGroup } from '../../src/apps/playground/options.ts';
 import { bundled } from '../helpers/bundled-typescript.ts';
-import { errorMarks, openPlaygroundPage, outputText, PLAYGROUND, readErrors, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { errorMarks, openPlaygroundPage, outputText, PLAYGROUND, readErrors, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -27,6 +27,24 @@ async function ready(page: Page, code: string): Promise<void> {
   await waitForCode(page, code);
   await waitChecked(page);
 }
+
+describe('008-typescript-playground-FR-023: noEmitOnError decides which reason the Declarations pane gives', () => {
+  test("turning the option on and off changes the sentence for declarations that can't be written", async () => {
+    const panes = siteText.playground.panes;
+    const page = await openPlaygroundPage();
+    await ready(page, 'export const f = () => { class L { private x = 1; } return new L(); };');
+    const sentence = async () => (await showPane(page, 'declarations')).locator('p.empty').textContent();
+    await expect.poll(sentence).toBe(panes.noDeclarationsUnwritable);
+    await openOptions(page);
+    await control(page, 'noEmitOnError').check();
+    await page.keyboard.press('Escape');
+    await expect.poll(sentence).toBe(fill(panes.noDeclarationsOnError, { option: 'noEmitOnError' }));
+    await openOptions(page);
+    await control(page, 'noEmitOnError').uncheck();
+    await page.keyboard.press('Escape');
+    await expect.poll(sentence).toBe(panes.noDeclarationsUnwritable);
+  });
+});
 
 // Every control's value: checked for a flag, the chosen value for target.
 const values = (page: Page) =>

@@ -25,6 +25,7 @@ function noneSentence(kind: 'javascript' | 'declarations', check: CheckResult | 
   if (check === null) return null;
   if (kind === 'javascript') return 'none' in check.javascript ? fill(words.noJavaScript, { option: 'noEmitOnError' }) : null;
   if (!('none' in check.declarations)) return null;
+  if (check.declarations.none === 'unwritable') return words.noDeclarationsUnwritable;
   return check.declarations.none === 'declaration-off' ? fill(words.noDeclarations, { option: 'declaration' }) : fill(words.noDeclarationsOnError, { option: 'noEmitOnError' });
 }
 

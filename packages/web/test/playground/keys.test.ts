@@ -79,28 +79,10 @@ async function paletteRows(page: Page): Promise<Map<string, string>> {
 // Keys of the table that Monaco's palette has no row for, on any system.
 const NOT_IN_PALETTE: ReadonlySet<string> = new Set(['undo', 'redo', 'cursorWordPart']);
 const UNLISTED_BY_PALETTE: ReadonlySet<string> = new Set(['editor.action.revealDefinition', 'editor.action.peekDefinition', 'editor.action.goToReferences', 'editor.action.quickFix', 'editor.action.toggleTabFocusMode']);
-// Monaco's keys the signed table doesn't hold: an unsigned row at the end of
-// design/review.md proposes them. Nothing else may be missing from the list.
-const OUTSIDE_THE_TABLE: ReadonlySet<string> = new Set([
-  'Create Folding Range from Selection',
-  'Delete All Left',
-  'Delete All Right',
-  'Find Next',
-  'Find Previous',
-  'Find with Selection',
-  'Fold All Block Comments',
-  'Fold All Except Selected',
-  'Fold All Regions',
-  'Go to Next Problem (Error, Warning, Info)',
-  'Go to Previous Problem (Error, Warning, Info)',
-  'Insert Line Below',
-  'Join Lines',
-  'Move Last Selection to Next Find Match',
-  'Remove Manual Folding Ranges',
-  'Toggle Fold Recursively',
-  'Transpose Letters',
-  'Unfold All Except Selected',
-]);
+// Keys that act only in the find box, which the editor's own focus can't show.
+const FIND_BOX_KEYS: ReadonlySet<string> = new Set(['Enter', 'Shift+Enter']);
+// Commands with several keys where the palette shows only the find box's.
+const PALETTE_SHOWS_FIND_BOX: ReadonlySet<string> = new Set(['editor.action.nextMatchFindAction', 'editor.action.previousMatchFindAction']);
 
 // One spelling for a key in the palette or the table; a chord's keys count as
 // the palette shows them, one after another.
@@ -132,6 +114,7 @@ describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for 
       for (const command of KEY_COMMANDS) {
         for (const key of keysFor(command, mac)) {
           // A chord's first key waits for the second: the first is enough.
+          if (FIND_BOX_KEYS.has(key)) continue;
           await page.locator(`${EDITOR} textarea.inputarea`).focus();
           if (!(await acted(page, key.split(' ')[0]!))) missed.push(`${command.id} ${key}`);
           // A widget opens a moment after its key: let it, then close it.
@@ -151,6 +134,8 @@ describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for 
     await focusEditor(page);
     await page.keyboard.press(`${await primary(page)}+Enter`);
     await expect.poll(async () => (await readLogs(page)).map((row) => row.text)).toContain('ran');
+    // Monaco's palette gives Insert Line Below the same key; Run has it.
+    expect(await editorText(page)).toBe('console.log("ran");');
   });
 
   test('the keys do nothing with focus outside the editor', async () => {
@@ -216,7 +201,7 @@ describe('008-typescript-playground-FR-083: on Linux the listed keys are the one
     // Monaco leaves these out of the palette on every system, as it registers
     // them otherwise: the next test presses them.
     const unlisted = UNLISTED_BY_PALETTE;
-    const wrong = KEY_COMMANDS.filter((command) => !unlisted.has(command.id) && !NOT_IN_PALETTE.has(command.id)).flatMap((command) => keysFor(command, false, true).filter((key) => !key.includes(' ') && !keys.has(spell(key))).map((key) => `${command.id} ${key}`));
+    const wrong = KEY_COMMANDS.filter((command) => !unlisted.has(command.id) && !NOT_IN_PALETTE.has(command.id) && !PALETTE_SHOWS_FIND_BOX.has(command.id)).flatMap((command) => keysFor(command, false, true).filter((key) => !key.includes(' ') && !keys.has(spell(key))).map((key) => `${command.id} ${key}`));
     expect(wrong.join(' | ')).toBe('');
     // What a key was Monaco's alone isn't left on Linux.
     for (const gone of ['Ctrl+Shift+I', 'Ctrl+Shift+Alt+Down', 'Ctrl+Shift+F10']) expect(keys.has(spell(gone)), gone).toBe(false);
@@ -229,6 +214,7 @@ describe('008-typescript-playground-FR-083: on Linux the listed keys are the one
     const missed: string[] = [];
     for (const command of KEY_COMMANDS) {
       for (const key of keysFor(command, false, true)) {
+        if (FIND_BOX_KEYS.has(key)) continue;
         await page.locator(`${EDITOR} textarea.inputarea`).focus();
         if (!(await acted(page, key.split(' ')[0]!))) missed.push(`${command.id} ${key}`);
         await page.waitForTimeout(150);
@@ -362,7 +348,7 @@ describe('008-typescript-playground-FR-085: the palette lists the commands, and 
       await openPalette(page);
       const rows = await paletteRows(page);
       const listed = new Set(KEY_COMMANDS.flatMap((command) => keysFor(command, mac, linux)).map(spelled));
-      const behind = [...rows].filter(([label, key]) => key !== '' && !OUTSIDE_THE_TABLE.has(label) && !listed.has(spelled(key))).map(([label, key]) => `${label}: ${key}`);
+      const behind = [...rows].filter(([label, key]) => key !== '' && !listed.has(spelled(key))).map(([label, key]) => `${label}: ${key}`);
       expect(behind.join(' | ')).toBe('');
       const shown = new Set([...rows.values()].filter((key) => key !== '').map(spelled));
       const gone = KEY_COMMANDS.filter((command) => !NOT_IN_PALETTE.has(command.id) && !UNLISTED_BY_PALETTE.has(command.id) && keysFor(command, mac, linux).length > 0 && !keysFor(command, mac, linux).some((key) => shown.has(spelled(key)))).map((command) => command.id);
