@@ -76,7 +76,7 @@ describe('006-terminal-FR-069: a line is stopped once it has run 10,000 commands
       expect(result.stderr, line).not.toMatch(/limit exceeded|increase executionLimits/);
       expect((await runLine(shell, 'ls keep')).stdout, line).toBe('keep\n');
     }
-    expect(await runLine(shellFor('every-field'), 'a[1+]=1')).toMatchObject({ status: 1, stderr: 'bash: 1+: syntax error: operand expected (error token is "+")\n' });
+    expect(await runLine(shellFor('every-field'), 'a[1+]=1')).toMatchObject({ status: 1, stderr: 'bash: 1+: arithmetic syntax error: operand expected (error token is "+")\n' });
   }, 60_000);
 
   test('exit however it is reached still closes it, and a subshell’s doesn’t (T314)', async () => {

@@ -70,7 +70,7 @@ describe('006-terminal-FR-043: the home folder lists the built entries in the de
 });
 
 describe('006-terminal-FR-049: protected paths refuse every write and change nothing', () => {
-  const PROTECTED = ['/home/guest/about', '/home/guest/work', '/home/guest/work/x', '/', '/home', '/home/x', '/bin', '/bin/x', '/usr', '/usr/bin/x', '/dev', '/dev/stdout'];
+  const PROTECTED = ['/home/guest/about', '/home/guest/work', '/home/guest/work/x', '/', '/home', '/home/x', '/bin', '/bin/x', '/usr', '/usr/bin/x', '/dev', '/dev/zero'];
 
   test('writeFile, appendFile, mkdir, rm, cp and mv onto, out of or into a protected path', async () => {
     const fs = withShell();
@@ -95,6 +95,12 @@ describe('006-terminal-FR-049: protected paths refuse every write and change not
     await rejects(fs.symlink('/home/guest/mine', '/home/guest/work/link'), 'Permission denied');
     expect(await fs.readFile('/home/guest/about')).toBe(before);
     expect(await fs.readdir('/home/guest')).toEqual([...BUILT, 'mine']);
+    // Writing to the output by name keeps nothing in the tree: the command's
+    // own output gets it (T332).
+    await fs.writeFile('/dev/stdout', 'out');
+    await fs.appendFile('/dev/fd/2', 'err');
+    expect(fs.takeStreamed()).toEqual({ stdout: 'out', stderr: 'err' });
+    expect(fs.takeStreamed()).toEqual({ stdout: '', stderr: '' });
     // Writing to /dev/null is allowed, and keeps nothing.
     await fs.writeFile('/dev/null', 'gone');
     expect(await fs.readFile('/dev/null')).toBe('');

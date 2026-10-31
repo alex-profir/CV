@@ -607,6 +607,9 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G28 | awk's language, where a wrapper can't reach it (T319): `BEGIN { getline }` reads nothing; `printf`'s `0` and `+` flags and two-digit exponents; `"10"<"9"` compares as numbers; `a["x"]` doesn't create the element; `CONVFMT`; `+inf`, `-inf` and `+nan`; `print > "/dev/stderr"`; `print | "sort"` | Upstream report, and open for the owner under FR-068 (T319). `-v`, `NAME=value` operands, bare `length`, `int`, `RS` as one character or paragraphs (a record's inner newlines read as spaces), and GNU's words and statuses are done in `gnu.ts` |
 | G29 | sed, where a wrapper can't reach it (T320): `H`'s first line break, `s/./&&/2g`, `\U`, `\u`, `\L`, `\l` and `\E`, and a bad script's words beyond an unterminated `s` or `y`. `sed` and `awk` alone give their usage's first lines only | Upstream report, and open for the owner under FR-068 (T320). `T`, `a\text`, `i\text`, `c\text`, `q5`, `Q5`, `--in-place=` and `can't read` are done in `gnu.ts` |
 | G30 | `grep` has no back references, lookaround or `-H`, and no name for standard input (T318) | `jsGrep` in `gnu.ts`, on JavaScript's regular expressions; not with `-r`, where a back reference still says it's invalid. Upstream report |
+| G31 | A negated pattern, `!(x)`: its glob becomes a regular expression with a lookahead, which just-bash's RE2 refuses. It matches nothing in a word, leaves a `case` or `${x/…}` unmatched, and in `[[ ]]` prints RE2's error. At a word's start the parser also takes `!` as the operator (T344) | The Terminal says `bash: !(x): negated patterns aren't supported`, status 1, and runs nothing of the line. `@`, `+`, `?` and `*` patterns work. FR-067 doesn't allow this: the owner decides. Upstream report |
+| G32 | `type`, `command -v` and `command -V` name as builtins and keywords what doesn't run: `trap`, `alias`, `unalias`, `kill`, `jobs`, `fg`, `bg`, `disown`, `times`, `enable`, `caller`, `suspend`, `umask`, `ulimit`, `fc`, `select`, `coproc` (T336) | Each word is looked at once expanded, and these aren't found (`NAMED_NOT_RUN`). Upstream report |
+| G33 | `export d` sets an unset `d` to the empty string; `$BASH_SUBSHELL` and `$SHLVL` are empty; `declare -i` reads a bad expression as 0; `failglob`'s error doesn't stop the line; `find -exec` passes on its command's status and takes `{}` only as a whole word; `grep -c` doesn't stop at `-m`, and `-m0` prints every match; `sort -u` with `-n` or `-f` compares the whole line; `diff` of a file with itself under `-s` says nothing (T333 to T345) | The adapter and `gnu.ts`. `$BASH_SUBSHELL` counts the subshells the text is written in, so a function called from a subshell reads as where it's defined. A `declare -i i` with no value isn't carried to a later line, as just-bash's `declare -p` doesn't list it. Upstream report |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -1240,6 +1243,9 @@ Terminal's home folder. just-bash's were taken with 3.6.0 in Node 26. The script
 the repository, as for R25.
 
 ## R43. Where Tab's completions come from
+
+`select` and `coproc` aren't among a command's first words: just-bash's parser refuses both, so
+`type` doesn't name them and Tab doesn't offer them (T336, research G32).
 
 **Decision**: a pure completer, `apps/terminal/shell/complete.ts`, in the worker beside the file
 system it reads. Given the line, the cursor and the shell's state, it returns what bash's readline

@@ -30,6 +30,19 @@ const operandsOf = (args: readonly string[], valued: ReadonlySet<string>) => {
   return operands;
 };
 
+// The letter of a last option that takes a value and has none.
+const valueMissing = (args: readonly string[], letters: string) => {
+  const last = args.at(-1);
+  return last !== undefined && /^-[a-zA-Z]$/.test(last) && letters.includes(last[1]!) ? last[1]! : null;
+};
+const noValue = (name: string, letter: string, exitCode = 1) => usageError(name, `option requires an argument -- '${letter}'`, exitCode);
+const needsValue =
+  (name: string, letters: string, fix: Fix): Fix =>
+  async (args, ctx, next, fs) => {
+    const letter = valueMissing(args, letters);
+    return letter === null ? fix(args, ctx, next, fs) : noValue(name, letter);
+  };
+
 // A wrong use GNU follows with the `Try` line.
 const WRONG_USE = /^\S+: (?:missing |unrecognized option|invalid option|option requires|you must specify|extra operand)/m;
 
@@ -152,7 +165,8 @@ const WRITE_FLAG = /^((?:\d+|\$|\/[^/]*\/)?,?(?:\d+|\$|\/[^/]*\/)?s(.)(?:(?!\2).
 // A script's one-line `a\text`, `i\text` and `c\text`, as GNU reads them, and
 // `T`, with no label ending the script (T320).
 function sedScript(script: string): string {
-  let text = script.replace(/^((?:\d+|\$|\/[^/]*\/)?\s*[aic])\\(?=[^\n])/, '$1 ');
+  // Written where the line is printed, in its place among the others (T332).
+  let text = script.replace(/^((?:\d+|\$|\/[^/]*\/)?\s*[aic])\\(?=[^\n])/, '$1 ').replace(/(^|[;\s\d$/gi])w\s+\/dev\/(?:stdout|fd\/1)\s*$/, '$1p');
   // just-bash's `T` never sees a substitution end, so `t` past a `b`.
   let count = 0;
   let ends = false;
@@ -172,6 +186,8 @@ const SED_USAGE = 'Usage: sed [OPTION]... {script-only-if-no-other-script} [inpu
 
 const sed: Fix = async (args, ctx, next, fs) => {
   if (args.length === 0) return failed(SED_USAGE, 1);
+  const missingValue = valueMissing(args, 'ef');
+  if (missingValue !== null) return failed(`sed: option requires an argument -- '${missingValue}'\n${SED_USAGE}`, 1);
   let list = args.map((arg) => (arg === '--in-place' ? '-i' : arg.startsWith('--in-place=') ? `-i${arg.slice(11)}` : arg));
   list = list.map((arg, at) => (list[at - 1] === '-e' || (at === list.findIndex((each) => !isOption(each)) && !list.includes('-e') && !list.includes('-f')) ? sedScript(arg) : arg));
   const original = next;
@@ -184,7 +200,8 @@ const sed: Fix = async (args, ctx, next, fs) => {
     let { stderr, exitCode } = result;
     const unterminated = /^sed: invalid command: unterminated (substitution|transliteration)/.exec(stderr);
     if (unterminated !== null) stderr = `sed: -e expression #1, char ${script.length}: unterminated \`${unterminated[1] === 'substitution' ? 's' : 'y'}' command\n`.replace('`', "'");
-    if (/^sed: nope|^sed: .+: No such file or directory$/m.test(stderr)) {
+    if (/^sed: couldn't open file /.test(stderr)) exitCode = 4;
+    else if (/^sed: nope|^sed: .+: No such file or directory$/m.test(stderr)) {
       stderr = stderr.replace(/^sed: (.+): No such file or directory$/gm, "sed: can't read $1: No such file or directory");
       exitCode = 2;
     }
@@ -325,6 +342,7 @@ const ISO: Readonly<Record<string, string>> = { date: '+%F', hours: '+%FT%H+00:0
 
 const date: Fix = async (args, ctx, next, fs) => {
   const list: string[] = [];
+  let operand: string | null = null;
   for (let at = 0; at < args.length; at += 1) {
     const arg = args[at]!;
     const iso = /^(?:-I|--iso-8601(?:=|$))(.*)$/.exec(arg);
@@ -334,10 +352,14 @@ const date: Fix = async (args, ctx, next, fs) => {
       const value = readDate(typed, new Date());
       if (value === null) return failed(`date: invalid date ‘${typed}’\n`, 1);
       list.push('-d', `@${value}`);
-    } else if (arg.startsWith('+')) list.push(dateFormat(arg));
-    else if (!isOption(arg)) return failed(`date: invalid date ‘${arg}’\n`, 1);
-    else list.push(arg);
+    } else if (!isOption(arg)) {
+      if (operand !== null) return usageError('date', `extra operand ‘${arg}’`);
+      operand = arg;
+      if (arg.startsWith('+')) list.push(dateFormat(arg));
+    } else list.push(arg);
   }
+  if (operand === '+') return { stdout: '\n', stderr: '', exitCode: 0 };
+  if (operand !== null && !operand.startsWith('+')) return failed(`date: invalid date ‘${operand}’\n`, 1);
   const result = await addTry('date')(list, ctx, next, fs);
   return { ...result, stdout: dateValues(result.stdout), stderr: result.stderr.replace(/^(date: invalid date )'(.*)'$/gm, '$1‘$2’') };
 };
@@ -346,11 +368,15 @@ const env: Fix = async (args, ctx, next, fs) => {
   const result = await addTry('env')(args, ctx, next, fs);
   const missing = /^bash: (\S+): command not found\n$/.exec(result.stderr);
   if (missing !== null) return { ...result, stderr: `env: ‘${missing[1]!}’: No such file or directory\n`, exitCode: 127 };
+  const words = args.filter((arg) => !isOption(arg) && arg !== '-');
+  const lists = words.every((word) => word.includes('=')) || words.at(-1) === 'env';
+  if (!lists) return result;
+  // `$?` and the positional parameters are no variables (T337).
+  const named = result.stdout.replace(/^(?:\?|#|@|\*|\d+)=.*\n/gm, '');
   // just-bash adds the working folder to an emptied environment.
   const emptied = args.includes('-i') || args.includes('--ignore-environment') || args[0] === '-';
-  const words = args.filter((arg) => !isOption(arg) && arg !== '-');
-  if (!emptied || words.at(-1) !== 'env' || words.some((word) => word.startsWith('PWD='))) return result;
-  return { ...result, stdout: result.stdout.replace(/^PWD=.*\n/m, '') };
+  if (!emptied || words.at(-1) !== 'env' || words.some((word) => word.startsWith('PWD='))) return { ...result, stdout: named };
+  return { ...result, stdout: named.replace(/^PWD=.*\n/m, '') };
 };
 
 // `xargs`' options that take a value.
@@ -366,9 +392,24 @@ const xargs: Fix = async (args, ctx, next) => {
     if (joined !== null) list.push(`-${joined[1]!}`, joined[2]!);
     else {
       list.push(arg);
-      if (/^-[IdnPsLaE]$/.test(arg)) list.push(args[(at += 1)]!);
+      if (/^-[IdnPsLaE]$/.test(arg)) {
+        if (at + 1 === args.length) return noValue('xargs', arg[1]!);
+        list.push(args[(at += 1)]!);
+      }
     }
   }
+  for (const [each, value] of list.entries()) {
+    const number = /^-([nPsL])$/.exec(list[each - 1] ?? '')?.[1];
+    if (number !== undefined && !/^\d+$/.test(value)) return usageError('xargs', `invalid number "${value}" for -${number} option`);
+  }
+  // Whichever of `-n` and `-I` comes last wins.
+  let warning = '';
+  const [countAt, replaceAt] = [list.lastIndexOf('-n'), list.lastIndexOf('-I')];
+  if (countAt >= 0 && replaceAt >= 0) {
+    warning = countAt < replaceAt ? 'xargs: warning: options --max-args and --replace/-I/-i are mutually exclusive, ignoring previous --max-args value\n' : 'xargs: warning: options --replace and --max-args/-n are mutually exclusive, ignoring previous --replace value\n';
+    list.splice(Math.min(countAt, replaceAt), 2);
+  }
+  const warned = (result: Output) => (warning === '' ? result : { ...result, stderr: `${warning}${result.stderr}` });
   const command = args.slice(at);
   // Its input as GNU reads it, one item for each, unless told how to split it.
   const raw = !list.some((arg) => arg === '-0' || arg === '--null' || arg === '-d' || arg === '--delimiter');
@@ -403,9 +444,9 @@ const xargs: Fix = async (args, ctx, next) => {
   const failing = (result: Output) => (result.exitCode >= 1 && result.exitCode <= 125 && command[0] !== undefined ? { ...result, exitCode: 123 } : result);
   // GNU runs the command once with no input, unless told not to.
   if (new TextDecoder().decode(inputBytes(ctx)).trim() === '' && !list.some((arg) => arg === '-r' || arg === '--no-run-if-empty' || arg === '-I')) {
-    return ctx.exec!((command.length === 0 ? ['echo'] : command).map(quote).join(' '), { cwd: ctx.cwd, env: Object.fromEntries(ctx.env) }).then(notFound(command));
+    return ctx.exec!((command.length === 0 ? ['echo'] : command).map(quote).join(' '), { cwd: ctx.cwd, env: Object.fromEntries(ctx.env) }).then(notFound(command)).then(warned);
   }
-  return next([...list, ...command], input).then(notFound(command)).then(failing);
+  return next([...list, ...command], input).then(notFound(command)).then(failing).then(warned);
 };
 
 const notFound = (command: readonly string[]) => (result: Output) => {
@@ -436,21 +477,68 @@ const diff: Fix = async (args, ctx, next, fs) => {
   if (args.includes('--version') || args.includes('-v')) return { stdout: 'diff (GNU diffutils) 3.12\n', stderr: '', exitCode: 0 };
   const operands = args.filter((arg) => !isOption(arg));
   if (operands.length < 2) return failed(`diff: missing operand after ‘${operands[0] ?? 'diff'}’\ndiff: ${tryHelp('diff')}`, 2);
+  // A folder beside a file: the file of that name in the folder (T345).
+  const [first, second] = await Promise.all(operands.slice(0, 2).map((operand) => (operand === '-' || operand.startsWith('/dev/fd/') ? null : fs.stat(fs.resolvePath(ctx.cwd, operand)).catch(() => null))));
+  const folderOf = (stat: typeof first) => stat?.isDirectory === true;
+  const paired = (folder: string, file: string) => `${folder.replace(/\/+$/, '')}/${file.slice(file.lastIndexOf('/') + 1)}`;
+  const shown = folderOf(first) && !folderOf(second) && second !== null ? [paired(operands[0]!, operands[1]!), operands[1]!] : folderOf(second) && !folderOf(first) && first !== null ? [operands[0]!, paired(operands[1]!, operands[0]!)] : operands;
   const missing: string[] = [];
-  for (const operand of operands.slice(0, 2)) if (operand !== '-' && !operand.startsWith('/dev/fd/') && !(await fs.exists(fs.resolvePath(ctx.cwd, operand)))) missing.push(`diff: ${operand}: No such file or directory\n`);
+  for (const operand of shown.slice(0, 2)) if (operand !== '-' && !operand.startsWith('/dev/fd/') && !(await fs.exists(fs.resolvePath(ctx.cwd, operand)))) missing.push(`diff: ${operand}: No such file or directory\n`);
   if (missing.length > 0) return failed(missing.join(''), 2);
-  // A folder with itself, and a `<(…)`, which `diff` opens as a file (T322).
-  if (fs.canonical(fs.resolvePath(ctx.cwd, operands[0]!)) === fs.canonical(fs.resolvePath(ctx.cwd, operands[1]!))) return { stdout: '', stderr: '', exitCode: 0 };
-  const substituted = operands.slice(0, 2).filter((operand) => operand.startsWith('/dev/fd/'));
-  if (substituted.length > 0) {
-    const read = await Promise.all(substituted.map((operand) => ctx.exec!(`cat ${quote(operand)}`, { cwd: ctx.cwd })));
-    if (substituted.length === 2 && read[0]!.stdout === read[1]!.stdout) return { stdout: '', stderr: '', exitCode: 0 };
-  }
+  // A file with itself: there's nothing to compare, and `-s` says so.
+  const identical = args.some((arg) => arg === '--report-identical-files' || /^-[a-zA-Z]*s/.test(arg)) ? `Files ${operands[0]!} and ${operands[1]!} are identical\n` : '';
+  if (fs.canonical(fs.resolvePath(ctx.cwd, operands[0]!)) === fs.canonical(fs.resolvePath(ctx.cwd, operands[1]!))) return { stdout: identical, stderr: '', exitCode: 0 };
   return addTry('diff')(args, ctx, next, fs);
 };
 
+// What's wrong with a `-k`'s value, in GNU's words.
+function sortKeyError(key: string): string | null {
+  const field = (spec: string, at: 'start' | 'end'): string | null => {
+    const [, digits, dot, offset, rest] = /^(\d*)(\.?)(\d*)(.*)$/s.exec(spec)!;
+    if (digits === '') return at === 'start' ? `invalid number at field start: invalid count at start of ‘${spec}’` : `invalid number after ',': invalid count at start of ‘${spec}’`;
+    if (/^0+$/.test(digits!)) return `field number is zero: invalid field specification ‘${key}’`;
+    if (dot === '.' && offset === '') return `invalid number after '.': invalid count at start of ‘${rest}’`;
+    if (at === 'start' && dot === '.' && /^0+$/.test(offset!)) return `character offset is zero: invalid field specification ‘${key}’`;
+    if (!/^[bdfgiMhnRrV]*$/.test(rest!)) return `stray character in field spec: invalid field specification ‘${key}’`;
+    return null;
+  };
+  const comma = key.indexOf(',');
+  return field(comma < 0 ? key : key.slice(0, comma), 'start') ?? (comma < 0 ? null : field(key.slice(comma + 1), 'end'));
+}
+
+// A line's `-n` key: what GNU reads as its number.
+const numericKey = (line: string) => Number(/^\s*(-?\d*\.?\d*)/.exec(line)?.[1]) || 0;
+
 const sort: Fix = async (args, ctx, next, fs) => {
   if (args.at(-1) === '-k' || args.at(-1) === '-t') return usageError('sort', `option requires an argument -- '${args.at(-1)!.slice(1)}'`, 2);
+  const valueOf = (short: string, long: string) => args.flatMap((arg, at) => (args[at - 1] === `-${short}` || args[at - 1] === `--${long}` ? [arg] : arg.startsWith(`--${long}=`) ? [arg.slice(long.length + 3)] : arg.length > 2 && arg.startsWith(`-${short}`) ? [arg.slice(2)] : []));
+  for (const key of valueOf('k', 'key')) {
+    const wrong = sortKeyError(key);
+    if (wrong !== null) return failed(`sort: ${wrong}\n`, 2);
+  }
+  for (const tab of valueOf('t', 'field-separator')) if ([...tab].length > 1 && tab !== '\\0') return failed(`sort: multi-character tab ‘${tab}’\n`, 2);
+  const flags = args.filter((arg) => /^-[a-zA-Z]+$/.test(arg) && !/^-[kto]/.test(arg)).join('').replaceAll('-', '');
+  const output = args.some((arg) => arg === '--output' || arg.startsWith('--output=') || arg.startsWith('-o'));
+  if (output && (flags.includes('c') || args.includes('--check'))) return failed("sort: options '-co' are incompatible\n", 2);
+  // `-u` with `-n` or `-f`: the first of the lines its key calls equal (T334),
+  // where just-bash compares the whole line.
+  const unique = flags.includes('u') || args.includes('--unique');
+  const by = flags.includes('n') || args.includes('--numeric-sort') ? numericKey : flags.includes('f') || args.includes('--ignore-case') ? (line: string) => line.toUpperCase() : null;
+  if (unique && by !== null && !output && !flags.includes('c') && valueOf('k', 'key').length === 0) {
+    const list = args.flatMap((arg) => {
+      if (arg === '--unique') return [];
+      if (!/^-[a-zA-Z]+$/.test(arg) || /^-[kto]/.test(arg) || !arg.includes('u')) return [arg];
+      const rest = arg.replaceAll('u', '');
+      return rest === '-' ? [] : [rest];
+    });
+    const result = await addTry('sort', 2)(['-s', ...list], ctx, next, fs);
+    if (result.exitCode !== 0) return result;
+    const seen = new Set<unknown>();
+    const lines = result.stdout.split('\n');
+    if (lines.at(-1) === '') lines.pop();
+    const kept = lines.filter((line) => !seen.has(by(line)) && seen.add(by(line)));
+    return { ...result, stdout: kept.map((line) => `${line}\n`).join('') };
+  }
   const result = await addTry('sort', 2)(args, ctx, next, fs);
   const missing = /^sort: (.+): No such file or directory\n/.exec(result.stderr);
   return missing === null ? result : { ...result, stderr: `sort: cannot read: ${missing[1]!}: No such file or directory\n`, exitCode: 2 };
@@ -471,14 +559,51 @@ function findSize(args: readonly string[]): string[] {
   return list;
 }
 
-const find: Fix = async (args, _ctx, next) => {
+// The tests and actions that start an expression, for what comes after a path.
+const FIND_START = /^(?:-|\(|!)/;
+
+// `-exec … \;` as the last action, as GNU runs it: `{}` anywhere in a word, and
+// a command's status isn't `find`'s (T335).
+async function findExec(args: readonly string[], ctx: Context, next: Next): Promise<Output | null> {
+  const at = args.indexOf('-exec');
+  if (at < 0 || args.at(-1) !== ';' || args.indexOf(';') !== args.length - 1) return null;
+  if (args.slice(0, at).some((arg) => /^-(?:print|print0|printf|delete|exec|prune|quit)$/.test(arg))) return null;
+  const words = args.slice(at + 1, -1);
+  if (words.length === 0) return null;
+  const found = await next(findSize([...args.slice(0, at), '-print0']));
+  if (found.stdout === '') return found;
+  let stdout = '';
+  let stderr = found.stderr;
+  for (const path of found.stdout.split('\0').slice(0, -1)) {
+    const ran = await ctx.exec!(words.map((word) => quote(word.replaceAll('{}', path))).join(' '), { cwd: ctx.cwd, env: Object.fromEntries(ctx.env) });
+    stdout += ran.stdout;
+    stderr += missingCommand(ran.stderr);
+  }
+  return { stdout, stderr, exitCode: found.exitCode };
+}
+
+const missingCommand = (stderr: string) => stderr.replace(/^bash: (.+): command not found$/gm, 'find: ‘$1’: No such file or directory');
+
+const find: Fix = async (args, ctx, next, fs) => {
+  if (args.includes('--help')) return next(args);
+  for (const [at, arg] of args.entries()) {
+    if (args[at - 1] === '-newer' && !(await fs.exists(fs.resolvePath(ctx.cwd, arg)))) return failed(`find: ‘${arg}’: No such file or directory\n`, 1);
+  }
+  const start = args.findIndex((arg) => FIND_START.test(arg));
+  const binary = start >= 0 && (args[start] === '-a' || args[start] === '-o' || args[start] === '-and' || args[start] === '-or') ? args[start] : null;
+  if (binary !== null) return failed(`find: invalid expression; you have used a binary operator '${binary}' with nothing before it.\n`, 1);
+  const execed = await findExec(args, ctx, next);
+  if (execed !== null) return execed;
   const result = await next(findSize(args));
   const root = args.find((arg) => !isOption(arg) && arg.endsWith('/') && arg.length > 1);
   const stdout = root === undefined ? result.stdout : result.stdout.replace(new RegExp(`^${root.slice(0, -1).replace(/[.*+?^\${}()|[\]\\]/g, '\\$&')}$`, 'm'), root);
   return {
     ...result,
     stdout,
-    stderr: result.stderr
+    exitCode: result.exitCode === 127 ? 1 : result.exitCode,
+    stderr: missingCommand(result.stderr)
+      .replace(/^find: invalid argument `(.+)' to `-size'$/gm, (_, value: string) => (/\d$/.test(value) ? `find: invalid -size type \`${value}'` : `find: invalid -size type \`${value.at(-1)!}'`))
+      .replace(/^find: invalid argument `(.+)' to `-perm'$/gm, 'find: invalid file mode ‘$1’')
       .replace(/^find: ‘?cannot delete '(.+?)'’?: (.*)$/gm, 'find: cannot delete ‘$1’: $2')
       .replace(/^find: unknown predicate '(.+)'$/gm, "find: unknown predicate `$1'")
       .replace(/^find: ([^‘\n].*?): (No such file or directory|Permission denied)$/gm, (whole, path: string, why: string) => (path.startsWith('cannot delete') ? whole : `find: ‘${path}’: ${why}`)),
@@ -559,7 +684,7 @@ function translated(pattern: string, basic: boolean) {
 // `grep` where just-bash's can't do it: a back reference, `-P`'s lookaround, and
 // a file name for standard input (T318), over JavaScript's regular expressions.
 // A pattern that never ends meets the worker's guard (research R26).
-async function jsGrep(patterns: readonly string[], flags: string, files: readonly string[], ctx: Context, fs: TerminalFs): Promise<Output> {
+async function jsGrep(patterns: readonly string[], flags: string, files: readonly string[], ctx: Context, fs: TerminalFs, most = Infinity): Promise<Output> {
   const has = (letter: string) => flags.includes(letter);
   let source = patterns.map((pattern) => `(?:${pattern})`).join('|');
   if (has('w')) source = `(?<![\\w])(?:${source})(?![\\w])`;
@@ -590,6 +715,7 @@ async function jsGrep(patterns: readonly string[], flags: string, files: readonl
     const lines = text.split('\n');
     if (lines.at(-1) === '') lines.pop();
     lines.forEach((entry, index) => {
+      if (count >= most) return;
       const found = [...entry.matchAll(expression)];
       if (found.length > 0 === has('v')) return;
       count += 1;
@@ -606,8 +732,54 @@ async function jsGrep(patterns: readonly string[], flags: string, files: readonl
   return { stdout, stderr, exitCode: stderr !== '' && !(has('q') && selected) ? 2 : selected ? 0 : 1 };
 }
 
-const grep: Fix = async (args, ctx, next, fs) => {
-  if (args.includes('--help')) return next(args);
+// `-nA1` as `-n -A 1`, so an option's value is told from the rest (T333).
+function grepOptions(args: readonly string[]): string[] {
+  const list: string[] = [];
+  for (let at = 0; at < args.length; at += 1) {
+    const arg = args[at]!;
+    if (arg === '--') {
+      list.push(...args.slice(at));
+      break;
+    }
+    if (GREP_VALUED.has(arg)) {
+      list.push(arg);
+      if (at + 1 < args.length) list.push(args[(at += 1)]!);
+      continue;
+    }
+    if (!/^-[a-zA-Z0-9]/.test(arg)) {
+      list.push(arg);
+      continue;
+    }
+    for (let letter = 1; letter < arg.length; letter += 1) {
+      const char = arg[letter]!;
+      if (/\d/.test(char)) {
+        const count = /^\d+/.exec(arg.slice(letter))![0];
+        list.push('-C', count);
+        letter += count.length - 1;
+      } else if (GREP_VALUED.has(`-${char}`)) {
+        list.push(`-${char}`);
+        if (letter + 1 < arg.length) list.push(arg.slice(letter + 1));
+        else if (at + 1 < args.length) list.push(args[(at += 1)]!);
+        break;
+      } else list.push(`-${char}`);
+    }
+  }
+  return list;
+}
+
+const GREP_USAGE = `Usage: grep [OPTION]... PATTERNS [FILE]...\n${tryHelp('grep')}`;
+
+const grep: Fix = async (typed, ctx, next, fs) => {
+  if (typed.includes('--help')) return next(typed);
+  const lastTyped = typed.at(-1);
+  if (lastTyped !== undefined && GREP_VALUED.has(lastTyped)) return failed(`${lastTyped.startsWith('--') ? `grep: option '${lastTyped}' requires an argument` : `grep: option requires an argument -- '${lastTyped[1]!}'`}\n${GREP_USAGE}`, 2);
+  const args = grepOptions(typed);
+  const valuesOf = (option: string) => args.flatMap((arg, at) => (args[at - 1] === option ? [arg] : []));
+  const maximum = [...valuesOf('-m'), ...valuesOf('--max-count'), ...args.flatMap((arg) => (arg.startsWith('--max-count=') ? [arg.slice(12)] : []))].at(-1);
+  if (maximum !== undefined && !/^-?\d+$/.test(maximum)) return failed('grep: invalid max count\n', 2);
+  for (const value of [...valuesOf('-A'), ...valuesOf('-B'), ...valuesOf('-C')]) if (!/^\d+$/.test(value)) return failed(`grep: ${value}: invalid context length argument\n`, 2);
+  if (maximum !== undefined && Number(maximum) === 0) return failed('', 1);
+  const most = maximum === undefined || Number(maximum) < 0 ? Infinity : Number(maximum);
   const flags = args.filter((arg) => /^-[a-zA-Z]/.test(arg) && !GREP_VALUED.has(arg)).join('').replace(/-/g, '');
   const operandStart = args.findIndex((arg, at) => !isOption(arg) && !GREP_VALUED.has(args[at - 1] ?? ''));
   const given = args.flatMap((arg, at) => (args[at - 1] === '-e' || args[at - 1] === '--regexp' ? [at] : []));
@@ -638,7 +810,7 @@ const grep: Fix = async (args, ctx, next, fs) => {
   const named = flags.includes('H') || (files.length === 0 && /[lL]/.test(flags) && !flags.includes('r') && !flags.includes('R'));
   const recursive = /[rR]/.test(flags);
   if (!literal && (references || perl || named) && !recursive) {
-    const result = await jsGrep(js, flags, files, ctx, fs);
+    const result = await jsGrep(js, flags, files, ctx, fs, most);
     return { ...result, stderr: `${warnings}${result.stderr}` };
   }
   if (recursive) {
@@ -646,10 +818,15 @@ const grep: Fix = async (args, ctx, next, fs) => {
     for (const file of files) if (!(await fs.exists(fs.resolvePath(ctx.cwd, file)))) gone.push(file);
     if (gone.length > 0 && gone.length === files.length) return failed(gone.map((file) => `grep: ${file}: No such file or directory\n`).join(''), 2);
   }
+  // One file named with `-r` is no listing of a folder: no name before its lines.
+  const lone = recursive && files.length === 1 && !flags.includes('H') && (await fs.stat(fs.resolvePath(ctx.cwd, files[0]!)).catch(() => null))?.isFile === true;
+  if (lone) list.unshift('-h');
   const result = await next(basic && !literal ? ['-E', ...list.filter((arg) => arg !== '-G')] : list);
   // An error makes its status 2, whatever else it found.
   const errored = /^grep: .+: (?:Is a directory|No such file or directory|Permission denied)$/m.test(result.stderr);
-  return { ...result, stderr: `${warnings}${result.stderr}`, exitCode: errored && !flags.includes('q') ? 2 : result.exitCode };
+  // just-bash's `-c` doesn't stop at `-m`.
+  const stdout = flags.includes('c') && most !== Infinity ? result.stdout.replace(/(\d+)$/gm, (count) => String(Math.min(Number(count), most))) : result.stdout;
+  return { ...result, stdout, stderr: `${warnings}${result.stderr}`, exitCode: errored && !flags.includes('q') ? 2 : result.exitCode };
 };
 
 // `awk`: what can be done around just-bash's. `-v` and an operand `NAME=value`
@@ -662,6 +839,8 @@ const awkString = (value: string) => `"${value.replace(/["]/g, '\\"')}"`;
 const awk: Fix = async (args, ctx, next, fs) => {
   if (args.includes('--help')) return next(args);
   if (args.length === 0) return failed(AWK_USAGE, 2);
+  const missingValue = valueMissing(args, 'Fvf');
+  if (missingValue !== null) return failed(`awk: option requires an argument -- ${missingValue}\n${AWK_USAGE}`, 1);
   const list: string[] = [];
   const set: string[] = [];
   let program = -1;
@@ -691,6 +870,8 @@ const awk: Fix = async (args, ctx, next, fs) => {
   list[program] = `${assigned.length > 0 ? `BEGIN{${assigned.join(';')}}\n` : ''}${body}${/__cvint\(/.test(body) ? '\nfunction __cvint(x){x=x+0;return x<0?-__cvfl(-x):__cvfl(x)}\nfunction __cvfl(x){return x-(x%1)}' : ''}`;
   let input: string | undefined;
   const operands = list.slice(program + 1).filter((arg) => !isOption(arg));
+  // gawk's name for standard input, once it has a record (T345).
+  if (operands.length === 0 && /\bFILENAME\b/.test(text)) list[program] = `NR==1{FILENAME="-"}\n${list[program]!}`;
   if (records !== null && operands.length <= 1) {
     const separator = records[1]!;
     let source: string | null = operands.length === 0 ? new TextDecoder().decode(inputBytes(ctx)) : await fs.readFile(fs.resolvePath(ctx.cwd, operands[0]!)).catch(() => null);
@@ -790,13 +971,46 @@ const pwd: Fix = async (args, _ctx, next) => {
   return bad === undefined || args.includes('--help') ? next(args) : failed(`bash: pwd: ${bad.slice(0, 2)}: invalid option\npwd: usage: pwd [-LP]\n`, 2);
 };
 
+// `tree -f` names a path as given, and `-L` takes a positive number (T340).
+const tree: Fix = async (args, ctx, next) => {
+  if (args.includes('--help')) return next(args);
+  if (args.at(-1) === '-L') return failed('tree: Missing argument to -L option.\n', 1);
+  for (const [at, arg] of args.entries()) {
+    const level = args[at - 1] === '-L' ? arg : /^-L(.+)$/.exec(arg)?.[1];
+    if (level !== undefined && !/^0*[1-9]\d*$/.test(level)) return failed('tree: Invalid level, must be greater than 0.\n', 1);
+  }
+  const result = await next(args);
+  if (!args.some((arg) => /^-[a-zA-Z]*f/.test(arg))) return result;
+  const roots = args.filter((arg, at) => !isOption(arg) && args[at - 1] !== '-L');
+  let { stdout } = result;
+  for (const root of roots.length === 0 ? ['.'] : roots) {
+    const typed = root.replace(/(.)\/+$/, '$1');
+    const whole = typed === '.' ? ctx.cwd : typed.startsWith('/') ? typed : `${ctx.cwd === '/' ? '' : ctx.cwd}/${typed}`;
+    stdout = stdout.replaceAll(`-- ${whole}/`, `-- ${typed}/`);
+  }
+  return { ...result, stdout };
+};
+
+const COLORS = new Set(['always', 'yes', 'force', 'never', 'no', 'none', 'auto', 'tty', 'if-tty']);
+
+const ls: Fix = async (args, ctx, next, fs) => {
+  const color = args.find((arg) => arg.startsWith('--color='))?.slice(8);
+  if (color !== undefined && !COLORS.has(color)) return failed(`ls: invalid argument ‘${color}’ for ‘--color’\nValid arguments are:\n  - ‘always’, ‘yes’, ‘force’\n  - ‘never’, ‘no’, ‘none’\n  - ‘auto’, ‘tty’, ‘if-tty’\n${tryHelp('ls')}`, 1);
+  return addTry('ls', 2)(args, ctx, next, fs);
+};
+
+const touch: Fix = async (args, ctx, next, fs) => {
+  const result = await addTry('touch')(args, ctx, next, fs);
+  return { ...result, stderr: result.stderr.replace(/^(touch: invalid date format )'(.*)'$/gm, '$1‘$2’') };
+};
+
 export const GNU: Readonly<Record<string, Fix>> = {
-  head,
-  tail,
-  uniq,
+  head: needsValue('head', 'nc', head),
+  tail: needsValue('tail', 'nc', tail),
+  uniq: needsValue('uniq', 'fsw', uniq),
   sed,
-  date,
-  env,
+  date: needsValue('date', 'd', date),
+  env: async (args, ctx, next, fs) => (valueMissing(args, 'u') === null ? env(args, ctx, next, fs) : noValue('env', 'u', 125)),
   xargs,
   cp: copy('cp'),
   mv: copy('mv'),
@@ -806,13 +1020,15 @@ export const GNU: Readonly<Record<string, Fix>> = {
   mkdir,
   grep,
   pwd,
-  ls: addTry('ls', 2),
+  ls,
+  tree,
+  touch: needsValue('touch', 'd', touch),
   awk,
   wc,
   cut,
-  seq,
+  seq: needsValue('seq', 'sf', seq),
   tr,
-  basename,
+  basename: needsValue('basename', 's', basename),
   dirname,
-  ...Object.fromEntries(['rm', 'touch', 'cat', 'tee'].map((name) => [name, addTry(name)])),
+  ...Object.fromEntries(['rm', 'cat', 'tee'].map((name) => [name, addTry(name)])),
 };

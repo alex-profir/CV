@@ -21,9 +21,13 @@ export const SHELL_BUILTINS = [
   'true', 'type', 'typeset', 'unset', 'wait',
 ] as const;
 
+// What just-bash's `type` names as a builtin or keyword and that doesn't run
+// here: `type` and `command -v` say it isn't found (T336, research G10).
+export const NAMED_NOT_RUN: ReadonlySet<string> = new Set(['alias', 'unalias', 'trap', 'kill', 'jobs', 'fg', 'bg', 'disown', 'times', 'enable', 'caller', 'suspend', 'umask', 'ulimit', 'fc', 'select', 'coproc']);
+
 // bash's reserved words that just-bash parses, which a command's first word
-// completes to too (research R43).
-export const SHELL_KEYWORDS = ['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'while', 'until', 'do', 'done', 'in', 'function', 'select', 'time', '{', '}', '[[', ']]', '!'] as const;
+// completes to too (research R43). `select` and `coproc` it doesn't.
+export const SHELL_KEYWORDS = ['if', 'then', 'else', 'elif', 'fi', 'case', 'esac', 'for', 'while', 'until', 'do', 'done', 'in', 'function', 'time', '{', '}', '[[', ']]', '!'] as const;
 
 export type LeftOutReason = 'network' | 'language' | 'scripts' | 'permissions' | 'zlib' | 'aliases' | 'site' | 'unproved';
 

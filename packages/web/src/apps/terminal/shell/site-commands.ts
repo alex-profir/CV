@@ -489,9 +489,23 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     const end = args.indexOf('--');
     const options = (end < 0 ? args : args.slice(0, end)).filter((arg) => arg.startsWith('-') && arg !== '-');
     const has = (short: string, long: string) => options.some((arg) => arg === long || (!arg.startsWith('--') && arg.includes(short)));
-    if (!has('r', '--recursive') && !has('R', '--recursive')) return ctx.origCommand!(args);
     const force = has('f', '--force');
     const targets = end < 0 ? args.filter((arg) => !options.includes(arg)) : [...args.slice(0, end).filter((arg) => !options.includes(arg)), ...args.slice(end + 1)];
+    if (!has('r', '--recursive') && !has('R', '--recursive')) {
+      if (!force) return ctx.origCommand!(args);
+      // `-f` silences a missing file, and only that (T330): just-bash's says
+      // nothing of a refusal.
+      const there: string[] = [];
+      for (const target of targets) if ((await shell.fs.stat(shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, target))).catch(() => null)) !== null) there.push(target);
+      if (there.length === 0) return ok('');
+      const rest = options.flatMap((option) => {
+        if (option === '--force') return [];
+        if (option.startsWith('--')) return [option];
+        const letters = option.replaceAll('f', '');
+        return letters === '-' ? [] : [letters];
+      });
+      return ctx.origCommand!([...rest, '--', ...there]);
+    }
     const verbose = has('v', '--verbose');
     let stdout = '';
     let stderr = '';
@@ -585,13 +599,15 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         return runs(args, ctx);
       }
       // What it says it printed no longer holds if a fix changed that.
-      const list = args.map((arg) => (arg === '/dev/stdin' ? '-' : arg));
+      const list = args.map((arg) => (arg === '/dev/stdin' || arg === '/dev/fd/0' ? '-' : arg));
       const { internalOutputAccounting: _accounted, ...result } = (await GNU[name]!(list, ctx, (each, input) => {
         if (input === undefined) return runs(each, ctx);
         passing = name;
         return ctx.exec!(`/usr/bin/${name} ${each.map(shellWord).join(' ')}`, { cwd: ctx.cwd, stdin: input, env: Object.fromEntries(ctx.env) }) as Promise<Output>;
       }, shell.fs)) as Output & { internalOutputAccounting?: unknown };
-      return result;
+      // What it wrote to `/dev/stdout` and the like, by name (T332).
+      const streamed = shell.fs.takeStreamed();
+      return streamed.stdout === '' && streamed.stderr === '' ? result : { ...result, stdout: `${result.stdout}${streamed.stdout}`, stderr: `${result.stderr}${streamed.stderr}` };
     });
   return [...own.map((command) => (GNU[command.name] === undefined ? command : fixed(command.name, (args, ctx) => command.execute(args, ctx)))), ...Object.keys(GNU).filter((name) => !own.some((command) => command.name === name)).map((name) => fixed(name, (args, ctx) => ctx.origCommand!(args)))];
 }

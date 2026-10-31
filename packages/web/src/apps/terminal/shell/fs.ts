@@ -45,6 +45,9 @@ const HELPED = new RegExp(`/usr/bin/${MARK}usage ([^\\s;]+)`, 'g');
 // `exit` as the adapter runs it (T314).
 const EXITING = new RegExp(`\\{ /usr/bin/${MARK}exiting \\$\\?; ([^;{}]*); \\}`, 'g');
 
+// Before a name `type` is told isn't there, so it says so (T336).
+export const GONE = `${MARK}gone-`;
+
 const OWN_LINE = new RegExp(`^(?:declare -\\S+ )?${MARK}.*\\n`, 'gm');
 
 // What `clear` prints where it reaches the screen: what came before it goes
@@ -52,7 +55,11 @@ const OWN_LINE = new RegExp(`^(?:declare -\\S+ )?${MARK}.*\\n`, 'gm');
 export const CLEARED = '\u0004';
 
 // Written to as bash writes to them, not as files.
-const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full']);
+const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full', '/dev/fd/1', '/dev/fd/2']);
+
+// The ones a command can open by name, and what each stands for: what it
+// writes there is its own output (T332).
+const OUTPUT_STREAMS: Readonly<Record<string, 'stdout' | 'stderr'>> = { '/dev/stdout': 'stdout', '/dev/stderr': 'stderr', '/dev/fd/1': 'stdout', '/dev/fd/2': 'stderr' };
 
 // The folders the shell needs to run, all protected (FR-045). just-bash adds
 // `/bin` and `/usr/bin` stubs and `/dev` itself.
@@ -276,7 +283,7 @@ export class TerminalFs extends InMemoryFs {
     body = body.replaceAll(WROTE_CALL, '').replace(EXITING, '$1');
     // The adapter's variables, where a name from an expansion runs `set` or
     // `declare -p` beside them (T297).
-    if (body.includes(MARK)) body = body.replace(OWN_LINE, '');
+    if (body.includes(MARK)) body = body.replaceAll(GONE, '').replace(OWN_LINE, '');
     body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '');
     if (!body.includes(OPENING)) return body;
     return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
@@ -335,9 +342,22 @@ export class TerminalFs extends InMemoryFs {
     this.checked += typeof content !== 'string' ? new TextDecoder().decode(content) : encoding === 'binary' || encoding === 'latin1' ? new TextDecoder().decode(Uint8Array.from(content, (char) => char.charCodeAt(0))) : content;
   }
 
+  // What commands wrote to their own output by name, until the command ends.
+  private streamed = { stdout: '', stderr: '' };
+  takeStreamed() {
+    const { streamed } = this;
+    this.streamed = { stdout: '', stderr: '' };
+    return streamed;
+  }
+  private toStream(stream: 'stdout' | 'stderr', content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const encoding = typeof options === 'string' ? options : options?.encoding;
+    this.streamed[stream] += typeof content !== 'string' ? new TextDecoder().decode(content) : encoding === 'binary' || encoding === 'latin1' ? new TextDecoder().decode(Uint8Array.from(content, (char) => char.charCodeAt(0))) : content;
+  }
+
   override async writeFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
     if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
+    if (at in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[at]!, content, options);
     await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
     const exists = await super.exists(at);
@@ -351,6 +371,7 @@ export class TerminalFs extends InMemoryFs {
     if (path.endsWith(OPENING)) return this.open(path.slice(0, -OPENING.length));
     if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
+    if (at in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[at]!, content, options);
     await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
     return this.redirected(at, async () => {
@@ -390,6 +411,7 @@ export class TerminalFs extends InMemoryFs {
   override async cp(src: string, dest: string, options?: CpOptions) {
     const from = this.canonical(src);
     const to = this.canonical(dest);
+    if (to in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[to]!, await super.readFile(from));
     this.guard(to);
     if (!(await this.folderExists(parentOf(to)))) throw missing();
     await this.room(to, await this.sizeOf(from), await super.exists(to));

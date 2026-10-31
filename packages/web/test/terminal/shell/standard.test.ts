@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { getCommandNames, getNetworkCommandNames } from 'just-bash/browser';
 import { COMMANDS, SITE_WORDS } from '../../../src/apps/terminal/engine/commands.ts';
 import type { Node } from '../../../src/apps/terminal/engine/block.ts';
-import { LEFT_OUT, SHELL_BUILTINS, STANDARD_COMMANDS } from '../../../src/apps/terminal/shell/standard.ts';
+import { LEFT_OUT, NAMED_NOT_RUN, SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from '../../../src/apps/terminal/shell/standard.ts';
 import { fill, siteText } from '../../../src/site-text.ts';
 import { fullText } from '../../../src/shell-text.ts';
 import { runLine, shellFor } from './context.ts';
@@ -101,6 +101,48 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
 
   test.each(SHELL_BUILTINS)('%s is a shell builtin', async (name) => {
     expect((await runLine(shellFor('every-field'), `type ${name}`)).stdout).toBe(`${name} is a shell builtin\n`);
+  });
+
+  // Each name `type` knows runs, and each that doesn't run `type` doesn't know
+  // (T336).
+  test.each([...NAMED_NOT_RUN])('%s isn’t found by type, type -t, command -v or command -V, and doesn’t run', async (name) => {
+    const shell = shellFor('every-field');
+    const shown = await runLine(shell, `type ${name}`);
+    expect(shown.stdout).toBe('');
+    expect(shown.stderr).toBe(`bash: type: ${name}: not found\n`);
+    expect(shown.status).toBe(1);
+    expect((await runLine(shell, `type -t ${name}`)).stdout).toBe('');
+    expect((await runLine(shell, `command -v ${name}`)).stdout).toBe('');
+    const long = await runLine(shell, `command -V ${name}`);
+    expect(long.stderr).toBe(`bash: command: ${name}: not found\n`);
+    if (name === 'select' || name === 'coproc') return;
+    expect((await runLine(shell, `${name} x`)).stderr).toBe(`bash: ${name}: command not found\n`);
+  });
+
+  test.each(SHELL_BUILTINS)('%s runs: it isn’t “command not found”', async (name) => {
+    if (['exec', 'exit'].includes(name)) return;
+    expect((await runLine(shellFor('every-field'), `${name} --help`)).stderr).not.toMatch(/command not found/);
+  });
+
+  test('a name from an expansion is looked at too, and a function of that name is found', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'n=trap; type -t $n; echo $?')).stdout).toBe('1\n');
+    expect((await runLine(shell, 'trap() { :; }; type -t trap')).stdout).toBe('function\n');
+  });
+
+  test('command -v help names no adapter’s path', async () => {
+    expect((await runLine(shellFor('every-field'), 'command -v help')).stdout).toBe('help\n');
+  });
+
+  test('select and coproc, which just-bash can’t parse, aren’t keywords (research R43)', () => {
+    expect(SHELL_KEYWORDS as readonly string[]).not.toContain('select');
+    expect(SHELL_KEYWORDS as readonly string[]).not.toContain('coproc');
+  });
+
+  // T338.
+  test.each(STANDARD_COMMANDS.flatMap((name) => ['-n', '-d', '-P', '-s', '-I', '-L', '-a', '-E', '-e', '-f', '-m', '-A', '-k', '-t', '-o', '-c', '-u', '-v', '-F', '-N', '--', '--nope'].map((option) => [name, option] as const)))('%s %s prints no JavaScript error', async (name, option) => {
+    const result = await runLine(shellFor('every-field'), `${name} ${option} </dev/null`);
+    expect(`${result.stdout}${result.stderr}`).not.toMatch(/Cannot read prop|is not a function|undefined|TypeError|ReferenceError|RangeError/);
   });
 
   test('help grep is grep --help, help export the shell’s own help, help work work’s own, help nosuch the usage reply', async () => {

@@ -261,4 +261,37 @@ describe('006-terminal-FR-057: cv and clear where their output doesn’t reach t
     expect(listed.recorded).toHaveLength(1);
     expect(listed.stdout).toBe(listed.recorded[0]!.text);
   });
+
+  // T330.
+  test.each(['rm -f about', 'rm -fv about', 'rm --force about', 'rm -f ~/about'])('%s refuses a protected file, and the file stays', async (line) => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, line);
+    expect(result.stderr).toMatch(/^rm: cannot remove '.*about': Permission denied\n$/);
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'cat about')).status).toBe(0);
+  });
+
+  test.each(['rm -f nope', 'rm -f work/nope', 'rm -f about/x', 'rm -f'])('%s is silent with status 0', async (line) => {
+    const result = await runLine(shellFor('every-field'), line);
+    expect(result).toMatchObject({ stdout: '', stderr: '', status: 0 });
+  });
+
+  test('rm -f removes what it can and says why it left the rest', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'touch mine');
+    const result = await runLine(shell, 'rm -f mine about nope');
+    expect(result.stderr).toBe("rm: cannot remove 'about': Permission denied\n");
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'cat mine')).status).not.toBe(0);
+  });
+
+  // T340, from tree 2.3.2.
+  test('tree -f names a path as given, and -L takes a positive number', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'tree -f')).stdout).toContain('-- ./about\n');
+    expect((await runLine(shell, 'tree -f work')).stdout).toMatch(/-- work\/[^/\n]+\n/);
+    expect((await runLine(shell, 'tree -f')).stdout).not.toContain('/home/guest');
+    for (const line of ['tree -L x', 'tree -L 0']) expect(await runLine(shell, line)).toMatchObject({ stdout: '', stderr: 'tree: Invalid level, must be greater than 0.\n', status: 1 });
+    expect(await runLine(shell, 'tree -L')).toMatchObject({ stderr: 'tree: Missing argument to -L option.\n', status: 1 });
+  });
 });

@@ -432,7 +432,7 @@ describe('006-terminal-FR-067: the rest of the shell’s variables and settings 
     ['declare -i n=1', 'n=1+1; echo $n', '2\n'],
     ['declare -u up=a', 'up=abc; echo $up', 'ABC\n'],
     ['set -- a "b c" d', 'echo $# "$2"; shift; echo $1', '3 b c\nb c\n'],
-    ['shopt -s nullglob', 'echo nope*; shopt nullglob', '\nnullglob\t\ton\n'],
+    ['shopt -s nullglob', 'echo nope*; shopt nullglob', '\nnullglob            \ton\n'],
     ['set -a', 'x=1; env | grep -c "^x=1$"', '1\n'],
   ])('%s, then %s', async (first, second, stdout) => {
     const shell = shellFor('every-field');
@@ -576,5 +576,129 @@ describe('006-terminal-FR-067 and 006-terminal-FR-068: failures worded as bash w
     const shell = shellFor('every-field');
     expect(await runLine(shell, line)).toMatchObject({ stdout: '', stderr, status: 1, end: 'done' });
     expect((await runLine(shell, 'echo $?')).stdout).toBe('1\n');
+  });
+
+  // T342.
+  test.each([
+    ['echo a &; echo b', ';'],
+    ['echo a && ;', ';'],
+    ['echo a |;', ';'],
+    ['(;', ';'],
+    ['{ echo a; ;', ';'],
+    ['if;', ';'],
+    ['case x in;', ';'],
+    ['f() ;', ';'],
+    ['for x in a; echo $?', 'echo'],
+  ])('%s names %s, as bash 5.3', async (line, token) => {
+    const result = await runLine(shellFor('every-field'), line);
+    expect(result.stderr).toBe(`bash: line 1: syntax error near unexpected token \`${token}'\n`);
+    expect(result.status).toBe(2);
+  });
+
+  test.each([
+    ['[[ ;', "unexpected token `;' in conditional command", ';'],
+    ['[[ a;', "unexpected token `;', conditional binary operator expected", ';'],
+    ['[[ a == ;', "unexpected argument `;' to conditional binary operator", ';'],
+    ['[[ a -eq ]]', "unexpected argument `]]' to conditional binary operator", ']]'],
+  ])('%s names what’s there', async (line, words, near) => {
+    expect((await runLine(shellFor('every-field'), line)).stderr).toBe(`bash: line 1: ${words}\nbash: line 1: syntax error near \`${near}'\n`);
+  });
+
+  test('an open ${ is the end of the input, not a bad substitution', async () => {
+    expect((await runLine(shellFor('every-field'), 'echo ${a; echo $?')).stderr).toBe("bash: line 1: unexpected EOF while looking for matching `}'\n");
+  });
+
+  // T343.
+  test('exec with a command prints its output, closes the Terminal with its status, and runs nothing after it', async () => {
+    const result = await runLine(shellFor('every-field'), 'exec echo a; echo after');
+    expect(result).toMatchObject({ stdout: 'a\n', end: 'exited', status: 0 });
+    const failed = await runLine(shellFor('every-field'), 'exec false; echo after');
+    expect(failed).toMatchObject({ stdout: '', end: 'exited', status: 1 });
+  });
+
+  test('exec of what can’t be found keeps going, and exec with only redirects stays as it was', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'exec nope; echo $?')).toMatchObject({ stdout: '127\n', stderr: 'bash: exec: nope: not found\n', end: 'done' });
+    expect(await runLine(shell, 'exec cd /; echo $?')).toMatchObject({ stdout: '127\n', stderr: 'bash: exec: cd: not found\n', end: 'done' });
+    expect(await runLine(shell, 'exec 3>&1; echo shown')).toMatchObject({ stdout: 'shown\n', end: 'done' });
+  });
+
+  test('exec in a subshell or a pipe ends that alone', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, '(exec echo a; echo b); echo after')).toMatchObject({ stdout: 'a\nafter\n', end: 'done' });
+    expect(await runLine(shell, 'exec echo a | cat; echo after')).toMatchObject({ stdout: 'a\nafter\n', end: 'done' });
+  });
+
+  test('a function holding exec shows as typed', async () => {
+    expect((await runLine(shellFor('every-field'), 'f() { exec echo a; }; type f')).stdout).toContain('exec echo a');
+  });
+
+  // T344.
+  test('extglob on an earlier line gives its patterns, and off they are syntax errors outside [[ ]]', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'echo @(about|skills)')).stderr).toBe("bash: line 1: syntax error near unexpected token `('\n");
+    expect((await runLine(shell, 'ls @(about|skills)')).stderr).toBe("bash: line 1: syntax error near unexpected token `('\n");
+    expect((await runLine(shell, 'case a in @(a|b)) echo y;; esac')).stderr).toBe("bash: line 1: syntax error near unexpected token `('\n");
+    expect((await runLine(shell, '[[ a == @(a|b) ]]; echo $?')).stdout).toBe('0\n');
+    expect((await runLine(shell, 'x=a; echo ${x/@(a|b)/z}')).stdout).toBe('a\n');
+    await runLine(shell, 'shopt -s extglob');
+    expect((await runLine(shell, 'echo @(about|skills)')).stdout).toBe('about skills\n');
+    expect((await runLine(shell, 'echo +(a)bout ?(x)about *(z)about')).stdout).toBe('about about about\n');
+    expect((await runLine(shell, 'case a in @(a|b)) echo y;; esac')).stdout).toBe('y\n');
+    expect((await runLine(shell, 'x=a; echo ${x/@(a|b)/z}')).stdout).toBe('z\n');
+  });
+
+  test.each(['echo !(about)', 'echo a!(x)', '[[ a == !(b) ]]'])('%s says just-bash can’t do it, in no JavaScript words (research G31)', async (line) => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'shopt -s extglob');
+    const result = await runLine(shell, line);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toMatch(/^bash: .*!\(.*\): negated patterns aren't supported\n$/);
+    expect(result.status).toBe(1);
+  });
+
+  // T337.
+  test('? and the positional parameters are no variables in the lists', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'set -- a b');
+    for (const line of ['declare', 'declare -p', 'env', 'declare -x', 'export -p']) expect((await runLine(shell, line)).stdout).not.toMatch(/^(?:declare -\S+ )?(?:\?|#|@|\*|\d+)=/m);
+    expect((await runLine(shell, 'declare -x')).stdout).toMatch(/^declare -x HOME="\/home\/guest"$/m);
+  });
+
+  test('export of an unset name carries, unset and exported, to later lines', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'export d');
+    expect((await runLine(shell, 'echo "[${d+set}]"; declare -p d')).stdout).toBe('[]\ndeclare -x d\n');
+    expect((await runLine(shell, 'export -p')).stdout).toMatch(/^declare -x d$/m);
+    expect((await runLine(shell, 'env')).stdout).not.toMatch(/^d=/m);
+    expect((await runLine(shell, 'd=1; env')).stdout).toMatch(/^d=1$/m);
+  });
+
+  test('unset ends an export with no value', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'export d; unset d');
+    expect((await runLine(shell, 'export -p')).stdout).not.toMatch(/^declare -x d$/m);
+  });
+
+  // T341, T345.
+  test('with failglob, a word that matches nothing stops the line where it stood and the Terminal stays', async () => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, 'shopt -s failglob; echo a; echo zzz*; echo b');
+    expect(result).toMatchObject({ stdout: 'a\n', stderr: 'bash: no match: zzz*\n', status: 1, end: 'done' });
+    expect((await runLine(shell, 'echo abo*; echo after')).stdout).toBe('about\nafter\n');
+  });
+
+  // T336: what `type` prints of a function is what was typed, whatever runs.
+  test.each(['export d', 'export -p', 'declare -p x', 'declare', 'shopt dotglob', 'shopt', 'set -o', 'set -z', '[ a b ]', 'type ls', 'command -v ls', 'exec ls', 'echo $BASH_SUBSHELL'])('type f shows %s as typed', async (body) => {
+    const shell = shellFor('every-field');
+    const shown = (await runLine(shell, `f() { ${body}; }; type f`)).stdout;
+    expect(shown).toBe(`f is a function\nf () \n{ \n    ${body}\n}\n`);
+    expect((await runLine(shell, 'declare -f f')).stdout).toBe(`f () \n{ \n    ${body}\n}\n`);
+  });
+
+  test('a function still runs its rewritten commands after type printed it', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'f() { export d; declare -p d; }; type f');
+    expect((await runLine(shell, 'f')).stdout).toBe('declare -x d\n');
   });
 });

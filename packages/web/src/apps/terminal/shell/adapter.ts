@@ -9,18 +9,18 @@ import { Bash, defineCommand } from 'just-bash/browser';
 import { commandNamed, engineContext, SITE_WORDS } from '../engine/commands.ts';
 import type { SiteInput } from '../engine/commands.ts';
 import { complete } from './complete.ts';
-import { CHECK_FILE, CLEARED, FATAL, HOME, MARK, OPENING, TerminalFs, WROTE } from './fs.ts';
+import { CHECK_FILE, CLEARED, FATAL, GONE, HOME, MARK, OPENING, TerminalFs, WROTE } from './fs.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
 import { PIPED, RENAMED, SCREEN_COMMANDS, siteCommands, TYPED } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
-import { SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
+import { NAMED_NOT_RUN, SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
 
 type Script = ReturnType<Bash['transform']>['ast'];
 type Plugin = Parameters<Bash['registerTransformPlugin']>[0];
 type AstNode = { type: string; [key: string]: unknown };
 
-const ENV = { HOME, USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash' };
+const ENV = { HOME, USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash', SHLVL: '1' };
 
 // FR-069's limits: the spec's numbers, not design values (research R33).
 // `output` is what the line prints; `pipe`, all its commands may pass on
@@ -60,7 +60,7 @@ const LIMIT_LINE = /[^\n]*\n$/;
 // Errors a group reports by their message alone; the line's group stops at one.
 const GROUP_MESSAGE = /(^|\n)(\S+: unbound variable|.*: bad substitution)\n$/;
 
-type Captured = { status: number; functions: string[]; declarations: string[]; options: string[]; shopts: string[]; cwd: string; env: Map<string, string>; exported: string[]; last: string; pipes: number[]; stack: string[] };
+type Captured = { status: number; functions: string[]; declarations: string[]; options: string[]; shopts: string[]; cwd: string; env: Map<string, string>; exported: string[]; bare: string[]; last: string; pipes: number[]; stack: string[] };
 
 // A value at least this long isn't listed by the checkpoint's `declare -p`:
 // what that prints counts towards the line's output.
@@ -111,7 +111,7 @@ const literalWord = (value: string) => ({ type: 'Word', parts: [{ type: 'Literal
 // A hidden command under a path, so a visitor's PATH can't hide it (T286).
 const hidden = (name: string) => `/usr/bin/${name.startsWith(MARK) ? name : `${MARK}${name}`}`;
 
-type Tools = { parse: Parse; serialize: (node: unknown) => string; done: WeakSet<object>; builtinHelp: () => boolean; noCase: () => boolean };
+type Tools = { parse: Parse; serialize: (node: unknown) => string; done: WeakSet<object>; builtinHelp: () => boolean; noCase: () => boolean; failGlob: () => boolean; integers: () => ReadonlySet<string> };
 
 // `${x:?word}` ends the line as `exit` does in just-bash; the mark tells them
 // apart (T286), and the name is bash's wording of it.
@@ -224,7 +224,8 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
         if (node.type !== 'SimpleCommand' || tools.done.has(node)) return;
         if ((node.args as never[]).some(slashGlob)) return wrapSlashGlobs(node, 'args', tools);
         const name = node.name as { parts?: AstNode[] } | null;
-        if (name === null) return;
+        if (name === null) return void checkInteger(node, tools);
+        if (tools.failGlob() && stopAtFailedGlob(node, tools)) return;
         const word = staticWord(name);
         if (word === null) return rewriteExpanded(node, piped, tools);
         // Its words are expanded before its assignments apply.
@@ -234,12 +235,12 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
           if (part.type === 'ParameterExpansion' && assigned.includes(part.parameter as string)) reads = true;
         });
         if (reads) return rewriteExpanded(node, piped, tools);
-        if (!defined.has(word) && (rewriteDeclareF(node, word, tools) || rewriteCommandV(node, word, tools))) return;
+        if (!defined.has(word) && (rewriteDeclareF(node, word, tools) || rewriteCommandV(node, word, tools) || rewriteType(node, word, tools) || rewriteExec(node, word, tools))) return;
         const assignments = node.assignments as unknown[];
         const mark = (assignment: string, value: string) => assignments.unshift({ type: 'Assignment', name: assignment, value: literalWord(value), append: false, array: null });
         // `command help` and `builtin help` reach the site's too (T304).
         if ((word === 'command' || word === 'builtin') && !defined.has(word) && !tools.builtinHelp()) renameFirstArgument(node, word);
-        if (!defined.has(word) && rewriteBashBuiltin(node, word)) return;
+        if (!defined.has(word) && rewriteBashBuiltin(node, word, tools)) return;
         const lower = word.toLowerCase();
         const site = commandNamed(word) !== null && !defined.has(word);
         if (site) {
@@ -328,6 +329,7 @@ function markExits(node: unknown) {
   if (typed.type === 'Subshell' || typed.type === 'CommandSubstitution' || typed.type === 'ProcessSubstitution') return;
   if (typed.type === 'Pipeline' && (typed.commands as unknown[]).length > 1) return;
   if (typed.type === 'SimpleCommand') {
+    if (staticWord(typed.name as never) === 'exec') typed.ends = true;
     if (!runsExit(typed)) return;
     const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
     const command = { ...typed };
@@ -363,7 +365,7 @@ const INTEGER_TESTS = new Set(['-eq', '-ne', '-lt', '-le', '-gt', '-ge']);
 
 // bash's builtins, where just-bash's differ and the adapter can run them
 // itself (T305). True when `node` was rewritten.
-function rewriteBashBuiltin(node: AstNode, word: string): boolean {
+function rewriteBashBuiltin(node: AstNode, word: string, tools: Tools): boolean {
   const args = node.args as { parts?: AstNode[] }[];
   const words = args.map((arg) => staticWord(arg));
   const to = (name: string, list: unknown[] = args) => {
@@ -372,10 +374,190 @@ function rewriteBashBuiltin(node: AstNode, word: string): boolean {
     return true;
   };
   if (word === 'export' && words[0] === '-f') return to('export-f', args.slice(1));
-  if (word === 'shopt' && (words.length === 0 || (words.length === 1 && words[0] === '-p'))) return to('shopt', [literalWord(words[0] ?? ''), { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: 'BASHOPTS', operation: null }] }] }]);
+  // `export d` leaves an unset `d` unset; the lists go through here to say so
+  // and to leave out `?` (T337).
+  const names = (list: readonly (string | null)[]) => list.length > 0 && list.every((each) => each !== null && NAME.test(each));
+  const isDeclare = word === 'declare' || word === 'typeset';
+  if (word === 'export' && names(words)) return to('export-bare');
+  if (isDeclare && words[0] === '-x' && names(words.slice(1))) return to('export-bare', args.slice(1));
+  if ((word === 'export' && words.length === 1 && words[0] === '-p') || (isDeclare && words.length === 1 && words[0] === '-x')) return rewriteListing(node, 'export', [literalWord('-p')], false, tools);
+  if (isDeclare && words[0] === '-p' && names(words.slice(1))) return rewriteListing(node, 'declare', args, true, tools);
+  if (isDeclare && words.every((each) => each !== null && /^[-+][aAgilnprtuxI]+$/.test(each))) return rewriteListing(node, 'declare', args, false, tools);
+  if (word === 'set') {
+    const bad = badSetOption(words);
+    if (bad !== null) return to('set-bad', [literalWord(bad)]);
+  }
+  if (word === 'shopt' && names(words)) return to('shopt', [literalWord('names'), BASHOPTS_WORD(), ...args]);
+  if (word === 'shopt' && (words.length === 0 || (words.length === 1 && words[0] === '-p'))) return to('shopt', [literalWord(words[0] ?? ''), BASHOPTS_WORD()]);
   if (word === 'set' && words.length === 1 && (words[0] === '-o' || words[0] === '+o')) return to('set-o', [literalWord(words[0]), { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: 'SHELLOPTS', operation: null }] }] }]);
-  if ((word === 'test' || word === '[') && words.some((each) => each !== null && INTEGER_TESTS.has(each))) return to('integer-test', [literalWord(word), ...args]);
+  // Two words of which the first isn't an operator, and the integer tests.
+  if ((word === 'test' || word === '[') && (args.length - (word === '[' ? 1 : 0) === 2 || words.some((each) => each !== null && INTEGER_TESTS.has(each)))) return to('integer-test', [literalWord(word), ...args]);
   return false;
+}
+
+const BASHOPTS_WORD = () => ({ type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: 'BASHOPTS', operation: null }] }] });
+
+// The first of `set`'s words bash refuses, or null.
+function badSetOption(words: readonly (string | null)[]): string | null {
+  for (let at = 0; at < words.length; at += 1) {
+    const word = words[at]!;
+    if (word === null || word.startsWith('--') || word === '-' || !/^[-+]./.test(word)) return null;
+    if (/^[-+]o$/.test(word)) {
+      const option = words[(at += 1)];
+      if (option === undefined || option === null) return null;
+      if (!SET_OPTIONS.includes(option)) return option;
+      continue;
+    }
+    const letter = [...word.slice(1)].find((each) => !'abefhkmnoptuvxBCEHPT'.includes(each));
+    if (letter !== undefined) return `${word[0]!}${letter}`;
+  }
+  return null;
+}
+
+// `type`, and `command -v` and `-V`: what doesn't run isn't found (T336). Each
+// word is looked at once expanded.
+function rewriteType(node: AstNode, word: string, tools: Tools): boolean {
+  const args = node.args as never[];
+  if (staticWord(args[0]) === '--help') return false;
+  const finds = word === 'type' || (word === 'command' && /^-[vV]+$/.test(staticWord(args[0]) ?? ''));
+  if (!finds) return false;
+  const typed = typedWord(tools.serialize({ ...node, assignments: [] }));
+  const { statements } = tools.parse(`${hidden('hold')} "$?" ${typed} "$_" && ((1)); ${WORDS}=(); for ${TARGET} in "\${!${WORDS}[@]}"; do ${hidden('runs')} "\${${WORDS}[${TARGET}]}" || ${WORDS}[${TARGET}]="${GONE}\${${WORDS}[${TARGET}]}"; done; builtin ${word} "\${${WORDS}[@]}"; ${CLEAN_UP}`);
+  const top = statements as unknown as { pipelines: { commands: { assignments?: { array: unknown }[]; [key: string]: unknown }[] }[] }[];
+  top[1]!.pipelines[0]!.commands[0]!.assignments![0]!.array = args;
+  const redirections = node.redirections;
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections });
+  return true;
+}
+
+// The shell's lists, through a command that leaves out `?` and the positional
+// parameters and adds what's exported and unset (T337).
+function rewriteListing(node: AstNode, word: 'export' | 'declare', args: unknown[], named: boolean, tools: Tools): true {
+  const { statements } = tools.parse(`builtin ${word} ${named ? '2>/dev/null' : ''} | ${hidden('listed')} ${word}`);
+  const [list, filter] = statements[0]!.pipelines[0]!.commands as unknown as AstNode[];
+  list!.args = [literalWord(word), ...args];
+  filter!.args = [literalWord(word), ...(named ? args.slice(1) : [])];
+  const redirections = node.redirections;
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections });
+  return true;
+}
+
+// `exec` with a command: that command in place of the shell, so the line stops
+// there and, outside a subshell or pipe, the Terminal closes (T343). One it can't
+// find fails alone, as in an interactive bash.
+function rewriteExec(node: AstNode, word: string, tools: Tools): boolean {
+  if (word !== 'exec') return false;
+  const args = [...(node.args as { parts?: AstNode[] }[])];
+  while (args.length > 0) {
+    const option = staticWord(args[0]);
+    if (option === '--') {
+      args.shift();
+      break;
+    }
+    if (option === null || option === undefined || !/^-[cl]*a?$/.test(option)) break;
+    args.splice(0, option.endsWith('a') ? 2 : 1);
+  }
+  if (args.length === 0 || staticWord(args[0]) === '--help') return false;
+  const typed = typedWord(tools.serialize({ ...node, assignments: [] }));
+  const { statements } = tools.parse(`${hidden('hold')} "$?" ${typed} "$_" && ((1)); ${hidden('exec')}; ${hidden('exec-ran')} ${node.ends === true ? 1 : 0} "$?" && builtin exit "$${TARGET}"; ${hidden('held')} && ((1)); ${CLEAN_UP}`);
+  const run = statements[1]!.pipelines[0]!.commands[0] as unknown as AstNode;
+  Object.assign(run, { args, redirections: node.redirections });
+  tools.done.add(run);
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+  return true;
+}
+
+// With `failglob` on, a word that matches nothing stops the line where it stood:
+// its words are expanded once first, by a command that does nothing, and the exit
+// there isn't one `markExits` saw, so the Terminal stays open (T341).
+const globChecked = new WeakSet<object>();
+
+function stopAtFailedGlob(node: AstNode, tools: Tools): boolean {
+  const words = [node.name, ...(node.args as unknown[])] as { parts?: AstNode[] }[];
+  if (globChecked.has(node) || !words.some((word) => word?.parts?.some((part) => part.type === 'Glob') === true)) return false;
+  let effects = false;
+  walk(words, (part) => {
+    if (EFFECTS.has(part.type)) effects = true;
+  });
+  if (effects) return false;
+  const { statements } = tools.parse(`${hidden('hold')} "$?" && ((1)); ${hidden('ok')} || builtin exit 1; ${hidden('held')} && ((1)); :`);
+  const check = statements[1]!.pipelines[0]!.commands[0] as unknown as AstNode;
+  check.args = structuredClone(words);
+  tools.done.add(check);
+  const command = { ...node };
+  globChecked.add(command);
+  (statements as unknown as { pipelines: { commands: unknown[] }[] }[])[3]!.pipelines[0]!.commands[0] = command;
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+  return true;
+}
+
+// An assignment to a `declare -i` variable with a bad expression: bash's error
+// stops the line, where just-bash reads it as 0 (T337).
+function checkInteger(node: AstNode, tools: Tools) {
+  if (tools.done.has(node)) return;
+  const assignment = (node.assignments as { name: string; value: { parts?: unknown[] } | null; array: unknown }[]).find((each) => tools.integers().has(each.name) && each.value !== null && each.array === null);
+  if (assignment === undefined) return;
+  const { statements } = tools.parse(`${hidden('integer')} || builtin exit 1; :`);
+  (statements[0]!.pipelines[0]!.commands[0] as unknown as AstNode).args = [structuredClone(assignment.value)];
+  const command = { ...node };
+  tools.done.add(command);
+  (statements as unknown as { pipelines: { commands: unknown[] }[] }[])[1]!.pipelines[0]!.commands[0] = command;
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+}
+
+// `$BASH_SUBSHELL`, which just-bash doesn't have: how many subshells the text
+// is inside (T345).
+function countSubshells(node: unknown, depth = 0) {
+  if (Array.isArray(node)) {
+    for (const child of node) countSubshells(child, depth);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const typed = node as AstNode;
+  if (typed.type === 'ParameterExpansion' && typed.parameter === 'BASH_SUBSHELL' && typed.operation === null) {
+    for (const key of Object.keys(typed)) delete typed[key];
+    Object.assign(typed, { type: 'Literal', value: String(depth) });
+    return;
+  }
+  const inside = typed.type === 'Subshell' || typed.type === 'CommandSubstitution' || typed.type === 'ProcessSubstitution' ? depth + 1 : depth;
+  for (const [key, value] of Object.entries(typed)) if (key !== 'type') countSubshells(value, inside);
+}
+
+// What's put before a `!(` to keep it a word, taken out once it's parsed.
+const WORD_START = '\uF8FE';
+function withoutMark(ast: Script): Script {
+  walk(ast, (node) => {
+    if ((node.type === 'Literal' || node.type === 'SingleQuoted') && typeof node.value === 'string') node.value = node.value.replaceAll(WORD_START, '');
+    if (node.type === 'Word' && Array.isArray(node.parts)) node.parts = (node.parts as AstNode[]).filter((part) => part.type !== 'Literal' || part.value !== WORD_START);
+  });
+  return ast;
+}
+
+// The first `!(…)` a line holds: just-bash reads it as a lookahead its regular
+// expressions don't have, so it matches nothing or fails in JavaScript's words
+// (T344, research G31).
+function negatedPattern(ast: Script): string | null {
+  let found: string | null = null;
+  walk(ast, (node) => {
+    if (node.type === 'Glob' && (node.pattern as string).includes('!(')) found ??= node.pattern as string;
+  });
+  return found;
+}
+
+// An extended pattern where `extglob` is off, which bash can't parse outside
+// `[[ ]]` and an expansion's own pattern (T344).
+function holdsExtendedPattern(node: unknown): boolean {
+  if (Array.isArray(node)) return node.some(holdsExtendedPattern);
+  if (node === null || typeof node !== 'object') return false;
+  const typed = node as AstNode;
+  if (typed.type === 'ConditionalCommand' || typed.type === 'ParameterExpansion') return false;
+  if (typed.type === 'Glob') return /^[@*+?!]\(/.test(typed.pattern as string);
+  return Object.entries(typed).some(([key, value]) => key !== 'type' && holdsExtendedPattern(value));
 }
 
 // `break`, `continue` and `return` where bash says they mean nothing: the
@@ -533,7 +715,7 @@ function rewriteCommandV(node: AstNode, word: string, tools: Tools): boolean {
   const { statements } = tools.parse(`: | ${hidden('any-found')}`);
   const pipeline = statements[0]!.pipelines[0]!;
   const copy = { ...node, redirections: [] };
-  tools.done.add(copy);
+  rewriteType(copy, word, tools);
   pipeline.commands[0] = copy as never;
   const redirections = node.redirections;
   for (const key of Object.keys(node)) delete node[key];
@@ -598,6 +780,14 @@ type Redirection = { fd: number | null; operator: string; target: { type: string
 
 // A redirect that names a file: `>&` does only with a literal word that isn't
 // a descriptor, and a word that has effects isn't expanded a second time.
+// `/dev/fd/1` and `/dev/fd/2` as the targets the shell writes to itself (T332).
+const FD_STREAMS: Readonly<Record<string, string>> = { '/dev/fd/1': '/dev/stdout', '/dev/fd/2': '/dev/stderr' };
+function namedStream(redirection: Redirection) {
+  const parts = redirection.target.parts as { type: string; value?: string }[] | undefined;
+  const stream = parts?.length === 1 && parts[0]!.type === 'Literal' ? FD_STREAMS[parts[0]!.value!] : undefined;
+  if (stream !== undefined) parts![0]!.value = stream;
+}
+
 function checkable(redirection: Redirection): boolean {
   if (!WRITES.has(redirection.operator) || redirection.target.type !== 'Word' || redirection.fdVariable !== undefined) return false;
   const parts = redirection.target.parts as { type: string; value?: string }[];
@@ -617,6 +807,7 @@ const redirectPlugin: Plugin = {
       if (done.has(node) || node.type === 'FunctionDef' || !Array.isArray(node.redirections)) return;
       done.add(node);
       const redirections = node.redirections as Redirection[];
+      redirections.forEach(namedStream);
       if (!redirections.some((redirection) => WRITES.has(redirection.operator) && (redirection.operator !== '>&' || checkable(redirection)))) return;
       node.redirections = redirections.flatMap((redirection) => (checkable(redirection) ? [{ type: 'Redirection', fd: CHECK_FD, operator: '>>', target: { type: 'Word', parts: [...redirection.target.parts!, { type: 'Literal', value: OPENING }] } }, redirection] : [redirection]));
       const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
@@ -690,20 +881,37 @@ function openConstruct(line: string): string | null {
   return stack.at(-1) ?? null;
 }
 
+// A `;` where bash needs a command or a word (T342), which just-bash reads as
+// the end of the input.
+const STRAY_SEMICOLON = /(?:&&|\|\||\||^\s*\(|(?:^|[;&|(]\s*)(?:\{|if|then|else|elif|while|until|do)|\bcase\s+\S+\s+in|\(\s*\)|;[ \t])\s*;(?!;)|(?<![&>;|])&[ \t]*;(?!;)/;
+
+// What's after `[[` where bash stops reading it, in its words.
+function conditionalMessage(test: string): string {
+  const [before = '', stop] = test.split(/\s*([;&|()])/);
+  const words = before.split(/\s+/).filter((word) => word !== '');
+  const token = stop ?? 'newline';
+  const near = stop ?? words.at(-1);
+  const wording = words.length === 0 ? `unexpected token \`${token}' in conditional command` : words.length === 1 && /^-[a-zA-Z]$/.test(words[0]!) ? `unexpected argument \`${token}' to conditional unary operator` : words.length === 1 ? `unexpected token \`${token}', conditional binary operator expected` : `unexpected argument \`${token}' to conditional binary operator`;
+  return `line 1: ${wording}\nbash: line 1: syntax error near \`${near}'`;
+}
+
 // just-bash's parse errors as bash words them (T293): `line 1: …`, and an
 // unfinished line as the end of the input bash would have reached.
 function parseMessage(message: string, line: string): string {
   const text = message.replace(/^Parse error at \d+:\d+: /, '').replace(/^line \d+: /, '');
+  const plain = unquoted(line);
+  if (STRAY_SEMICOLON.test(plain)) return "line 1: syntax error near unexpected token `;'";
+  const list = /^\s*for\s+\w+(?:\s+in\b[^;]*)?;\s*([^\s;]+)/.exec(plain)?.[1];
+  if (list !== undefined && list !== 'do') return `line 1: syntax error near unexpected token \`${list}'`;
+  if (/\$\{[^}]*$/.test(plain) && /bad substitution$/.test(text)) return "line 1: unexpected EOF while looking for matching `}'";
+  if (/\[\[\s+\S+\s+(?:-eq|-ne|-lt|-le|-gt|-ge|-nt|-ot|-ef|==?|!=|=~|<|>)\s+\]\]/.test(plain)) return "line 1: unexpected argument `]]' to conditional binary operator\nbash: line 1: syntax error near `]]'";
   const unexpected = /^Expected .*, got (\S+)$/.exec(text);
   const closing = /near unexpected token `(fi|done|esac)'$/.exec(text);
   const test = /\[\[(?:\s+(.*?))?\s*$/.exec(unquoted(line))?.[1];
   const opens = openConstruct(line);
   if (opens === '[[') {
     if (test === undefined) return "line 1: unexpected token `EOF' in conditional command\nbash: line 1: syntax error: unexpected end of file from `[[' command on line 1";
-    const last = test.split(/\s+/).at(-1)!;
-    if (/^-[a-zA-Z]$/.test(last)) return `line 1: unexpected argument \`newline' to conditional unary operator\nbash: line 1: syntax error near \`${last}'`;
-    if (test.includes(' ')) return `line 1: unexpected argument \`newline' to conditional binary operator\nbash: line 1: syntax error near \`${last}'`;
-    return `line 1: unexpected token \`newline', conditional binary operator expected\nbash: line 1: syntax error near \`${last}'`;
+    return conditionalMessage(test);
   }
   if (/^(select|coproc)\s*$/.test(line.trim())) return "line 1: syntax error near unexpected token `newline'";
   if (/^Expected (redirection target|here-.ocument delimiter|function name|variable name in for loop|word after 'case')/.test(text)) {
@@ -725,11 +933,18 @@ function parseMessage(message: string, line: string): string {
 // first expansion the line holds that the error can be about.
 function arithmeticWording(stderr: string, ast: Script): string {
   const texts: string[] = [];
+  const commands: string[] = [];
   walk(ast, (node) => {
     const text = (node.expression as { originalText?: string } | undefined)?.originalText;
     if (node.type === 'ArithmeticExpansion' && text !== undefined) texts.push(text);
+    else if (text !== undefined) commands.push(text);
   });
-  return stderr.replace(/(^|\n)division by 0\n$/, (whole, lead: string) => {
+  return stderr
+    .replace(/(^|\n)\S+: syntax error: invalid arithmetic operator (\(error token is ".*"\))\n$/, (_, lead: string, rest: string) => `${lead}bash: ${texts[0] ?? ''}: arithmetic syntax error in expression ${rest}\n`)
+    .replace(/^bash: arithmetic expression: syntax error: (.*)$/m, (_, rest: string) => `bash: ((: ${commands[0] ?? ''}: arithmetic syntax error: ${rest}`)
+    .replace(/^bash: ((?:let: )?[^:\n]*): syntax error: (operand expected.*)$/gm, 'bash: $1: arithmetic syntax error: $2')
+    .replace(/^bash: let: (.*): Parse error at .*Expected DPAREN_END, got EOF$/m, (_, text: string) => `bash: let: ${text}: missing \`)' (error token is "${/(\w+|\S)\s*$/.exec(text)?.[1] ?? ''}")`)
+    .replace(/(^|\n)division by 0\n$/, (whole, lead: string) => {
     const text = texts.find((each) => /[/%]/.test(each));
     return text === undefined ? `${lead}bash: division by 0\n` : `${lead}bash: ${text}: division by 0 (error token is "${text.split(/[/%]/).at(-1)!.trim()}")\n`;
   }).replace(/(^|\n)syntax error: (.*\(error token is ".*"\))\n$/, (_, lead: string, rest: string) => `${lead}bash: ${texts[0] ?? ''}${texts.length > 0 ? ': ' : ''}arithmetic syntax error: ${rest}\n`);
@@ -778,6 +993,10 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   // settings; then all that `$?`, `$_` and PIPESTATUS were, again (research R27).
   let reading: { taken: Captured; held: [string, string][]; last: boolean } | null = null;
   const quiet = (exitCode = 0) => ({ stdout: '', stderr: '', exitCode });
+  const quoted = (word: string) => `'${word.replaceAll("'", `'\\''`)}'`;
+  // The running shell's state, for what has no command to reach it.
+  let running: { state: { exportedVars?: Set<string> } } | null = null;
+  const activeState = () => running?.state ?? null;
   // A command's result that sets PIPESTATUS, as just-bash's own restore does.
   const resulting = (exitCode: number, pipes: readonly number[]) => ({ ...quiet(exitCode), ...(pipes.length > 0 ? { internalPipeStatusOverride: [...pipes] } : {}) });
   const own = (name: string, run: Parameters<typeof defineCommand>[1]) => defineCommand(`${MARK}${name}`, run);
@@ -786,7 +1005,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const cvBegin = own('begin', async (args, ctx) => {
     const [status, position, last = '', ...pipes] = args;
     const held = [...ctx.env].filter(([, value]) => value.length >= LISTED);
-    const taken: Captured = { status: Number(status ?? 0), functions: [], declarations: [], options: [], shopts: [], cwd: ctx.cwd, env: new Map(ctx.env), exported: Object.keys(ctx.exportedEnv ?? {}), last, pipes: pipes.map(Number), stack: [] };
+    const taken: Captured = { status: Number(status ?? 0), functions: [], declarations: [], options: [], shopts: [], cwd: ctx.cwd, env: new Map(ctx.env), exported: Object.keys(ctx.exportedEnv ?? {}), bare: bareExports(ctx), last, pipes: pipes.map(Number), stack: [] };
     for (const [name] of held) ctx.env.delete(name);
     ctx.env.set(LAST, last.length < LISTED ? last : '');
     reading = { taken, held, last: position === 'last' };
@@ -889,6 +1108,10 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { stdout: '', stderr: missing.map((name) => `bash: export: ${name}: not a function\n`).join(''), exitCode: missing.length > 0 ? 1 : 0 };
   });
   // `set -o` and `set +o`, with bash's spacing and bash's always-on options.
+  const cvSetBad = own('set-bad', async (args) => {
+    const bad = args[0]!;
+    return { stdout: '', stderr: /^[-+]/.test(bad) ? `bash: set: ${bad}: invalid option\nset: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]\n` : `bash: set: ${bad}: invalid option name\n`, exitCode: 2 };
+  });
   const cvSetO = own('set-o', async (args) => {
     const on = new Set([...(args[1] ?? '').split(':'), ...ALWAYS_ON]);
     const stdout = SET_OPTIONS.map((name) => (args[0] === '-o' ? `${name.padEnd(15)}\t${on.has(name) ? 'on' : 'off'}\n` : `set ${on.has(name) ? '-' : '+'}o ${name}\n`)).join('');
@@ -901,6 +1124,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const fail = (message: string) => ({ stdout: '', stderr: `bash: ${word}: ${message}\n`, exitCode: 2 });
     if (word === '[' && rest.pop() !== ']') return fail("missing `]'");
     const [left, operator, right] = rest;
+    if (rest.length === 2 && left !== '!' && !/^-[abcdefghkLnNOoprRsStuvwxzG]$/.test(left!)) return fail(`${left!}: unary operator expected`);
     if (rest.length === 3 && left !== undefined && right !== undefined && INTEGER_TESTS.has(operator!)) {
       const bad = [left, right].find((each) => !/^\s*[-+]?\d+\s*$/.test(each));
       if (bad !== undefined) return fail(`${bad}: integer expected`);
@@ -915,12 +1139,76 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   const cvShopt = own('shopt', async (args) => {
     const on = new Set((args[1] ?? '').split(':'));
     const known = new Set(baselineKnown);
+    const isSet = (name: string, entry: string) => (known.has(name) ? on.has(name) : entry.startsWith('+') || on.has(name));
+    const row = (name: string, set: boolean) => `${name.padEnd(20)}\t${set ? 'on' : 'off'}\n`;
+    if (args[0] === 'names') {
+      let stdout = '';
+      let stderr = '';
+      let exitCode = 0;
+      for (const name of args.slice(2)) {
+        const entry = SHOPTS.find((each) => each.replace('+', '') === name);
+        if (entry === undefined) stderr += `bash: shopt: ${name}: invalid shell option name\n`;
+        else stdout += row(name, isSet(name, entry));
+        if (entry === undefined || !isSet(name, entry)) exitCode = 1;
+      }
+      return { stdout, stderr, exitCode };
+    }
     const stdout = SHOPTS.map((entry) => {
       const name = entry.replace('+', '');
-      const set = known.has(name) ? on.has(name) : entry.startsWith('+') || on.has(name);
-      return args[0] === '-p' ? `shopt ${set ? '-s' : '-u'} ${name}\n` : `${name.padEnd(15)}\t${set ? 'on' : 'off'}\n`;
+      return args[0] === '-p' ? `shopt ${isSet(name, entry) ? '-s' : '-u'} ${name}\n` : row(name, isSet(name, entry));
     }).join('');
     return { stdout, stderr: '', exitCode: 0 };
+  });
+  // Whether `type` may look for a name: 1 for what doesn't run (T336).
+  const cvRuns = own('runs', async (args) => {
+    const name = args[0] ?? '';
+    return quiet(NAMED_NOT_RUN.has(name) && !functions.has(name) && !ran.has(name) ? 1 : 0);
+  });
+  // What's exported and has no value yet (T337).
+  const bareExports = (ctx: { env: Map<string, string> }) => [...(activeState()?.exportedVars ?? [])].filter((name) => NAME.test(name) && !isOwn(name) && !ctx.env.has(name));
+  const cvListed = own('listed', async (args, ctx) => {
+    const [word, ...named] = args as [string, ...string[]];
+    const bare = bareExports(ctx);
+    const stdout = decodeStdin(ctx).replace(/^(?:declare -\S+ )?(?:\?|#|@|\*|\d+)=.*\n/gm, '');
+    if (named.length === 0) {
+      if (word !== 'export' || bare.length === 0) return { stdout, stderr: '', exitCode: 0 };
+      return { stdout: `${[...stdout.split('\n').filter((entry) => entry !== ''), ...bare.map((each) => `declare -x ${each}`)].sort().join('\n')}\n`, stderr: '', exitCode: 0 };
+    }
+    const shows = (name: string) => new RegExp(`^declare -\\S+ ${name}(?:=|$)`, 'm').test(stdout);
+    const missing = named.filter((name) => !shows(name) && !bare.includes(name));
+    return { stdout: `${stdout}${named.filter((name) => !shows(name) && bare.includes(name)).map((name) => `declare -x ${name}\n`).join('')}`, stderr: missing.map((name) => `bash: declare: ${name}: not found\n`).join(''), exitCode: missing.length > 0 ? 1 : 0 };
+  });
+  const cvExportBare = own('export-bare', async (args) => {
+    const state = activeState();
+    if (state !== null) (state.exportedVars ??= new Set()) && args.forEach((name) => state.exportedVars!.add(name));
+    return quiet();
+  });
+  // `declare -i`'s value, read with `let`, whose errors it words as bash does.
+  const cvInteger = own('integer', async (args, ctx) => {
+    const value = args[0] ?? '';
+    if (value === '' || /^\s*-?\d+\s*$/.test(value)) return quiet();
+    const result = await ctx.exec!(`builtin let ${quoted(`${LAST}=${value}`)}`, { cwd: ctx.cwd });
+    const wrong = /(?:syntax error|Parse error)[^\n]*?(operand expected[^\n]*|$)/.exec(result.stderr);
+    if (wrong === null) return quiet();
+    return { stdout: '', stderr: `bash: ${value}: arithmetic syntax error: ${wrong[1] || `operand expected (error token is "${value.at(-1)!}")`}\n`, exitCode: 1 };
+  });
+  // `exec`'s command (T343).
+  let execRan = false;
+  const cvExec = own('exec', async (args, ctx) => {
+    const word = args[0]!;
+    const onPath = word.includes('/') ? fs.exists(fs.resolvePath(ctx.cwd, word)) : Promise.all((ctx.env.get('PATH') ?? '').split(':').map((folder) => fs.exists(`${folder}/${word}`))).then((found) => found.includes(true));
+    // A builtin is no file to run, unless it's one of the site's commands.
+    const builtin = (SHELL_BUILTINS as readonly string[]).includes(word) && !PATH_BUILTINS.has(word) && word !== 'help';
+    execRan = !builtin && (commandNamed(word) !== null || (await onPath));
+    if (!execRan) return { stdout: '', stderr: `bash: exec: ${word}: not found\n`, exitCode: 127 };
+    return ctx.exec!(args.map(quoted).join(' '), { cwd: ctx.cwd, stdin: String(ctx.stdin ?? ''), env: Object.fromEntries(ctx.env) });
+  });
+  const cvExecRan = own('exec-ran', async (args, ctx) => {
+    heldStatus = Number(args[1] ?? 0);
+    if (!execRan) return quiet(1);
+    if (args[0] === '1') exiting = true;
+    ctx.env.set(TARGET, String(heldStatus));
+    return quiet();
   });
   const cvFunctionText = own('function-text', async (_args, ctx) => {
     const text = decodeStdin(ctx);
@@ -1039,6 +1327,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   let pending: { functions: unknown[]; setup: unknown[]; status: unknown[]; line: unknown[]; check: (last: boolean) => unknown[]; between: boolean } | null = null;
   let pathChanged = false;
   let noCase = false;
+  let failGlob = false;
+  let integers: ReadonlySet<string> = new Set();
 
   const bashFor = (overhead: number) => {
     const bash = new Bash({
@@ -1046,7 +1336,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       cwd: HOME,
       env: ENV,
       commands: [...STANDARD_COMMANDS],
-      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps],
+      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps, cvSetBad, cvRuns, cvListed, cvExportBare, cvInteger, cvExec, cvExecRan],
       executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + overhead, maxOutputSize: limits.pipe, ...UNREACHED },
     });
     // Runs on the first parse only: a command's own `exec` is its own script.
@@ -1058,7 +1348,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
         return { ast: { type: 'Script', statements: [...pending.functions, ...pending.line] } as unknown as Script };
       },
     });
-    bash.registerTransformPlugin(sitePlugin(() => functions, () => pathChanged, { parse: parseOwn as unknown as Parse, serialize, done: new WeakSet(), builtinHelp: () => record.builtinHelp, noCase: () => noCase }));
+    bash.registerTransformPlugin(sitePlugin(() => functions, () => pathChanged, { parse: parseOwn as unknown as Parse, serialize, done: new WeakSet(), builtinHelp: () => record.builtinHelp, noCase: () => noCase, failGlob: () => failGlob, integers: () => integers }));
     bash.registerTransformPlugin(redirectPlugin);
     bash.registerTransformPlugin({
       name: 'cv-check',
@@ -1161,6 +1451,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     if (gone.length > 0) lines.push(`unset ${gone.join(' ')}`);
     const exported = state.exported.filter((name) => NAME.test(name) && name in state.variables);
     if (exported.length > 0) lines.push(`export ${exported.join(' ')}`);
+    const bare = state.exported.filter((name) => NAME.test(name) && !(name in state.variables));
+    if (bare.length > 0) lines.push(`${hidden('export-bare')} ${bare.join(' ')}`);
     lines.push(...state.declarations);
     const on = state.shopts.filter((name) => !baselineShopts.includes(name));
     const off = baselineShopts.filter((name) => !state.shopts.includes(name));
@@ -1200,7 +1492,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return {
       cwd: taken.cwd,
       variables,
-      exported: taken.exported.filter((name) => name in variables),
+      exported: [...taken.exported.filter((name) => name in variables), ...taken.bare],
       functions,
       options: OPTIONS.filter((option) => taken.options.includes(option)),
       status: taken.status,
@@ -1212,6 +1504,19 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       pipes: taken.pipes,
       stack: taken.stack,
     };
+  };
+
+  // A function as `type` prints it holds what the adapter runs: each is printed
+  // again from the text it was typed as, by a shell with none of that (T336).
+  const typedBodies = async (stdout: string, state: ShellState) => {
+    let text = stdout;
+    for (const [name, typed] of [...Object.entries(state.functions), ...ran]) {
+      const block = new RegExp(`^${name.replace(/[.*+?^\${}()|[\]\\]/g, '\\$&')} \\(\\) \\n\\{ \\n[\\s\\S]*?^\\}\\n`, 'gm');
+      if (!block.test(text)) continue;
+      const shown = await new Bash({ commands: [] }).exec(`${typed}\ntype ${name}`);
+      text = text.replace(block, () => shown.stdout.slice(shown.stdout.indexOf('\n') + 1).replace(/ \\\]$/gm, ' ]'));
+    }
+    return text;
   };
 
   const filesChanged = async (): Promise<VisitorFiles | undefined> => {
@@ -1260,14 +1565,28 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     const { line } = request;
     let ast: Script;
+    const source = line.replace(/\$\{(\w+)(~~?)\}/g, (_, name: string, kind: string) => `$(${hidden('toggle')} ${kind} "\${${name}}")`);
+    const extglob = state.shopts.includes('extglob');
     try {
-      ast = parse(line.replace(/\$\{(\w+)(~~?)\}/g, (_, name: string, kind: string) => `$(${hidden('toggle')} ${kind} "\${${name}}")`));
+      try {
+        ast = parse(source);
+      } catch (error) {
+        // just-bash reads `!` at a word's start as the operator (T344).
+        if (!extglob || !source.includes('!(')) throw error;
+        ast = withoutMark(parse(source.replace(/(?<=[^\s;|&(]\s+)!\(/g, `${WORD_START}!(`)));
+      }
     } catch (error) {
-      return { ...base, stdout: '', stderr: `bash: ${parseMessage((error as Error).message, line)}\n`, status: 2, end: 'syntax' };
+      const message = parseMessage((error as Error).message, line);
+      // Not a syntax error to bash, which finds it when it expands the word.
+      if (/: bad substitution$/.test(message)) return { ...base, stdout: '', stderr: `bash: ${message.replace(/^line 1: /, '')}\n`, status: 1, end: 'syntax' };
+      return { ...base, stdout: '', stderr: `bash: ${message}\n`, status: /^\s*\w+=\([^);]*;[^)]*$/.test(line) ? 1 : 2, end: 'syntax' };
     }
+    if (/\$\{\}/.test(unquoted(line))) return { ...base, stdout: '', stderr: 'bash: ${}: bad substitution\n', status: 1, end: 'done', state: { ...state, status: 1 } };
     const open = /\$\(\((?:(?!\)\)).)*$/.test(unquoted(line));
-    const stray = /;[ \t]+;/.test(unquoted(line));
-    if (open || stray) return { ...base, stdout: '', stderr: open ? "bash: line 1: unexpected EOF while looking for matching `)'\n" : "bash: line 1: syntax error near unexpected token `;'\n", status: 2, end: 'syntax' };
+    const stray = STRAY_SEMICOLON.test(unquoted(line)) || (!extglob && holdsExtendedPattern(ast));
+    if (open || stray) return { ...base, stdout: '', stderr: open ? "bash: line 1: unexpected EOF while looking for matching `)'\n" : `bash: line 1: syntax error near unexpected token \`${STRAY_SEMICOLON.test(unquoted(line)) ? ';' : '('}'\n`, status: 2, end: 'syntax' };
+    const negated = negatedPattern(ast);
+    if (negated !== null) return { ...base, stdout: '', stderr: `bash: ${negated}: negated patterns aren't supported\n`, status: 1, end: 'done', state: { ...state, status: 1 } };
     const error = syntaxError(ast);
     if (error !== null) return { ...base, stdout: '', stderr: `bash: ${parseMessage(error, line)}\n`, status: 2, end: 'syntax' };
 
@@ -1289,6 +1608,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const functionTexts = Object.values(state.functions);
     functions = new Set([...Object.keys(state.functions), ...Object.keys(definitions(ast))]);
     noCase = (state.shopts.includes('nocaseglob') && !/shopt\s+-u\s+nocaseglob/.test(line)) || /shopt\s+-s\s+nocaseglob/.test(line);
+    failGlob = (state.shopts.includes('failglob') && !/shopt\s+-u\s+failglob/.test(line)) || /shopt\s+-s\s+failglob/.test(line);
+    integers = new Set([...state.declarations.flatMap((text) => /^declare -\S*i\S* (\w+)/.exec(text)?.[1] ?? []), ...[...line.matchAll(/\b(?:declare|typeset|local)\s+-\w*i\w*\s+(\w+)/g)].map((match) => match[1]!)]);
     pathChanged = 'PATH' in state.variables || state.unset.includes('PATH') || /\bPATH\b/.test(line);
     const functionStatements = functionTexts.flatMap((text) => parseOwn(text).statements as unknown[]);
     markExits(functionStatements);
@@ -1299,6 +1620,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     const wording = structuredClone(ast);
     reported(ast);
     markOutOfPlace(ast);
+    countSubshells(ast);
+    countSubshells(functionStatements);
     markExits(ast);
     expandBraces(ast);
     // bash prints a line under `set -v` when it reads it, whole.
@@ -1329,6 +1652,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     let result: { stdout: string; stderr: string; exitCode: number };
     try {
       const bash = bashFor(overhead);
+      running = bash as unknown as { state: { exportedVars?: Set<string> } };
       // The one piece of just-bash's state a run can't set otherwise: the
       // stack has no command that sets it whole (T305, research R27).
       (bash as unknown as { state: { directoryStack?: string[] } }).state.directoryStack = [...state.stack];
@@ -1340,6 +1664,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       result = { stdout: '', stderr: `${message.startsWith('bash: ') ? '' : 'bash: '}${message}\n`, exitCode: failed ? 1 : 126 };
     }
     pending = null;
+    const left = fs.takeStreamed();
+    result = { ...result, stdout: `${result.stdout}${left.stdout}`, stderr: `${result.stderr}${left.stderr}` };
     const unwritten = fs.takeFull().map((target) => `bash: ${target}: No space left on device\n`).join('');
     const taken = captured as Captured | null;
     const fatal = result.stderr.includes(FATAL);
@@ -1352,7 +1678,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       // bash says nothing of a shift past the end, and names itself on `[`'s
       // and `test`'s errors (T305).
       .filter((entry) => entry !== 'bash: shift: shift count out of range')
-      .map((entry) => entry.replace(/^\[: /, 'bash: [: ').replace(/^test: /, `bash: ${/(^|[\s;|&(])\[\s/.test(line) ? '[' : 'test'}: `))
+      .map((entry) => (/\bcommand\s+-[a-zA-Z]*V/.test(line) ? entry.replace(/^([^:\s]+: not found)$/, 'bash: command: $1') : entry))
+      .map((entry) => entry.replace(/^shopt: /, 'bash: shopt: ').replace(/^\[: /, 'bash: [: ').replace(/^test: /, `bash: ${/(^|[\s;|&(])\[\s/.test(line) ? '[' : 'test'}: `))
       .map((entry) => entry.replace(/^bash: line \d+: (.*\(error token is ".*"\))$/, 'bash: $1'))
       .map((entry) => entry.replace(/^bash: eval: (Parse error at .*)$/, (_, message: string) => `bash: eval: ${parseMessage(message, '')}`))
       // A command only just-bash's Node build has is unknown, as in bash
@@ -1361,7 +1688,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       .join('\n')
       .replace(GROUP_MESSAGE, '$1bash: $2\n'), wording);
     const stderr = cleaned(`${verbose}${warning}${result.stderr.replaceAll(STATEMENT, '')}${unwritten}`);
-    const stdout = afterClear(fs.plainText(result.stdout.replaceAll(STATEMENT, '')));
+    const stdout = await typedBodies(afterClear(fs.plainText(result.stdout.replaceAll(STATEMENT, ''))), state);
     fs.endLine();
     const limit = limitOf(stdout, stderr, result.exitCode);
     const files = await filesChanged();
