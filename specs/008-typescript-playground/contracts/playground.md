@@ -56,6 +56,11 @@ run, the window's close and `pagehide` remove it.
 - **Examples panel**: a `ul` per group under its heading, each example a `button` with title and
   description, the current one `aria-current="true"`; the note "An example replaces your code. Undo
   brings it back."
+  An example sets any option it needs (FR-027) and leaves the visitor's others as they are, none of the
+  examples setting one today. FR-030's defaults are what the examples are checked against, not what
+  choosing one imposes. The message's Undo, for an example, Reset or a shared link, brings the options
+  back with the code; the editor's own undo takes back the code alone, since options aren't in its
+  history, and takes Undo off the message.
 - **Popups** cover the Playground's window only (`.playground-scrim` is inside
   `section.playground`), never the shell or another window (FR-050).
 
@@ -82,6 +87,7 @@ section.playground-mobile             aria-labelledby its h2
 | Stuck popup, appearing while focus is in the window | `Stop` (FR-051); Escape keeps waiting and returns focus where it was |
 | Stuck popup, appearing while focus is elsewhere | Stays where it is (FR-050) |
 | Reset… or Keys… | `Reset` or the Keys popup's close; Escape cancels and returns to the menu bar's title (005's menu rule) |
+| The stuck popup in place of Keys or Reset | The stuck popup closes the other and takes focus to Stop; leaving it, focus goes where the closed popup would have sent it (FR-051) |
 | An error in the Errors pane, or a log's line | The editor, at that place |
 | Shared link opened | The editor, once ready (FR-053) |
 

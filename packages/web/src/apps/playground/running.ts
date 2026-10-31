@@ -116,20 +116,25 @@ function tick(): void {
     if (stuck === 'kept-waiting' && run.blockedSince !== null && run.askAgainAt !== null && now >= run.askAgainAt) stuck = 'due';
     if (stuck === 'due' && windowOnScreen()) stuck = 'shown';
     if (stuck !== run.stuck) updateRun(run.id, () => ({ stuck }));
+    // It takes the place of any popup the visitor had open.
+    if (stuck === 'shown' && run.stuck !== 'shown') session.update({ popup: 'none' });
   }
   if (now - lastAnnounce >= ANNOUNCE_MS) {
     lastAnnounce = now;
+    // The newest book counts all of it, drawn or not; both start again.
     const { logs } = session.get();
-    if (logs.newSinceAnnounce > 0) {
-      announce(fill(counted(words.announce.newLogs, logs.newSinceAnnounce), { n: logs.newSinceAnnounce }));
+    const fresh = (waitingLogs ?? logs).newSinceAnnounce;
+    if (fresh > 0) {
+      announce(fill(counted(words.announce.newLogs, fresh), { n: fresh }));
       session.update({ logs: announced(logs) });
+      if (waitingLogs !== null) waitingLogs = announced(waitingLogs);
     }
     if (run.outcome === null && announcedTimers !== run.pending.timers && run.state !== 'starting') {
       if (announcedTimers !== null) announce(run.pending.timers === 0 ? words.announce.timers.none : fill(counted(words.announce.timers, run.pending.timers), { n: run.pending.timers }));
       announcedTimers = run.pending.timers;
     }
   }
-  if (run.outcome !== null && session.get().logs.newSinceAnnounce === 0) stopTicking();
+  if (run.outcome !== null && (waitingLogs ?? session.get().logs).newSinceAnnounce === 0) stopTicking();
 }
 
 function stopTicking(): void {

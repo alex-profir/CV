@@ -7,7 +7,7 @@ import { counted, fill, siteText } from '../../site-text.ts';
 import { announce } from '../../os/announce.ts';
 import { createChecker } from './checker.ts';
 import { GLOBALS_TYPES } from './globals-types.ts';
-import { changedOptions, settle } from './compiler-options.ts';
+import { changedOptions, differingNames, settle } from './compiler-options.ts';
 import type { ChangedOptions } from './compiler-options.ts';
 import { examples } from './examples/index.ts';
 import { welcome } from './examples/welcome.ts';
@@ -28,8 +28,10 @@ let engine: Engine | null = null;
 let loading: AbortController | null = null;
 let mac = false;
 let starting: Example | null = null;
-// Whether the last edit was a replacement, which Undo takes back.
+// Whether the last edit was a replacement, which Undo takes back, and the
+// options from before it.
 let undoable = false;
+let optionsBefore: ChangedOptions = {};
 let messageIds = 0;
 let commandHandler: (id: EngineCommand) => void = (id) => {
   if (id === 'playground.run') runCode();
@@ -80,23 +82,41 @@ export const stopCode = () => stopRun();
 
 export const canStop = () => runGoing();
 
+// The notices a visitor must read (FR-014, FR-019, FR-056). They wait their
+// turn, and one that a new message replaces comes back after it.
+const NOTICES: ReadonlySet<MessageKey> = new Set<MessageKey>(['unknownKeptOptions', 'cantKeepTypeScript', 'cantKeepCode', 'unknownOptions']);
+type Waiting = Pick<Message, 'kind' | 'text' | 'actions' | 'values'>;
+let waitingNotices: Waiting[] = [];
+
 // The one message under the toolbar; a new one replaces it (data-model.md
 // Message).
 export function showMessage(kind: Message['kind'], text: MessageKey, actions: MessageAction[] = [], values?: Record<string, string | number>, link?: string): void {
+  const shown = session.get().message;
+  if (shown !== null && NOTICES.has(shown.text)) waitingNotices.unshift(shown);
   messageIds += 1;
-  following = null;
   session.update({ message: { kind, text, actions, id: messageIds, ...(values === undefined ? {} : { values }), ...(link === undefined ? {} : { link }) } });
 }
 
-// A message that follows the shown one once it's dismissed: the unknown
-// options a shared link set, after the note that it opened (contracts/share-link.md).
-let following: Pick<Message, 'kind' | 'text' | 'actions' | 'values'> | null = null;
+// A notice now if nothing shows, or else after what shows; `next` puts it
+// first, as the unknown options a shared link set follow the note that it
+// opened (contracts/share-link.md).
+function showNotice(kind: Message['kind'], text: MessageKey, values?: Record<string, string | number>, next = false): void {
+  if (session.get().message === null) return showMessage(kind, text, [], values);
+  const notice: Waiting = { kind, text, actions: [], ...(values === undefined ? {} : { values }) };
+  if (next) waitingNotices.unshift(notice);
+  else waitingNotices.push(notice);
+}
 
 export function dismissMessage(): void {
-  const next = following;
-  following = null;
-  if (next === null) session.update({ message: null });
-  else showMessage(next.kind, next.text, next.actions, next.values);
+  session.update({ message: null });
+  const next = waitingNotices.shift();
+  if (next !== undefined) showMessage(next.kind, next.text, next.actions, next.values);
+}
+
+// A notice no longer true goes, shown or waiting.
+function withdrawNotice(text: MessageKey): void {
+  waitingNotices = waitingNotices.filter((notice) => notice.text !== text);
+  if (session.get().message?.text === text) dismissMessage();
 }
 
 // Kept code (FR-019): read once when the Playground first mounts in a visit,
@@ -118,7 +138,7 @@ function readKeptNow(): { code: string; options: ChangedOptions } {
   }
   if (kept.kind === 'none') return { code: start.code, options: {} };
   session.update({ options: kept.options });
-  if (kept.unknown.length > 0) showMessage('info', 'unknownKeptOptions', [], { n: kept.unknown.length, names: kept.unknown.join(', ') });
+  if (kept.unknown.length > 0) showNotice('info', 'unknownKeptOptions', { n: kept.unknown.length, names: kept.unknown.join(', ') });
   return { code: kept.code, options: kept.options };
 }
 
@@ -131,12 +151,17 @@ function keepNow(): void {
   // Back to the starting example with the defaults, nothing is kept: what was
   // kept before would come back on a reload (FR-019).
   if (!worthKeeping(code, options, startingExample().code)) return removeKept();
-  if (session.get().keeping === 'no-storage' || writeKept(code, options) === 'no-storage') {
+  // Each change tries again: storage that failed once may work now (FR-019).
+  if (writeKept(code, options) === 'no-storage') {
     session.update({ keeping: 'no-storage' });
     if (!toldCantKeep) {
       toldCantKeep = true;
-      showMessage('warn', 'cantKeepCode');
+      showNotice('warn', 'cantKeepCode');
     }
+  } else if (session.get().keeping === 'no-storage') {
+    session.update({ keeping: 'yes' });
+    toldCantKeep = false;
+    withdrawNotice('cantKeepCode');
   }
 }
 
@@ -251,7 +276,7 @@ export function startEngine(input: StartInput): void {
       loading = null;
       if (code === startingExample().code && Object.keys(options).length === 0) session.update({ example: startingExample().id });
       session.update({ download: readyState ?? { kind: 'ready', typescript: created.typescript, kept } });
-      if (!kept) showMessage('warn', 'cantKeepTypeScript');
+      if (!kept) showNotice('warn', 'cantKeepTypeScript');
       for (const listener of [...engineListeners]) listener();
       openPendingLink();
     })
@@ -275,6 +300,7 @@ export function retryDownload(): void {
 export function closePlayground(): void {
   stopRun(true);
   keeper.flush();
+  waitingNotices = [];
   if (loading !== null) {
     loading.abort();
     loading = null;
@@ -293,13 +319,19 @@ export function onPageHide(): void {
 export function setOptions(options: ChangedOptions): void {
   const changed = changedOptions(settle(options));
   session.update({ options: changed });
-  engine?.setOptions(changed);
+  if (engine !== null) {
+    checker.optionsChanged();
+    engine.setOptions(changed);
+  }
   keeper.changed();
 }
 
-// Replaces the code as one undoable edit (FR-027, FR-057, FR-080).
+// Replaces the code as one undoable edit (FR-027, FR-057, FR-080). The
+// options aren't in the editor's history, so the message's Undo puts them back
+// itself; the editor's own undo takes back the code alone.
 export function replaceCode(code: string, options: ChangedOptions): void {
   if (engine === null) return;
+  optionsBefore = session.get().options;
   engine.replaceCode(code);
   setOptions(options);
   undoable = true;
@@ -308,18 +340,20 @@ export function replaceCode(code: string, options: ChangedOptions): void {
 export function undoReplacement(): void {
   if (engine === null) return;
   engine.undo();
-  following = null;
+  setOptions(optionsBefore);
+  // What the link said about its options went with it.
+  waitingNotices = waitingNotices.filter((notice) => notice.text !== 'unknownOptions');
   dismissMessage();
 }
 
 // The examples for the visitor's system (FR-028).
 export const exampleList = (): readonly Example[] => examples(mac);
 
-// An example replaces the code and its options as one undoable edit, and
-// says so with Undo (FR-027).
+// An example replaces the code and sets any option it needs as one undoable
+// edit, and says so with Undo (FR-027). The visitor's other options stay.
 export function chooseExample(example: Example): void {
   if (engine === null) return;
-  replaceCode(example.code, example.options ?? {});
+  replaceCode(example.code, { ...session.get().options, ...example.options });
   session.update({ example: example.id, panel: 'none' });
   showMessage('info', 'exampleReplaced', ['undo'], { title: example.title });
   requestAnimationFrame(focusEditor);
@@ -364,7 +398,7 @@ export async function shareCode(): Promise<void> {
     showMessage('info', 'linkField', [], undefined, result.link);
     return;
   }
-  showMessage('done', 'linkCopied', canShareWith(result.link) ? ['share-with'] : [], { n: Object.keys(options).length });
+  showMessage('done', 'linkCopied', canShareWith(result.link) ? ['share-with'] : [], { n: differingNames(options).length });
 }
 
 const isCancel = (error: unknown) => error instanceof DOMException && error.name === 'AbortError';
@@ -403,7 +437,7 @@ function openPendingLink(): void {
     replaceCode(link.code, link.options);
     session.update({ example: null });
     showMessage('info', had ? 'sharedReplaced' : 'sharedOpened', had ? ['undo', 'run'] : ['run']);
-    if (link.unknown.length > 0) following = { kind: 'info', text: 'unknownOptions', actions: [], values: { n: link.unknown.length, names: link.unknown.join(', ') } };
+    if (link.unknown.length > 0) showNotice('info', 'unknownOptions', { n: link.unknown.length, names: link.unknown.join(', ') }, true);
   } else if (link.kind === 'broken') {
     // The starting example is shown, not chosen, so kept code stays (FR-056).
     replaceCode(startingExample().code, {});

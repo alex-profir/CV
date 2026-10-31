@@ -54,7 +54,7 @@ run's nonce; a message without it is ignored.
 |-----------|---------|---------|
 | host → bootstrap | `{ start, nonce, source, port }` (by `postMessage` to the frame, the port transferred) | Make the worker from `source` and hand it the port |
 | bootstrap → host | `{ worker: 'started' \| 'failed' \| 'died', nonce, message }` | The worker exists, couldn't be made, or died (an `error` event reached the frame, R24) |
-| host → worker | `{ run, nonce, cv }` | Set `cv` and run the code |
+| host → worker | `{ run, nonce, cv, prelude }` | Set `cv` and run the code; `prelude` is the script's lines before the code, so an error's line skips the runtime's wrappers (FR-035) |
 | host → worker | `{ ping, nonce, n }` every 250 ms | Heartbeat (R19) |
 | worker → host | `{ pong, nonce, n }` | Answered as soon as the worker's event loop is free |
 | worker → host | `{ started, nonce }` | The code is about to run; the heartbeat starts |

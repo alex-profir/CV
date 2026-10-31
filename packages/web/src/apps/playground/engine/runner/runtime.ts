@@ -223,11 +223,15 @@ for (const name of ['Worker', 'SharedWorker']) {
 
 let uncaught = 0;
 
-// Where an error was thrown in this script, from its stack.
+// The lines of this script before the code, which the page gives with `run`.
+let preludeLines = 0;
+
+// Where an error was thrown in the code, from its stack: the first frame past
+// the prelude, since this script's wrappers are on the stack of what they throw.
 function position(error: unknown, line?: number, column?: number): { line: number; column: number } | null {
   const stack = error !== null && typeof error === 'object' && typeof (error as { stack?: unknown }).stack === 'string' ? (error as { stack: string }).stack : '';
   for (const match of stack.matchAll(/(blob:[^\s()]+?):(\d+):(\d+)/g)) {
-    if (match[1] === scope.location.href) return { line: Number(match[2]), column: Number(match[3]) };
+    if (match[1] === scope.location.href && Number(match[2]) > preludeLines) return { line: Number(match[2]), column: Number(match[3]) };
   }
   return line !== undefined && line > 0 ? { line, column: column ?? 1 } : null;
 }
@@ -621,7 +625,7 @@ for (let holder: object | null = scope; holder !== null; holder = Object.getProt
 
 // ---- The page ------------------------------------------------------------
 
-type FromPage = { nonce?: unknown; ping?: number; run?: boolean; cv?: unknown };
+type FromPage = { nonce?: unknown; ping?: number; run?: boolean; cv?: unknown; prelude?: unknown };
 
 function onPage(event: MessageEvent<FromPage>): void {
   const data = dataOf(event) as FromPage | null;
@@ -632,6 +636,7 @@ function onPage(event: MessageEvent<FromPage>): void {
   }
   if (data.run === true && !started) {
     started = true;
+    if (typeof data.prelude === 'number') preludeLines = data.prelude;
     define('cv', data.cv);
     send({ started: true });
     const main = scope['__playgroundMain'] as (() => Promise<unknown>) | undefined;

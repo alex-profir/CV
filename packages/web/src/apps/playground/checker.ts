@@ -43,9 +43,15 @@ export function createChecker({ check, setChecking, timers = { set: (run, ms) =>
         if (!current) setChecking(true);
       }, CHECKING_AFTER_MS);
     },
-    // A check now, as for a change of the options.
-    now() {
-      ask();
+    // The options changed: the same code, so the same version, but what shows
+    // is out of date until the next result, and says so after the same wait.
+    optionsChanged() {
+      current = false;
+      if (slow !== null) timers.clear(slow);
+      slow = timers.set(() => {
+        slow = null;
+        if (!current) setChecking(true);
+      }, CHECKING_AFTER_MS);
     },
     // A result arrived: whether it is for the current version.
     result(version: number): boolean {

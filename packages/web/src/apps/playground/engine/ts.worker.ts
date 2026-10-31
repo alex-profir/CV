@@ -147,7 +147,7 @@ class PlaygroundWorker extends TypeScriptWorker {
       { after: [stripExports()] },
     );
     if (result.emitSkipped) return { code: '', map: '', imports, errors, skipped: true };
-    return { code: withoutMapComment(code).replace(/^\s*export\s*\{\s*\};?\s*$/m, ''), map, imports, errors, skipped: false };
+    return { code: withoutMapComment(code), map, imports, errors, skipped: false };
   }
 
   // What each name in the code is, as TypeScript knows it, for the syntax

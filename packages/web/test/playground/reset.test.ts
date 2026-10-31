@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
-import { editorText, focusEditor, menu, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, POPUP, run, RUNNER, running, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { editorText, focusEditor, menu, MESSAGE, onMac, openPlaygroundPage, PLAYGROUND, POPUP, primary, run, RUNNER, running, setCode, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -79,6 +79,42 @@ describe('008-typescript-playground-FR-080: Reset puts the starting example and 
     await page.keyboard.press('Escape');
     await expect.poll(() => page.locator(POPUP).count()).toBe(0);
     expect(await editorText(page)).toBe(CODE);
+  });
+
+  test('Undo brings the options back with the code, and they are kept again', async () => {
+    const page = await openPlaygroundPage();
+    await setCode(page, CODE);
+    await waitChecked(page);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).check();
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cv-playground') ?? '{}').options?.noUnusedLocals)).toBe(true);
+    await menu(page, siteText.playground.menu.reset);
+    await page.locator(`${POPUP} button.danger`).click();
+    await page.locator(MESSAGE).getByRole('button', { name: siteText.playground.messages.actions.undo }).click();
+    await expect.poll(() => editorText(page)).toBe(CODE);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    expect(await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).isChecked()).toBe(true);
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cv-playground') ?? '{}').options?.noUnusedLocals)).toBe(true);
+  });
+
+  test("the editor's own undo takes back the code alone, and takes Undo off the message", async () => {
+    const page = await openPlaygroundPage();
+    await setCode(page, CODE);
+    await waitChecked(page);
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).check();
+    await page.keyboard.press('Escape');
+    await menu(page, siteText.playground.menu.reset);
+    await page.locator(`${POPUP} button.danger`).click();
+    const undo = page.locator(MESSAGE).getByRole('button', { name: siteText.playground.messages.actions.undo });
+    await undo.waitFor();
+    await focusEditor(page);
+    await page.keyboard.press(`${await primary(page)}+KeyZ`);
+    await expect.poll(() => editorText(page)).toBe(CODE);
+    await undo.waitFor({ state: 'detached' });
+    await page.locator(`${TOOLBAR} button.options`).click();
+    expect(await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).isChecked()).toBe(false);
   });
 
   test('the first edit after Reset takes Undo off the message', async () => {

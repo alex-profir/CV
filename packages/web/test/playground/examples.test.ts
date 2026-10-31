@@ -49,6 +49,16 @@ describe('008-typescript-playground-FR-027: the examples panel lists the example
     await expect.poll(() => editorText(page)).toBe(mine);
   });
 
+  test("an example that sets no option leaves the visitor's options as they are", async () => {
+    const page = await openPlaygroundPage();
+    await page.locator(`${TOOLBAR} button.options`).click();
+    await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).check();
+    await page.keyboard.press('Escape');
+    await chooseExample(page, 'Generics');
+    await page.locator(`${TOOLBAR} button.options`).click();
+    expect(await page.locator(`${PLAYGROUND} #playground-option-noUnusedLocals`).isChecked()).toBe(true);
+  });
+
   test('the first edit after an example takes Undo off the message', async () => {
     const page = await openPlaygroundPage();
     const example = examples(await onMac(page)).find((entry) => entry.id === 'generics')!;
