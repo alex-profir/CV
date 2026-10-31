@@ -336,6 +336,23 @@ scrolls when the window is short, as `desktop-11` does. Export: `desktop-39-keys
   to move, and no command shows them today: "Not VS Code's key: the shell keeps its own shortcuts."
   · "Not VS Code's key: screen readers keep [key] for themselves."
 
+Proposed 2026-10-31, **not signed** (T223; see the end of `review.md`): the list holds every key, as
+FR-085 says, so it can't fall behind the editor's. Under group headings, keeping the 29 names above,
+it adds these, with Monaco's own names, which the palette already shows. Rows: Undo · Redo · Shrink
+Selection · Add Cursor Above · Add Cursor Below · Add Cursors to Line Ends · Select All Occurrences of
+Find Match · Change All Occurrences · Find Next Selection · Find Previous Selection · Indent Line ·
+Outdent Line · Copy Line Up · Insert Line Above · Toggle Block Comment · Add Line Comment · Remove
+Line Comment · Go to Bracket · Remove Brackets · Fold All · Unfold All · Fold Recursively · Toggle Fold
+· Fold Level 1 to 7 · Refactor... · Replace with Next Value · Replace with Previous Value · Trim
+Trailing Whitespace · Show Editor Context Menu · Start Linked Editing · Cursor Undo · Set Selection
+Anchor · Select line (`Ctrl+K L`, a Playground key: a browser keeps `Ctrl+L`) · on a Mac, Move by word
+part (`Cmd+K Left`, `Cmd+K Right`: VoiceOver keeps `Ctrl+Option` with the arrows). Groups, new words:
+Run · Types and names · Errors · Editing · Selecting · Find · Folding · Moving around. In one column
+when text is zoomed to 200%. Export to come with the table: `build.mjs` draws this list from it.
+
+Also proposed: the Copy the code message on the desktop when the clipboard refuses, in the phone's
+signed words: "This code is too long to share as a link, and it couldn't be copied." Built (T225).
+
 ### The Playground menu (FR-003, FR-085)
 
 Export: `desktop-12-menu-1440.png`.

@@ -78,7 +78,7 @@ self.onmessage = (event) => {
     frame.hidden = true;
     frame.title = '';
     frame.className = 'playground-runner';
-    const policy = `default-src 'none'; script-src 'sha256-${await sha256(BOOTSTRAP)}'; worker-src blob:; connect-src *`;
+    const policy = `default-src 'none'; script-src 'sha256-${await sha256(BOOTSTRAP)}'; worker-src blob:; connect-src * data: blob:`;
     frame.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><script>${BOOTSTRAP}<\/script>`;
     const loaded = new Promise((resolve) => frame.addEventListener('load', resolve, { once: true }));
     document.body.append(frame);

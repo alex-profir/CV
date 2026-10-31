@@ -65,6 +65,23 @@ function read(target: object, key: PropertyKey): unknown {
   }
 }
 
+// Whether a place in an array holds nothing, as in `[1,,3]`.
+function isHole(list: object, index: number): boolean {
+  try {
+    return !Object.hasOwn(list, index) && !(index in list);
+  } catch {
+    return false;
+  }
+}
+
+function ownSymbols(object: object): symbol[] {
+  try {
+    return Object.getOwnPropertySymbols(object).filter((key) => Object.getOwnPropertyDescriptor(object, key)?.enumerable === true);
+  } catch {
+    return [];
+  }
+}
+
 // A count that is one, whatever the code's own getters answered.
 const counted = (n: unknown): number => (typeof n === 'number' && Number.isSafeInteger(n) && n > 0 ? n : 0);
 
@@ -98,6 +115,24 @@ function builtIn(object: object, budget: Budget): Shown | null {
   return null;
 }
 
+// An error, with what it holds of other errors. As a container, it's as deep
+// as others' contents may be, and one that holds itself says so.
+function showError(error: Error, depth: number, parents: Set<object>, budget: Budget): Shown {
+  const name = String(read(error, 'name') ?? 'Error');
+  const shown: Shown = { t: 'err', name: text(name, budget), message: text(String(read(error, 'message') ?? ''), budget) };
+  if (depth >= LIMITS.depth) return shown;
+  parents.add(error);
+  try {
+    const cause = read(error, 'cause');
+    if (cause !== undefined) shown.cause = show(cause, depth + 1, parents, budget);
+    const errors = read(error, 'errors');
+    if (error instanceof AggregateError && Array.isArray(errors)) shown.errors = show(errors, depth + 1, parents, budget);
+  } finally {
+    parents.delete(error);
+  }
+  return shown;
+}
+
 function showValue(value: unknown, depth: number, parents: Set<object>, budget: Budget): Shown {
   if (value === null) return spend(budget, 4), { t: 'null' };
   if (value === undefined) return spend(budget, 9), { t: 'undef' };
@@ -120,10 +155,7 @@ function showValue(value: unknown, depth: number, parents: Set<object>, budget: 
   }
   const object = value as object;
   if (parents.has(object)) return spend(budget, MARKER), { t: 'circ' };
-  if (object instanceof Error) {
-    const name = String(read(object, 'name') ?? 'Error');
-    return { t: 'err', name: text(name, budget), message: text(String(read(object, 'message') ?? ''), budget) };
-  }
+  if (object instanceof Error) return showError(object, depth, parents, budget);
   if (object instanceof Date) return { t: 'date', v: text(Number.isNaN(object.getTime()) ? 'Invalid Date' : object.toISOString(), budget) };
   const known = builtIn(object, budget);
   if (known !== null) return known;
@@ -156,7 +188,7 @@ function showValue(value: unknown, depth: number, parents: Set<object>, budget: 
       const items: Shown[] = [];
       for (let index = 0; index < length; index += 1) {
         if (items.length >= LIMITS.items || !spend(budget, 2)) break;
-        items.push(show(read(list, index), depth + 1, parents, budget));
+        items.push(isHole(list, index) ? { t: 'hole' } : show(read(list, index), depth + 1, parents, budget));
       }
       return { t: 'arr', items, more: length - items.length };
     }
@@ -172,11 +204,60 @@ function showValue(value: unknown, depth: number, parents: Set<object>, budget: 
       const name = text(key, budget);
       entries.push([name, show(read(object, key), depth + 1, parents, budget)]);
     }
-    return { t: 'obj', ctor: constructorName(object), entries, more: keys.length - entries.length };
+    const symbolKeys = ownSymbols(object);
+    const symbols: [string, Shown][] = [];
+    for (const key of symbolKeys) {
+      if (entries.length + symbols.length >= LIMITS.items || !spend(budget, 2)) break;
+      const name = text(key.toString(), budget);
+      symbols.push([name, show(read(object, key), depth + 1, parents, budget)]);
+    }
+    return { t: 'obj', ctor: constructorName(object), entries, more: keys.length + symbolKeys.length - entries.length - symbols.length, ...(symbols.length > 0 ? { symbols } : {}) };
   } finally {
     parents.delete(object);
   }
 }
+
+// `console.log("%s is %d", "a", 1)`: the first argument's placeholders filled
+// from the rest, as the console's Formatter does, only when there is a rest.
+// An object for `%s`, `%o` or `%O` stays a value of its own, as text can't show
+// it without running its code; `%c` takes its style and shows nothing.
+export function substitute(values: readonly unknown[]): unknown[] {
+  const [first] = values;
+  if (typeof first !== 'string' || values.length < 2 || !first.includes('%')) return [...values];
+  const out: unknown[] = [];
+  let next = 1;
+  let textSoFar = '';
+  let last = 0;
+  for (const match of first.matchAll(/%[sdifoOc%]/g)) {
+    const kind = match[0][1]!;
+    if (kind !== '%' && next >= values.length) continue;
+    textSoFar += first.slice(last, match.index);
+    last = match.index + 2;
+    if (kind === '%') {
+      textSoFar += '%';
+      continue;
+    }
+    const value = values[next];
+    next += 1;
+    if (kind === 'c') continue;
+    if (kind === 'd' || kind === 'i' || kind === 'f') textSoFar += typeof value === 'symbol' || typeof value === 'object' || typeof value === 'function' ? 'NaN' : numberFor(kind, value);
+    else if (kind === 's' && (value === null || typeof value !== 'object') && typeof value !== 'function') textSoFar += typeof value === 'bigint' ? `${value}n` : String(value);
+    else {
+      if (textSoFar !== '') out.push(textSoFar.trimEnd());
+      textSoFar = '';
+      out.push(value);
+      if (first[last] === ' ') last += 1;
+    }
+  }
+  textSoFar += first.slice(last);
+  if (textSoFar !== '' || out.length === 0) out.push(textSoFar);
+  return [...out, ...values.slice(next)];
+}
+
+const numberFor = (kind: string, value: unknown): string => {
+  if (typeof value === 'bigint') return `${value}n`;
+  return String(kind === 'f' ? Number.parseFloat(String(value)) : Number.parseInt(String(value), 10));
+};
 
 // One log entry's values: each argument formatted, the entry cut where it
 // passes 10,000 characters, with `cut` saying so.
@@ -212,15 +293,17 @@ export function measure(values: readonly Shown[]): number {
       case 'circ':
       case 'deep':
         return MARKER;
+      case 'hole':
+        return 0;
       case 'err':
-        return value.name.length + value.message.length;
+        return value.name.length + value.message.length + (value.cause === undefined ? 0 : one(value.cause)) + (value.errors === undefined ? 0 : one(value.errors));
       case 'arr':
       case 'set':
         return value.items.reduce((sum, item) => sum + 2 + one(item), 0);
       case 'map':
         return value.entries.reduce((sum, [key, item]) => sum + 4 + one(key) + one(item), 0);
       case 'obj':
-        return value.entries.reduce((sum, [key, item]) => sum + 2 + key.length + one(item), 0);
+        return [...value.entries, ...(value.symbols ?? [])].reduce((sum, [key, item]) => sum + 2 + key.length + one(item), 0);
     }
   };
   return values.reduce((sum, value, index) => sum + (index > 0 ? 1 : 0) + one(value), 0);

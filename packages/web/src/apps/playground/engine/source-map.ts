@@ -49,23 +49,27 @@ export function decodeMappings(mappings: string): Segment[][] {
   return lines;
 }
 
+// The last map read: a run's errors can come by the thousand, all on one map.
+let last: { map: string; lines: Segment[][] | null } | null = null;
+
+function decoded(map: string): Segment[][] | null {
+  if (last?.map === map) return last.lines;
+  let lines: Segment[][] | null = null;
+  try {
+    const { mappings } = JSON.parse(map) as { mappings?: unknown };
+    if (typeof mappings === 'string') lines = decodeMappings(mappings);
+  } catch {
+    // Can't be read: no line.
+  }
+  last = { map, lines };
+  return lines;
+}
+
 // The visitor's line and column (1-based) for a 1-based position in the
 // JavaScript, by the last segment at or before it on its line; null when
 // the line has none, or the map can't be read.
 export function mapPosition(map: string, line: number, column: number): { line: number; column: number } | null {
-  let mappings: unknown;
-  try {
-    mappings = (JSON.parse(map) as { mappings?: unknown }).mappings;
-  } catch {
-    return null;
-  }
-  if (typeof mappings !== 'string') return null;
-  let segments: Segment[] | undefined;
-  try {
-    segments = decodeMappings(mappings)[line - 1];
-  } catch {
-    return null;
-  }
+  const segments = decoded(map)?.[line - 1];
   if (segments === undefined || segments.length === 0) return null;
   let found: Segment | undefined;
   for (const segment of segments) {

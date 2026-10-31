@@ -9,7 +9,7 @@
 import { bootstrap, policy, runtime } from 'virtual:playground-runner';
 import type { RunEvents, RunHandle } from '../contract.ts';
 import { mapPosition } from '../source-map.ts';
-import { isCount, isPlace, isWorkerEntry, workerEntries } from './messages.ts';
+import { isCount, isPlace, workerEntries } from './messages.ts';
 import type { LogEntry, RunOutcome } from '../../types.ts';
 
 export const HEARTBEAT_MS = 250;
@@ -80,8 +80,6 @@ type FromWorker = {
   timers?: unknown;
   requests?: unknown;
   uncaught?: unknown;
-  entry?: unknown;
-  at?: unknown;
   end?: unknown;
 };
 
@@ -160,6 +158,13 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
     return mapped === null ? entry : { ...entry, line: mapped.line };
   }
 
+  // An entry's place, which only an uncaught error has, becomes its line.
+  function placed(entry: LogEntry & { at?: unknown }): LogEntry {
+    if (!('at' in entry)) return entry;
+    const { at, ...rest } = entry;
+    return rest.level === 'error' ? withLine(rest, at) : rest;
+  }
+
   // JavaScript the browser refused, so none of the worker's script ran: the
   // note, then the browser's message at its line (FR-033, FR-035). The browser's
   // message counts when TypeScript found no error.
@@ -178,12 +183,15 @@ export function startFrame(runnable: Runnable, cv: unknown, events: RunEvents, s
       events.onStarted({ errors });
       beat();
       heartbeat = setInterval(beat, HEARTBEAT_MS);
-    } else if (data.logs === true) events.onLogs({ entries: workerEntries(data.entries), dropped: isCount(data.dropped) ? data.dropped : 0, ...(data.cleared === true ? { cleared: true } : {}) });
+    } else if (data.logs === true) {
+      if (isCount(data.uncaught)) uncaught = data.uncaught;
+      events.onLogs({ entries: workerEntries(data.entries).map(placed), dropped: isCount(data.dropped) ? data.dropped : 0, ...(data.cleared === true ? { cleared: true } : {}) });
+    }
     else if (data.pending === true) events.onPending({ timers: isCount(data.timers) ? data.timers : 0, requests: isCount(data.requests) ? data.requests : 0 });
-    else if (data.uncaught === true && isWorkerEntry(data.entry)) {
-      uncaught += 1;
-      events.onLogs({ entries: [withLine(data.entry, data.at)], dropped: 0 });
-    } else if (data.end === true) finish({ kind: uncaught > 0 ? 'errors' : 'finished', ms: elapsed(), uncaught });
+    else if (data.end === true) {
+      if (isCount(data.uncaught)) uncaught = data.uncaught;
+      finish({ kind: uncaught > 0 ? 'errors' : 'finished', ms: elapsed(), uncaught });
+    }
   };
 
   function fromFrame(event: MessageEvent<{ nonce?: unknown; worker?: string; message?: string; line?: unknown; column?: unknown }>): void {

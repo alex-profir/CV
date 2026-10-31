@@ -117,3 +117,34 @@ console.log("caches done");`;
     expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['InvalidStateError']);
   });
 });
+
+describe('008-typescript-playground-FR-037: the rest of the browser\'s own work counts as pending', () => {
+  test.each([
+    ['a FileReader', 'const r = new FileReader();\nr.onload = () => console.log(r.result);\nr.readAsText(new Blob(["hi"]));', 'hi'],
+    ['an OffscreenCanvas', 'const canvas = new OffscreenCanvas(1, 1);\ncanvas.getContext("2d");\ncanvas.convertToBlob().then((blob) => console.log(blob.size > 0 ? "hi" : "none"));', 'hi'],
+    ['a message between two BroadcastChannels', 'const a = new BroadcastChannel("c");\nconst b = new BroadcastChannel("c");\nb.onmessage = (event) => console.log(event.data);\na.postMessage("hi");', 'hi'],
+  ])('%s: the run waits for it', async (_name, code, logged) => {
+    const page = await openPlaygroundPage();
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual([logged]);
+  });
+});
+
+describe("008-typescript-playground-FR-037: a timer given a string says the browser refused it", () => {
+  test('setTimeout and setInterval with a string log the refusal at its line, and run nothing', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'console.log("before");\nconst a = setTimeout("console.log(1)", 1);\nconst b = setInterval("console.log(2)", 1);\nconsole.log(a, b);';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    const rows = await readLogs(page);
+    expect(rows.filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['before', '0 0']);
+    const errors = rows.filter((row) => row.level === 'error');
+    expect(errors.map((row) => row.line)).toEqual([2, 3]);
+    for (const error of errors) expect(error.text).toMatch(/^EvalError: /);
+  });
+});

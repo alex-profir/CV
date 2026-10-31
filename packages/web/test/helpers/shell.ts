@@ -38,7 +38,7 @@ export type ShellOptions = {
   path?: string;
   // The platform the page reads from `navigator` (research R9's labels),
   // such as `Windows` or `macOS`; the test machine's by default.
-  platform?: 'Windows' | 'macOS';
+  platform?: 'Windows' | 'macOS' | 'Linux';
   // Run before the page is opened, such as an init script that records
   // what the page does.
   beforeGoto?: (page: Page) => Promise<void>;
@@ -76,7 +76,7 @@ function pageOptions(options: ShellOptions, extra: Partial<OpenPageOptions> = {}
       }
       if (platform !== undefined) {
         await page.addInitScript((name) => {
-          const legacy = name === 'macOS' ? 'MacIntel' : 'Win32';
+          const legacy = name === 'macOS' ? 'MacIntel' : name === 'Linux' ? 'Linux x86_64' : 'Win32';
           Object.defineProperty(Navigator.prototype, 'platform', { get: () => legacy, configurable: true });
           Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => ({ platform: name, mobile: false, brands: [] }), configurable: true });
         }, platform);

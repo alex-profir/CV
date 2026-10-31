@@ -10,7 +10,7 @@ describe('008-typescript-playground-FR-039: the runner frame runs only its own b
   test("the policy is the contract's, with the bootstrap's SHA-256 as its only script source", () => {
     const hash = crypto.createHash('sha256').update(BOOTSTRAP).digest('base64');
     expect(scriptHash(BOOTSTRAP)).toBe(`sha256-${hash}`);
-    expect(runnerPolicy(BOOTSTRAP)).toBe(`default-src 'none'; script-src 'sha256-${hash}'; worker-src blob:; connect-src *`);
+    expect(runnerPolicy(BOOTSTRAP)).toBe(`default-src 'none'; script-src 'sha256-${hash}'; worker-src blob:; connect-src * data: blob:`);
   });
 
   test('a policy and a bootstrap that differ fail the build', () => {

@@ -171,6 +171,29 @@ describe('008-typescript-playground-FR-052: Share copies a link with the code an
   });
 });
 
+describe("008-typescript-playground-FR-055: Copy the code says so when the clipboard refuses", () => {
+  test("the message says it couldn't be copied, in the phone's words, and offers Copy again", async () => {
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    let seed = 11;
+    let noise = '';
+    while (noise.length < 14_000) {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      noise += String.fromCharCode(97 + (seed % 26));
+    }
+    await setCode(page, `const noise = "${noise}";`);
+    await waitChecked(page);
+    await page.evaluate(() => {
+      Object.defineProperty(Clipboard.prototype, 'writeText', { configurable: true, value: () => Promise.reject(new DOMException('refused', 'NotAllowedError')) });
+    });
+    await page.locator(`${TOOLBAR} button.share`).click();
+    await page.getByRole('button', { name: messages.actions['copy-code'] }).click();
+    await expect.poll(() => messageText(page)).toBe(siteText.playground.mobile.tooLongRefused);
+    expect(await messageButtons(page)).toEqual([messages.actions['copy-code']]);
+  });
+});
+
 describe('008-typescript-playground-FR-052: the link to copy by hand offers the device\'s sharing too', () => {
   test('with a clipboard that refuses and a device that shares, Share with… shows beside the field', async () => {
     const page = await freshProfile({

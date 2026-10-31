@@ -10,7 +10,7 @@
 // their place in this script; answers the page's heartbeat at once; and
 // reports the end when nothing is left to do.
 import { LOG_LIMITS } from '../../limits.ts';
-import { formatEntry, measure } from './format.ts';
+import { formatEntry, measure, substitute } from './format.ts';
 import type { LogEntry } from '../../types.ts';
 
 type Scope = Record<string, any> & {
@@ -29,6 +29,8 @@ const realClearTimeout = scope['clearTimeout'].bind(scope) as (id: number) => vo
 const realClearInterval = scope['clearInterval'].bind(scope) as (id: number) => void;
 const realFetch = typeof scope['fetch'] === 'function' ? (scope['fetch'].bind(scope) as typeof fetch) : null;
 const RealChannel = MessageChannel;
+const RealFunction = Function;
+const realListen = EventTarget.prototype.addEventListener;
 const postToFrame = scope.postMessage.bind(scope);
 // Called bound, so patching `MessagePort.prototype.postMessage` or the `data`
 // getter of `MessageEvent.prototype` never sees the nonce or the port.
@@ -73,7 +75,7 @@ function queueTask(): void {
 tasks.port1.onmessage = () => {
   taskQueued = false;
   if (flushWanted) flushWhenDue();
-  if (pendingChanged) sendPending();
+  if (pendingChanged) sendPendingWhenDue();
   if (endCheckWanted) checkEnd();
 };
 
@@ -93,7 +95,7 @@ function flush(): void {
   if (flushTimer !== null) realClearTimeout(flushTimer);
   flushTimer = null;
   if (buffer.length === 0 && dropped === 0 && !cleared) return;
-  send({ logs: true, entries: buffer, dropped, cleared });
+  send({ logs: true, entries: buffer, dropped, cleared, uncaught });
   nextSend = now() + Math.max(BATCH_MS, bufferChars / CHARS_PER_MS);
   buffer = [];
   sizes = [];
@@ -114,7 +116,7 @@ function flushWhenDue(): void {
   }, wait);
 }
 
-function push(entry: Omit<LogEntry, 'id'>): void {
+function push(entry: Omit<LogEntry, 'id'> & { at?: { line: number; column: number } | null }): void {
   if (ended) return;
   entryIds += 1;
   const chars = Math.max(ENTRY_CHARS, measure(entry.values));
@@ -142,9 +144,19 @@ const LEVELS = ['log', 'info', 'warn', 'error', 'debug'] as const;
 
 const playgroundConsole: Record<string, (...values: unknown[]) => void> = {};
 for (const name of Object.keys(console)) {
-  if (typeof (console as unknown as Record<string, unknown>)[name] === 'function') playgroundConsole[name] = (...values) => log('log', values);
+  if (typeof (console as unknown as Record<string, unknown>)[name] === 'function') {
+    // With nothing to show, as `console.groupEnd()`, these print no row.
+    playgroundConsole[name] = (...values) => {
+      if (values.length > 0) log('log', values);
+    };
+  }
 }
-for (const level of LEVELS) playgroundConsole[level] = (...values) => log(level, values);
+for (const level of LEVELS) playgroundConsole[level] = (...values) => log(level, substitute(values));
+playgroundConsole['trace'] = (...values) => {
+  if (values.length > 0) log('log', substitute(values));
+};
+// These say nothing in a browser's console, whatever they are given.
+for (const name of ['groupEnd', 'profile', 'profileEnd', 'timeStamp']) playgroundConsole[name] = () => undefined;
 // The methods that print something other than their arguments, as browsers'
 // consoles do (FR-034).
 const labelOf = (label: unknown): string => {
@@ -159,7 +171,7 @@ const timing = new Map<string, number>();
 const elapsedText = (label: string, from: number) => `${label}: ${(now() - from).toFixed(3)} ms`;
 
 playgroundConsole['assert'] = (condition, ...values) => {
-  if (!condition) log('error', values.length > 0 ? values : [condition]);
+  if (!condition) log('error', values.length > 0 ? substitute(values) : [condition]);
 };
 playgroundConsole['count'] = (label) => {
   const name = labelOf(label);
@@ -221,6 +233,7 @@ for (const name of ['Worker', 'SharedWorker']) {
 
 // ---- Uncaught errors (FR-035) --------------------------------------------
 
+// Every uncaught error of the run, sent or dropped, for the end's note.
 let uncaught = 0;
 
 // The lines of this script before the code, which the page gives with `run`.
@@ -240,15 +253,15 @@ function reportUncaught(error: unknown, line?: number, column?: number): void {
   if (ended) return;
   uncaught += 1;
   const { values, cut } = formatEntry([error]);
-  flush();
-  send({ uncaught: true, entry: { id: (entryIds += 1), level: 'error', values, ...(cut ? { cut: true } : {}) }, at: position(error, line, column) });
+  // Under the logs' limit, so a flood of them can't outrun the page (FR-040).
+  push({ level: 'error', values, ...(cut ? { cut: true as const } : {}), at: position(error, line, column) });
   endCheckWanted = true;
   queueTask();
 }
 
 scope.addEventListener('error', (event) => {
   event.preventDefault();
-  reportUncaught(event.error ?? event.message, event.lineno, event.colno);
+  reportUncaught(event.error ?? String(event.message).replace(/^Uncaught /, ''), event.lineno, event.colno);
 });
 
 scope.addEventListener('unhandledrejection', (event) => {
@@ -261,9 +274,24 @@ scope.addEventListener('unhandledrejection', (event) => {
 const timers = new Map<number, 'timeout' | 'interval'>();
 let requests = 0;
 
+// The counts go at most this often: thousands of timers change them thousands
+// of times a second, and the page only needs the latest (FR-040).
+let nextPending = -Infinity;
+let pendingTimer: number | null = null;
+
 function sendPending(): void {
-  pendingChanged = false;
+  nextPending = now() + BATCH_MS;
   send({ pending: true, timers: timers.size, requests });
+}
+
+function sendPendingWhenDue(): void {
+  pendingChanged = false;
+  const wait = nextPending - now();
+  if (wait <= 0) sendPending();
+  else pendingTimer ??= realSetTimeout(() => {
+    pendingTimer = null;
+    sendPending();
+  }, wait);
 }
 
 function changed(): void {
@@ -272,20 +300,43 @@ function changed(): void {
   queueTask();
 }
 
-// A callback of the code's: an error in it is reported and the run goes on.
-function call(handler: Function, args: unknown[]): void {
+// WebKit's `error` event says only "Script error." here, from an opaque origin,
+// and its errors alone have a `line`.
+const eventIsMuted = 'line' in new Error();
+
+function callGuarded(handler: Function, args: unknown[]): void {
   try {
     handler(...args);
   } catch (error) {
     reportUncaught(error);
+  }
+}
+
+// A callback of the code's: an error in it reaches the `error` event above,
+// which knows its place when the thrown value has no stack, and the run goes on.
+function call(handler: Function, args: unknown[]): void {
+  try {
+    if (eventIsMuted) callGuarded(handler, args);
+    else handler(...args);
   } finally {
     endCheckWanted = true;
     queueTask();
   }
 }
 
+// A string of code is the browser's to refuse, as `eval` is: the frame's policy
+// lets none run, and building a function only asks (FR-037).
+function refuseText(text: unknown): void {
+  if (typeof text !== 'string') return;
+  try {
+    new RealFunction(text);
+  } catch (error) {
+    reportUncaught(error);
+  }
+}
+
 define('setTimeout', (handler: unknown, delay?: number, ...args: unknown[]) => {
-  if (typeof handler !== 'function') return 0;
+  if (typeof handler !== 'function') return refuseText(handler), 0;
   const id: number = realSetTimeout(() => {
     timers.delete(id);
     changed();
@@ -297,7 +348,7 @@ define('setTimeout', (handler: unknown, delay?: number, ...args: unknown[]) => {
 });
 
 define('setInterval', (handler: unknown, delay?: number, ...args: unknown[]) => {
-  if (typeof handler !== 'function') return 0;
+  if (typeof handler !== 'function') return refuseText(handler), 0;
   const id = realSetInterval(() => call(handler, args), delay);
   timers.set(id, 'interval');
   changed();
@@ -405,6 +456,33 @@ countCalls(prototypeOf('Scheduler'), ['postTask', 'yield']);
 countCalls(prototypeOf('LockManager'), ['query', 'request']);
 countCalls(prototypeOf('StorageManager'), ['estimate', 'getDirectory', 'persist', 'persisted']);
 countCalls(prototypeOf('Permissions'), ['query']);
+countCalls(prototypeOf('OffscreenCanvas'), ['convertToBlob']);
+countCalls(prototypeOf('FontFace'), ['load']);
+countCalls(prototypeOf('FontFaceSet'), ['load']);
+countCalls(prototypeOf('ImageDecoder'), ['decode']);
+for (const codec of ['AudioDecoder', 'AudioEncoder', 'VideoDecoder', 'VideoEncoder']) countCalls(prototypeOf(codec), ['flush']);
+countCalls(prototypeOf('GPU'), ['requestAdapter']);
+
+// A read of a `FileReader` is pending until its `loadend`.
+const readers = prototypeOf('FileReader');
+for (const name of ['readAsArrayBuffer', 'readAsBinaryString', 'readAsDataURL', 'readAsText']) {
+  const read = readers?.[name];
+  if (readers === undefined || typeof read !== 'function') continue;
+  Object.defineProperty(readers, name, {
+    value(this: FileReader, ...args: unknown[]) {
+      read.apply(this, args);
+      // Past this point it has started: one that throws never ends with `loadend`.
+      requests += 1;
+      changed();
+      realListen.call(this, 'loadend', () => {
+        requests -= 1;
+        changed();
+      }, { once: true });
+    },
+    writable: true,
+    configurable: true,
+  });
+}
 
 // `for await` on a stream doesn't go through a reader's `read`.
 function countIterator(holder: Record<PropertyKey, unknown> | undefined, key: PropertyKey): void {
@@ -433,7 +511,6 @@ countIterator(prototypeOf('ReadableStream'), 'values');
 // run open after its request is done.
 if (typeof scope['AbortSignal']?.timeout === 'function') {
   const realTimeout = scope['AbortSignal'].timeout.bind(scope['AbortSignal']) as (ms: number) => AbortSignal;
-  const realListen = EventTarget.prototype.addEventListener;
   const handler = Object.getOwnPropertyDescriptor(AbortSignal.prototype, 'onabort');
   Object.defineProperty(scope['AbortSignal'], 'timeout', {
     value(ms: number) {
@@ -483,19 +560,27 @@ if (typeof scope['AbortSignal']?.timeout === 'function') {
 // port with a handler isn't pending by itself (a test sets this): nothing says
 // a message will ever come, and the run would never end.
 const MESSAGE_MS = 10;
-Object.defineProperty(MessagePort.prototype, 'postMessage', {
-  value(this: MessagePort, ...args: unknown[]) {
-    (realPost as (...values: unknown[]) => void).apply(this, args);
-    requests += 1;
-    changed();
-    realSetTimeout(() => {
-      requests -= 1;
+// A `BroadcastChannel`'s message goes through the browser, so it takes longer.
+const BROADCAST_MS = 50;
+function countMessages(holder: Record<string, unknown> | undefined, ms: number): void {
+  const post = holder?.['postMessage'];
+  if (holder === undefined || typeof post !== 'function') return;
+  Object.defineProperty(holder, 'postMessage', {
+    value(this: unknown, ...args: unknown[]) {
+      post.apply(this, args);
+      requests += 1;
       changed();
-    }, MESSAGE_MS);
-  },
-  writable: true,
-  configurable: true,
-});
+      realSetTimeout(() => {
+        requests -= 1;
+        changed();
+      }, ms);
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+countMessages(MessagePort.prototype as unknown as Record<string, unknown>, MESSAGE_MS);
+countMessages(prototypeOf('BroadcastChannel'), BROADCAST_MS);
 
 countCalls(prototypeOf('Response'), BODY_READS);
 countCalls(prototypeOf('Request'), BODY_READS);
@@ -596,14 +681,30 @@ if (typeof scope['EventSource'] === 'function') {
 
 // ---- The end (R18) -------------------------------------------------------
 
-// Run as a task, after the microtasks: with nothing pending, the run has
-// nothing left to do, even if a promise it awaits never settles.
-function checkEnd(): void {
-  endCheckWanted = false;
-  if (!started || ended || timers.size > 0 || requests > 0) return;
+// The browser reports a promise rejected and never handled in a task of its
+// own after the microtasks, which comes after the check below: this long is
+// its chance, before the end would lose the report (FR-035). A promise that
+// never settles holds nothing, as there's only this wait.
+const REJECTIONS_MS = 10;
+let lastLook: number | null = null;
+
+const nothingPending = () => started && !ended && timers.size === 0 && requests === 0;
+
+function end(): void {
+  lastLook = null;
+  if (!nothingPending()) return;
   flush();
   send({ end: true, uncaught });
   ended = true;
+}
+
+// Run as a task, after the microtasks: with nothing pending, the run has
+// nothing left to do, even if a promise it awaits never settles. Anything
+// that happens meanwhile looks again, from then.
+function checkEnd(): void {
+  endCheckWanted = false;
+  if (lastLook !== null) realClearTimeout(lastLook);
+  lastLook = nothingPending() ? realSetTimeout(end, REJECTIONS_MS) : null;
 }
 
 // The code closing its own worker would read as a blocked run, with nobody to

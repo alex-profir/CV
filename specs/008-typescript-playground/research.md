@@ -322,7 +322,7 @@ FR-054. *LZ-string as the official Playground uses*: a package for what the brow
 the Playground's window and never moved: removing or moving a frame ends its worker, and the
 window's content unmounts for Show specs and shell switches (FR-005, FR-061), which must not end
 a run. Stop, a new run, the window's close and `pagehide` remove it. The `srcdoc` holds a meta policy,
-`default-src 'none'; script-src 'sha256-<bootstrap>'; worker-src blob:; connect-src *`, and one
+`default-src 'none'; script-src 'sha256-<bootstrap>'; worker-src blob:; connect-src * data: blob:`, and one
 inline bootstrap script. The page sends the bootstrap a `MessagePort`, a nonce and the worker's
 source (runtime plus code, R13, R18); the bootstrap makes a classic `Worker` from a `Blob` URL,
 passes it the port, and revokes the URL after the worker's first message (a WebKit bug fails an
@@ -335,7 +335,7 @@ What this gives (FR-039 to FR-041):
   run, since a new iframe is made for each.
 - No navigation or new windows (`allow-top-navigation` and `allow-popups` aren't given), and the
   worker has no DOM.
-- Requests to any site, with `Origin: null` (`connect-src *`); script loads from anywhere are
+- Requests to any site, with `Origin: null` (`connect-src *`), and to `data:` and `blob:`, which reach no site (T228); script loads from anywhere are
   blocked by `script-src`, so packages fetch nothing (FR-042). The sandbox alone doesn't keep
   cookies off: T025 found that with `credentials: 'include'`, Firefox and WebKit send the site's
   cookie to another port on its host. So the runtime forces credentials off on `fetch`,

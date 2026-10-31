@@ -3,7 +3,7 @@
 // which moves the cursor there; other timers go on; the end counts them.
 import { describe, expect, test, vi } from 'vitest';
 import { counted, fill, siteText } from '../../src/site-text.ts';
-import { EDITOR, openPlaygroundPage, PLAYGROUND, readLogs, run, RUN_STATE, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, engine, openPlaygroundPage, PLAYGROUND, readLogs, run, RUN_STATE, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -93,5 +93,58 @@ describe("008-typescript-playground-FR-035: JavaScript the browser refuses says 
     expect(error!.text).toMatch(/SyntaxError/);
     expect(error!.line).toBe(line);
     expect((await page.locator(RUN_STATE).textContent())?.trim()).toBe(siteText.playground.runState.nothingRan);
+  });
+});
+
+// The browser reports a rejection in a task of its own: a run with nothing
+// else pending used to end first, and log nothing.
+describe('008-typescript-playground-FR-035: a rejection with nothing else pending is still reported', () => {
+  test.each([
+    ['Promise.reject', 'Promise.reject(new Error("boom"));'],
+    ['an async function', 'async function f() {\n  throw new Error("boom");\n}\nf();'],
+    ['after await null', 'await null;\nPromise.reject(new Error("boom"));'],
+    ['a then that throws', 'Promise.resolve().then(() => {\n  throw new Error("boom");\n});'],
+    ['a rejection in a timer', 'setTimeout(() => {\n  Promise.reject(new Error("boom"));\n}, 1);'],
+  ])('%s logs the error and ends with its count', async (_name, code) => {
+    const page = await openPlaygroundPage();
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'error').map((row) => row.text)).toEqual(['Error: boom']);
+    const state = (await page.locator(RUN_STATE).textContent())?.trim() ?? '';
+    expect(state).toMatch(new RegExp(`^${fill(counted(siteText.playground.runState.errors, 1), { n: 1, s: '[\\d.]+' })}$`));
+  });
+
+  test("a promise that never settles still ends the run, as there's nothing left to do", async () => {
+    const page = await openPlaygroundPage();
+    const code = 'console.log("before");\nawait new Promise(() => {});\nconsole.log("after");';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['before']);
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(new RegExp(`^${fill(siteText.playground.runState.finished, { s: '[\\d.]+' })}$`));
+  });
+});
+
+describe("008-typescript-playground-FR-035: a thrown value that isn't an Error has its line where the browser knows it", () => {
+  test('in a timer it has its line; in the code\'s async body and a rejection with no stack it has none', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'setTimeout(() => {\n  throw "in a timer";\n}, 1);\nPromise.reject("rejected");\nthrow "at the top";';
+    await setCode(page, code);
+    await waitForCode(page, code.split('\n')[0]!);
+    await waitChecked(page);
+    await run(page);
+    const errors = (await readLogs(page)).filter((row) => row.level === 'error');
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        // WebKit's `error` event is muted here, so it can't say.
+        { level: 'error', text: 'in a timer', line: engine() === 'webkit' ? null : 2 },
+        { level: 'error', text: 'rejected', line: null },
+        { level: 'error', text: 'at the top', line: null },
+      ]),
+    );
+    expect(errors).toHaveLength(3);
   });
 });
