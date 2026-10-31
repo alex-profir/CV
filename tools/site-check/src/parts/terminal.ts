@@ -359,7 +359,13 @@ export const terminalVariants = (shell: Shell, width: number) => [...CV_COMMANDS
 
 // `open playground` shows the Playground, or the phone's screen for it (008 FR-087).
 async function openPlaygroundProblems(page: Page, shell: Shell): Promise<Found[]> {
-  await typeLine(page, 'open playground');
+  // A line the shell never stopped is reported under `shell`; waiting on it
+  // here must not crash the part and lose that report.
+  const typed = await typeLine(page, 'open playground').then(
+    () => true,
+    () => false,
+  );
+  if (!typed) return [{ type: 'open-failed', subject: 'open playground', detail: 'the shell was still running a line' }];
   const shown = shell === 'desktop' ? PLAYGROUND.window : PLAYGROUND.phoneScreen;
   const opened = await page.waitForSelector(shown, { state: 'visible', timeout: 5_000 }).then(
     () => true,

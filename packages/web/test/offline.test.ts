@@ -284,8 +284,8 @@ describe('006-terminal-FR-070: a page from an older version still loads its shel
     expect(await openTerminalIn(second)).toBe('ready');
 
     // Every cache is one complete version: A's holds A's files, B's B's and
-    // its record.
-    const files = (site: BuiltSite) => site.manifest.files.filter((file) => file.path !== '/sw.js').length;
+    // its record. The Playground's engine is never precached (008 FR-009).
+    const files = (site: BuiltSite) => site.manifest.files.filter((file) => file.path !== '/sw.js' && !file.path.startsWith('/playground/')).length;
     const sizes = await first.evaluate(async () => Object.fromEntries(await Promise.all((await caches.keys()).map(async (name) => [name, (await (await caches.open(name)).keys()).length] as const))));
     expect(sizes[storedA!]).toBe(files(builtSite()));
     expect(sizes[names.find((name) => name !== storedA)!]).toBe(files(b.site) + 1);

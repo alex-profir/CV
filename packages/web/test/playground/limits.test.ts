@@ -168,7 +168,9 @@ describe('008-typescript-playground-FR-040: a flood of the worker\'s own message
       await watchKeys(page);
       await run(page, { wait: 'start' });
       await focusEditor(page);
-      for (let i = 0; i < 8; i += 1) {
+      // Three seconds of keys, so Stop is clicked before the blocked worker's
+      // popup comes at about 5 s and covers it.
+      for (let i = 0; i < 6; i += 1) {
         await page.waitForTimeout(500);
         await page.keyboard.press('ArrowRight');
       }

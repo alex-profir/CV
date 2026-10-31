@@ -87,7 +87,8 @@ describe('008-typescript-playground-FR-005: Show specs and Back from the phone\'
     await settle(page);
     await page.locator('#os .full-screen[data-view="playground"] button.show-specs').tap();
     await page.waitForSelector('#os section.spec-view[data-view="playground"]');
-    expect(await page.locator(SCREEN).count()).toBe(0);
+    // The cross-fade's picture of the screen goes when the fade ends (007 research R11).
+    await page.waitForSelector(SCREEN, { state: 'detached' });
     await page.locator('#os section.spec-view[data-view="playground"] button.spec-back').tap();
     await page.waitForSelector(SCREEN);
     expect((await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(siteText.playground.mobile.app.heading);
