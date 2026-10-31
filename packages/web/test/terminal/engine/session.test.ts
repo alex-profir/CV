@@ -344,3 +344,115 @@ describe('006-terminal-FR-076: Tab through the client', () => {
     await expect(idle.complete('a', 1)).resolves.toBeNull();
   });
 });
+
+describe('T298, T309, T311: what a line leaves on the screen', () => {
+  const settled = async (session: ReturnType<typeof createSession>) => vi.waitFor(() => expect(session.get().running).toBeNull());
+  const quit = (session: ReturnType<typeof createSession>) => {
+    session.vim({ key: ':' });
+    session.vim({ submit: 'q' });
+  };
+
+  test('echo one; clear; echo two leaves the line’s run with only two, and says so', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo zero', 'desktop');
+    await settled(session);
+    session.run('echo one; clear; echo two', 'desktop');
+    await settled(session);
+    const { entries, announcement, starter } = session.get();
+    expect(entries.map((each) => each.line)).toEqual(['echo one; clear; echo two']);
+    expect(JSON.stringify(entries[0]!.block)).not.toContain('one"');
+    expect(JSON.stringify(entries[0]!.block)).toContain('two');
+    expect(announcement!.text).toContain('two');
+    expect(starter).toBe(false);
+  });
+
+  test('echo one; clear and clear alone leave nothing', async () => {
+    const session = createSession(fakeClient());
+    for (const line of ['echo one; clear', 'clear']) {
+      session.run(line, 'desktop');
+      await settled(session);
+      expect(session.get().entries).toEqual([]);
+    }
+  });
+
+  test('clear | wc -l leaves the screen as it was', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo kept', 'desktop');
+    await settled(session);
+    session.run('clear | wc -l', 'desktop');
+    await settled(session);
+    expect(session.get().entries.map((each) => each.line)).toEqual(['echo kept', 'clear | wc -l']);
+  });
+
+  test('vim on a file of one blank line says one line', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo > f; vim f', 'desktop');
+    await settled(session);
+    expect(session.get().announcement!.text).toContain('1');
+    expect(session.get().vim!.lines).toEqual(['']);
+  });
+
+  test('each vim of a line opens in turn, and the line’s entry follows the last', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo a > a; echo b > b; vim a; vim b; echo after', 'desktop');
+    await settled(session);
+    expect(session.get().vim!.lines).toEqual(['a']);
+    quit(session);
+    expect(session.get().vim!.lines).toEqual(['b']);
+    expect(session.get().entries).toEqual([]);
+    quit(session);
+    expect(session.get().vim).toBeNull();
+    expect(session.get().entries.map((each) => each.line)).toHaveLength(1);
+    expect(JSON.stringify(session.get().entries[0]!.block)).toContain('after');
+  });
+
+  test('a vim from a line that waited doesn’t replace an open view, or its changes', async () => {
+    const session = createSession(fakeClient());
+    session.run('echo a > a; vim a', 'desktop');
+    session.run('echo b > b; vim b', 'desktop');
+    await vi.waitFor(() => expect(session.get().vimQueue).toHaveLength(1));
+    await settled(session);
+    expect(session.get().vim!.lines).toEqual(['a']);
+    session.vim({ key: 'x' });
+    expect(session.get().vim!.modified).toBe(true);
+    session.vim({ key: ':' });
+    session.vim({ submit: 'q!' });
+    expect(session.get().vim!.lines).toEqual(['b']);
+  });
+});
+
+describe('006-terminal-FR-075: Ctrl+C drops the waiting lines', () => {
+  test('before the shell is ready: each shows ^C, stays in the history and never runs', async () => {
+    const client = fakeClient('loading');
+    const session = createSession(client);
+    session.run('echo queued-ran', 'desktop');
+    session.run('echo second', 'desktop');
+    session.cancel();
+    expect(session.get().waiting).toEqual([]);
+    expect(session.get().entries.map((each) => [each.line, each.cancelled])).toEqual([['echo queued-ran', true], ['echo second', true]]);
+    expect(session.get().history).toEqual(['echo queued-ran', 'echo second']);
+    client.ready();
+    await Promise.resolve();
+    expect(client.sent).toEqual([]);
+  });
+
+  test('behind a running line: they follow it with ^C', async () => {
+    const client = fakeClient();
+    const session = createSession(client);
+    session.run('echo first', 'desktop');
+    session.run('echo second', 'desktop');
+    session.cancel();
+    expect(session.get().waiting[0]!.cancelled).toBe(true);
+    await vi.waitFor(() => expect(session.get().running).toBeNull());
+    expect(client.sent).toEqual(['echo first']);
+    expect(session.get().entries.map((each) => [each.line, each.cancelled])).toEqual([['echo first', true], ['echo second', true]]);
+  });
+
+  test('with nothing waiting, Ctrl+C still ends the typed line', () => {
+    const session = createSession(fakeClient());
+    session.setDraft('typed');
+    session.cancel();
+    expect(session.get().entries.map((each) => each.line)).toEqual(['typed']);
+    expect(session.get().draft).toBe('');
+  });
+});

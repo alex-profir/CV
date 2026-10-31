@@ -19,18 +19,30 @@ export const TMP = '/tmp';
 // G1): the file system answers for that target and creates nothing.
 export const OPENING = '\u0001';
 
+// What every name of the adapter's own starts with, fresh for each worker, so
+// no typed word or expansion can name one and a word that only looks like one
+// is any other word (T299).
+export const MARK = `__cv${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}_`;
+
 // The command the adapter runs after one with an output redirect, and the
 // group that holds them, as the shell's `type` prints it.
-export const WROTE = '__cv_wrote';
-const WRAPPED = new RegExp(`\\{ ([^{}]*); /usr/bin/${WROTE} \\$\\?; \\}`, 'g');
+export const WROTE = `${MARK}wrote`;
+const WROTE_CALL = ` /usr/bin/${WROTE} $? "$_";`;
+const WRAPPED = new RegExp(`\\{ ([^{}]*); /usr/bin/${WROTE} \\$\\? "\\$_"; \\}`, 'g');
 
 // Starts the message of a `${x:?word}`, which tells it from `exit` (T286).
 export const FATAL = '\u0002';
 
 // `cd`, `eval` and `source` as the adapter runs them, and a `--help` it
 // answers, as `type` prints them.
-const FINISHED = /\{ \/usr\/bin\/__cv_hold "\$\?" (\S*) && .*?\/usr\/bin\/__cv_after; \}/g;
-const HELPED = /\/usr\/bin\/__cv_usage (\S+)/g;
+const FINISHED = new RegExp(`\\{ /usr/bin/${MARK}hold "\\$\\?" (\\S*) .*?/usr/bin/${MARK}after "\\$${MARK}l"; \\}`, 'g');
+const HELPED = new RegExp(`/usr/bin/${MARK}usage ([^\\s;]+)`, 'g');
+
+const OWN_LINE = new RegExp(`^(?:declare -\\S+ )?${MARK}.*\\n`, 'gm');
+
+// What `clear` prints where it reaches the screen: what came before it goes
+// (T298).
+export const CLEARED = '\u0004';
 
 // Written to as bash writes to them, not as files.
 const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full']);
@@ -245,7 +257,10 @@ export class TerminalFs extends InMemoryFs {
       last = body;
       body = body.replace(WRAPPED, '$1');
     }
-    body = body.replaceAll(` /usr/bin/${WROTE} $?;`, '');
+    body = body.replaceAll(WROTE_CALL, '');
+    // The adapter's variables, where a name from an expansion runs `set` or
+    // `declare -p` beside them (T297).
+    if (body.includes(MARK)) body = body.replace(OWN_LINE, '');
     body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '');
     if (!body.includes(OPENING)) return body;
     return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
@@ -427,9 +442,9 @@ export class TerminalFs extends InMemoryFs {
 
   // The home folder's built entries in the design's order, then the
   // visitor's in name order (FR-043, FR-073). The command stubs of the
-  // adapter's own commands (`__cv_help`…) aren't listed.
+  // adapter's own commands aren't listed.
   private ordered(path: string, names: string[]): string[] {
-    if (path === '/bin' || path === '/usr/bin') return names.filter((name) => !name.startsWith('__cv_'));
+    if (path === '/bin' || path === '/usr/bin') return names.filter((name) => !name.startsWith(MARK));
     if (path !== HOME) return names;
     const built = this.homeOrder.filter((name) => names.includes(name));
     return [...built, ...names.filter((name) => !this.homeOrder.includes(name)).sort()];

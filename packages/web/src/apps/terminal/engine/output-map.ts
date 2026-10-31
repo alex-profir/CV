@@ -42,6 +42,8 @@ const lines = (value: string) => {
   return parts;
 };
 
+const LONG_RUN = 1000;
+
 const stdoutLine = (value: string): Node => line({ kind: 'text', text: value, stream: 'stdout' });
 const stderrLine = (value: string): Node => line({ kind: 'text', text: value, stream: 'stderr', tone: 'error' });
 
@@ -114,7 +116,10 @@ export function mapOutput(result: ShownResult, typed: string, context: MapContex
   let recordedOnly = true;
   let at = 0;
   const textOut = (value: string) => {
-    for (const entry of lines(value)) {
+    const each = lines(value);
+    // A long run is one text node, which wraps and selects the same, as two
+    // elements a line hold up the page (FR-069, T313).
+    for (const entry of each.length > LONG_RUN ? [each.join('\n')] : each) {
       block.push(stdoutLine(entry));
       recordedOnly = false;
     }

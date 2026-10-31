@@ -3,7 +3,7 @@
 // request; then the adapter on the site's CV, warmed with one `true`, and
 // the messages of the protocol, one at a time.
 import './no-network.ts';
-import { siteText } from '../../../site-text.ts';
+import { fullText } from '../../../shell-text.ts';
 import { dateRange } from '../../../format/dates.ts';
 import { locationLine } from '../../../format/location.ts';
 import { withoutScheme } from '../../../format/url.ts';
@@ -22,7 +22,7 @@ let queue: Promise<void> = Promise.resolve();
 
 async function handle(message: ToWorker): Promise<FromWorker | null> {
   if (message.type === 'start') {
-    shell = createShell({ text: siteText, format: { dateRange, locationLine, withoutScheme }, resume, siteData, specs: specList, cvJson });
+    shell = createShell({ text: fullText, format: { dateRange, locationLine, withoutScheme }, resume, siteData, specs: specList, cvJson });
     await shell.warm();
     return { type: 'ready' };
   }

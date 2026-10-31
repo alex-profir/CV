@@ -1,6 +1,7 @@
 // The shell adapter (006 research R27): one line at a time, with the state
 // carried from line to line, syntax checked first, the site's command words
 // matched in any case, `exit` detected, and reset and restore.
+import { fill, siteText } from '../../../src/site-text.ts';
 import { describe, expect, test } from 'vitest';
 import { INITIAL_STATE, QUOTA } from '../../../src/apps/terminal/shell/protocol.ts';
 import { LANGUAGE_CASES, runLine, runLines, shellFor } from './context.ts';
@@ -69,7 +70,7 @@ describe('006-terminal-FR-007: site command words match without regard to capita
     expect(await runLine(shell, 'true; GREP x')).toMatchObject({ stderr: 'bash: GREP: command not found\n', status: 127 });
     expect((await runLine(shell, 'WORK() { echo mine; }; WORK')).stdout).toBe('mine\n');
     expect((await runLine(shell, 'true; WORK')).stdout).toBe('mine\n');
-    expect((await runLine(shell, 'env | grep -c CV_; set -x; WORK; true')).stderr).not.toMatch(/__cv_/i);
+    expect((await runLine(shell, 'env | grep -c CV_; set -x; WORK; true')).stderr).not.toMatch(/__cv/i);
   });
 
   test(' HELP , work\\t, Work  and help   work run the site command; GREP x is not found', async () => {
@@ -119,14 +120,70 @@ describe('006-terminal-FR-008: exit, and the adapter’s own commands', () => {
     expect(await runLine(shell, 'echo bye; exit 3; echo not')).toMatchObject({ end: 'exited', status: 3, stdout: 'bye\n' });
   });
 
-  test('a line naming __cv_state or __cv_wrote is command not found', async () => {
+  test('a word that only looks like the adapter’s is any other word, and no expansion reaches its commands (T299)', async () => {
     const shell = shellFor('every-field');
-    for (const line of ['__cv_state 0', 'echo x; __cv_wrote 0', 'echo __CV_STATE']) {
-      const result = await runLine(shell, line);
-      expect(result.stderr, line).toMatch(/^bash: \S*__cv_\S*: command not found\n$/i);
-      expect(result.status, line).toBe(127);
-      expect(result.stdout, line).toBe('');
+    expect((await runLine(shell, 'echo __cv_x; __cv_y=1; echo $__cv_y'))).toMatchObject({ stdout: '__cv_x\n1\n', stderr: '', status: 0 });
+    expect((await runLine(shell, 'echo $__cv_y')).stdout).toBe('1\n');
+    for (const name of ['end', 'help', 'cd', 'wrote', 'begin']) {
+      expect(await runLine(shell, `n=__c; \${n}v_${name}`), name).toMatchObject({ stderr: `bash: __cv_${name}: command not found\n`, status: 127 });
+      expect((await runLine(shell, `type __cv_${name}`)).status).toBe(1);
     }
+    expect((await runLine(shell, 'which __cv_end; ls /usr/bin | grep -c __cv')).stdout).toBe('0\n');
+  });
+
+  test.each(['env', 'set', 'declare -p', 'compgen -v'])('%s shows nothing of the adapter’s, piped or not (T299)', async (line) => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'f() { :; }; x=1; cd work; cd ..; false | true');
+    for (const each of [line, `${line} | cat`, `x=1; ${line} | sort`, `f() { ${line}; }; f | cat`, `y=${line.split(' ')[0]}; $y | cat`]) {
+      const result = await runLine(shell, each);
+      expect(`${result.stdout}${result.stderr}`, each).not.toMatch(/__cv/i);
+    }
+  });
+
+  test('$_ carries from line to line, and no check changes it (T299)', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'echo a');
+    expect((await runLine(shell, 'echo $_')).stdout).toBe('a\n');
+    expect((await runLine(shell, 'cd /tmp; echo $_; echo x > /tmp/y; echo $_; f() { :; }; echo $_')).stdout).toBe('/tmp\nx\nx\n');
+  });
+
+  test('set -v prints the line once it is on, and none of the adapter’s (T299)', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'set -v; echo a')).toMatchObject({ stdout: 'a\n', stderr: '' });
+    expect(await runLine(shell, 'echo b; echo c')).toMatchObject({ stdout: 'b\nc\n', stderr: 'echo b; echo c\n' });
+  });
+
+  test('a command name from an expansion runs as a site command, pipes and capitals included (T297, T304)', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, "x='work -x'; $x")).stderr).toMatch(/^work /);
+    const work = (await runLine(shell, 'work')).stdout;
+    expect((await runLine(shell, 'x=WORK; $x')).stdout).toBe(work);
+    expect((await runLine(shell, 'x=WORK; $x extra')).stderr).toMatch(/^WORK /);
+    expect((await runLine(shell, 'x=work; $x | cat')).recorded).toEqual([]);
+    expect((await runLine(shell, 'f() { echo mine; }; x=f; $x')).stdout).toBe('mine\n');
+    expect((await runLine(shell, "g() { x='echo hi'; $x; }; g")).stdout).toBe('hi\n');
+  });
+
+  test.each(['"help"', '\\help', 'h=help; $h', 'command help', 'builtin help', 'command HELP', "'he'lp"])('%s is the site’s help (T304)', async (line) => {
+    const shell = shellFor('every-field');
+    const { stdout } = await runLine(shell, 'help');
+    expect((await runLine(shell, line)).stdout).toBe(stdout);
+  });
+
+  test('help on an unknown name says so, with bash’s status (T304)', async () => {
+    expect(await runLine(shellFor('every-field'), 'help nope')).toMatchObject({ stderr: `${fill(siteText.terminal.replies.helpUnknown, { name: 'nope', help: 'help' })}\n`, status: 1 });
+  });
+
+  test('the directory stack and PIPESTATUS carry, and through a restarted worker (T305)', async () => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'pushd /tmp');
+    expect((await runLine(shell, 'dirs -l')).stdout).toBe('/tmp /home/guest\n');
+    const restarted = shellFor('every-field');
+    restarted.state = shell.state;
+    expect((await runLine(restarted, 'popd')).stdout).toBe('~\n');
+    expect((await runLine(restarted, 'pwd')).stdout).toBe('/home/guest\n');
+    expect((await runLine(shell, 'false | true')).state.pipes).toEqual([1, 0]);
+    expect((await runLine(shell, 'echo ${PIPESTATUS[@]}')).stdout).toBe('1 0\n');
   });
 });
 
@@ -429,7 +486,7 @@ describe('006-terminal-FR-067: the functions a line really defined', () => {
   test('type prints a function as typed, without the adapter’s words', async () => {
     const shell = shellFor('every-field');
     const { stdout } = await runLine(shell, 'g() { cd /tmp; eval true; cd --help; }; type g');
-    expect(stdout).not.toMatch(/__cv_|\/usr\/bin/);
+    expect(stdout).not.toMatch(/__cv|\/usr\/bin/);
     expect(stdout).toContain('cd /tmp');
     expect(stdout).toContain('eval true');
     expect(stdout).toContain('cd --help');

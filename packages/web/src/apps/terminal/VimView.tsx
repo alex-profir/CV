@@ -56,12 +56,14 @@ function tokenRuns(tokens: readonly JsonToken[], from: number, to: number, caret
           runs.push(<Bar key={`${index}c`} />);
           runs.push(piece(caret.at, end, `${index}b`));
         } else {
+          // A character is whole (T307).
+          const next = Math.min(end, caret.at + (token.text.codePointAt(caret.at - at)! > 0xffff ? 2 : 1));
           runs.push(
             <span key={`${index}c`} className="vim-cursor">
-              {piece(caret.at, caret.at + 1, `${index}b`)}
+              {piece(caret.at, next, `${index}b`)}
             </span>,
           );
-          if (caret.at + 1 < end) runs.push(piece(caret.at + 1, end, `${index}d`));
+          if (next < end) runs.push(piece(next, end, `${index}d`));
         }
       } else runs.push(piece(start, end, `${index}`));
     }

@@ -176,7 +176,7 @@ describe('006-terminal-FR-073: the visitor’s files, within 1 MB', () => {
     const results = await runLines(shell, ['echo hello > notes', 'cat notes', 'touch about', 'mkdir work/x', 'echo hi > /tmp/t; cat /tmp/t']);
     expect(results[1]!.stdout).toBe('hello\n');
     expect(results[2]!.stderr).toBe("touch: cannot touch 'about': Permission denied\n");
-    expect(results[3]!.stderr).toBe("mkdir: cannot create directory 'work/x': Permission denied\n");
+    expect(results[3]!.stderr).toBe("mkdir: cannot create directory ‘work/x’: Permission denied\n");
     expect(results[4]!.stdout).toBe('hi\n');
     expect((await runLine(shell, 'ls')).stdout.split('\n')).toContain('notes');
   });
@@ -205,8 +205,8 @@ describe('006-terminal-FR-049: whole command lines on protected paths', () => {
     ['touch work/new', "touch: cannot touch 'work/new': Permission denied"],
     ['touch WORK/new', "touch: cannot touch 'WORK/new': Permission denied"],
     ['touch /home/x', "touch: cannot touch '/home/x': Permission denied"],
-    ['mkdir specs/x', "mkdir: cannot create directory 'specs/x': Permission denied"],
-    ['mkdir /x', "mkdir: cannot create directory '/x': Permission denied"],
+    ['mkdir specs/x', "mkdir: cannot create directory ‘specs/x’: Permission denied"],
+    ['mkdir /x', "mkdir: cannot create directory ‘/x’: Permission denied"],
     ['echo hi > about', 'bash: about: Permission denied'],
     ['echo hi > About', 'bash: About: Permission denied'],
     ['echo hi > work/new', 'bash: work/new: Permission denied'],

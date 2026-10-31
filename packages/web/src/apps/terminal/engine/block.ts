@@ -25,7 +25,8 @@ export type JsonFold = { key: string; start: number; end: number };
 // `[No Name]` for piped text, whose `path` is null until `:w <path>` names it.
 // `readonly`: a protected file (FR-081). `new`: the path didn't exist when
 // opened, until first written (FR-080).
-export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean };
+// `blank`: one blank line, where the text alone reads as an empty file (T309).
+export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean; blank?: boolean };
 
 // Only sets a color token: the words carry the meaning (FR-031).
 export type Tone = 'primary' | 'secondary' | 'dim' | 'heading' | 'error' | 'approved' | 'draft' | 'folder';

@@ -134,3 +134,20 @@ describe('006-terminal-FR-070: the shell loads when the Terminal first opens (SC
     expect(await readyIn(slow)).toBeLessThan(3_000);
   });
 });
+
+describe('006-terminal-FR-075: Ctrl+C while the shell loads', () => {
+  test('the waiting line shows ^C, stays in the history and never runs', async () => {
+    const page = await openShell(SHELL_PAGE.desktop);
+    const release = await openTerminalLoading(page, 'desktop');
+    await typeWaiting(page, ['echo queued-ran']);
+    await page.keyboard.press('Control+C');
+    await expect.poll(() => runs(page)).toEqual([{ line: 'echo queued-ran^C', busy: false, output: '' }]);
+    await release();
+    await page.waitForSelector('.terminal p.shell-loading', { state: 'detached' });
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.press('ArrowUp');
+    expect(await page.locator(COMMAND_LINE).inputValue()).toBe('echo queued-ran');
+    expect(await page.locator('.terminal').textContent()).not.toContain('queued-ran\n');
+    expect(await page.locator('.terminal section.run .run-output').count()).toBe(0);
+  });
+});

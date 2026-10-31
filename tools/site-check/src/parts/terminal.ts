@@ -9,6 +9,7 @@ import type { Locator, Page } from 'playwright';
 import type { Resume } from '@cv/content';
 import { fileName, folderNames } from '../../../../packages/web/src/apps/terminal/engine/files.ts';
 import { siteText } from '../../../../packages/web/src/site-text.ts';
+import { fullText } from '../../../../packages/web/src/shell-text.ts';
 import { SHOWN_FIELDS } from '../../../../packages/web/src/supported.ts';
 import { CV_COMMANDS, terminalFields } from '../expected.ts';
 import type { CvCommand, ExpectedField } from '../expected.ts';
@@ -126,7 +127,7 @@ async function fileProblem(page: Page, path: string, fields: readonly ExpectedFi
 async function entryFolderProblems(page: Page, resume: Resume, section: EntrySection, home: readonly string[]): Promise<Found[]> {
   const entries = shownEntries(resume, section);
   const fields = terminalFields(resume, section);
-  const singular = siteText.terminal.singular[section];
+  const singular = fullText.terminal.singular[section];
   const names = folderNames(entries.map(({ entry }) => ({ name: fileName(typeof entry[NAME_FIELD[section]] === 'string' ? (entry[NAME_FIELD[section]] as string) : '', singular), start: typeof entry.startDate === 'string' ? entry.startDate : undefined })));
   const files = home.includes(`${section}/`) ? await listed(page, `~/${section}`) : [];
   const found: Found[] = [];

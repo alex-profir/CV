@@ -6,6 +6,7 @@ import type { Page } from 'playwright';
 import { resume } from '@cv/content';
 import fonts from '../../src/fonts/fonts.json' with { type: 'json' };
 import { fill, siteText } from '../../src/site-text.ts';
+import { fullText } from '../../src/shell-text.ts';
 import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
 import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
 import { readSpecList } from '../../scripts/spec-list.ts';
@@ -28,7 +29,7 @@ function keys(value: unknown): string[] {
   return [];
 }
 
-const TERMINAL_TEXT = strings(siteText.terminal);
+const TERMINAL_TEXT = strings(fullText.terminal);
 
 const ENGLISH = /^[\x20-\x7E–—·’↗…•]*$/u;
 
@@ -57,7 +58,7 @@ const shownText = (page: Page, root = '#os .terminal') =>
   // command names, the fixed file name `cv.json` and its type in the vim
   // view (data-model.md File system), numbers, punctuation and symbols.
   const pieces = [
-    ...strings(siteText).flatMap((value) => value.split(/\{\w+\}/)),
+    ...strings(fullText).flatMap((value) => value.split(/\{\w+\}/)),
     ...strings(resume).flatMap((value) => [value, value.replace(/^https?:\/\//, '').replace(/\/$/, '')]),
     ...keys(resume),
     ...readSpecList().flatMap((spec) => strings(spec)),
@@ -94,7 +95,7 @@ describe('006-terminal-FR-030: the Terminal’s words are site text, CV text or 
   });
 
   test('the shell’s words are there, in English, with no key fact of the real CV', () => {
-    const { replies, standard, shellLoading, shellFailed, tryAgain, owners, announce } = siteText.terminal;
+    const { replies, standard, shellLoading, shellFailed, tryAgain, owners, announce } = fullText.terminal;
     const added = strings({ unknown: replies.unknown, stopped: replies.stopped, cancelMark: replies.cancelMark, standard, shellLoading, shellFailed, tryAgain, owners, cancelled: announce.cancelled, loading: announce.loading });
     expect(added.length).toBe(15);
     const facts = [resume.basics?.name, resume.basics?.email, resume.basics?.label, ...(resume.work ?? []).map((work) => work.name)].filter((fact): fact is string => typeof fact === 'string' && fact !== '');

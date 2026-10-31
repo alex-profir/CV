@@ -43,6 +43,10 @@ const wordStart = (text: string, at: number) => {
   return start;
 };
 
+// The caret a character before or after `at`, a character being whole (T307).
+const before = (text: string, at: number) => (at > 1 && text.codePointAt(at - 2)! > 0xffff ? at - 2 : Math.max(0, at - 1));
+const after = (text: string, at: number) => Math.min(text.length, at + (text.codePointAt(at)! > 0xffff ? 2 : 1));
+
 // Deletes a range of the field so the system's undo can bring it back.
 function deleteRange(input: HTMLInputElement, start: number, end: number) {
   if (start === end) return;
@@ -133,9 +137,12 @@ function parts(text: string, start: number, end: number, cursor: number): Part[]
     if (last !== undefined && last.kind === kind && kind !== 'cursor') last.text += value;
     else out.push({ text: value, kind });
   };
-  for (let at = 0; at <= text.length; at += 1) {
-    if (at === cursor) push(text[at] ?? '', 'cursor');
-    else if (at < text.length) push(text[at]!, at >= start && at < end ? 'selected' : 'plain');
+  // By character: the cursor's block never holds half of one (T307).
+  for (let at = 0; at <= text.length; ) {
+    const char = at < text.length ? String.fromCodePoint(text.codePointAt(at)!) : '';
+    if (at === cursor) push(char, 'cursor');
+    else if (at < text.length) push(char, at >= start && at < end ? 'selected' : 'plain');
+    at += char.length || 1;
   }
   return out;
 }
@@ -280,10 +287,10 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
         move(length);
         return true;
       case 'b':
-        move(Math.max(0, caret - 1));
+        move(before(input.value, caret));
         return true;
       case 'f':
-        move(Math.min(length, (input.selectionEnd ?? caret) + 1));
+        move(after(input.value, input.selectionEnd ?? caret));
         return true;
       case 'k':
         deleteRange(input, caret, length);
@@ -353,10 +360,10 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
     event.preventDefault();
     const input = event.currentTarget;
     const start = input.selectionStart ?? draft.length;
-    const end = input.selectionEnd ?? start;
-    const next = (draft.slice(0, start) + pasted.replace(BREAKS, ' ') + draft.slice(end)).slice(0, TERMINAL.maxLength);
-    onDraft(next);
-    setCaret(Math.min(next.length, start + pasted.length));
+    // Through the field's own editing: the caret stays after the paste, and
+    // its undo takes it back (T312).
+    replaceRange(input, start, input.selectionEnd ?? start, pasted.replace(BREAKS, ' '));
+    read(input);
   };
 
   return (

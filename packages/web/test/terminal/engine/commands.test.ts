@@ -1,7 +1,7 @@
 // What the commands return (contracts/commands.md).
 import { describe, expect, test } from 'vitest';
 import { resume, siteData } from '@cv/content';
-import { siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { fixture } from '../../helpers/fixtures.ts';
 import { contextFor, contextOf, controls, nodes, output, run, textOf } from './context.ts';
 
@@ -42,8 +42,8 @@ describe('006-terminal-FR-059: cv runs cat cv.json | jq | vim -', () => {
   });
 
   test('help describes cv with that pipe', async () => {
-    expect(siteText.terminal.commands.cv.description).toContain('cat cv.json | jq | vim -');
-    expect(await textOf('help', contextFor('every-field'))).toContain(siteText.terminal.commands.cv.description);
+    expect(fullText.terminal.commands.cv.description).toContain('cat cv.json | jq | vim -');
+    expect(await textOf('help', contextFor('every-field'))).toContain(fullText.terminal.commands.cv.description);
   });
 });
 
@@ -95,7 +95,7 @@ describe('006-terminal-FR-013: specs lists every spec from the build, and site e
     const context = contextFor('every-field');
     const block = output(await run('site', context));
     const lines = (await textOf('site', context)).split('\n');
-    expect(lines.slice(0, -1)).toEqual([...siteText.terminal.site.paragraphs]);
+    expect(lines.slice(0, -1)).toEqual([...fullText.terminal.site.paragraphs]);
     expect(lines.at(-1)).toMatch(/^Source code, specs and history: /);
     expect(nodes(block).filter((node) => node.kind === 'link').map((node) => node.kind === 'link' && node.href)).toEqual([siteData.repository]);
   });

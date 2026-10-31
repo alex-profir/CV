@@ -6,7 +6,7 @@
 import type { Block, Effect } from '../engine/block.ts';
 
 // `set -o` options the adapter carries from line to line (research R27).
-export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport';
+export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport' | 'verbose';
 
 // What the shell keeps between lines, since just-bash resets it after each
 // run (research R27, G4).
@@ -30,9 +30,14 @@ export type ShellState = {
   positional: readonly string[];
   // `shopt` settings that are on; empty until the first line.
   shopts: readonly string[];
+  // `$_` and `${PIPESTATUS[@]}` after the last line (T299, T305).
+  last: string;
+  pipes: readonly number[];
+  // `dirs`' stack below the working folder (T305).
+  stack: readonly string[];
 };
 
-export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0, unset: [], declarations: [], positional: [], shopts: [] };
+export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0, unset: [], declarations: [], positional: [], shopts: [], last: '', pipes: [], stack: [] };
 
 export type Owner = 'root' | 'guest';
 export type FsEntryInfo = { path: string; kind: 'file' | 'folder'; owner: Owner; protected: boolean };
@@ -80,7 +85,8 @@ export type RunResult = {
   end: RunEnd;
   // When `end` is 'limit' (FR-069).
   limit?: Limit;
-  // Unchanged when `end` is 'syntax' or 'limit'.
+  // Unchanged when `end` is 'syntax', and from the last point it could be read
+  // when 'limit' (T310).
   state: ShellState;
   // Only when the visitor's files changed.
   files?: VisitorFiles;

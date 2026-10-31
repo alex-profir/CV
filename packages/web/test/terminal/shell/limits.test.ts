@@ -30,22 +30,29 @@ describe('006-terminal-FR-069: a line is stopped once it has run 10,000 commands
     let now = Date.now();
     vi.spyOn(Date, 'now').mockImplementation(() => (now += 5));
     const result = await runLine(shell, 'i=0; while :; do i=$((i+1)); done');
-    expect(result).toMatchObject({ end: 'limit', limit: 'time', state: before });
+    expect(result).toMatchObject({ end: 'limit', limit: 'time', state: { cwd: before.cwd, functions: before.functions, variables: { ...before.variables, i: '0' } } });
     expect(result.stderr).toContain(`(${LIMITS.time}ms)`);
   });
 
   test('seq 1000000 and yes stop at the output limit, yes not with status 0 (G13), and show nothing they printed', async () => {
     const shell = await withState();
     const before = shell.state;
-    for (const line of ['seq 1000000', 'yes', 'echo before; yes']) {
+    for (const line of ['seq 1000000', 'yes']) {
       const result = await runLine(shell, line);
       expect(result, line).toMatchObject({ end: 'limit', limit: 'output', state: before, stdout: '', recorded: [] });
     }
+    expect(await runLine(shell, 'echo before; yes')).toMatchObject({ end: 'limit', limit: 'output', stdout: '', recorded: [] });
   });
 
   test('seq 200000 | tail -1 prints 200000: no iteration limit (G15), and what passes inside a pipe isn’t printed', async () => {
     const result = await runLine(shellFor('every-field'), 'seq 200000 | tail -1');
     expect(result).toMatchObject({ end: 'done', stdout: '200000\n', status: 0 });
+  });
+
+  test('a stopped line keeps what it did before the statement it stopped in (T310)', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'x=1; touch f; cd work; while :; do :; done')).toMatchObject({ end: 'limit', limit: 'commands' });
+    expect((await runLine(shell, 'echo "[$x]"; pwd; ls ~/f')).stdout).toBe('[1]\n/home/guest/work\n/home/guest/f\n');
   });
 
   test('a line runs 10,000 of its own commands, whatever the prelude runs', async () => {

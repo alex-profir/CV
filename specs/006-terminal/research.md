@@ -597,6 +597,9 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G19 | `sed -i` reports any write error as "No such file or directory", like `tee` (G5): `sed -i s/a/b/ about` says `sed: about: No such file or directory` | The `sed` wrapper in `site-commands.ts` rewrites it to `Permission denied` when the file exists and the write is refused, as it does `tee`'s (FR-049). Upstream report |
 | G20 | `cp` and `mv` name only the source of a refused copy or move (`cp: cannot copy 'skills': Permission denied`, `mv: cannot move 'mine': Permission denied`), where GNU's name the destination (`cp: cannot create regular file 'about': Permission denied`, `mv: cannot move 'mine' to 'work/mine': Permission denied`) | The `cp` and `mv` wrappers rewrite the line in GNU's form, so the protected path is named as typed (FR-049). `awk`'s `print > "about"` and `sort -o about` still say only `awk: Permission denied` and `sort: Permission denied`, without the path; the file is unchanged. Upstream report |
 | G21 | `printf "\xff\xfe"` prints each byte above 127 that isn't valid UTF-8 as a character, so `wc -c` counts 4, through a pipe or a file (T295) | `printf` and `echo -e` wrappers in `site-commands.ts` mask the byte and print bytes back, and a snapshot marks the file `binary` so a restarted worker has the same bytes. Stays: `x=$'\xff'` holds a character, and on the screen such a byte shows as that character, where a terminal shows a replacement. Upstream report |
+| G22 | A command name from an expansion isn't split: `x='echo hi'; $x` says `bash: echo hi: command not found`, status 127 (T297) | The adapter expands the name and arguments into an array, and its `name` command picks the name it runs under (`rewriteExpanded`): `IFS`, globs and site commands hold. 8 commands against bash's 1 |
+| G23 | Listed options that fail or differ: `xargs -n1`, `head -n -1`, `uniq -c`'s width, `sed -f /dev/null`, `sed -i.bak`, `s/a/b/w o`, `date -I`, `date -d` in the browser's zone, `env -i env`, `cp -v`, `tail -c` by character; wrong-use wordings (T302, T306) | `shell/gnu.ts`, in front of each command. `w` is handled for a script that is one `s` command only; a longer script still writes every line, for T129 |
+| G24 | `pushd` and PIPESTATUS, `export -f`, `break`, `continue` and `return` out of place, `test`'s integer errors, `~+`, `set -o`'s layout (T305) | The adapter: `rewriteBashBuiltin` and `markOutOfPlace`. `break` and `continue` in a function called outside a loop, and these words in `eval` or `source` text, stay just-bash's, as only the line's own tree is seen |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -733,6 +736,13 @@ command limits are per `exec`, so FR-069's per-line limits would have to be rebu
 a stopped worker would lose everything); reading just-bash's private state (`bash.state`, not a
 public interface, and it changes between versions); asking upstream for persistent sessions
 (worth proposing, and the adapter is the fallback until then).
+
+**Hidden names** (T299): every command and variable of the adapter's holds `MARK`, random per worker,
+so a typed word or an expansion can't name one, and `__cv_x` is any other word. `__CV_PIPED` goes only
+on commands that read it. A name from an expansion runs beside the adapter's variables, so `x=set; $x`
+has their lines taken out of its output in `plainText`; `x=set; $x | wc -l` counts them.
+`directoryStack` is set on `bash.state` before each run, the one private field read, as no command sets
+it whole; just-bash is pinned exactly (T305).
 
 ## R28. The file system: protected files and the visitor's own
 
@@ -960,6 +970,15 @@ the output limit shows none of what it printed, only the stopped line, as G14 al
 **Ctrl+C** (FR-075): with no text selected, while a line runs, it terminates the worker as above
 and shows `^C` after the line, then `stopped: you pressed Ctrl+C.` With no line running, it shows
 the typed text with `^C` after it, as an entry that isn't added to the history, and a new prompt.
+Lines waiting show `^C`, stay in the history and never run (T308).
+
+**A stopped line's state** (T310): a check now runs between a line's statements, so a stop at the
+shell's own limits keeps the variables, folder and functions as of the last statement that finished.
+A check leaves `$?`, `$_` and PIPESTATUS as it found them. It isn't carried for what a single statement
+did before it stopped (`x=1 && while :; do :; done`), or when the page ended the worker (Ctrl+C, the
+6 s watchdog), which can't answer: those lines keep the state from before them, as
+contracts/shell-worker.md says. Each statement of a line costs 8 commands more, added to the limit's
+overhead, so the visitor's 10,000 are unchanged.
 
 ## R34. Loading the shell, and the build
 
@@ -1448,6 +1467,14 @@ and its kin ignore a count. Vim's name is shown with home as `~`, as vim does. T
 has one status line, not the wireframe's second `[HELP] keys [RO]` line. Below the text, `~` rows are
 drawn by `.vim-text::after` in the height left, with empty alternative text, so they add no scroll
 and aren't read.
+
+**Several views** (T311, decided for the unattended run): a shell can't wait inside a line here, so
+`vim a; vim b` runs the whole line first, then opens each view when the one before closes, and the
+line's output follows the last. A `vim` from a line that waited queues behind an open view, its changes
+kept. The owner can amend FR-058.
+
+**`ls nope`** (T306): FR-048 wins over GNU's wording, as it sets a site reply for a path that isn't
+there, so `ls: nope: No such file or directory` stays.
 
 ## R48. Typing in insert mode
 

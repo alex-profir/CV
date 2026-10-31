@@ -8,7 +8,7 @@
 // same builders, so a file can't differ from its command (FR-047).
 import type { Resume, ResumeBasics, ResumeEducation, ResumeLocation, ResumeProject, ResumeWork } from '@cv/content';
 import type { DateRange } from '../../../format/dates.ts';
-import type { SiteText } from '../../../site-text.ts';
+import type { FullText } from '../../../shell-text.ts';
 import { SHOWN_FIELDS } from '../../../supported.ts';
 import { heading, line, link, list, text, time } from './block.ts';
 import type { Block, Node } from './block.ts';
@@ -19,7 +19,7 @@ export type Formatters = {
   withoutScheme: (url: string) => string;
 };
 
-export type CvInput = { resume: Resume; text: SiteText; format: Formatters };
+export type CvInput = { resume: Resume; text: FullText; format: Formatters };
 
 export type Section = 'basics' | 'contact' | 'work' | 'projects' | 'education' | 'skills' | 'languages' | 'interests';
 

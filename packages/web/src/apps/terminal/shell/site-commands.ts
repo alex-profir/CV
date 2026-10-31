@@ -9,12 +9,13 @@
 import { defineCommand } from 'just-bash/browser';
 import { command } from '../engine/block.ts';
 import type { Block, Effect, Node, Tone, VimFile } from '../engine/block.ts';
-import { COMMANDS, CV_PIPE, SITE_WORDS, usage } from '../engine/commands.ts';
+import { COMMANDS, CV_PIPE, CV_PRINT, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
 import { printJson } from '../engine/json.ts';
 import { fill } from '../../../site-text.ts';
-import { fileText, HOME } from './fs.ts';
+import { CLEARED, fileText, HOME, MARK } from './fs.ts';
+import { GNU } from './gnu.ts';
 import type { TerminalFs } from './fs.ts';
 import type { Recorded } from './protocol.ts';
 import { helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
@@ -25,7 +26,7 @@ type Output = Awaited<ReturnType<ShellCommand['execute']>>;
 
 // The names the site's commands run under in the shell where a builtin of
 // the same name would win: the adapter renames the typed word (research R29).
-export const RENAMED: Readonly<Record<string, string>> = { help: '__cv_help' };
+export const RENAMED: Readonly<Record<string, string>> = { help: `${MARK}help` };
 
 // What one line's run collects, and what it was sent with.
 export type RunRecord = {
@@ -36,6 +37,10 @@ export type RunRecord = {
   effects: Effect[];
   // The pipe the vim view's status line shows, when not the line itself.
   pipe: string | null;
+  // How many functions now running have their output going into a pipe.
+  pipedFunctions: number;
+  // Set while `help <builtin>` asks just-bash's own `help` for its text.
+  builtinHelp: boolean;
 };
 
 export type SiteShell = {
@@ -46,13 +51,15 @@ export type SiteShell = {
 
 // Set by the adapter on a command whose output goes into a pipe: what it
 // prints there is text, never a block (research R29).
-export const PIPED = '__CV_PIPED';
+export const PIPED = `${MARK}PIPED`;
 
 // Set by the adapter on a site command typed in another case, to the word as
 // typed: replies name it (FR-017).
-export const TYPED = '__CV_TYPED';
+export const TYPED = `${MARK}TYPED`;
 
-const piped = (ctx: Context) => ctx.env.get(PIPED) === '1';
+// The commands that print otherwise when their output doesn't reach the
+// screen: only these carry PIPED, so no other can show it (T299).
+export const SCREEN_COMMANDS: ReadonlySet<string> = new Set([...SITE_WORDS, 'cat', 'ls', 'jq']);
 
 // Standard input as text: just-bash hands it over as latin1 bytes.
 const decode = (bytes: Context['stdin']) => new TextDecoder().decode(Uint8Array.from(bytes as unknown as string, (character) => character.charCodeAt(0)));
@@ -91,6 +98,7 @@ export const STANDARD_GROUP: readonly string[] = [...new Set<string>([...STANDAR
 
 export function siteCommands(shell: SiteShell): ShellCommand[] {
   const files = filesOf(shell.context);
+  const piped = (ctx: Context) => ctx.env.get(PIPED) === '1' || shell.run().pipedFunctions > 0;
   const runContext = (ctx: Context): RunContext => {
     const run = shell.run();
     return { ...shell.context, cwd: ctx.cwd, history: run.history, shell: run.shell, standard: STANDARD_GROUP };
@@ -99,6 +107,14 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   // Prints a site command's run, records its block and keeps its effect.
   const emit = (ctx: Context, result: SiteRun): Output => {
     const run = shell.run();
+    // `clear` empties the screen, so only where its output would reach it
+    // (T303); what came before it goes, at its place in the line (T298).
+    if (result.effect?.kind === 'clear') {
+      if (piped(ctx)) return ok();
+      run.recorded.length = 0;
+      run.effects.push(result.effect);
+      return ok(CLEARED, CLEARED);
+    }
     const stdout = result.text === '' ? '' : `${result.text}\n`;
     if (result.block !== null && stdout !== '' && !piped(ctx)) run.recorded.push({ text: stdout, block: result.block });
     if (result.effect !== undefined) run.effects.push(result.effect);
@@ -118,13 +134,21 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const standardHelp = (args: readonly string[], ctx: Context): Promise<Output> | null => {
     const name = args.length === 1 ? args[0]! : null;
     if (name === null || SITE.has(name.toLowerCase()) || !STANDARD_GROUP.includes(name)) return null;
-    return ctx.exec!(BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never) ? `builtin help ${name}` : `${name} --help`, { cwd: ctx.cwd });
+    const run = shell.run();
+    const builtin = BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never);
+    run.builtinHelp = builtin;
+    return ctx.exec!(builtin ? `builtin help ${name}` : `${name} --help`, { cwd: ctx.cwd }).finally(() => {
+      run.builtinHelp = false;
+    });
   };
 
   const rows = COMMANDS.filter((row) => row.run !== undefined).flatMap((row) =>
     [row.name, ...row.aliases].map((word) =>
       defineCommand(RENAMED[word] ?? word, async (args, ctx) => {
         const typed = typedAs(word, ctx);
+        // A wrong option gets bash's error (FR-017).
+        const wrong = row.name === 'history' ? args.find((arg) => /^-./.test(arg) && arg !== '-c') : undefined;
+        if (wrong !== undefined) return ok('', `bash: history: ${wrong.slice(0, 2)}: invalid option\nhistory: usage: history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]\n`, 2);
         return (row.name === 'help' ? standardHelp(args, ctx) : null) ?? emit(ctx, row.run!(args, runContext(ctx), typed));
       }),
     ),
@@ -139,7 +163,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     if (args[0] === '-') {
       const input = decode(ctx.stdin);
       if (input === '') return usageOf(word, 'vim');
-      const file = { name: shell.context.text.terminal.vim.noName, path: null, readonly: false, new: false };
+      const file = { name: shell.context.text.terminal.vim.noName, path: null, readonly: false, new: false, ...(input === '\n' ? { blank: true } : {}) };
       run.effects.push(vimEffect(file, run.pipe ?? run.line, input.replace(/\n$/, '')));
       return ok();
     }
@@ -153,7 +177,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     }
     if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: `ls ${typed}` })}\n`, 1);
     const content = await shell.fs.readFile(path);
-    run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false }, null, content.replace(/\n$/, '')));
+    run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false, ...(content === '\n' ? { blank: true } : {}) }, null, content.replace(/\n$/, '')));
     return ok();
   });
 
@@ -161,6 +185,8 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const cv = defineCommand('cv', async (args, ctx) => {
     if (args.length > 0) return usageOf(typedAs('cv', ctx), 'cv');
     const run = shell.run();
+    // Going to a pipe, a file or a `$(…)`: the JSON, and no view (T303).
+    if (piped(ctx)) return ctx.exec!(CV_PRINT, { cwd: HOME, env: { [PIPED]: '1' } });
     run.pipe = CV_PIPE;
     try {
       return await ctx.exec!(CV_PIPE, { cwd: HOME });
@@ -344,6 +370,8 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     if (!has('r', '--recursive') && !has('R', '--recursive')) return ctx.origCommand!(args);
     const force = has('f', '--force');
     const targets = end < 0 ? args.filter((arg) => !options.includes(arg)) : [...args.slice(0, end).filter((arg) => !options.includes(arg)), ...args.slice(end + 1)];
+    const verbose = has('v', '--verbose');
+    let stdout = '';
     let stderr = '';
     let status = 0;
     // Whether `path` is gone; `shown` is it as typed, for the messages.
@@ -363,6 +391,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         status = 1;
         return false;
       }
+      if (verbose) stdout += `removed ${stat.isDirectory ? 'directory ' : ''}'${shown}'\n`;
       return true;
     };
     for (const target of targets) {
@@ -383,7 +412,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       await remove(path, target);
     }
     if (targets.length === 0 && !force) return ok('', 'rm: missing operand\n', 1);
-    return ok('', stderr, status);
+    return ok(stdout, stderr, status);
   });
 
   // What the adapter's redirect guard runs in place of a command whose
@@ -404,8 +433,10 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const byteExact = (name: string, reads: (args: readonly string[]) => boolean) =>
     defineCommand(name, async (args, ctx) => {
       const mask = reads(args) ? args.map(masked) : args;
-      if (mask.every((arg, index) => arg === args[index])) return ctx.origCommand!(args);
-      const result = await ctx.origCommand!(mask);
+      // bash's builtin names itself as the shell (T305).
+      const named = (result: Output) => (name === 'printf' ? { ...result, stderr: result.stderr.replace(/^printf: /gm, 'bash: printf: ') } : result);
+      if (mask.every((arg, index) => arg === args[index])) return named(await ctx.origCommand!(args));
+      const result = named(await ctx.origCommand!(mask));
       const bytes = Uint8Array.from(bytesOf(result.stdout));
       try {
         return { ...result, stdout: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
@@ -419,5 +450,13 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
+  const own = [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
+  // GNU's fixes (gnu.ts), in front of the wrapper or just-bash's command.
+  const fixed = (name: string, runs: (args: string[], ctx: Context) => Promise<Output>) =>
+    defineCommand(name, async (args, ctx) => {
+      // What it says it printed no longer holds if a fix changed that.
+      const { internalOutputAccounting: _accounted, ...result } = (await GNU[name]!(args, ctx, (list) => runs(list, ctx), shell.fs)) as Output & { internalOutputAccounting?: unknown };
+      return result;
+    });
+  return [...own.map((command) => (GNU[command.name] === undefined ? command : fixed(command.name, (args, ctx) => command.execute(args, ctx)))), ...Object.keys(GNU).filter((name) => !own.some((command) => command.name === name)).map((name) => fixed(name, (args, ctx) => ctx.origCommand!(args)))];
 }

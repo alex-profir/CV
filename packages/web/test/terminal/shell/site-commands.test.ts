@@ -174,3 +174,31 @@ describe('006-terminal-FR-017 and 006-terminal-FR-020: usage replies and the his
     expect(results[5]!.stdout).toBe('1  history\n');
   });
 });
+
+describe('006-terminal-FR-057: cv and clear where their output doesn’t reach the screen (T303)', () => {
+  test.each(['cv | head -1', 'cv | wc -l', 'x=$(cv); echo "$x" | head -1', 'cv > out; head -1 out', 'cv >> out2; head -1 out2', '{ cv; } | head -1'])('%s prints the JSON and opens no view', async (line) => {
+    const result = await runLine(shellFor('every-field'), line);
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toBe('');
+    expect(result.effects).toEqual([]);
+  });
+
+  test('the JSON is cv.json, pretty-printed; cv alone is the view', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'cv | wc -l')).stdout).toBe((await runLine(shell, 'jq . cv.json | wc -l')).stdout);
+    expect((await runLine(shell, 'cv')).effects).toMatchObject([{ kind: 'vim' }]);
+  });
+
+  test.each(['clear | wc -l', 'clear > f', 'x=$(clear)'])('%s leaves the screen as it was', async (line) => {
+    expect((await runLine(shellFor('every-field'), line)).effects).toEqual([]);
+  });
+
+  test('clear in a line keeps only what comes after it', async () => {
+    const shell = shellFor('every-field');
+    expect(await runLine(shell, 'echo one; clear; echo two')).toMatchObject({ stdout: 'two\n', effects: [{ kind: 'clear' }] });
+    expect(await runLine(shell, 'echo one; clear')).toMatchObject({ stdout: '', effects: [{ kind: 'clear' }] });
+    const listed = await runLine(shell, 'work; clear; ls');
+    expect(listed.recorded).toHaveLength(1);
+    expect(listed.stdout).toBe(listed.recorded[0]!.text);
+  });
+});

@@ -31,6 +31,22 @@ const GLOB = /[*?]|\[.*\]/;
 
 type Word = { start: number; quote: '"' | "'" | null };
 
+// Inside a `…`, or a $(…) in double quotes, not closed yet: bash adds nothing
+// after the word, as the line doesn't end with it.
+function inSubstitution(before: string): boolean {
+  let backticks = false;
+  let double = false;
+  let quoted = 0;
+  for (let at = 0; at < before.length; at += 1) {
+    if (before[at] === '\\') at += 1;
+    else if (before[at] === '`') backticks = !backticks;
+    else if (before[at] === '"') double = !double;
+    else if (double && before[at] === '$' && before[at + 1] === '(') quoted += 1;
+    else if (before[at] === ')' && quoted > 0) quoted -= 1;
+  }
+  return backticks || quoted > 0;
+}
+
 function findWord(before: string): Word {
   let start = 0;
   let quote: Word['quote'] = null;
@@ -51,6 +67,10 @@ function findWord(before: string): Word {
       if (char === '"') {
         quote = null;
         start = at + 1;
+      } else if (char === '$' && before[at + 1] === '(') {
+        // A new word, in quotes or not, as in a line of its own.
+        start = at + 2;
+        at += 1;
       } else if (char === '$') start = at;
       continue;
     }
@@ -85,7 +105,10 @@ function inCommandPosition(before: string, keywords: readonly string[]): boolean
   if (text === '') return true;
   if (SEPARATORS.has(text.at(-1)!)) return true;
   const last = /(?:^|[\s;|&(])([^\s;|&(]+)$/.exec(text)?.[1];
-  return last !== undefined && keywords.includes(last);
+  if (last === undefined) return false;
+  // A word after assignments is a command's first word.
+  if (/^[A-Za-z_]\w*\+?=/.test(last)) return inCommandPosition(text.slice(0, -last.length), keywords);
+  return keywords.includes(last);
 }
 
 // A name in a folder: the entries of the folder a word's path part names.
@@ -107,17 +130,24 @@ const bare = (match: CompletionMatch) => match.name.replace(/\/$/, '');
 export async function complete(request: CompleteRequest, sources: CompleteSources): Promise<Completion> {
   const { id, line, cursor, state } = request;
   const before = line.slice(0, cursor);
-  const { start, quote } = findWord(before);
+  const found = findWord(before);
+  const { start } = found;
+  const substituted = inSubstitution(before);
+  // What's quoted around a $(…) doesn't quote the word in it.
+  const quote = before[start - 2] === '$' && before[start - 1] === '(' ? null : found.quote;
   const raw = before.slice(start);
   const none = (matches: readonly CompletionMatch[] = []): Completion => ({ id, start, end: cursor, insert: '', matches });
-  const atEnd = cursor === line.length;
+  const atEnd = cursor === line.length && !substituted;
   const closing = quote !== null && atEnd ? quote : '';
   const space = atEnd ? ' ' : '';
+  const values: Record<string, string> = { ...sources.variables, PWD: state.cwd, ...state.variables };
+  // `$HOME/wo`: a path from the variable's value, which stays as typed.
+  const fromVariable = /^\$(\w+|\{\w+\})\//.exec(raw);
+  const variable = fromVariable === null ? undefined : values[fromVariable[1]!.replace(/[{}]/g, '')];
 
   // `$HO`: the variables' names.
-  if (raw.startsWith('$')) {
+  if (raw.startsWith('$') && fromVariable === null) {
     const typed = raw.slice(1);
-    const values: Record<string, string> = { ...sources.variables, PWD: state.cwd, ...state.variables };
     const names = Object.keys(values).filter((name) => name.startsWith(typed)).sort(byBytes);
     const matches = names.map((name) => ({ name: `$${name}`, folder: false }));
     if (names.length === 0) return none();
@@ -130,13 +160,27 @@ export async function complete(request: CompleteRequest, sources: CompleteSource
     return common === typed ? none(matches) : { ...none(matches), insert: `$${common}` };
   }
 
-  // A word with a pattern in it matches no name, and Tab adds nothing.
+  // A word with a pattern in it: what it matches, if that's one name (T301).
+  if (GLOB.test(raw) && quote === null) {
+    const cut = raw.lastIndexOf('/') + 1;
+    const dir = raw.slice(0, cut);
+    const pattern = new RegExp(`^${raw.slice(cut).replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`);
+    const folder = dir === '' ? state.cwd : dir.startsWith('~/') ? `${sources.home}/${dir.slice(2)}` : dir.startsWith('/') ? dir : `${state.cwd}/${dir}`;
+    const names = await sources.fs.readdir(folder.replace(/(.)\/+$/, '$1')).catch(() => [] as string[]);
+    const hits = names.filter((name) => pattern.test(name) && (!name.startsWith('.') || raw.slice(cut).startsWith('.')));
+    const matched = await Promise.all(hits.map(async (name) => ((await sources.fs.stat(`${folder.replace(/\/+$/, '')}/${name}`).catch(() => null))?.isDirectory === true ? { name: `${name}/`, folder: true } : { name, folder: false })));
+    matched.sort((a, b) => byBytes(bare(a), bare(b)));
+    if (matched.length !== 1) return none(matched);
+    return { ...none(matched), insert: `${dir}${quoted(bare(matched[0]!), null)}${matched[0]!.folder ? '/' : space}` };
+  }
   if (GLOB.test(raw)) return none();
 
   const word = unescape(raw, quote);
   const position = before.slice(0, quote === null ? start : start - 1);
+  // bash lists the system's users for this; here there are none.
+  if (word === '~') return none();
   const slash = raw.lastIndexOf('/');
-  const pathWord = slash !== -1 || word === '~';
+  const pathWord = slash !== -1;
   const first = inCommandPosition(position, sources.keywords);
 
   let matches: CompletionMatch[];
@@ -150,10 +194,9 @@ export async function complete(request: CompleteRequest, sources: CompleteSource
     for (const folder of folders) if (commands.has(bare(folder))) both.add(bare(folder));
     matches = [...[...commands].map((name) => ({ name, folder: false })), ...folders.filter((folder) => !both.has(bare(folder)))];
   } else {
-    if (word === '~') return { ...none([{ name: '~/', folder: true }]), insert: '~/' };
     typedDir = slash === -1 ? '' : raw.slice(0, slash + 1);
     typedBase = unescape(raw.slice(slash + 1), quote);
-    const dir = unescape(typedDir, quote);
+    const dir = variable === undefined ? unescape(typedDir, quote) : `${variable}/${typedDir.slice(fromVariable![0].length)}`;
     const folder = dir === '' ? state.cwd : dir === '~/' || dir.startsWith('~/') ? `${sources.home}/${dir.slice(2)}` : dir.startsWith('/') ? dir : `${state.cwd}/${dir}`;
     const trimmed = folder.length > 1 ? folder.replace(/\/+$/, '') : folder;
     matches = await entries(sources.fs, trimmed === '' ? '/' : trimmed, typedBase);

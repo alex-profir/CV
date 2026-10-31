@@ -132,3 +132,21 @@ describe('006-terminal-FR-075: Ctrl+C', () => {
     expect(await page.locator(COMMAND_LINE).inputValue()).toBe('abc');
   });
 });
+
+describe('006-terminal-FR-075: Ctrl+C drops what waits behind the running line', () => {
+  test('the line stops, the one behind it shows ^C and never runs', async () => {
+    const page = await runawayTerminal();
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('while :; do :; done');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => busy(page)).toBe(1);
+    await page.keyboard.type('echo behind-ran');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => busy(page)).toBe(2);
+    await page.keyboard.press('Control+C');
+    await expect.poll(() => busy(page)).toBe(0);
+    expect(await page.locator('.terminal section.run').count()).toBe(2);
+    expect(await page.locator('.terminal section.run').nth(1).locator('.run-cancel').count()).toBe(1);
+    expect(await page.locator('.terminal section.run').nth(1).locator('.run-output').count()).toBe(0);
+  });
+});

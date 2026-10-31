@@ -7,6 +7,7 @@ import { COMMANDS, SITE_WORDS } from '../../../src/apps/terminal/engine/commands
 import type { Node } from '../../../src/apps/terminal/engine/block.ts';
 import { LEFT_OUT, SHELL_BUILTINS, STANDARD_COMMANDS } from '../../../src/apps/terminal/shell/standard.ts';
 import { fill, siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { runLine, shellFor } from './context.ts';
 import type { TestShell } from './context.ts';
 
@@ -86,7 +87,7 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     const table = new Set<string>(SITE_WORDS);
     const expected = [...new Set([...STANDARD_COMMANDS, ...SHELL_BUILTINS])].filter((name) => !table.has(name)).sort();
     expect(await standardGroup(shell)).toEqual(expected);
-    const { standard } = siteText.terminal;
+    const { standard } = fullText.terminal;
     const text = (await runLine(shell, 'help')).stdout;
     // The heading and its note share one line, two spaces apart (design/wireframes.md).
     expect(text).toContain(`\n${standard.heading}  ${standard.note}\n`);
@@ -108,10 +109,10 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
     const exportHelp = await runLine(shell, 'help export');
     expect(exportHelp.status).toBe(0);
     expect(exportHelp.stdout).toMatch(/^export: export /);
-    expect((await runLine(shell, 'help work')).stdout).toContain(siteText.terminal.commands.work.help);
+    expect((await runLine(shell, 'help work')).stdout).toContain(fullText.terminal.commands.work.help);
     const nosuch = await runLine(shell, 'help nosuch');
-    expect(nosuch.status).toBe(2);
-    expect(nosuch.stderr).toBe(`${fill(siteText.terminal.replies.usage, { command: 'help', what: siteText.terminal.takes['optional-command'], usage: 'help [command]' })}\n`);
+    expect(nosuch.status).toBe(1);
+    expect(nosuch.stderr).toBe(`${fill(siteText.terminal.replies.helpUnknown, { name: 'nosuch', help: 'help' })}\n`);
   });
 
   test('no name runs that help doesn’t list', async () => {
@@ -129,8 +130,8 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
 describe('006-terminal-FR-017: a standard command’s wrong option gives its own message', () => {
   test('ls --badopt, grep alone and head -n x about', async () => {
     const shell = shellFor('every-field');
-    expect(await runLine(shell, 'ls --badopt')).toMatchObject({ stderr: "ls: unrecognized option '--badopt'\n", status: 1 });
-    expect(await runLine(shell, 'grep')).toMatchObject({ stderr: 'grep: missing pattern\n', status: 2 });
+    expect(await runLine(shell, 'ls --badopt')).toMatchObject({ stderr: "ls: unrecognized option '--badopt'\nTry 'ls --help' for more information.\n", status: 2 });
+    expect(await runLine(shell, 'grep')).toMatchObject({ stderr: "Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information.\n", status: 2 });
     expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines\n', status: 1 });
   });
 });

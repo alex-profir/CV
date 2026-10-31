@@ -62,7 +62,20 @@ const LINES: readonly string[] = [
   'ls .', // the two dots and any hidden entries
   'ls ..',
   'ls notes/.',
+  'cat $HOME/ab', // a path from a variable
+  'echo $HOME/wo',
+  'x=1 ec', // a command after assignments
+  'x=1 y=2 ec',
+  'cat wo*', // a pattern that matches one name
+  'cat s*',
+  '`ab', // in a command substitution
+  'echo `ab',
+  'echo "$(ab',
+  'echo $(ab',
 ];
+
+// bash lists the machine's users on a second Tab, so these get one (`~`).
+const ONE_TAB: readonly string[] = ['~', 'cat ~'];
 
 let root = '';
 let home = '';
@@ -103,7 +116,7 @@ function inBash(): Map<string, Answer> {
   for (const name of new Set<string>([...SITE_WORDS, ...STANDARD_COMMANDS])) if (!(SHELL_BUILTINS as readonly string[]).includes(name)) fs.writeFileSync(path.join(bin, name), '', { mode: 0o755 });
   const bash = spawnSync('which', ['bash'], { encoding: 'utf8' }).stdout.trim();
   const builtins = spawnSync(bash, ['-c', 'compgen -b'], { encoding: 'utf8' }).stdout.split('\n').filter((name) => name !== '' && !(SHELL_BUILTINS as readonly string[]).includes(name));
-  const job = { cwd: home, home, path: bin, bash, disable: builtins, setup: ['myfunc() { :; }', 'MYVAR=1'], lines: LINES };
+  const job = { cwd: home, home, path: bin, bash, disable: builtins, setup: ['myfunc() { :; }', 'MYVAR=1'], lines: [...LINES, ...ONE_TAB] };
   const result = spawnSync('python3', ['-I', DRIVER], { input: JSON.stringify(job), encoding: 'utf8', timeout: 120_000 });
   if (result.status !== 0) throw new Error(`the readline driver failed: ${result.stderr}`);
   return new Map((JSON.parse(result.stdout) as Answer[]).map((answer) => [answer.line, answer]));
@@ -139,7 +152,7 @@ describe('006-terminal SC-017: Tab gives what bash’s readline gives', () => {
     expect(LINES.length).toBeGreaterThanOrEqual(20);
   });
 
-  test.each(LINES)('one Tab: %s', async (line) => {
+  test.each([...LINES, ...ONE_TAB])('one Tab: %s', async (line) => {
     const missing = missingTool();
     if (missing !== null) throw new Error(`the completion parity test needs bash 5 and python3: ${missing}. On macOS: ${INSTALL}.`);
     const bash = answers.get(line)!;

@@ -150,3 +150,25 @@ describe('006-terminal-FR-079: Tab and typing in the editor are quick', () => {
     expect(await page.locator('.terminal .vim-line:has(.vim-insert-bar) .vim-code').textContent()).toContain('x');
   });
 });
+
+describe('006-terminal-FR-069: long plain output doesn’t hold up the page', () => {
+  test('seq 150000, under the output limit, is few elements and no long task of a second', async () => {
+    const page = await openTerminalPage('desktop');
+    await page.evaluate(() => {
+      const spent: number[] = [];
+      (window as unknown as { longTasks: number[] }).longTasks = spent;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) spent.push(Math.round(entry.duration));
+      }).observe({ entryTypes: ['longtask'] });
+    });
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('seq 150000');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null && (document.querySelector('.terminal section.run .run-output')?.textContent ?? '').includes('150000'), undefined, { timeout: 60_000 });
+    const elements = await page.locator('.terminal section.run .run-output *').count();
+    const longest = await page.evaluate(() => Math.max(0, ...(window as unknown as { longTasks: number[] }).longTasks));
+    console.log(`seq 150000: ${elements} elements, longest task ${longest} ms`);
+    expect(elements).toBeLessThan(1000);
+    expect(longest).toBeLessThan(1000);
+  });
+});
