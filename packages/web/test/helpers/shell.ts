@@ -3,6 +3,7 @@
 // Chromium and drives it by clicks, drags, touch, keys and viewport changes,
 // never through a hook in the site.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { onTestFinished } from 'vitest';
 import type { Page } from 'playwright';
@@ -249,7 +250,7 @@ export function focusedElement(page: Page): Promise<string> {
   });
 }
 
-export type Indicator = { ok: boolean; changed: number; needed: number; coveredBy: string | null };
+export type Indicator = { ok: boolean; changed: number; needed: number; coveredBy: string | null; pictures?: string };
 
 // The focused element's indicator, measured as 004's keyboard part does:
 // the pixels that change by 3:1 or more against the same box unfocused,
@@ -287,7 +288,14 @@ export async function focusIndicator(page: Page): Promise<Indicator> {
   });
   const scale = decodePng(focused).width / clip.width;
   const changed = indicatorPixels(decodePng(unfocused), decodePng(focused)) / (scale * scale);
-  return { ok: changed >= needed && state.coveredBy === null, changed, needed, coveredBy: state.coveredBy };
+  // A reading under the threshold has only come in full runs: the two pictures say why.
+  let pictures: string | undefined;
+  if (changed < needed) {
+    pictures = fs.mkdtempSync(path.join(os.tmpdir(), 'focus-indicator-'));
+    fs.writeFileSync(path.join(pictures, 'focused.png'), focused);
+    fs.writeFileSync(path.join(pictures, 'unfocused.png'), unfocused);
+  }
+  return { ok: changed >= needed && state.coveredBy === null, changed, needed, coveredBy: state.coveredBy, ...(pictures === undefined ? {} : { pictures }) };
 }
 
 // Resizes the viewport and waits two frames for the shell to follow.
