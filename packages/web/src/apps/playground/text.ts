@@ -5,6 +5,9 @@ import type { Message } from './types.ts';
 
 const words = siteText.playground;
 
+// Whether the system is Linux, as Monaco reads it: it has keys of its own there.
+export const onLinux = (): boolean => navigator.userAgent.includes('Linux');
+
 // Whether the visitor's system is a Mac, as the shell's labels read it.
 export function onMac(): boolean {
   const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform;

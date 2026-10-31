@@ -130,8 +130,8 @@ Signed below. Nothing here is built except where it says so.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
-| The list of keys holds every key, in groups, with the words in `wireframes.md` under "The list of keys" | FR-085 says every key and lists 29 of about 75; three commands had no key at all (FR-084, T223) | `desktop-39-keys-all-1440.png`, redrawn from the new table once the words are agreed | Not built; the three keys are |
-| The desktop's Copy the code says the clipboard refused, in the phone's signed words | The button seemed to do nothing (FR-055, T225) | Words in `wireframes.md` | Built, no new words |
+| The list of keys holds every key, in groups, with the words in `wireframes.md` under "The list of keys" | FR-085 says every key and lists 29 of about 75; three commands had no key at all (FR-084, T223) | `desktop-39-keys-all-1440.png`, redrawn from the table | Built (T223) |
+| The desktop's Copy the code says the clipboard refused, in the phone's signed words | The button seemed to do nothing (FR-055, T225) | `desktop-40-code-refused-1440.png` (T230) | Built, no new words |
 
 An owner decision comes with the first row: Monaco leaves Go to definition, Peek definition, Every use, Quick
 fixes and Tab moves focus out of the command palette on every system, against FR-085's "every editor
@@ -146,3 +146,13 @@ amended so, as recommended.
 - Approved by: Alex Profir (project owner)
 - Notes: Approved as proposed. `desktop-39-keys-all-1440.png` is redrawn from the agreed table, and
   T225's message gets its export, as T223 and T230 say; neither changes the agreed words.
+
+## Awaiting sign-off
+
+Neither row is built. Each needs the owner's signature here.
+
+| Change | Why | Export | Code |
+|--------|-----|--------|------|
+| Undo on the broken link's message, where the Playground held the visitor's code | The first key after a broken link overwrites kept code, and the message offers no way back (FR-019, FR-056, T238) | `desktop-41-broken-link-undo-1440.png` | Not built |
+| Eighteen more rows in the list of keys, under Monaco's own names, in the groups already signed: Create Folding Range from Selection · Delete All Left · Delete All Right · Find Next · Find Previous · Find with Selection · Fold All Block Comments · Fold All Except Selected · Fold All Regions · Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning, Info) · Insert Line Below · Join Lines · Move Last Selection to Next Find Match · Remove Manual Folding Ranges · Toggle Fold Recursively · Transpose Letters · Unfold All Except Selected | Monaco binds keys to these and the signed table doesn't name them, so the list isn't yet "every key" (FR-085, T223). `keys.test.ts` holds them as `OUTSIDE_THE_TABLE` | Words here; `desktop-39` redrawn once signed | Not built |
+| The list's last line, "Every command is in the command palette, F1, with its key." | Untrue since FR-085's amendment: five commands aren't in the palette. Proposed: "The command palette, F1, lists the commands the editor offers it, with their keys." | Words here | Not built |

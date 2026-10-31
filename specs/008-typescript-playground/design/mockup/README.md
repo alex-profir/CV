@@ -78,6 +78,8 @@ today. Only `playground.css` and `proposed-tokens.css` are new. The CV window fr
 | Desktop, kept code with an unknown option (amendment) | `desktop-37-kept-options-1440.png` |
 | Desktop, compiler options at their defaults (amendment) | `desktop-38-options-default-1440.png` |
 | Desktop, the list of keys, every command (amendment) | `desktop-39-keys-all-1440.png` |
+| Desktop, Share: the clipboard refused the code (second amendment) | `desktop-40-code-refused-1440.png` |
+| Desktop, a broken shared link with Undo (proposed, not signed) | `desktop-41-broken-link-undo-1440.png` |
 | Phone, the home screen | `phone-1-home-375.png` |
 | Phone, best on a desktop | `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568), `-landscape-812.png` (812 × 375) |
 | Phone, a shared link | `phone-3-shared-link-375.png`, `-320.png` (320 × 568) |
