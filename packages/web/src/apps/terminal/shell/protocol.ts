@@ -6,13 +6,14 @@
 import type { Block, Effect } from '../engine/block.ts';
 
 // `set -o` options the adapter carries from line to line (research R27).
-export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace';
+export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport' | 'verbose';
 
 // What the shell keeps between lines, since just-bash resets it after each
 // run (research R27, G4).
 export type ShellState = {
   cwd: string;
-  // Shell variables, without the shell's own (PWD, IFS…).
+  // Shell variables that differ from a fresh shell's, without the shell's own
+  // (PWD, LINENO…).
   variables: Readonly<Record<string, string>>;
   exported: readonly string[];
   // Name → its definition, serialized.
@@ -20,9 +21,23 @@ export type ShellState = {
   options: readonly ShellOption[];
   // `$?` after the last line.
   status: number;
+  // Variables a fresh shell has that the visitor unset.
+  unset: readonly string[];
+  // `declare -p`'s line for each array and each variable with an attribute
+  // (readonly, integer…).
+  declarations: readonly string[];
+  // `$1`, `$2`…
+  positional: readonly string[];
+  // `shopt` settings that are on; empty until the first line.
+  shopts: readonly string[];
+  // `$_` and `${PIPESTATUS[@]}` after the last line (T299, T305).
+  last: string;
+  pipes: readonly number[];
+  // `dirs`' stack below the working folder (T305).
+  stack: readonly string[];
 };
 
-export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0 };
+export const INITIAL_STATE: ShellState = { cwd: '/home/guest', variables: {}, exported: [], functions: {}, options: [], status: 0, unset: [], declarations: [], positional: [], shopts: [], last: '', pipes: [], stack: [] };
 
 export type Owner = 'root' | 'guest';
 export type FsEntryInfo = { path: string; kind: 'file' | 'folder'; owner: Owner; protected: boolean };
@@ -34,6 +49,8 @@ export type VisitorFiles = {
   folders: readonly string[];
   // Absolute path → text.
   files: Readonly<Record<string, string>>;
+  // The files that aren't valid UTF-8: their text holds one character a byte.
+  binary?: readonly string[];
   // Their total, at most QUOTA.
   bytes: number;
 };
@@ -68,7 +85,8 @@ export type RunResult = {
   end: RunEnd;
   // When `end` is 'limit' (FR-069).
   limit?: Limit;
-  // Unchanged when `end` is 'syntax' or 'limit'.
+  // Unchanged when `end` is 'syntax', and from the last point it could be read
+  // when 'limit' (T310).
   state: ShellState;
   // Only when the visitor's files changed.
   files?: VisitorFiles;

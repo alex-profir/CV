@@ -56,14 +56,14 @@ function tokenRuns(tokens: readonly JsonToken[], from: number, to: number, caret
           runs.push(<Bar key={`${index}c`} />);
           runs.push(piece(caret.at, end, `${index}b`));
         } else {
-          // The block covers a whole character, one outside the BMP too.
-          const after = Math.min(end, caret.at + (/[\uD800-\uDBFF]/.test(token.text[caret.at - at] ?? '') ? 2 : 1));
+          // A character is whole (T307).
+          const next = Math.min(end, caret.at + (token.text.codePointAt(caret.at - at)! > 0xffff ? 2 : 1));
           runs.push(
             <span key={`${index}c`} className="vim-cursor">
-              {piece(caret.at, after, `${index}b`)}
+              {piece(caret.at, next, `${index}b`)}
             </span>,
           );
-          if (after < end) runs.push(piece(after, end, `${index}d`));
+          if (next < end) runs.push(piece(next, end, `${index}d`));
         }
       } else runs.push(piece(start, end, `${index}`));
     }
@@ -309,14 +309,13 @@ export function VimView({ state, shell, send }: Props) {
       const held = field.dataset.buffer ?? '';
       const value = field.value;
       if (value === held) return;
-      const high = (char: string | undefined) => char !== undefined && /[\uD800-\uDBFF]/.test(char);
       let start = 0;
       while (start < value.length && start < held.length && value[start] === held[start]) start += 1;
       // Never between the halves of a surrogate pair.
-      if (start > 0 && high(held[start - 1])) start -= 1;
+      if (held.codePointAt(start - 1)! > 0xffff) start -= 1;
       let tail = 0;
       while (tail < value.length - start && tail < held.length - start && value[value.length - 1 - tail] === held[held.length - 1 - tail]) tail += 1;
-      if (tail > 0 && high(held[held.length - tail - 1])) tail -= 1;
+      if (tail > 0 && held.codePointAt(held.length - tail - 1)! > 0xffff) tail -= 1;
       const end = held.length - tail;
       const upTo = held.slice(0, end).split('\n');
       send({ point: { line: upTo.length - 1, column: upTo.at(-1)!.length } });

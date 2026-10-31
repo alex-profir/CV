@@ -70,7 +70,7 @@ describe('006-terminal-FR-043: the home folder lists the built entries in the de
 });
 
 describe('006-terminal-FR-049: protected paths refuse every write and change nothing', () => {
-  const PROTECTED = ['/home/guest/about', '/home/guest/work', '/home/guest/work/x', '/', '/home', '/home/x', '/bin', '/bin/x', '/usr', '/usr/bin/x', '/dev', '/dev/stdout'];
+  const PROTECTED = ['/home/guest/about', '/home/guest/work', '/home/guest/work/x', '/', '/home', '/home/x', '/bin', '/bin/x', '/usr', '/usr/bin/x', '/dev', '/dev/zero'];
 
   test('writeFile, appendFile, mkdir, rm, cp and mv onto, out of or into a protected path', async () => {
     const fs = withShell();
@@ -95,6 +95,12 @@ describe('006-terminal-FR-049: protected paths refuse every write and change not
     await rejects(fs.symlink('/home/guest/mine', '/home/guest/work/link'), 'Permission denied');
     expect(await fs.readFile('/home/guest/about')).toBe(before);
     expect(await fs.readdir('/home/guest')).toEqual([...BUILT, 'mine']);
+    // Writing to the output by name keeps nothing in the tree: the command's
+    // own output gets it (T332).
+    await fs.writeFile('/dev/stdout', 'out');
+    await fs.appendFile('/dev/fd/2', 'err');
+    expect(fs.takeStreamed()).toEqual({ stdout: 'out', stderr: 'err' });
+    expect(fs.takeStreamed()).toEqual({ stdout: '', stderr: '' });
     // Writing to /dev/null is allowed, and keeps nothing; removing it,
     // moving onto it or making a folder in it isn't.
     await fs.writeFile('/dev/null', 'gone');
@@ -182,7 +188,7 @@ describe('006-terminal-FR-073: the visitor’s files, within 1 MB', () => {
     const results = await runLines(shell, ['echo hello > notes', 'cat notes', 'touch about', 'mkdir work/x', 'echo hi > /tmp/t; cat /tmp/t']);
     expect(results[1]!.stdout).toBe('hello\n');
     expect(results[2]!.stderr).toBe("touch: cannot touch 'about': Permission denied\n");
-    expect(results[3]!.stderr).toBe("mkdir: cannot create directory 'work/x': Permission denied\n");
+    expect(results[3]!.stderr).toBe("mkdir: cannot create directory ‘work/x’: Permission denied\n");
     expect(results[4]!.stdout).toBe('hi\n');
     expect((await runLine(shell, 'ls')).stdout.split('\n')).toContain('notes');
   });
@@ -211,8 +217,8 @@ describe('006-terminal-FR-049: whole command lines on protected paths', () => {
     ['touch work/new', "touch: cannot touch 'work/new': Permission denied"],
     ['touch WORK/new', "touch: cannot touch 'WORK/new': Permission denied"],
     ['touch /home/x', "touch: cannot touch '/home/x': Permission denied"],
-    ['mkdir specs/x', "mkdir: cannot create directory 'specs/x': Permission denied"],
-    ['mkdir /x', "mkdir: cannot create directory '/x': Permission denied"],
+    ['mkdir specs/x', "mkdir: cannot create directory ‘specs/x’: Permission denied"],
+    ['mkdir /x', "mkdir: cannot create directory ‘/x’: Permission denied"],
     ['echo hi > about', 'bash: about: Permission denied'],
     ['echo hi > About', 'bash: About: Permission denied'],
     ['echo hi > work/new', 'bash: work/new: Permission denied'],
@@ -246,10 +252,47 @@ describe('006-terminal-FR-049: whole command lines on protected paths', () => {
     expect(result.status).toBe(0);
   });
 
+  // Each fails only its command, with status 1, and the line goes on (research G1).
+  test.each([
+    ['a target from an expansion', 'echo before; f=about; echo x > $f; echo $?; echo after', 'before\n1\nafter\n', 'bash: about: Permission denied\n'],
+    ['a target after a cd', 'cd work; echo before; echo x > y; echo $?; echo after', 'before\n1\nafter\n', 'bash: y: Permission denied\n'],
+    ['a target in a loop', 'for f in about skills; do echo x > "$f"; echo next; done; echo after', 'next\nnext\nafter\n', 'bash: about: Permission denied\nbash: skills: Permission denied\n'],
+    ['a target in a function', 'f() { echo x > "$1"; echo $?; }; f about; echo after', '1\nafter\n', 'bash: about: Permission denied\n'],
+    ['a target from a command', 'echo before; echo x > $(echo about); echo $?; echo after', 'before\n1\nafter\n', 'bash: about: Permission denied\n'],
+    ['a compound command', 'for i in 1; do echo x; done > about; echo $?; { echo y; } >> about; echo $?', '1\n1\n', 'bash: about: Permission denied\nbash: about: Permission denied\n'],
+    ['the error stream', 'echo x 2> about; echo $?', '1\n', 'bash: about: Permission denied\n'],
+    ['both streams', 'echo x &> about; echo $?', '1\n', 'bash: about: Permission denied\n'],
+    ['a missing folder', 'echo x > nope/y; echo $?', '1\n', 'bash: nope/y: No such file or directory\n'],
+    ['a file as a folder', 'echo x > about/y; echo $?', '1\n', 'bash: about/y: Not a directory\n'],
+    ['a folder', 'echo x > work; echo $?', '1\n', 'bash: work: Is a directory\n'],
+    ['past the 1 MB limit', 'echo before; seq 300000 > big; echo $?; echo after', 'before\n1\nafter\n', 'bash: big: No space left on device\n'],
+    ['past the limit, in a loop', 'for i in 1 2; do seq 300000 >> big; echo $?; done', '1\n1\n', 'bash: big: No space left on device\nbash: big: No space left on device\n'],
+  ])('a refused redirect: %s', async (_, line, stdout, stderr) => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, line);
+    expect(result).toMatchObject({ stdout, stderr, end: 'done' });
+  });
+
+  test('what a redirect’s check leaves unchanged', async () => {
+    const shell = shellFor('every-field');
+    const cases: readonly (readonly [string, string, string])[] = [
+      ['false; echo $? > s; cat s', '1\n', ''],
+      ['set -o noclobber; echo a > new; cat new; echo b > new; set +o noclobber', 'a\n', 'bash: new: cannot overwrite existing file\n'],
+      ['echo a > /dev/null; echo b > /dev/stdout; f=/dev/stderr; echo c > $f', 'b\n', 'c\n'],
+      ['x=1 > v; echo $x; ls v', '1\nv\n', ''],
+      ['seq 3 | wc -l > c; echo ${PIPESTATUS[1]}; cat c', '0\n3\n', ''],
+      ['{ echo x > about; } 2> e; cat e', 'bash: about: Permission denied\n', ''],
+      ['g() { echo y > z; }; type g', 'g is a function\ng () \n{ \n    echo y\n}\n', ''],
+    ];
+    for (const [line, stdout, stderr] of cases) expect(await runLine(shell, line), line).toMatchObject({ stdout, stderr });
+    // A command's own write past the limit isn't a redirect's.
+    expect((await runLine(shell, 'seq 300000 | tee big2 > /dev/null; echo $?')).stderr).toMatch(/^tee: /);
+  });
+
   test('a missing file or folder keeps its own reason', async () => {
     const shell = shellFor('every-field');
     expect((await runLine(shell, 'echo hi | tee nope/x')).stderr).toBe('tee: nope/x: No such file or directory\n');
-    expect((await runLine(shell, 'sed -i s/a/b/ work/nope')).stderr).toBe('sed: work/nope: No such file or directory\n');
+    expect((await runLine(shell, 'sed -i s/a/b/ work/nope')).stderr).toBe("sed: can't read work/nope: No such file or directory\n");
   });
 
   test('rm -rf ~ removes the visitor’s files and names each protected file once', async () => {
@@ -326,5 +369,29 @@ describe('006-terminal-FR-049: ls -l shows who owns what', () => {
     expect(block).toContain('"cat ~/about"');
     const piped = await runLine(shell, 'ls -l | cat');
     expect(piped.recorded).toEqual([]);
+  });
+});
+
+describe('006-terminal-FR-073 and 006-terminal-FR-068: a file’s bytes as written', () => {
+  test('printf and echo -e write a byte that isn’t UTF-8 as one byte, to a file and through a pipe', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'printf "\\xff\\xfe" > bin; wc -c bin')).stdout).toBe('2 bin\n');
+    expect((await runLine(shell, 'printf "\\xff\\xfe" | wc -c; cat bin | wc -c; printf "\\377" | wc -c; echo -ne "\\xff" | wc -c')).stdout).toBe('2\n2\n1\n1\n');
+    expect((await runLine(shell, 'printf "\\xff" | cat > b2; wc -c b2')).stdout).toBe('1 b2\n');
+  });
+
+  test('valid UTF-8 prints as the character it is, however it was written', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'printf "\\xc3\\xa9"; echo; printf "é" | wc -c; printf "\\xc3\\xa9" > u; wc -c u; cat u')).stdout).toBe('é\n2\n2 u\né');
+  });
+
+  test('a restarted worker gets the same bytes back', async () => {
+    const shell = shellFor('every-field');
+    const { files } = await runLine(shell, 'printf "\\xff\\xfe" > bin');
+    expect(files?.binary).toEqual(['/home/guest/bin']);
+    const next = shellFor('every-field');
+    await next.warm();
+    await next.restore(shell.state, files!);
+    expect((await runLine(next, 'wc -c bin')).stdout).toBe('2 bin\n');
   });
 });

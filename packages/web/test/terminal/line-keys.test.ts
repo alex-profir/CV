@@ -60,6 +60,21 @@ async function cursorFollows(page: Page, step: string): Promise<number> {
 }
 
 describe('006-terminal-FR-074: the readline keys on macOS', () => {
+  // T307, T345: a character is whole.
+  test('Ctrl+B and Ctrl+F step over an emoji as one character', async () => {
+    const page = await terminalOn('macOS');
+    await runGroup(page, 'about');
+    await typed(page, 'a😀b');
+    await page.keyboard.press('Control+B');
+    expect(await cursorFollows(page, 'Ctrl+B past b')).toBe(3);
+    await page.keyboard.press('Control+B');
+    expect(await cursorFollows(page, 'Ctrl+B past the emoji')).toBe(1);
+    await page.keyboard.press('Control+F');
+    expect(await cursorFollows(page, 'Ctrl+F past the emoji')).toBe(3);
+    expect((await field(page)).value).toBe('a😀b');
+    await page.close();
+  });
+
   test('Ctrl+A, Ctrl+E, Ctrl+B and Ctrl+F move; Ctrl+K, Ctrl+U and Ctrl+W delete; Ctrl+L clears the output and keeps the line', async () => {
     const page = await terminalOn('macOS');
     await runGroup(page, 'about');

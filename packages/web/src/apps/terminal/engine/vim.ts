@@ -42,6 +42,8 @@ export type VimState = {
   mode: 'normal' | 'insert';
   // 0-based.
   cursor: Cursor;
+  // The column `j` and `k` keep to, past shorter lines (T300).
+  wanted: number | null;
   numbers: boolean;
   search: { text: string; matches: readonly Match[]; current: number } | null;
   // A `/` or `:` being typed.
@@ -64,6 +66,9 @@ export type VimState = {
   // A write on its way to the worker, for its `{ wrote }` answer.
   // `lines` are those written, for `saved` when the answer comes.
   writing: { name: string; own: boolean; then: 'stay' | 'quit'; lines: readonly string[] } | null;
+  // `3ix<Esc>`: how many times what's typed goes in, by the key that began it,
+  // and where in `typing` it starts.
+  repeating: { count: number; key: string; from: number } | null;
 };
 
 // `page`: the lines Page Up and Page Down move, from the view's height.
@@ -82,6 +87,9 @@ export type VimInput =
 // buffer while the write is on its way.
 export type VimWrite = { write: { path: string; text: string; force: boolean; own?: string }; then: 'stay' | 'quit'; state: VimState };
 export type VimOutput = VimState | 'quit' | VimWrite;
+
+// An empty file's buffer, told from a file of one blank line (T309).
+const NO_LINES: readonly string[] = [''];
 
 const DEFAULT_PAGE = 20;
 // vim's default undolevels.
@@ -145,31 +153,39 @@ function lastColumn(state: VimState, line: number): number {
   return state.mode === 'insert' ? length : Math.max(0, length - 1);
 }
 
-// Whether `text[at]` is the second half of a surrogate pair.
-const isLowSurrogate = (text: string, at: number) => /[\uDC00-\uDFFF]/.test(text[at] ?? '') && /[\uD800-\uDBFF]/.test(text[at - 1] ?? '');
-
-// The index `count` characters on from `at`, a character outside the BMP
-// counting once.
-function charsOn(text: string, at: number, count: number): number {
-  let end = at;
-  for (let left = count; left > 0 && end < text.length; left -= 1) end += /[\uD800-\uDBFF]/.test(text[end]!) && isLowSurrogate(text, end + 1) ? 2 : 1;
-  return end;
+// A character is whole (T292): the column of the one `by` characters from
+// `column`, within the line, as UTF-16 holds some in two units.
+function columnBy(text: string, column: number, by: number): number {
+  let at = column;
+  for (let times = Math.abs(by); times > 0; times -= 1) {
+    if (by > 0) at += text.codePointAt(at)! > 0xffff ? 2 : 1;
+    else at -= text.codePointAt(at - 2)! > 0xffff ? 2 : 1;
+  }
+  return Math.max(0, Math.min(at, text.length));
 }
+
 
 function moveTo(state: VimState, line: number, column = state.cursor.column): VimState {
   const target = shownLine(state, Math.max(0, Math.min(line, state.lines.length - 1)));
   const last = lastColumn(state, target);
   let at = Math.max(0, Math.min(column, last));
   // Never inside a surrogate pair: past it moving right, else onto its start.
-  if (isLowSurrogate(lineText(state, target), at)) at = target === state.cursor.line && column > state.cursor.column && at + 1 <= last ? at + 1 : at - 1;
+  if (lineText(state, target).codePointAt(at - 1)! > 0xffff) at += target === state.cursor.line && column > state.cursor.column && at < last ? 1 : -1;
   return { ...state, cursor: { line: target, column: at } };
 }
+
+// A line by number, on its first non-blank (`2G`, `gg`, `G`, `:2`).
+const toLine = (state: VimState, line: number): VimState => {
+  const target = Math.max(0, Math.min(line, state.lines.length - 1));
+  return moveTo(state, target, firstNonBlank(lineText(state, target)));
+};
 
 // Moves `by` shown lines.
 function step(state: VimState, by: number): VimState {
   const shown = shownLines(state);
   const at = shown.indexOf(state.cursor.line);
-  return moveTo(state, shown[Math.max(0, Math.min(at + by, shown.length - 1))]!);
+  const wanted = state.wanted ?? state.cursor.column;
+  return { ...moveTo(state, shown[Math.max(0, Math.min(at + by, shown.length - 1))]!, wanted), wanted };
 }
 
 // Words as vim's `w` and `b` see them: runs of letters, digits and `_`, or
@@ -177,7 +193,8 @@ function step(state: VimState, by: number): VimState {
 const wordKind = (char: string | undefined) => (char === undefined || /\s/.test(char) ? 0 : /\w/.test(char) ? 1 : 2);
 
 function wordStarts(text: string): number[] {
-  const starts: number[] = [];
+  // An empty line is a word.
+  const starts: number[] = text === '' ? [0] : [];
   for (let index = 0; index < text.length; index += 1) {
     const kind = wordKind(text[index]);
     if (kind !== 0 && kind !== wordKind(text[index - 1])) starts.push(index);
@@ -195,7 +212,9 @@ function word(state: VimState, forward: boolean): VimState {
     const found = forward ? starts.find((start) => start > column) : starts.findLast((start) => start < column);
     if (found !== undefined) return { ...state, cursor: { line, column: found } };
     at += forward ? 1 : -1;
-    if (at < 0 || at >= shown.length) return state;
+    if (at < 0) return moveTo(state, shown[0]!, 0);
+    // Past the last word: its last letter.
+    if (at >= shown.length) return moveTo(state, line, Math.max(0, lineText(state, line).length - 1));
     column = forward ? -1 : Number.POSITIVE_INFINITY;
   }
   return state;
@@ -214,7 +233,21 @@ function toggleFold(state: VimState, fold: JsonFold, open?: boolean): VimState {
   return setClosed(state, closed);
 }
 
+// `{` and `}` in text: the blank line before or after this paragraph, or the
+// file's start or end (T292).
+function paragraphs(state: VimState, forward: boolean): VimState {
+  const by = forward ? 1 : -1;
+  const { lines } = state;
+  let { line } = state.cursor;
+  while (lines[line] === '') line += by;
+  while (lines[line] !== undefined && lines[line] !== '') line += by;
+  if (lines[line] === '') return moveTo(state, line, 0);
+  const end = forward ? Number.POSITIVE_INFINITY : 0;
+  return moveTo(state, end, end);
+}
+
 function sections(state: VimState, forward: boolean): VimState {
+  if (state.source.type !== 'json') return paragraphs(state, forward);
   const starts = state.folds.map((fold) => fold.start);
   const line = state.cursor.line;
   const target = forward ? (starts.find((start) => start > line) ?? state.lines.length - 1) : (starts.findLast((start) => start < line) ?? 0);
@@ -258,7 +291,7 @@ function nextMatch(state: VimState, by: 1 | -1): VimState {
   return showMatch(state, (search.current + by + count) % count);
 }
 
-const sameLines = (a: readonly string[], b: readonly string[]) => a === b || (a.length === b.length && a.every((line, index) => line === b[index]));
+const sameLines = (a: readonly string[], b: readonly string[]) => a === b || ((a === NO_LINES) === (b === NO_LINES) && a.length === b.length && a.every((line, index) => line === b[index]));
 
 const firstNonBlank = (text: string) => Math.max(0, text.search(/\S/));
 
@@ -266,7 +299,7 @@ const firstNonBlank = (text: string) => Math.max(0, text.search(/\S/));
 // a read-only buffer warns, and the cursor stays on a shown line. In insert
 // mode a closed fold the cursor lands in opens.
 function withLines(state: VimState, lines: readonly string[], cursor: Cursor): VimState {
-  const buffer = lines.length === 0 ? [''] : lines;
+  const buffer = lines.length === 0 ? NO_LINES : lines;
   const folds = foldsOf(buffer, state.source.type);
   const warn = state.source.file.readonly && !state.warned && !sameLines(buffer, state.lines);
   const searched = state.search === null ? null : findMatches(buffer, state.search.text);
@@ -302,7 +335,8 @@ function back(state: VimState, count: number): VimState {
   for (let times = 0; times < count; times += 1) {
     const before = next.undo.at(-1);
     if (before === undefined) return times === 0 ? { ...next, message: { kind: 'oldest' } } : next;
-    next = { ...withLines(next, before.lines, before.cursor), undo: next.undo.slice(0, -1), redo: [...next.redo, stepOf(next)], message: { kind: 'none' } };
+    // A redo puts the cursor where the change began, as this undo does (T375).
+    next = { ...withLines(next, before.lines, before.cursor), undo: next.undo.slice(0, -1), redo: [...next.redo, { ...stepOf(next), cursor: before.cursor }], message: { kind: 'none' } };
   }
   return next;
 }
@@ -312,7 +346,7 @@ function forward(state: VimState, count: number): VimState {
   for (let times = 0; times < count; times += 1) {
     const after = next.redo.at(-1);
     if (after === undefined) return times === 0 ? { ...next, message: { kind: 'newest' } } : next;
-    next = { ...withLines(next, after.lines, after.cursor), redo: next.redo.slice(0, -1), undo: [...next.undo, stepOf(next)], message: { kind: 'none' } };
+    next = { ...withLines(next, after.lines, after.cursor), redo: next.redo.slice(0, -1), undo: [...next.undo, { ...stepOf(next), cursor: after.cursor }], message: { kind: 'none' } };
   }
   return next;
 }
@@ -343,7 +377,9 @@ function insertMode(state: VimState, cursor: Cursor, entered: Step = stepOf(stat
 function enter(state: VimState, column: (text: string, at: number) => number): VimState {
   const open = opened(state);
   const { line, column: at } = open.cursor;
-  return insertMode(open, { line, column: column(lineText(open, line), at) }, stepOf(state));
+  const cursor = { line, column: column(lineText(open, line), at) };
+  // Undo and redo come back to where the typing began (T375).
+  return insertMode(open, cursor, { ...stepOf(state), cursor });
 }
 
 // Where `count` words end from `column`, within the line: past the blanks after
@@ -364,6 +400,9 @@ function replaceLine(state: VimState, line: number, text: string): string[] {
   lines[line] = text;
   return lines;
 }
+
+// vim refuses a count on the last line, and stops a longer one at the last.
+const cantCount = (state: VimState, count: number) => count > 1 && shownLines(state).at(-1) === state.cursor.line;
 
 function deleteLines(state: VimState, count: number): VimState {
   const { start, end } = lineSpan(state, count);
@@ -391,16 +430,68 @@ function deleteChars(state: VimState, count: number): VimState {
   const { line, column } = open.cursor;
   const text = lineText(open, line);
   if (text === '') return open;
-  const end = charsOn(text, column, count);
+  const end = columnBy(text, column, count);
   return { ...change(open, replaceLine(open, line, text.slice(0, column) + text.slice(end)), { line, column }), register: { text: text.slice(column, end), lines: false } };
+}
+
+// `2cw` is `2e`: past blanks and empty lines, to the last word's end, or null
+// within the line.
+function changeEnd(lines: readonly string[], from: Cursor, count: number): Cursor | null {
+  let { line, column } = from;
+  for (let times = 0; times < count; times += 1) {
+    if (times > 0) column += 1;
+    while (wordKind(lines[line]?.[column]) === 0) {
+      // Out of words: to the end of the text (T398).
+      if (line >= lines.length) return lines.length - 1 === from.line ? null : { line: lines.length - 1, column: lines.at(-1)!.length };
+      if (column >= lines[line]!.length) {
+        line += 1;
+        column = 0;
+      } else column += 1;
+    }
+    const kind = wordKind(lines[line]![column]);
+    while (wordKind(lines[line]![column + 1]) === kind) column += 1;
+  }
+  return line === from.line ? null : { line, column: column + 1 };
+}
+
+// `d3w` and `c3w` past the line's end (T300): as far as `count` words go, and
+// the last, at a line's end, ends there. From the line's first non-blank to a
+// line's end, it takes whole lines. Null within the line.
+function crossLines(state: VimState, operator: 'd' | 'c' | 'y', count: number): VimState | null {
+  const { line, column } = state.cursor;
+  let to: Cursor | null;
+  if (operator === 'c') to = changeEnd(state.lines, state.cursor, count);
+  else {
+    const at = repeated(state, count - 1, (from) => word(from, true));
+    const text = lineText(state, at.cursor.line);
+    const end = wordEnd(text, at.cursor.column, 1, true);
+    to = at.cursor.line === line && end < text.length ? null : { line: at.cursor.line, column: end };
+    if (to?.line === line) to = null;
+  }
+  if (to === null) return null;
+  const first = lineText(state, line);
+  const last = lineText(state, to.line);
+  // Only a delete turns into whole lines, as vim's `d` alone does (T398).
+  const whole = operator === 'd' && column <= firstNonBlank(first) && to.column >= last.length;
+  const between = state.lines.slice(line + 1, to.line);
+  const register = whole ? { text: state.lines.slice(line, to.line + 1).join('\n'), lines: true } : { text: [first.slice(column), ...between, last.slice(0, to.column)].join('\n'), lines: false };
+  if (operator === 'y') return { ...state, register };
+  const lines = [...state.lines.slice(0, line), ...(whole ? [] : [first.slice(0, column) + last.slice(to.column)]), ...state.lines.slice(to.line + 1)];
+  const cursor = { line: Math.min(line, Math.max(0, lines.length - 1)), column: whole ? firstNonBlank(lines[line] ?? '') : column };
+  if (operator === 'd') return { ...change(state, lines, cursor), register };
+  return { ...insertMode(withLines({ ...state, mode: 'insert' }, lines, cursor), cursor, stepOf(state)), register };
 }
 
 function operateWord(state: VimState, operator: 'd' | 'c' | 'y', count: number): VimState {
   const open = opened(state);
   const { line, column } = open.cursor;
   const text = lineText(open, line);
+  // An empty line counts as a word, and deleting it takes the line.
+  if (operator === 'd' && text === '' && open.lines.length > 1 && count === 1) return deleteLines(open, 1);
+  const across = count > 1 ? crossLines(open, operator, count) : null;
+  if (across !== null) return across;
   const end = wordEnd(text, column, count, operator !== 'c');
-  const register = { text: text.slice(column, end), lines: false };
+  const register = { text: text.slice(column, end), lines: text === '' };
   if (operator === 'y') return { ...open, register };
   const lines = replaceLine(open, line, text.slice(0, column) + text.slice(end));
   if (operator === 'd') return { ...change(open, lines, { line, column }), register };
@@ -408,15 +499,20 @@ function operateWord(state: VimState, operator: 'd' | 'c' | 'y', count: number):
   return { ...insertMode(withLines({ ...open, mode: 'insert' }, lines, cursor), cursor, stepOf(state)), register };
 }
 
-function toEnd(state: VimState, then: 'stay' | 'insert'): VimState {
+// `D` and `C`: to the line's end, and with a count the next lines too. From
+// the line's first non-blank, `3D` takes whole lines, as vim makes such a
+// motion; `C` leaves one line to type on.
+function toEnd(state: VimState, then: 'stay' | 'insert', count: number): VimState {
+  if (cantCount(state, count)) return state;
   const open = opened(state);
   const { line, column } = open.cursor;
+  const last = Math.min(line + count - 1, open.lines.length - 1);
   const text = lineText(open, line);
-  const register = { text: text.slice(column), lines: false };
-  const lines = replaceLine(open, line, text.slice(0, column));
-  if (then === 'stay') return { ...change(open, lines, { line, column }), register };
+  if (then === 'stay' && count > 1 && column <= firstNonBlank(text)) return deleteLines(open, count);
+  const register = { text: [text.slice(column), ...open.lines.slice(line + 1, last + 1)].join('\n'), lines: false };
+  const lines = [...open.lines.slice(0, line), text.slice(0, column), ...open.lines.slice(last + 1)];
   const cursor = { line, column };
-  return { ...insertMode(withLines({ ...open, mode: 'insert' }, lines, cursor), cursor, stepOf(state)), register };
+  return { ...(then === 'stay' ? change(open, lines, cursor) : insertMode(withLines({ ...open, mode: 'insert' }, lines, cursor), cursor, stepOf(state))), register };
 }
 
 function replaceChars(state: VimState, char: string, count: number): VimState {
@@ -424,9 +520,8 @@ function replaceChars(state: VimState, char: string, count: number): VimState {
   const { line, column } = open.cursor;
   const text = lineText(open, line);
   // vim refuses when fewer characters are left than the count.
-  if (char.length !== 1) return state;
-  const end = charsOn(text, column, count);
-  if ([...text.slice(column, end)].length < count) return state;
+  const end = columnBy(text, column, count);
+  if (char.length !== 1 || [...text.slice(column)].length < count) return state;
   return change(open, replaceLine(open, line, text.slice(0, column) + char.repeat(count) + text.slice(end)), { line, column: column + count - 1 });
 }
 
@@ -438,7 +533,7 @@ function join(state: VimState, count: number): VimState {
   for (let at = start + 1; at <= end; at += 1) {
     const next = state.lines[at]!.replace(/^\s+/, '');
     column = text.length;
-    text = next === '' || /\s$/.test(text) || next.startsWith(')') ? text + next : `${text} ${next}`;
+    text = next === '' || text === '' || /\s$/.test(text) || next.startsWith(')') ? text + next : `${text} ${next}`;
   }
   return change(state, [...state.lines.slice(0, start), text, ...state.lines.slice(end + 1)], { line: start, column });
 }
@@ -457,6 +552,11 @@ function put(state: VimState, after: boolean, count: number): VimState {
   const text = lineText(open, line);
   const at = after && text !== '' ? column + 1 : column;
   const added = register.text.repeat(count);
+  // Text that spans lines stays so, and the cursor goes to its start.
+  if (added.includes('\n')) {
+    const pieces = (text.slice(0, at) + added + text.slice(at)).split('\n');
+    return change(open, [...open.lines.slice(0, line), ...pieces, ...open.lines.slice(line + 1)], { line, column: at });
+  }
   return change(open, replaceLine(open, line, text.slice(0, at) + added + text.slice(at)), { line, column: at + added.length - 1 });
 }
 
@@ -471,14 +571,14 @@ function openLine(state: VimState, below: boolean): VimState {
 function leaveInsert(state: VimState): VimState {
   const { line, column } = state.cursor;
   const done: VimState = { ...state, mode: 'normal', entered: null };
-  const left = moveTo(done, line, column - 1);
+  const left = moveTo(done, line, columnBy(lineText(done, line), column, -1));
   const before = state.entered;
   return before === null || sameLines(before.lines, state.lines) ? left : pushed(left, before);
 }
 
 // The buffer's text as written: vim's final line break, and nothing for an
 // empty buffer.
-const fileText = (state: VimState) => (state.lines.length === 1 && state.lines[0] === '' ? '' : `${state.lines.join('\n')}\n`);
+const fileText = (state: VimState) => (state.lines === NO_LINES ? '' : `${state.lines.join('\n')}\n`);
 
 const vimMessage = (state: VimState, code: MessageCode, arg?: string): VimState => ({ ...state, message: { kind: 'vim', code, ...(arg === undefined ? {} : { arg }) } });
 
@@ -535,7 +635,7 @@ function command(state: VimState, typed: string): VimOutput {
   if (text === 'set nonu' || text === 'set nonumber') return { ...state, numbers: false };
   if (text === 'redo' || text === 'red') return forward(state, 1);
   if (text === 'undo' || text === 'u') return back(state, 1);
-  if (/^\d+$/.test(text)) return moveTo(state, Number(text) - 1, 0);
+  if (/^\d+$/.test(text)) return toLine(state, Number(text) - 1);
   const write = /^(w|write|wq|x|xit)(!)?(?:\s+(.+))?$/.exec(text);
   if (write !== null) {
     const [, name, bang, target] = write;
@@ -546,7 +646,7 @@ function command(state: VimState, typed: string): VimOutput {
 }
 
 export function openVim(source: VimSource): VimState {
-  const lines = source.text.split('\n');
+  const lines = source.text === '' && source.file.blank !== true ? NO_LINES : source.text.split('\n');
   const folds = foldsOf(lines, source.type);
   return {
     source,
@@ -555,6 +655,7 @@ export function openVim(source: VimSource): VimState {
     closed: new Set(folds.map((fold) => fold.key)),
     mode: 'normal',
     cursor: { line: folds[0]?.start ?? 0, column: 0 },
+    wanted: null,
     numbers: true,
     search: null,
     entry: null,
@@ -571,6 +672,7 @@ export function openVim(source: VimSource): VimState {
     saved: lines,
     entered: null,
     writing: null,
+    repeating: null,
   };
 }
 
@@ -591,7 +693,7 @@ function pendingKey(state: VimState, pending: Pending, name: string): VimOutput 
     if (name === 'Z') return state.modified ? writeCommand(done, 'quit', false, null) : 'quit';
     return name === 'Q' ? 'quit' : done;
   }
-  if (pending.prefix === 'g') return name === 'g' ? moveTo(done, pending.count === null ? 0 : pending.count - 1, 0) : done;
+  if (pending.prefix === 'g') return name === 'g' ? toLine(done, pending.count === null ? 0 : pending.count - 1) : done;
   if (pending.prefix === 'z') {
     const fold = foldAt(done, done.cursor.line);
     switch (name) {
@@ -610,10 +712,10 @@ function pendingKey(state: VimState, pending: Pending, name: string): VimOutput 
     }
   }
   const { operator } = pending;
-  if (operator === 'd') return name === 'd' ? deleteLines(done, count) : name === 'w' ? operateWord(done, 'd', count) : done;
-  if (operator === 'c') return name === 'c' ? changeLines(done, count) : name === 'w' ? operateWord(done, 'c', count) : done;
-  if (operator === 'y') return name === 'y' ? yankLines(done, count) : name === 'w' ? operateWord(done, 'y', count) : done;
-  return done;
+  if (operator === null) return done;
+  if (name === 'w') return operateWord(done, operator, count);
+  if (name !== operator || cantCount(done, count)) return done;
+  return (operator === 'd' ? deleteLines : operator === 'c' ? changeLines : yankLines)(done, count);
 }
 
 function normalKey(state: VimState, input: { key: string; page?: number }): VimOutput {
@@ -633,10 +735,10 @@ function normalKey(state: VimState, input: { key: string; page?: number }): VimO
       return step(done, -count);
     case 'h':
     case 'ArrowLeft':
-      return moveTo(done, line, column - count);
+      return moveTo(done, line, columnBy(lineText(done, line), column, -count));
     case 'l':
     case 'ArrowRight':
-      return moveTo(done, line, column + count);
+      return moveTo(done, line, columnBy(lineText(done, line), column, count));
     case 'w':
       return repeated(done, count, (from) => word(from, true));
     case 'b':
@@ -648,11 +750,19 @@ function normalKey(state: VimState, input: { key: string; page?: number }): VimO
     case 'End':
       return moveTo(step(done, count - 1), step(done, count - 1).cursor.line, Number.POSITIVE_INFINITY);
     case 'G':
-      return moveTo(done, pending?.count == null ? done.lines.length - 1 : pending.count - 1, 0);
-    case '{':
-      return repeated(done, count, (from) => sections(from, false));
-    case '}':
-      return repeated(done, count, (from) => sections(from, true));
+      return toLine(done, pending?.count == null ? done.lines.length - 1 : pending.count - 1);
+    case '{': {
+      // vim fails a count that runs out of paragraphs.
+      const once = repeated(done, count - 1, (from) => sections(from, false));
+      const to = sections(once, false);
+      return count > 1 && to.cursor.line === once.cursor.line && to.cursor.column === once.cursor.column ? done : to;
+    }
+    case '}': {
+      // vim fails a count that runs out of paragraphs.
+      const once = repeated(done, count - 1, (from) => sections(from, true));
+      const to = sections(once, true);
+      return count > 1 && to.cursor.line === once.cursor.line && to.cursor.column === once.cursor.column ? done : to;
+    }
     case 'PageDown':
       return step(done, count * (input.page ?? DEFAULT_PAGE));
     case 'PageUp':
@@ -694,9 +804,9 @@ function normalKey(state: VimState, input: { key: string; page?: number }): VimO
     case 'x':
       return deleteChars(done, count);
     case 'D':
-      return toEnd(done, 'stay');
+      return toEnd(done, 'stay', count);
     case 'C':
-      return toEnd(done, 'insert');
+      return toEnd(done, 'insert', count);
     case 'J':
       return join(done, count);
     case 'p':
@@ -724,14 +834,14 @@ function insertInput(state: VimState, input: VimInput): VimState {
   if ('delete' in input) {
     if (input.delete === 'backward') {
       if (column > 0) {
-        const size = /[\uDC00-\uDFFF]/.test(text[column - 1]!) && column > 1 ? 2 : 1;
-        return withLines(state, replaceLine(state, line, text.slice(0, column - size) + text.slice(column)), { line, column: column - size });
+        const at = columnBy(text, column, -1);
+        return withLines(state, replaceLine(state, line, text.slice(0, at) + text.slice(column)), { line, column: at });
       }
       if (line === 0) return state;
       const previous = state.lines[line - 1]!;
       return withLines(state, [...state.lines.slice(0, line - 1), previous + text, ...state.lines.slice(line + 1)], { line: line - 1, column: previous.length });
     }
-    if (column < text.length) return withLines(state, replaceLine(state, line, text.slice(0, column) + text.slice(column + (/[\uD800-\uDBFF]/.test(text[column]!) ? 2 : 1))), { line, column });
+    if (column < text.length) return withLines(state, replaceLine(state, line, text.slice(0, column) + text.slice(columnBy(text, column, 1))), { line, column });
     if (line + 1 >= state.lines.length) return state;
     return withLines(state, [...state.lines.slice(0, line), text + state.lines[line + 1]!, ...state.lines.slice(line + 2)], { line, column });
   }
@@ -742,9 +852,9 @@ function insertInput(state: VimState, input: VimInput): VimState {
       case 'Tab':
         return insertInput(state, { text: '\t' });
       case 'ArrowLeft':
-        return moveTo(state, line, column - 1);
+        return moveTo(state, line, columnBy(text, column, -1));
       case 'ArrowRight':
-        return moveTo(state, line, column + 1);
+        return moveTo(state, line, columnBy(text, column, 1));
       case 'ArrowUp':
         return step(state, -1);
       case 'ArrowDown':
@@ -758,6 +868,24 @@ function insertInput(state: VimState, input: VimInput): VimState {
     }
   }
   return state;
+}
+
+// The keys whose count repeats what's typed after them (T292).
+const REPEATS = /^[iaAIoO]$/;
+
+// At Escape, what was typed goes in `count - 1` more times, from the cursor, or
+// on a line opened each time. A move in between ends it, as in vim.
+function repeatTyped(state: VimState): VimState {
+  const { repeating } = state;
+  if (repeating === null) return state;
+  const typed = state.typing.slice(repeating.from);
+  if (typed.some((input) => 'key' in input && input.key !== 'Tab')) return state;
+  let next = state;
+  for (let times = 1; times < repeating.count; times += 1) {
+    if (/[oO]/.test(repeating.key)) next = { ...openLine(next, true), entered: state.entered };
+    for (const input of typed) next = insertInput(next, input);
+  }
+  return next;
 }
 
 // One input, with `.`'s record of the change it belongs to.
@@ -778,9 +906,9 @@ function apply(state: VimState, input: VimInput): VimOutput {
   }
   if (state.mode === 'insert') {
     if ('key' in input && (input.ctrl === true || input.alt === true || input.meta === true)) return state;
-    const next = insertInput(state, input);
+    const next = insertInput('key' in input && input.key === 'Escape' ? repeatTyped(state) : state, input);
     const typing = [...state.typing, input];
-    if (next.mode === 'normal') return { ...next, last: typing, typing: [] };
+    if (next.mode === 'normal') return { ...next, last: typing, typing: [], repeating: null };
     return { ...next, typing };
   }
   if (!('key' in input)) return state;
@@ -793,7 +921,11 @@ function apply(state: VimState, input: VimInput): VimOutput {
   const next = normalKey(state, input);
   if (next === 'quit' || 'write' in next) return next;
   const typing = [...state.typing, input];
-  if (next.pending !== null || next.mode === 'insert') return { ...next, typing };
+  if (next.mode === 'insert') {
+    const count = state.pending?.count ?? 1;
+    return { ...next, typing, repeating: count > 1 && REPEATS.test(input.key) ? { count, key: input.key, from: typing.length } : null };
+  }
+  if (next.pending !== null) return { ...next, typing };
   const undoKey = input.key === 'u';
   const changed = !undoKey && next.lines !== state.lines;
   return { ...next, typing: [], ...(changed ? { last: typing } : {}) };
@@ -815,4 +947,11 @@ function repeatLast(state: VimState): VimState {
   return { ...next, last: inputs, typing: [] };
 }
 
-export const vimReducer = (state: VimState, input: VimInput): VimOutput => apply(state, input);
+export function vimReducer(state: VimState, input: VimInput): VimOutput {
+  const out = apply(state, input);
+  if (out === 'quit' || 'write' in out || out.pending !== null || out.wanted === null) return out;
+  // Only `j` and `k` keep it; `$` remembers the line's end.
+  const key = 'key' in input ? input.key : '';
+  if (/^(?:[jk]|Arrow(?:Up|Down))$/.test(key)) return out;
+  return { ...out, wanted: key === '$' || key === 'End' ? Number.POSITIVE_INFINITY : null };
+}

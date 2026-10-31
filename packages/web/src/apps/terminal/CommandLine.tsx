@@ -43,6 +43,10 @@ const wordStart = (text: string, at: number) => {
   return start;
 };
 
+// The caret a character before or after `at`, a character being whole (T307).
+const before = (text: string, at: number) => (at > 1 && text.codePointAt(at - 2)! > 0xffff ? at - 2 : Math.max(0, at - 1));
+const after = (text: string, at: number) => Math.min(text.length, at + (text.codePointAt(at)! > 0xffff ? 2 : 1));
+
 // Deletes a range of the field so the system's undo can bring it back.
 function deleteRange(input: HTMLInputElement, start: number, end: number) {
   if (start === end) return;
@@ -55,9 +59,10 @@ function deleteRange(input: HTMLInputElement, start: number, end: number) {
 
 // Tab's state (data-model.md Completion), one for the command line and the
 // pocket's Tab key: the line and cursor after the last Tab, so the next counts
-// as the second in a row, and the matches a question waits on.
+// as the second in a row, and the matches a question waits on, with the line
+// to give back if the answer is typed into it.
 let tabbed: { line: string; cursor: number } | null = null;
-let asked: { matches: readonly CompletionMatch[] } | null = null;
+let asked: { matches: readonly CompletionMatch[]; line: string; cursor: number } | null = null;
 
 export const forgetTab = () => {
   tabbed = null;
@@ -73,10 +78,32 @@ function replaceRange(input: HTMLInputElement, start: number, end: number, text:
   }
 }
 
+// A phone's keyboard may say nothing in its key events (`Unidentified`), so a
+// question's answer is read from the text it would add, and the line stays as
+// it was (FR-076, FR-078). True when the input was that answer.
+function answerTyped(input: HTMLInputElement): boolean {
+  if (asked === null) return false;
+  const { matches, line, cursor } = asked;
+  asked = null;
+  const added = input.value.length - line.length;
+  const typed = added > 0 ? input.value.slice(cursor, cursor + added) : '';
+  if (typed.toLowerCase() === 'y') session.answerList(matches);
+  input.value = line;
+  input.setSelectionRange(cursor, cursor);
+  return true;
+}
+
 // Tab's completion from the field's text and caret (FR-076, FR-078). The
 // answer is applied only if the line and caret are as they were: a key typed
-// meanwhile wins.
+// meanwhile wins. With a question waiting, only the pocket's Tab key gets
+// here: it answers yes, as a phone may have no keyboard open to answer with.
 export async function tabComplete(input: HTMLInputElement) {
+  if (asked !== null) {
+    const { matches } = asked;
+    asked = null;
+    session.answerList(matches);
+    return;
+  }
   const line = input.value;
   const cursor = input.selectionStart ?? line.length;
   if (line.slice(0, cursor).trim() === '') return;
@@ -92,19 +119,13 @@ export async function tabComplete(input: HTMLInputElement) {
     return;
   }
   if (!second || answer.matches.length < 2) return;
-  tabbed = null;
   if (answer.matches.length < COMPLETION_QUERY) session.showList(line, answer.matches);
   else {
-    asked = { matches: answer.matches };
+    tabbed = null;
+    asked = { matches: answer.matches, line, cursor };
     session.askList(line, answer.matches.length);
   }
 }
-
-// Whether `text[at]` is the second half of a surrogate pair.
-const isLowSurrogate = (text: string, at: number) => {
-  const code = text.charCodeAt(at);
-  return code >= 0xdc00 && code <= 0xdfff;
-};
 
 // The mirror's text: runs of the line, plain or selected, and the cursor's
 // block, which draws no text past the line's end.
@@ -266,13 +287,11 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
         move(length);
         return true;
       case 'b':
-        move(Math.max(0, caret - (caret >= 2 && isLowSurrogate(input.value, caret - 1) ? 2 : 1)));
+        move(before(input.value, caret));
         return true;
-      case 'f': {
-        const from = input.selectionEnd ?? caret;
-        move(Math.min(length, from + (isLowSurrogate(input.value, from + 1) ? 2 : 1)));
+      case 'f':
+        move(after(input.value, input.selectionEnd ?? caret));
         return true;
-      }
       case 'k':
         deleteRange(input, caret, length);
         return true;
@@ -298,8 +317,10 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
     // Keys that pick or end an IME's composition are the IME's.
     if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const plain = !event.ctrlKey && !event.altKey && !event.metaKey;
-    // A question takes one key: y lists, any other adds nothing.
+    // A question takes one key: y lists, any other adds nothing. A key the
+    // browser can't name is read from what it types (`answerTyped`).
     // Shift+Tab still leaves (SC-016); Shift+Y answers as y does.
+    if (asked !== null && (event.key === 'Unidentified' || event.key === 'Process')) return;
     if (asked !== null && plain && event.key !== 'Shift' && !(event.shiftKey && event.key === 'Tab')) {
       const { matches } = asked;
       asked = null;
@@ -342,10 +363,10 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
     event.preventDefault();
     const input = event.currentTarget;
     const start = input.selectionStart ?? draft.length;
-    const end = input.selectionEnd ?? start;
-    const next = (draft.slice(0, start) + pasted.replace(BREAKS, ' ') + draft.slice(end)).slice(0, TERMINAL.maxLength);
-    onDraft(next);
-    setCaret(Math.min(next.length, start + pasted.length));
+    // Through the field's own editing: the caret stays after the paste, and
+    // its undo takes it back (T312).
+    replaceRange(input, start, input.selectionEnd ?? start, pasted.replace(BREAKS, ' '));
+    read(input);
   };
 
   return (
@@ -373,6 +394,7 @@ export function CommandLine({ draft, cwd, showTime, inputRef, onDraft, onSubmit,
           maxLength={TERMINAL.maxLength}
           data-focus-home=""
           onChange={(event) => {
+            if (answerTyped(event.currentTarget)) return;
             onDraft(event.currentTarget.value);
             track(event);
           }}

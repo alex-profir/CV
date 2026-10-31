@@ -7,7 +7,7 @@ import { resume as realResume, siteData } from '@cv/content';
 import { dateRange } from '../../../src/format/dates.ts';
 import { locationLine } from '../../../src/format/location.ts';
 import { withoutScheme } from '../../../src/format/url.ts';
-import { siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { engineContext } from '../../../src/apps/terminal/engine/commands.ts';
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
 import { createShell } from '../../../src/apps/terminal/shell/adapter.ts';
@@ -24,7 +24,7 @@ export const FORMAT = { dateRange, locationLine, withoutScheme };
 
 const inputFor = (name?: FixtureName) => {
   const resume: Resume = name === undefined ? realResume : fixture(name);
-  return { text: siteText, format: FORMAT, resume, siteData, specs: readSpecList(), cvJson: JSON.stringify(resume, null, 2) };
+  return { text: fullText, format: FORMAT, resume, siteData, specs: readSpecList(), cvJson: JSON.stringify(resume, null, 2) };
 };
 
 // The site commands' context the shell builds, with its file tree.

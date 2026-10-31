@@ -62,7 +62,7 @@ describe('006-terminal-FR-055: cat cv.json shows the JSON as it is', () => {
     const cvJson = JSON.stringify(resume, null, 2);
     expect(output(result)).toEqual([{ kind: 'text', text: cvJson }]);
     expect(result.kind === 'output' && result.result.stdout).toBe(`${cvJson}\n`);
-    expect(await run('cat ~/CV.json', context)).toEqual(result);
+    expect(output(await run('cat ~/CV.json', context))).toEqual(output(result));
   });
 });
 

@@ -2,7 +2,7 @@
 // the page needs to word a reply (FR-016, FR-017). The commands themselves run
 // in the worker (engine/commands.ts), so the page's script doesn't carry them
 // (SC-013).
-import type { SiteText } from '../../../site-text.ts';
+import type { FullText } from '../../../shell-text.ts';
 import { text } from './block.ts';
 import type { Node, Tone } from './block.ts';
 
@@ -11,7 +11,7 @@ export type CommandName =
   | 'contact' | 'cv' | 'site' | 'specs' | 'ls' | 'cd' | 'cat' | 'jq' | 'vim' | 'pwd' | 'open'
   | 'history' | 'clear' | 'exit';
 
-export type ArgKind = keyof SiteText['terminal']['takes'];
+export type ArgKind = keyof FullText['terminal']['takes'];
 
 export type CommandRow = { name: CommandName; aliases: readonly string[]; args: ArgKind };
 

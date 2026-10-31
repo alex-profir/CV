@@ -49,6 +49,29 @@ describe('006-terminal-FR-076: Tab completes as bash does', () => {
     expect(history).not.toContain('cat ~/');
   });
 
+  test('every further Tab in a row lists again; cd .. and ls . complete as readline does', async () => {
+    const page = await openTerminalPage('desktop');
+    await typeLine(page, 'mkdir notes && touch todo');
+    await linesRun(page);
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('cat ~/');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(100);
+    const lists = page.locator('section.run .completion-list');
+    for (const count of [1, 2, 3]) {
+      await page.keyboard.press('Tab');
+      await expect.poll(() => lists.count()).toBe(count);
+    }
+    await page.locator(COMMAND_LINE).fill('cd ..');
+    await page.keyboard.press('Tab');
+    await expect.poll(() => value(page)).toBe('cd ../');
+    await page.locator(COMMAND_LINE).fill('ls .');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(100);
+    await page.keyboard.press('Tab');
+    await expect.poll(() => lists.last().innerText()).toContain('../');
+  });
+
   test('100 matches ask first: y lists them; another key adds nothing and brings the prompt back', async () => {
     const page = await openTerminalPage('desktop');
     await typeLine(page, 'mkdir h && touch h/f{1..100}');

@@ -1,7 +1,7 @@
 // `help` and the one command table (006 research R7, contracts/commands.md).
 import { describe, expect, test } from 'vitest';
 import { commandNamed, COMMANDS } from '../../../src/apps/terminal/engine/commands.ts';
-import { siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { contextFor, controls, nodes, output, run, textOf } from './context.ts';
 
 const FR_008 = ['help', 'about', 'work', 'projects', 'education', 'skills', 'languages', 'interests', 'contact', 'cv', 'site', 'specs', 'ls', 'cd', 'cat', 'jq', 'vim', 'pwd', 'open', 'history', 'clear', 'exit'];
@@ -42,21 +42,21 @@ describe("006-terminal-FR-008: help lists every command and alias, and there is 
 
   test("help's rows give each command its arguments and description from site text", async () => {
     const text = await textOf('help', contextFor('every-field'));
-    expect(text.split('\n')[0]).toBe(siteText.terminal.helpLead.desktop);
+    expect(text.split('\n')[0]).toBe(fullText.terminal.helpLead.desktop);
     for (const name of FR_008) {
-      const own = siteText.terminal.commands[name as keyof typeof siteText.terminal.commands];
+      const own = fullText.terminal.commands[name as keyof typeof fullText.terminal.commands];
       expect(text, name).toContain(own.description);
     }
     expect(text).toContain('cat cv.json | jq | vim -');
-    expect((await textOf('help', contextFor('every-field', { shell: 'mobile' }))).split('\n')[0]).toBe(siteText.terminal.helpLead.phone);
+    expect((await textOf('help', contextFor('every-field', { shell: 'mobile' }))).split('\n')[0]).toBe(fullText.terminal.helpLead.phone);
   });
 
   test("006-terminal-FR-008: help's block leads with the Tab sentence for its shell, before the table", async () => {
     const lead = (await textOf('help', contextFor('every-field'))).split('\n');
-    expect(lead[1]).toBe(siteText.terminal.helpTab.desktop);
+    expect(lead[1]).toBe(fullText.terminal.helpTab.desktop);
     expect(lead[2]).toContain('help');
     const phone = (await textOf('help', contextFor('every-field', { shell: 'mobile' }))).split('\n');
-    expect(phone[1]).toBe(siteText.terminal.helpTab.phone);
+    expect(phone[1]).toBe(fullText.terminal.helpTab.phone);
   });
 
   test('200 generated words not in the table name no site command', () => {
@@ -76,19 +76,19 @@ describe("006-terminal-FR-008: help lists every command and alias, and there is 
   test("help work gives work's own help, and help with an alias the command's", async () => {
     const context = contextFor('every-field');
     const own = await textOf('help work', context);
-    expect(own).toContain(siteText.terminal.commands.work.help);
+    expect(own).toContain(fullText.terminal.commands.work.help);
     expect(own).toContain('work');
     expect(await textOf('help experience', context)).toBe(own);
     expect(await textOf('HELP Work', context)).toBe(own);
-    expect(await textOf('? cv', context)).toContain(siteText.terminal.commands.cv.help);
-    expect(await textOf('help nothing', context)).toBe('help takes at most one command. Usage: help [command]');
+    expect(await textOf('? cv', context)).toContain(fullText.terminal.commands.cv.help);
+    expect(await textOf('help nothing', context)).toBe('help: no command is named nothing. Run help to see them all.');
   });
 
   test("after the table, help lists the standard group: its heading and note, then each name as a control running help <name>", async () => {
     const block = output(await run('help', contextFor('every-field')));
     const at = block.findIndex((node) => node.kind === 'rows' && node.req === 'help');
     const [heading, group] = block.slice(at + 1);
-    const { standard } = siteText.terminal;
+    const { standard } = fullText.terminal;
     expect(heading).toMatchObject({ kind: 'line', req: 'standard' });
     expect(heading?.kind === 'line' && heading.children).toEqual([
       { kind: 'text', text: standard.heading, tone: 'primary' },

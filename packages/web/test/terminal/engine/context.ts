@@ -7,7 +7,7 @@ import { resume as realResume, siteData } from '@cv/content';
 import { dateRange } from '../../../src/format/dates.ts';
 import { locationLine } from '../../../src/format/location.ts';
 import { withoutScheme } from '../../../src/format/url.ts';
-import { siteText } from '../../../src/site-text.ts';
+import { fullText } from '../../../src/shell-text.ts';
 import { engineContext } from '../../../src/apps/terminal/engine/commands.ts';
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
 import { plainText } from '../../../src/apps/terminal/engine/block.ts';
@@ -36,7 +36,7 @@ export const COLUMNS = 85;
 
 export function contextOf(resume: Resume, extra: Partial<RunContext> = {}): RunContext {
   return {
-    ...engineContext({ text: siteText, format: FORMAT, resume, siteData, specs: SPECS, cvJson: JSON.stringify(resume, null, 2) }),
+    ...engineContext({ text: fullText, format: FORMAT, resume, siteData, specs: SPECS, cvJson: JSON.stringify(resume, null, 2) }),
     ...extra,
   };
 }
@@ -109,7 +109,7 @@ export const controls = (block: Block) => nodes(block).flatMap((node) => (node.k
 // Every file of the real site's tree, as the line its `ls` control runs:
 // `cat ~/{path}`.
 export function siteFiles(): string[] {
-  const { fs } = engineContext({ text: siteText, format: FORMAT, resume: realResume, siteData, specs: readSpecList(), cvJson: JSON.stringify(realResume, null, 2) });
+  const { fs } = engineContext({ text: fullText, format: FORMAT, resume: realResume, siteData, specs: readSpecList(), cvJson: JSON.stringify(realResume, null, 2) });
   const walk = (node: FsNode, path: string[]): string[] =>
     node.kind === 'file' ? [`cat ~/${[...path, node.name].join('/')}`] : node.children.flatMap((child) => walk(child, node.name === '~' ? path : [...path, node.name]));
   return walk(fs, []);

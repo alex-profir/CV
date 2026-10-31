@@ -212,3 +212,26 @@ describe('006-terminal-FR-065 and SC-016: focus is never trapped', () => {
     expect((await axNodes(page, INSERT))[0]!.name).toBe('todo, new');
   });
 });
+
+describe('006-terminal-FR-079 and 006-terminal-FR-080: a character, and one blank line, on the build', () => {
+  test('the vim cursor on an emoji holds the whole character, and the line is unchanged', async () => {
+    const page = await openTerminalPage('desktop');
+    await typeLine(page, 'echo "😀x" > e');
+    await page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
+    await open(page, 'vim e');
+    expect(await page.locator(`${VIM} .vim-cursor`).textContent()).toBe('😀');
+    expect(await lines(page)).toEqual(['😀x']);
+    await leave(page);
+  });
+
+  test('echo > f; vim f says one line, and :w keeps its one byte', async () => {
+    const page = await openTerminalPage('desktop');
+    await open(page, 'echo > f; vim f');
+    expect(await message(page)).toContain('1');
+    await vimEntry(page, ':', 'w');
+    await expect.poll(() => message(page)).toContain('1B');
+    await leave(page, 'q');
+    await typeLine(page, 'wc -c f');
+    await expect.poll(() => page.locator('.terminal section.run').last().textContent()).toContain('1 f');
+  });
+});

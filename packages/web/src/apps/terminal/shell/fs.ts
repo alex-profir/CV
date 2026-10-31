@@ -15,6 +15,57 @@ import type { FsEntryInfo, VisitorFiles } from './protocol.ts';
 export const HOME = '/home/guest';
 export const TMP = '/tmp';
 
+// Ends a redirect target the adapter checks before a command runs (research
+// G1): the file system answers for that target and creates nothing.
+export const OPENING = '\u0001';
+
+// What every name of the adapter's own starts with, fresh for each worker, so
+// no typed word or expansion can name one and a word that only looks like one
+// is any other word (T299).
+export const MARK = `__cv${Array.from(crypto.getRandomValues(new Uint8Array(6)), (byte) => byte.toString(16).padStart(2, '0')).join('')}_`;
+
+// The command the adapter runs after one with an output redirect, and the
+// group that holds them, as the shell's `type` prints it.
+export const WROTE = `${MARK}wrote`;
+const WROTE_CALL = ` /usr/bin/${WROTE} $? "$_";`;
+const WRAPPED = new RegExp(`\\{ ([^{}]*); /usr/bin/${WROTE} \\$\\? "\\$_"; \\}`, 'g');
+
+// Where a check writes what the shell lists, kept apart from the visitor's
+// files and the line's output (T326).
+export const CHECK_FILE = `/dev/${MARK}check`;
+
+// Starts the message of a `${x:?word}`, which tells it from `exit` (T286).
+export const FATAL = '\u0002';
+
+// Inside a `[zZ]` a `nocaseglob` word's letter became: with no match the word
+// prints as typed (T360).
+export const CASE_MARK = '\uF8FD';
+const CASELESS = new RegExp(`\\[(.)${CASE_MARK}.\\]`, 'gu');
+
+// `cd`, `eval` and `source` as the adapter runs them, and a `--help` it
+// answers, as `type` prints them.
+const FINISHED = new RegExp(`\\{ /usr/bin/${MARK}hold "\\$\\?" (\\S*) .*?/usr/bin/${MARK}after "\\$${MARK}l"; \\}`, 'g');
+const HELPED = new RegExp(`/usr/bin/${MARK}usage ([^\\s;]+)`, 'g');
+
+// `exit` as the adapter runs it (T314).
+const EXITING = new RegExp(`\\{ /usr/bin/${MARK}exiting \\$\\?; ([^;{}]*); \\}`, 'g');
+
+// Before a name `type` is told isn't there, so it says so (T336).
+export const GONE = `${MARK}gone-`;
+
+const OWN_LINE = new RegExp(`^(?:declare -\\S+ )?${MARK}.*\\n`, 'gm');
+
+// What `clear` prints where it reaches the screen: what came before it goes
+// (T298).
+export const CLEARED = '\u0004';
+
+// Written to as bash writes to them, not as files.
+const STREAMS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr', '/dev/full', '/dev/fd/1', '/dev/fd/2']);
+
+// The ones a command can open by name, and what each stands for: what it
+// writes there is its own output (T332).
+const OUTPUT_STREAMS: Readonly<Record<string, 'stdout' | 'stderr'>> = { '/dev/stdout': 'stdout', '/dev/stderr': 'stderr', '/dev/fd/1': 'stdout', '/dev/fd/2': 'stderr' };
+
 // The folders the shell needs to run, all protected (FR-045). just-bash adds
 // `/bin` and `/usr/bin` stubs and `/dev` itself.
 const LAYOUT = ['/bin', '/usr', '/usr/bin', '/dev', '/home'];
@@ -23,7 +74,7 @@ const MODE = { protectedFile: 0o444, protectedFolder: 0o555, file: 0o644, folder
 
 // A file system error as just-bash's commands print it: the text after the
 // path (`rm: cannot remove 'about': Permission denied`).
-const failure = (code: 'EACCES' | 'ENOSPC' | 'ENOENT' | 'ENOSYS', message: string) => Object.assign(new Error(message), { code });
+const failure = (code: 'EACCES' | 'ENOSPC' | 'ENOENT' | 'ENOTDIR' | 'ENOSYS', message: string) => Object.assign(new Error(message), { code });
 const denied = () => failure('EACCES', 'Permission denied');
 const noSpace = () => failure('ENOSPC', 'No space left on device');
 const missing = () => failure('ENOENT', 'No such file or directory');
@@ -60,12 +111,25 @@ export class TerminalFs extends InMemoryFs {
   // The built names of the home folder, in the design's order (FR-043).
   private readonly homeOrder: string[] = [];
   private building = true;
+  // This line's redirects (research G1): each target as typed by its path, why
+  // each refused one was refused, and those a write past the limit failed.
+  private resolved: { path: string; typed: string } | null = null;
+  private readonly opened = new Map<string, string>();
+  private readonly refused = new Map<string, string>();
+  private full: string[] = [];
 
   constructor(tree: Folder) {
     super();
     for (const folder of LAYOUT) {
       this.mkdirSync(folder, { recursive: true });
       this.lock(folder);
+    }
+    // As much as anything here reads: FR-069's limit stops what never ends (T323).
+    const random = new Uint8Array(QUOTA);
+    for (let at = 0; at < random.length; at += 65_536) crypto.getRandomValues(random.subarray(at, at + 65_536));
+    for (const [device, bytes] of [['/dev/zero', new Uint8Array(QUOTA)], ['/dev/urandom', random], ['/dev/random', random]] as const) {
+      this.writeFileSync(device, bytes);
+      this.lock(device);
     }
     this.mkdirSync(HOME, { recursive: true });
     this.mkdirSync(TMP, { recursive: true });
@@ -102,6 +166,8 @@ export class TerminalFs extends InMemoryFs {
   }
 
   override writeFileSync(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding, metadata?: { mode?: number; mtime?: Date }) {
+    // just-bash empties it for every shell it starts (T323).
+    if (path === '/dev/zero' && byteLength(content) === 0) return;
     if (path.startsWith('/proc/')) throw failure('ENOSYS', 'ENOSYS: no /proc');
     super.writeFileSync(path, content, options, metadata);
     if (!this.building && path !== '/dev/null' && (path.startsWith('/dev/') || path.startsWith('/bin/') || path.startsWith('/usr/'))) this.lock(path);
@@ -144,6 +210,99 @@ export class TerminalFs extends InMemoryFs {
     return this.locked.has(at) || this.locked.has(parentOf(at));
   }
 
+  endLine() {
+    this.resolved = null;
+    this.opened.clear();
+    this.refused.clear();
+    this.full = [];
+  }
+
+  // Remembered, as just-bash opens a redirect's target right after resolving
+  // it, and marked in the path for `appendFile` when it is only being checked.
+  override resolvePath(base: string, path: string): string {
+    if (path.endsWith(OPENING)) {
+      const typed = path.slice(0, -OPENING.length);
+      const at = super.resolvePath(base, typed);
+      this.opened.set(this.canonical(at), typed);
+      return `${at}${OPENING}`;
+    }
+    const at = super.resolvePath(base, path);
+    this.resolved = { path: at, typed: path };
+    return at;
+  }
+
+  // A write's checks. just-bash opens a redirect's target by writing nothing
+  // as `binary`, which no command does: a refusal then names the target, for
+  // one the adapter can't check first (research G1).
+  private async writable(path: string, at: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const opening = content === '' && options === 'binary';
+    const typed = this.resolved?.path === path ? this.resolved.typed : path;
+    if (opening) this.opened.set(at, typed);
+    try {
+      this.guard(at, true);
+      if (at !== '/dev/null' && !(await this.folderExists(parentOf(at)))) throw missing();
+    } catch (error) {
+      if (!opening) throw error;
+      const { code, message } = error as Error & { code: 'EACCES' | 'ENOENT' };
+      throw failure(code, `bash: ${typed}: ${message}`);
+    }
+  }
+
+  // Whether a redirect can open `path`; a folder is left to the shell, which
+  // says "Is a directory". Rejecting makes just-bash fail the command alone.
+  private async open(path: string) {
+    const at = this.canonical(path);
+    if (STREAMS.has(at)) return;
+    const stat = await super.stat(at).catch(() => null);
+    if (stat?.isDirectory === true) return;
+    const parent = await super.stat(parentOf(at)).catch(() => null);
+    // A final slash names a folder (T378).
+    const slashed = this.opened.get(at)?.endsWith('/') === true;
+    const refusal = parent === null || (slashed && stat === null) ? missing() : !parent.isDirectory || slashed ? failure('ENOTDIR', 'Not a directory') : this.refusesWrite(at) ? denied() : null;
+    if (refusal === null) return;
+    this.refused.set(this.opened.get(at) ?? at, refusal.message);
+    throw refusal;
+  }
+
+  // Past the limit, a redirect's write fails its command alone (research G1).
+  private async redirected(at: string, write: () => Promise<void>) {
+    try {
+      await write();
+    } catch (error) {
+      if ((error as { code?: string }).code !== 'ENOSPC' || !this.opened.has(at)) throw error;
+      this.full.push(this.opened.get(at)!);
+    }
+  }
+
+  // The targets a write past the limit failed since the last call.
+  takeFull(): string[] {
+    const { full } = this;
+    this.full = [];
+    return full;
+  }
+
+  // Output as bash words it: a checked target's refusal, with its reason, and
+  // a function's body as `type` prints it, without the adapter's words.
+  plainText(text: string): string {
+    let body = text;
+    for (let last = ''; last !== body; ) {
+      last = body;
+      body = body.replace(WRAPPED, '$1');
+    }
+    body = body.replaceAll(WROTE_CALL, '').replace(EXITING, '$1');
+    // The adapter's variables, where a name from an expansion runs `set` or
+    // `declare -p` beside them (T297).
+    if (body.includes(MARK)) body = body.replaceAll(GONE, '').replace(OWN_LINE, '');
+    body = body.replace(FINISHED, (_, typed: string) => decodeURIComponent(typed)).replace(HELPED, '$1 --help').replaceAll(FATAL, '').replace(CASELESS, '$1');
+    if (!body.includes(OPENING)) return body;
+    return body.replace(new RegExp(`(bash: )(.*)${OPENING}: cannot open redirect target`, 'g'), (_, lead: string, typed: string) => `${lead}${typed}: ${this.refused.get(typed) ?? denied().message}`).replaceAll(OPENING, '');
+  }
+
+  // A command's error output sent to a file reads as it does on the screen.
+  private spoken(content: FileContent): FileContent {
+    return typeof content === 'string' ? this.plainText(content) : content;
+  }
+
   private async under(path: string): Promise<string[]> {
     const all = this.getAllPaths().filter((other) => other === path || other.startsWith(`${path}/`));
     return all.length === 0 ? [path] : all;
@@ -180,23 +339,54 @@ export class TerminalFs extends InMemoryFs {
     return stat?.isDirectory === true;
   }
 
+  // What a check listed, as text, and gone.
+  private checked = '';
+  takeCheck(): string {
+    const text = this.checked;
+    this.checked = '';
+    return text;
+  }
+  private listed(content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const encoding = typeof options === 'string' ? options : options?.encoding;
+    this.checked += typeof content !== 'string' ? new TextDecoder().decode(content) : encoding === 'binary' || encoding === 'latin1' ? new TextDecoder().decode(Uint8Array.from(content, (char) => char.charCodeAt(0))) : content;
+  }
+
+  // What commands wrote to their own output by name, until the command ends.
+  private streamed = { stdout: '', stderr: '' };
+  takeStreamed() {
+    const { streamed } = this;
+    this.streamed = { stdout: '', stderr: '' };
+    return streamed;
+  }
+  private toStream(stream: 'stdout' | 'stderr', content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const encoding = typeof options === 'string' ? options : options?.encoding;
+    this.streamed[stream] += typeof content !== 'string' ? new TextDecoder().decode(content) : encoding === 'binary' || encoding === 'latin1' ? new TextDecoder().decode(Uint8Array.from(content, (char) => char.charCodeAt(0))) : content;
+  }
+
   override async writeFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
-    this.guard(at, true);
+    if (at in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[at]!, content, options);
+    await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
-    if (!(await this.folderExists(parentOf(at)))) throw missing();
     const exists = await super.exists(at);
-    await this.room(at, byteLength(content), exists);
-    return super.writeFile(at, content, options);
+    return this.redirected(at, async () => {
+      await this.room(at, byteLength(content), exists);
+      await super.writeFile(at, this.spoken(content), options);
+    });
   }
 
   override async appendFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    if (path.endsWith(OPENING)) return this.open(path.slice(0, -OPENING.length));
+    if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
-    this.guard(at, true);
+    if (at in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[at]!, content, options);
+    await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
-    if (!(await this.folderExists(parentOf(at)))) throw missing();
-    await this.room(at, byteLength(content), false);
-    return super.appendFile(at, content, options);
+    return this.redirected(at, async () => {
+      await this.room(at, byteLength(content), false);
+      await super.appendFile(at, this.spoken(content), options);
+    });
   }
 
   override async createExclusive(path: string, options: CreateExclusiveOptions) {
@@ -230,6 +420,7 @@ export class TerminalFs extends InMemoryFs {
   override async cp(src: string, dest: string, options?: CpOptions) {
     const from = this.canonical(src);
     const to = this.canonical(dest);
+    if (to in OUTPUT_STREAMS) return this.toStream(OUTPUT_STREAMS[to]!, await super.readFile(from));
     this.guard(to, true);
     if (to === '/dev/null') return;
     if (!(await this.folderExists(parentOf(to)))) throw missing();
@@ -313,9 +504,9 @@ export class TerminalFs extends InMemoryFs {
 
   // The home folder's built entries in the design's order, then the
   // visitor's in name order (FR-043, FR-073). The command stubs of the
-  // adapter's own commands (`__cv_help`…) aren't listed.
+  // adapter's own commands aren't listed.
   private ordered(path: string, names: string[]): string[] {
-    if (path === '/bin' || path === '/usr/bin') return names.filter((name) => !name.startsWith('__cv_'));
+    if (path === '/bin' || path === '/usr/bin') return names.filter((name) => !name.startsWith(MARK));
     if (path !== HOME) return names;
     const built = this.homeOrder.filter((name) => names.includes(name));
     return [...built, ...names.filter((name) => !this.homeOrder.includes(name)).sort()];
@@ -347,6 +538,7 @@ export class TerminalFs extends InMemoryFs {
   async snapshot(): Promise<VisitorFiles> {
     const folders: string[] = [];
     const files: Record<string, string> = {};
+    const binary: string[] = [];
     let bytes = 0;
     for (const path of [...this.getAllPaths()].sort()) {
       if (this.locked.has(path) || path === HOME || path === TMP || path.startsWith('/dev/') || path.startsWith('/proc')) continue;
@@ -355,11 +547,17 @@ export class TerminalFs extends InMemoryFs {
       if (stat === null) continue;
       if (stat.isDirectory) folders.push(path);
       else if (stat.isFile) {
-        files[path] = await super.readFile(path);
+        const buffer = await super.readFileBuffer(path);
+        try {
+          files[path] = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        } catch {
+          files[path] = Array.from(buffer, (byte) => String.fromCharCode(byte)).join('');
+          binary.push(path);
+        }
         bytes += stat.size;
       }
     }
-    return { folders, files, bytes };
+    return { folders, files, bytes, ...(binary.length === 0 ? {} : { binary }) };
   }
 
   // No visitor file left; the protected tree as it was built (FR-021).
@@ -374,7 +572,7 @@ export class TerminalFs extends InMemoryFs {
     for (const folder of files.folders) await super.mkdir(folder, { recursive: true });
     for (const [path, text] of Object.entries(files.files)) {
       await super.mkdir(parentOf(path), { recursive: true });
-      await super.writeFile(path, text);
+      await super.writeFile(path, files.binary?.includes(path) === true ? Uint8Array.from(text, (character) => character.charCodeAt(0)) : text);
     }
   }
 }

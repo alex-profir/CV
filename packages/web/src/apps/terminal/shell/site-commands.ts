@@ -7,17 +7,19 @@
 // recording is made only here, from what the site printed, never from typed
 // or piped text (FR-018).
 import { defineCommand } from 'just-bash/browser';
-import { command } from '../engine/block.ts';
+import { command, pathLine } from '../engine/block.ts';
 import type { Block, Effect, Node, Tone, VimFile } from '../engine/block.ts';
-import { COMMANDS, CV_PIPE, SITE_WORDS, usage } from '../engine/commands.ts';
+import { COMMANDS, CV_PIPE, CV_PRINT, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
 import type { File, FsNode } from '../engine/files.ts';
 import { printJson } from '../engine/json.ts';
+import { runJq } from './jq.ts';
 import { fill } from '../../../site-text.ts';
-import { fileText, HOME } from './fs.ts';
+import { CLEARED, fileText, HOME, MARK } from './fs.ts';
+import { GNU } from './gnu.ts';
 import type { TerminalFs } from './fs.ts';
-import type { Recorded } from './protocol.ts';
-import { helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
+import type { Limit, Recorded } from './protocol.ts';
+import { BUILTIN_HELP, helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
 
 export type ShellCommand = ReturnType<typeof defineCommand>;
 type Context = Parameters<ShellCommand['execute']>[1];
@@ -25,36 +27,45 @@ type Output = Awaited<ReturnType<ShellCommand['execute']>>;
 
 // The names the site's commands run under in the shell where a builtin of
 // the same name would win: the adapter renames the typed word (research R29).
-export const RENAMED: Readonly<Record<string, string>> = { help: '__cv_help' };
-
-// The command the redirect guard runs (research G1).
-export const DENIED = '__cv_denied';
+export const RENAMED: Readonly<Record<string, string>> = { help: `${MARK}help` };
 
 // What one line's run collects, and what it was sent with.
 export type RunRecord = {
   line: string;
-  // The line's first word as typed, when the adapter lower-cased it to run
-  // a site command: replies name the word as typed (FR-017).
-  typed: string | null;
   history: readonly string[];
   shell: 'desktop' | 'mobile';
   recorded: Recorded[];
   effects: Effect[];
   // The pipe the vim view's status line shows, when not the line itself.
   pipe: string | null;
+  // How many functions now running have their output going into a pipe.
+  pipedFunctions: number;
+  // Set while `help <builtin>` asks just-bash's own `help` for its text.
+  builtinHelp: boolean;
+  // A limit a command met without just-bash stopping the line (T315).
+  stopped: Limit | null;
+  // When the line's time is up, by `Date.now()`, for what runs on its own (`jq`).
+  deadline: number;
 };
 
 export type SiteShell = {
   context: RunContext;
   fs: TerminalFs;
   run: () => RunRecord;
+  limits: { output: number; pipe: number };
 };
 
 // Set by the adapter on a command whose output goes into a pipe: what it
 // prints there is text, never a block (research R29).
-export const PIPED = '__CV_PIPED';
+export const PIPED = `${MARK}PIPED`;
 
-const piped = (ctx: Context) => ctx.env.get(PIPED) === '1';
+// Set by the adapter on a site command typed in another case, to the word as
+// typed: replies name it (FR-017).
+export const TYPED = `${MARK}TYPED`;
+
+// The commands that print otherwise when their output doesn't reach the
+// screen: only these carry PIPED, so no other can show it (T299).
+export const SCREEN_COMMANDS: ReadonlySet<string> = new Set([...SITE_WORDS, 'cat', 'ls', 'jq']);
 
 // Standard input as text: just-bash hands it over as latin1 bytes.
 const decode = (bytes: Context['stdin']) => new TextDecoder().decode(Uint8Array.from(bytes as unknown as string, (character) => character.charCodeAt(0)));
@@ -93,6 +104,7 @@ export const STANDARD_GROUP: readonly string[] = [...new Set<string>([...STANDAR
 
 export function siteCommands(shell: SiteShell): ShellCommand[] {
   const files = filesOf(shell.context);
+  const piped = (ctx: Context) => ctx.env.get(PIPED) === '1' || shell.run().pipedFunctions > 0;
   const runContext = (ctx: Context): RunContext => {
     const run = shell.run();
     return { ...shell.context, cwd: ctx.cwd, history: run.history, shell: run.shell, standard: STANDARD_GROUP };
@@ -101,6 +113,14 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   // Prints a site command's run, records its block and keeps its effect.
   const emit = (ctx: Context, result: SiteRun): Output => {
     const run = shell.run();
+    // `clear` empties the screen, so only where its output would reach it
+    // (T303); what came before it goes, at its place in the line (T298).
+    if (result.effect?.kind === 'clear') {
+      if (piped(ctx)) return ok();
+      run.recorded.length = 0;
+      run.effects.push(result.effect);
+      return ok(CLEARED, CLEARED);
+    }
     const stdout = result.text === '' ? '' : `${result.text}\n`;
     if (result.block !== null && stdout !== '' && !piped(ctx)) run.recorded.push({ text: stdout, block: result.block });
     if (result.effect !== undefined) run.effects.push(result.effect);
@@ -112,26 +132,60 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     return ok('', result.stderr, result.status);
   };
 
-  // The word a command was run by: as typed, for the line's first.
-  const typedAs = (word: string) => {
-    const run = shell.run();
-    const typed = run.typed?.toLowerCase() === word ? run.typed : word;
-    run.typed = null;
-    return typed;
-  };
+  // The word a command was run by, as typed.
+  const typedAs = (word: string, ctx: Context) => ctx.env.get(TYPED) ?? word;
 
   // `help <name>` for a standard command is its `--help`, for a builtin
   // the shell's own help (research R32).
   const standardHelp = (args: readonly string[], ctx: Context): Promise<Output> | null => {
     const name = args.length === 1 ? args[0]! : null;
     if (name === null || SITE.has(name.toLowerCase()) || !STANDARD_GROUP.includes(name)) return null;
-    return ctx.exec!(BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never) ? `builtin help ${name}` : `${name} --help`, { cwd: ctx.cwd });
+    if (BUILTIN_HELP[name] !== undefined) return Promise.resolve(ok(BUILTIN_HELP[name]));
+    const run = shell.run();
+    const builtin = BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never);
+    run.builtinHelp = builtin;
+    return ctx.exec!(builtin ? `builtin help ${name}` : `${name} --help`, { cwd: ctx.cwd }).finally(() => {
+      run.builtinHelp = false;
+    });
+  };
+
+  // bash's `history -d`, `-w` and its wrong words (T372). `-w` writes to the
+  // visitor's own files, so to what goes when the session does (FR-021); `-c`
+  // and the count are the table's.
+  const historyOption = async (args: readonly string[], ctx: Context): Promise<Output | null> => {
+    const run = shell.run();
+    const fails = (message: string) => ok('', `bash: history: ${message}\n`, 1);
+    if (args[0] === '-d') {
+      const typed = args[1];
+      if (typed === undefined) return ok('', 'bash: history: -d: option requires an argument\nhistory: usage: history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]\n', 2);
+      if (!/^-?\d+$/.test(typed)) return fails(`${typed}: invalid number`);
+      const position = Number(typed);
+      const index = position < 0 ? run.history.length + position : position - 1;
+      if (position === 0 || index < 0 || index >= run.history.length) return fails(`${typed}: history position out of range`);
+      run.effects.push({ kind: 'delete-history', index });
+      return ok();
+    }
+    if (args[0] === '-w') {
+      if (args.length > 2) return fails('too many arguments');
+      const typed = args[1] ?? ctx.env.get('HISTFILE') ?? `${HOME}/.bash_history`;
+      const path = ctx.fs.resolvePath(ctx.cwd, typed);
+      const text = run.history.map((entry) => `${entry}\n`).join('');
+      return shell.fs.writeFile(path, text).then(() => ok(), (error: { code?: string }) => fails(`${typed}: cannot create: ${error.code === 'ENOENT' ? 'No such file or directory' : error.code === 'ENOSPC' ? 'No space left on device' : error.code === 'EISDIR' ? 'Is a directory' : 'Permission denied'}`));
+    }
+    if (args.length > 1 && !args[0]!.startsWith('-')) return fails('too many arguments');
+    if (args[0] !== undefined && !args[0].startsWith('-') && !/^\d+$/.test(args[0])) return { ...fails(`${args[0]}: numeric argument required`), exitCode: 2 };
+    return null;
   };
 
   const rows = COMMANDS.filter((row) => row.run !== undefined).flatMap((row) =>
     [row.name, ...row.aliases].map((word) =>
       defineCommand(RENAMED[word] ?? word, async (args, ctx) => {
-        const typed = typedAs(word);
+        const typed = typedAs(word, ctx);
+        // A wrong option gets bash's error (FR-017).
+        const answered = row.name === 'history' ? await historyOption(args, ctx) : null;
+        if (answered !== null) return answered;
+        const wrong = row.name === 'history' ? args.find((arg) => /^-./.test(arg) && arg !== '-c') : undefined;
+        if (wrong !== undefined) return ok('', `bash: history: ${wrong.slice(0, 2)}: invalid option\nhistory: usage: history [-c] [-d offset] [n] or history -anrw [filename] or history -ps arg [arg...]\n`, 2);
         return (row.name === 'help' ? standardHelp(args, ctx) : null) ?? emit(ctx, row.run!(args, runContext(ctx), typed));
       }),
     ),
@@ -141,12 +195,12 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const vim = defineCommand('vim', async (args, ctx) => {
     const run = shell.run();
     const { replies } = shell.context.text.terminal;
-    const word = typedAs('vim');
+    const word = typedAs('vim', ctx);
     if (args.length !== 1) return usageOf(word, 'vim');
     if (args[0] === '-') {
       const input = decode(ctx.stdin);
       if (input === '') return usageOf(word, 'vim');
-      const file = { name: shell.context.text.terminal.vim.noName, path: null, readonly: false, new: false };
+      const file = { name: shell.context.text.terminal.vim.noName, path: null, readonly: false, new: false, ...(input === '\n' ? { blank: true } : {}) };
       run.effects.push(vimEffect(file, run.pipe ?? run.line, input.replace(/\n$/, '')));
       return ok();
     }
@@ -158,16 +212,18 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: false, new: true }, null, ''));
       return ok();
     }
-    if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: `ls ${typed}` })}\n`, 1);
+    if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: pathLine('ls', typed) })}\n`, 1);
     const content = await shell.fs.readFile(path);
-    run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false }, null, content.replace(/\n$/, '')));
+    run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false, ...(content === '\n' ? { blank: true } : {}) }, null, content.replace(/\n$/, '')));
     return ok();
   });
 
   // `cv`: `cat cv.json | jq | vim -` from the home folder (FR-059).
   const cv = defineCommand('cv', async (args, ctx) => {
-    if (args.length > 0) return usageOf(typedAs('cv'), 'cv');
+    if (args.length > 0) return usageOf(typedAs('cv', ctx), 'cv');
     const run = shell.run();
+    // Going to a pipe, a file or a `$(…)`: the JSON, and no view (T303).
+    if (piped(ctx)) return ctx.exec!(CV_PRINT, { cwd: HOME, env: { [PIPED]: '1' } });
     run.pipe = CV_PIPE;
     try {
       return await ctx.exec!(CV_PIPE, { cwd: HOME });
@@ -254,88 +310,223 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   // `ls`: a listing whose names are controls, a folder running `ls` on it
   // and a file `cat`, in the design's order for the home folder (FR-043,
-  // FR-050).
+  // FR-050). Plain, it draws columns; with any option or several paths, each
+  // line as GNU's text has it (T327).
   // `ls -l`: just-bash gives every entry `user user` and its own modes
   // (research G7); the owner is `root` for a protected entry, which is read
-  // only, and `guest` for the visitor's (FR-049, research R28). Shown
-  // unchanged, it is drawn with its names as controls, as `ls` is.
-  // Mode, links, owner, group, then the size and date with the padding
-  // before them, then the name.
-  const LONG_LINE = /^([-dl])([-rwx]{9}) +(\d+) (\S+) +(\S+)( +\d+ \S+ +\d+ +(?:\d\d:\d\d|\d{4})) (.+)$/;
-  const longListing = async (args: readonly string[], ctx: Context, result: Output): Promise<Output> => {
-    const flags = args.filter((arg) => arg.startsWith('-')).join('');
-    const paths = args.filter((arg) => !arg.startsWith('-'));
-    if (paths.length > 1 || result.exitCode !== 0) return result;
-    const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
-    const stat = await shell.fs.stat(target).catch(() => null);
-    if (stat === null) return result;
-    const inside = stat.isDirectory && !flags.includes('d');
-    const pathOf = (name: string) => (!inside ? target : name === '.' ? target : name === '..' ? parentOf(target) : `${target === '/' ? '' : target}/${name}`);
-    const lines = stdoutText(result).split('\n');
+  // only, and `guest` for the visitor's (FR-049, research R28). A folder has
+  // GNU's size and links, and each column is as wide as its widest (T329).
+  // Mode, links, owner, group, size, date, name.
+  const LONG_LINE = /^([-dl])([-rwx]{9}) +(\d+) (\S+) +(\S+) +(\S+) (\S+ +\d+ +(?:\d\d:\d\d|\d{4})) (.+)$/;
+  const CONTROL = (path: string, label: string, folder: boolean) => (folder ? command(pathLine('ls', shownPath(path)), 'inline', { label, req: 'ls', tone: 'folder' }) : command(pathLine('cat', shownPath(path)), 'inline', { label, req: 'ls' }));
+  const statOf = (path: string) => shell.fs.stat(path).catch(() => null);
+  const under = (folder: string, name: string) => `${folder === '/' ? '' : folder}/${name}`;
+  const textNode = (value: string, tone?: Tone): Node => ({ kind: 'text', text: value, stream: 'stdout', ...(tone === undefined ? {} : { tone }) });
+
+  // What a line of a listing names, its name with no `-F` mark, from `folder`.
+  const named = async (shown: string, folder: string, ctx: Context) => {
+    for (const name of [shown, shown.replace(/[/*@=|]$/, '')]) {
+      if (name === '.' || name === '..') return null;
+      const path = shell.fs.canonical(ctx.fs.resolvePath(folder, name));
+      const stat = await statOf(path);
+      if (stat !== null) return { path, folder: stat.isDirectory };
+    }
+    return null;
+  };
+
+  // Each section of a listing: its lines, and the folder its names are in. A
+  // `path:` line starts one; the file operands of several paths come first.
+  const sections = (lines: readonly string[], ctx: Context, inside: string) => {
+    const found: { header: number; lines: number[]; folder: string }[] = [{ header: -1, lines: [], folder: inside }];
+    lines.forEach((entry, at) => {
+      const header = /^(.+):$/.exec(entry);
+      if (header !== null && (at === 0 || lines[at - 1] === '')) found.push({ header: at, lines: [], folder: shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, header[1]!)) });
+      else if (entry !== '' && !/^total \S+$/.test(entry)) found.at(-1)!.lines.push(at);
+    });
+    return found;
+  };
+
+  const longLines = async (lines: string[], part: { lines: number[]; folder: string }, ctx: Context) => {
     const entries = await Promise.all(
-      lines.map(async (entry) => {
-        const match = LONG_LINE.exec(entry);
+      part.lines.map(async (at) => {
+        const match = LONG_LINE.exec(lines[at]!);
         if (match === null) return null;
-        const [, kind, mode, links, , , rest, name] = match;
-        const path = pathOf(name!);
+        const [, kind, mode, links, , , size, date, name] = match;
+        const path = shell.fs.canonical(ctx.fs.resolvePath(part.folder, name!));
         const folder = kind === 'd';
         const info = shell.fs.info(path, folder ? 'folder' : 'file');
-        return { kind: kind!, mode: info.protected ? (folder ? 'r-xr-xr-x' : 'r--r--r--') : mode!, links: links!, owner: info.owner as string, rest: rest!, name: name!, path, folder };
+        let inner = 0;
+        if (folder) for (const child of await shell.fs.readdir(path).catch(() => [] as string[])) if ((await statOf(under(path, child)))?.isDirectory === true) inner += 1;
+        return { at, kind: kind!, mode: info.protected ? (folder ? 'r-xr-xr-x' : 'r--r--r--') : mode!, links: folder ? String(inner + 2) : links!, owner: info.owner as string, size: folder ? '4096' : size!, date: date!, name: name!, path, folder };
       }),
     );
-    const width = Math.max(0, ...entries.map((entry) => entry?.owner.length ?? 0));
-    const text = lines.map((entry, index) => {
-      const found = entries[index];
-      return found === null || found === undefined ? entry : `${found.kind}${found.mode} ${found.links} ${found.owner.padEnd(width)} ${found.owner.padEnd(width)}${found.rest} ${found.name}`;
+    const known = entries.filter((entry) => entry !== null);
+    const newest = known.find((entry) => entry.name !== '.' && entry.name !== '..')?.date;
+    const widest = (of: (entry: (typeof known)[number]) => string) => Math.max(0, ...known.map((entry) => of(entry).length));
+    const [linkWidth, ownerWidth, sizeWidth] = [widest((entry) => entry.links), widest((entry) => entry.owner), widest((entry) => entry.size)];
+    return known.map((entry) => {
+      const date = (entry.name === '.' || entry.name === '..') && newest !== undefined ? newest : entry.date;
+      const owners = `${entry.owner.padEnd(ownerWidth)} ${entry.owner.padEnd(ownerWidth)}`;
+      const lead = `${entry.kind}${entry.mode} ${entry.links.padStart(linkWidth)} `;
+      const tail = ` ${entry.size.padStart(sizeWidth)} ${date} `;
+      lines[entry.at] = `${lead}${owners}${tail}${entry.name}`;
+      return { ...entry, lead, owners, tail };
     });
-    const stdout = text.join('\n');
-    if (!piped(ctx)) {
-      const out = (value: string, tone?: Tone): Node => ({ kind: 'text', text: value, stream: 'stdout', ...(tone === undefined ? {} : { tone }) });
-      const block: Block = text
-        .filter((entry) => entry !== '')
-        .map((entry, index) => {
-          const found = entries.filter((_, at) => lines[at] !== '')[index];
-          if (found === null || found === undefined || found.name === '.' || found.name === '..') return { kind: 'line', children: [out(entry, 'dim')] } as Node;
-          const owners = `${found.owner.padEnd(width)} ${found.owner.padEnd(width)}`;
-          const name = found.folder ? command(`ls ${shownPath(found.path)}`, 'inline', { label: `${found.name}/`, req: 'ls', tone: 'folder' }) : command(`cat ${shownPath(found.path)}`, 'inline', { label: found.name, req: 'ls' });
-          return { kind: 'line', children: [out(`${found.kind}${found.mode} ${found.links} `, 'dim'), out(owners, found.owner === 'guest' ? 'secondary' : 'dim'), out(`${found.rest} `, 'dim'), name] } as Node;
+  };
+
+  // GNU's `-m` and `-C`, which just-bash doesn't have, over its one name a line.
+  const WIDTH = 80;
+  const commas = (names: readonly string[]) => {
+    const rows: string[] = [];
+    let row = '';
+    names.forEach((name, at) => {
+      const item = at === names.length - 1 ? name : `${name},`;
+      if (row !== '' && row.length + 1 + item.length > WIDTH - 1) {
+        rows.push(row);
+        row = item;
+      } else row = row === '' ? item : `${row} ${item}`;
+    });
+    return row === '' ? [] : [...rows, row];
+  };
+  const inColumns = (names: readonly string[]) => {
+    for (let count = names.length; count > 1; count -= 1) {
+      const height = Math.ceil(names.length / count);
+      const columns = Array.from({ length: count }, (_, column) => names.slice(column * height, (column + 1) * height));
+      const widths = columns.map((column) => Math.max(0, ...column.map((name) => name.length)));
+      if (widths.reduce((sum, width) => sum + width + 2, -2) >= WIDTH) continue;
+      return Array.from({ length: height }, (_, row) => {
+        let text = '';
+        let from = 0;
+        let to = 0;
+        columns.forEach((column, at) => {
+          if (column[row] === undefined) return;
+          // Tabs where they fit, as GNU does.
+          while (from < to) {
+            const tab = Math.floor(to / 8) > Math.floor((from + 1) / 8);
+            text += tab ? '\t' : ' ';
+            from = tab ? from + 8 - (from % 8) : from + 1;
+          }
+          text += column[row];
+          from += column[row]!.length;
+          to += widths[at]! + 2;
         });
-      shell.run().recorded.push({ text: stdout, block });
+        return text;
+      });
     }
-    return { ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output;
+    return [...names];
   };
 
   const ls = defineCommand('ls', async (args, ctx) => {
-    const result = await ctx.origCommand!(args);
-    if (args.some((arg) => /^-[a-zA-Z]*l[a-zA-Z]*$/.test(arg))) return longListing(args, ctx, result);
-    const paths = args.filter((arg) => !arg.startsWith('-'));
-    if (result.exitCode !== 0 || result.stdout === '' || piped(ctx) || paths.length < args.length || paths.length > 1) return result;
-    const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
-    const stat = await shell.fs.stat(target).catch(() => null);
-    if (stat === null) return result;
-    const names = stdoutText(result).split('\n').filter((name) => name !== '');
-    const folder = stat.isDirectory ? target : parentOf(target);
-    const order = stat.isDirectory ? (await shell.fs.readdir(target)).filter((name) => names.includes(name)) : [nameOf(target)];
-    if (order.length !== names.length) return result;
-    const cells: Node[] = [];
-    for (const name of order) {
-      const at = `${folder === '/' ? '' : folder}/${name}`;
-      const isFolder = (await shell.fs.stat(at).catch(() => null))?.isDirectory === true;
-      cells.push(isFolder ? command(`ls ${shownPath(at)}`, 'inline', { label: `${name}/`, req: 'ls', tone: 'folder' }) : command(`cat ${shownPath(at)}`, 'inline', { label: name, req: 'ls' }));
+    if (args.includes('--help')) {
+      const help = await ctx.origCommand!(args);
+      return { ...help, stdout: help.stdout.replace(/^(\s+--help)/m, '  -C                   list entries by columns\n      --color[=WHEN]   colors never show here; WHEN is always, auto or never\n  -m                   fill width with a comma separated list of entries\n  -p                   append / indicator to directories\n$1') };
     }
-    const block: Block = [{ kind: 'columns', cells, req: 'ls' }];
-    shell.run().recorded.push({ text: stdoutText(result), block });
-    return result;
+    // The options just-bash lacks: taken out, and done to its text below.
+    const end = args.indexOf('--');
+    const options = (end < 0 ? args : args.slice(0, end)).filter((arg) => arg.startsWith('-') && arg !== '-');
+    const has = (letter: string) => options.some((arg) => !arg.startsWith('--') && arg.includes(letter));
+    const [slashes, columns, comma] = [has('p'), has('C'), has('m')];
+    const list = args.flatMap((arg, at) => {
+      if (end >= 0 && at >= end) return [arg];
+      if (/^--colou?r(=.*)?$/.test(arg)) return [];
+      if (!arg.startsWith('-') || arg.startsWith('--') || arg === '-') return [arg];
+      const left = arg.slice(1).replace(/[pCm]/g, '');
+      return left === '' ? [] : [`-${left}`];
+    });
+    const result = await ctx.origCommand!(list);
+    const flags = options.filter((arg) => !arg.startsWith('--')).join('');
+    const paths = end < 0 ? list.filter((arg) => !arg.startsWith('-')) : [...list.slice(0, list.indexOf('--')).filter((arg) => !arg.startsWith('-')), ...list.slice(list.indexOf('--') + 1)];
+    const long = flags.includes('l');
+    const plain = list.length === paths.length && options.length === 0 && paths.length <= 1;
+    if (result.stdout === '') return result;
+    const target = paths.length === 1 ? shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0]!)) : ctx.cwd;
+    const stat = await statOf(target);
+    if (stat === null) return result;
+    const inside = paths.length === 1 && stat.isDirectory && !flags.includes('d') ? target : ctx.cwd;
+
+    if (plain && !piped(ctx) && result.exitCode === 0) {
+      const names = stdoutText(result).split('\n').filter((name) => name !== '');
+      const folder = stat.isDirectory ? target : parentOf(target);
+      const order = stat.isDirectory ? (await shell.fs.readdir(target)).filter((name) => names.includes(name)) : [nameOf(target)];
+      if (order.length === names.length) {
+        const cells: Node[] = [];
+        for (const name of order) {
+          const at = under(folder, name);
+          const isFolder = (await statOf(at))?.isDirectory === true;
+          cells.push(CONTROL(at, isFolder ? `${name}/` : name, isFolder));
+        }
+        shell.run().recorded.push({ text: stdoutText(result), block: [{ kind: 'columns', cells, req: 'ls' }] });
+        return result;
+      }
+    }
+
+    const lines = stdoutText(result).split('\n');
+    const parts = sections(lines, ctx, inside);
+    const rows = new Map<number, Awaited<ReturnType<typeof longLines>>[number]>();
+    if (long) for (const part of parts) for (const row of await longLines(lines, part, ctx)) rows.set(row.at, row);
+    if (slashes && !long) for (const part of parts) for (const at of part.lines) if ((await named(lines[at]!, part.folder, ctx))?.folder === true && !lines[at]!.endsWith('/')) lines[at] += '/';
+    if ((comma || columns) && !long) {
+      const out: string[] = [];
+      const skip = new Set(parts.flatMap((part) => part.lines));
+      const firstOf = new Map(parts.filter((part) => part.lines.length > 0).map((part) => [part.lines[0]!, part] as const));
+      lines.forEach((entry, at) => {
+        const part = firstOf.get(at);
+        if (part !== undefined) out.push(...(comma ? commas : inColumns)(part.lines.map((index) => lines[index]!)));
+        else if (!skip.has(at)) out.push(entry);
+      });
+      const stdout = out.join('\n');
+      return { ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output;
+    }
+    const stdout = lines.join('\n');
+    const changed = long || slashes;
+    if (piped(ctx)) return changed ? ({ ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output) : result;
+
+    const block: Node[] = [];
+    const folderOf = new Map(parts.flatMap((part) => part.lines.map((at) => [at, part.folder] as const)));
+    for (const [at, entry] of lines.entries()) {
+      if (at === lines.length - 1 && entry === '') break;
+      const folder = folderOf.get(at);
+      if (long) {
+        const row = rows.get(at);
+        if (row === undefined || row.name === '.' || row.name === '..') block.push({ kind: 'line', children: [textNode(entry, 'dim')] });
+        else block.push({ kind: 'line', children: [textNode(row.lead, 'dim'), textNode(row.owners, row.owner === 'guest' ? 'secondary' : 'dim'), textNode(row.tail, 'dim'), CONTROL(row.path, row.folder ? `${row.name}/` : row.name, row.folder)] });
+        continue;
+      }
+      const name = folder === undefined ? null : await named(entry, folder, ctx);
+      block.push({ kind: 'line', children: [name === null ? textNode(entry) : CONTROL(name.path, entry, name.folder)] });
+    }
+    shell.run().recorded.push({ text: stdout, block });
+    return changed ? ({ ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output) : result;
   });
 
-  // `jq`: what it printed, when it is one JSON value, as JSON rows (R31).
+  // `jq`, the site's own (research R53, G39): what it printed, when it is one
+  // JSON value, as JSON rows (R31).
   const jq = defineCommand('jq', async (args, ctx) => {
-    const result = await ctx.origCommand!(args);
-    if (result.exitCode !== 0 || result.stdout === '' || piped(ctx)) return result;
-    const printed = stdoutText(result);
-    const json = printJson(printed);
-    if (!('error' in json)) shell.run().recorded.push({ text: printed, block: [{ kind: 'json', rows: json.rows }] });
-    return result;
+    if (args.includes('--help') || args.includes('-h')) return ctx.origCommand!(['--help']);
+    const stdin = decode(ctx.stdin);
+    const result = await runJq(args, {
+      stdin,
+      read: async (file) => {
+        if (file === '/dev/stdin' || file === '/dev/fd/0') return { text: stdin };
+        const path = ctx.fs.resolvePath(ctx.cwd, file);
+        const stat = await shell.fs.stat(path).catch(() => null);
+        if (stat === null) return 'missing';
+        return stat.isDirectory ? 'folder' : { text: await shell.fs.readFile(path) };
+      },
+      env: new Map([...ctx.env].filter(([name]) => !name.includes(MARK))),
+      // Ahead of just-bash's own, so the line's stop is this one and says only the site's text.
+      deadline: shell.run().deadline - 100,
+      maxOutput: piped(ctx) ? shell.limits.pipe : shell.limits.output,
+    });
+    if (result.stopped !== undefined) {
+      shell.run().stopped = result.stopped;
+      return ok('', '', 1);
+    }
+    const { stopped: _none, ...printed } = result;
+    if (printed.exitCode !== 0 || printed.stdout === '' || piped(ctx)) return printed;
+    const json = printJson(printed.stdout);
+    if (!('error' in json)) shell.run().recorded.push({ text: printed.stdout, block: [{ kind: 'json', rows: json.rows }] });
+    return printed;
   });
 
 
@@ -348,9 +539,25 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     const end = args.indexOf('--');
     const options = (end < 0 ? args : args.slice(0, end)).filter((arg) => arg.startsWith('-') && arg !== '-');
     const has = (short: string, long: string) => options.some((arg) => arg === long || (!arg.startsWith('--') && arg.includes(short)));
-    if (!has('r', '--recursive') && !has('R', '--recursive')) return ctx.origCommand!(args);
     const force = has('f', '--force');
     const targets = end < 0 ? args.filter((arg) => !options.includes(arg)) : [...args.slice(0, end).filter((arg) => !options.includes(arg)), ...args.slice(end + 1)];
+    if (!has('r', '--recursive') && !has('R', '--recursive')) {
+      if (!force) return ctx.origCommand!(args);
+      // `-f` silences a missing file, and only that (T330): just-bash's says
+      // nothing of a refusal.
+      const there: string[] = [];
+      for (const target of targets) if ((await shell.fs.stat(shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, target))).catch(() => null)) !== null) there.push(target);
+      if (there.length === 0) return ok('');
+      const rest = options.flatMap((option) => {
+        if (option === '--force') return [];
+        if (option.startsWith('--')) return [option];
+        const letters = option.replaceAll('f', '');
+        return letters === '-' ? [] : [letters];
+      });
+      return ctx.origCommand!([...rest, '--', ...there]);
+    }
+    const verbose = has('v', '--verbose');
+    let stdout = '';
     let stderr = '';
     let status = 0;
     // Whether `path` is gone; `shown` is it as typed, for the messages.
@@ -370,6 +577,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         status = 1;
         return false;
       }
+      if (verbose) stdout += `removed ${stat.isDirectory ? 'directory ' : ''}'${shown}'\n`;
       return true;
     };
     for (const target of targets) {
@@ -390,17 +598,93 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       await remove(path, target);
     }
     if (targets.length === 0 && !force) return ok('', 'rm: missing operand\n', 1);
-    return ok('', stderr, status);
+    return ok(stdout, stderr, status);
   });
 
   // What the adapter's redirect guard runs in place of a command whose
   // output would go to a protected path: bash's message (research R28, G1).
-  const denied = defineCommand(DENIED, async (args) => ok('', `bash: ${args[0] ?? ''}: Permission denied\n`, 1));
+
+  // `printf` and `echo -e` with a byte that isn't valid UTF-8: just-bash prints
+  // it as a character, so as two bytes (research G21). The byte is masked for
+  // the command, and put back in what it prints.
+  const bytesOf = (text: string) => {
+    const bytes: number[] = [];
+    for (const piece of text.split(/([\uF700-\uF7FF])/u)) {
+      if (/^[\uF700-\uF7FF]$/u.test(piece)) bytes.push(piece.charCodeAt(0) - 0xf700);
+      else for (const byte of new TextEncoder().encode(piece)) bytes.push(byte);
+    }
+    return bytes;
+  };
+  // The first conversion `printf` has no such letter for, past bash's length
+  // modifiers.
+  const badFormat = (format: string) => {
+    for (const match of format.matchAll(/%%|%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?[hlLjzt]*(.?)/gs)) {
+      if (match[0] === '%%' || /[diouxXfFeEgGaAcsbq]/.test(match[1]!)) continue;
+      if (match[1] === '') return null;
+      return { char: match[1]!, before: format.slice(0, match.index) };
+    }
+    return null;
+  };
+  const BYTE_COUNTED = /%[-+ #0]*(?:(?:\d+|\*)(?:\.(?:\d+|\*)?)?|\.(?:\d+|\*)?)[sb]|%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?c/;
+  const masked = (arg: string) => arg.replace(/\\x([89a-fA-F][0-9a-fA-F])|\\0?([23][0-7]{2})/g, (_, hex?: string, octal?: string) => String.fromCharCode(0xf700 + Number.parseInt(hex ?? octal!, hex === undefined ? 8 : 16)));
+  const byteExact = (name: string, reads: (args: readonly string[]) => boolean) =>
+    defineCommand(name, async (args, ctx) => {
+      // bash's usage and its words for a format it can't read (T372).
+      if (name === 'printf' && (args.length === 0 || (args.length === 1 && args[0] === '--'))) return ok('', 'printf: usage: printf [-v var] format [arguments]\n', 2);
+      const formatAt = name !== 'printf' ? -1 : args[0] === '-v' ? 2 : args[0] === '--' ? 1 : 0;
+      const bad = formatAt < 0 ? null : badFormat(args[formatAt] ?? '');
+      if (bad !== null) {
+        const before = await ctx.origCommand!(args.toSpliced(formatAt, 1, bad.before));
+        return { ...before, stderr: `bash: printf: \`${bad.char}': invalid format character\n`, exitCode: 1 };
+      }
+      // Its length modifiers mean nothing to bash, and just-bash refuses them.
+      const typed = formatAt < 0 || args[formatAt] === undefined ? args : args.toSpliced(formatAt, 1, args[formatAt]!.replace(/%%|(%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?)[hlLjzt]+/g, (whole, start?: string) => start ?? whole));
+      // A width, a precision and `%c` count bytes in bash, so each byte is a
+      // character for just-bash (T394).
+      const inBytes = name === 'printf' && args[0] !== '-v' && BYTE_COUNTED.test(typed[formatAt] ?? '') && typed.some((arg) => /[^\x00-\x7f]/.test(arg));
+      const mask = inBytes ? typed.map((arg, at) => (at === formatAt ? arg.replace(/%%|%([-+ #0]*(?:\d+|\*)?)c/g, (whole, width?: string) => (width === undefined ? whole : `%${width}.${1}s`)) : arg)).map((arg) => masked(arg).replace(/[^\x00-\x7f\uF700-\uF7FF]/gu, (char) => [...new TextEncoder().encode(char)].map((byte) => String.fromCharCode(0xf700 + byte)).join(''))) : reads(typed) ? typed.map(masked) : typed;
+      // bash's builtin names itself as the shell (T305).
+      const named = (result: Output) => (name === 'printf' ? { ...result, stderr: result.stderr.replace(/^printf: /gm, 'bash: printf: ') } : result);
+      if (mask.every((arg, index) => arg === typed[index])) return named(await ctx.origCommand!(typed));
+      const result = named(await ctx.origCommand!(mask));
+      const bytes = Uint8Array.from(bytesOf(result.stdout));
+      try {
+        return { ...result, stdout: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+      } catch {
+        return { ...result, stdout: Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''), stdoutKind: 'bytes' } as Output;
+      }
+    });
 
   // `--help` for the standard commands just-bash gives none (research G18).
   const helped = Object.entries(MISSING_HELP).filter(([name]) => name !== 'rm').map(([name, help]) =>
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  return [...rows, vim, cv, cat, ls, jq, rm, denied, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), ...helped];
+  const own = [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
+  // GNU's fixes (gnu.ts), in front of the wrapper or just-bash's command.
+  // A command run again on other input (`Next`): `origCommand` keeps the input
+  // it was given, so through the shell, this once past its fix.
+  let passing: string | null = null;
+  const shellWord = (word: string) => `'${word.replaceAll("'", `'\\''`)}'`;
+  const fixed = (name: string, runs: (args: string[], ctx: Context) => Promise<Output>) =>
+    defineCommand(name, async (args, ctx) => {
+      if (passing === name) {
+        passing = null;
+        return runs(args, ctx);
+      }
+      // What it says it printed no longer holds if a fix changed that.
+      const list = args.map((arg) => (arg === '/dev/stdin' || arg === '/dev/fd/0' ? '-' : arg));
+      const { internalOutputAccounting: _accounted, ...result } = (await GNU[name]!(list, ctx, (each, input) => {
+        if (input === undefined) return runs(each, ctx);
+        passing = name;
+        return ctx.exec!(`/usr/bin/${name} ${each.map(shellWord).join(' ')}`, { cwd: ctx.cwd, stdin: input, env: Object.fromEntries(ctx.env) }) as Promise<Output>;
+      }, shell.fs)) as Output & { internalOutputAccounting?: unknown };
+      // What it wrote to `/dev/stdout` and the like, by name (T332).
+      const streamed = shell.fs.takeStreamed();
+      const whole = streamed.stdout === '' && streamed.stderr === '' ? result : { ...result, stdout: `${result.stdout}${streamed.stdout}`, stderr: `${result.stderr}${streamed.stderr}` };
+      // just-bash's redirects can't count a command's bytes beside an error, and
+      // drop the line (T347, research G34): the same output, as text.
+      return whole.stderr !== '' && (whole.stdoutKind === 'bytes' || whole.stdoutEncoding === 'binary') ? { ...whole, stdout: stdoutText(whole), stdoutKind: undefined, stdoutEncoding: undefined } as Output : whole;
+    });
+  return [...own.map((command) => (GNU[command.name] === undefined ? command : fixed(command.name, (args, ctx) => command.execute(args, ctx)))), ...Object.keys(GNU).filter((name) => !own.some((command) => command.name === name)).map((name) => fixed(name, (args, ctx) => ctx.origCommand!(args)))];
 }
