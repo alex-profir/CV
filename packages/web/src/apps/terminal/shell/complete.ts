@@ -2,6 +2,7 @@
 // line, the cursor and the shell's state, what bash's readline would insert
 // and the full list of matches. Pure over the small file system it is given,
 // so it is tested in Node and against bash itself (research R45).
+import { QUOTED } from '../engine/block.ts';
 import type { CompleteRequest, Completion, CompletionMatch } from './protocol.ts';
 
 export type CompleteFs = {
@@ -24,8 +25,6 @@ export type CompleteSources = {
 // readline's word breaks for bash; a quote that opens starts the word after it.
 const BREAKS = new Set([' ', '\t', '\n', '"', "'", '`', '@', '$', '>', '<', '=', ';', '|', '&', '{', '(']);
 const SEPARATORS = new Set([';', '|', '&', '(', '`', '{']);
-// What bash puts a backslash before, outside quotes, in a name it inserts.
-const QUOTED = /[ \t\n\\"'@<>=;|&()#$`?*[!:{]/g;
 
 const GLOB = /[*?]|\[.*\]/;
 
@@ -101,6 +100,8 @@ function commonPrefix(names: readonly string[]): string {
 
 // Whether the word starting after `before` is a command's first word.
 function inCommandPosition(before: string, keywords: readonly string[]): boolean {
+  // An assignment's value (T329).
+  if (before.endsWith('=')) return false;
   const text = before.trimEnd();
   if (text === '') return true;
   if (SEPARATORS.has(text.at(-1)!)) return true;

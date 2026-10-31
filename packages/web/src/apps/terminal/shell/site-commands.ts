@@ -7,7 +7,7 @@
 // recording is made only here, from what the site printed, never from typed
 // or piped text (FR-018).
 import { defineCommand } from 'just-bash/browser';
-import { command } from '../engine/block.ts';
+import { command, pathLine } from '../engine/block.ts';
 import type { Block, Effect, Node, Tone, VimFile } from '../engine/block.ts';
 import { COMMANDS, CV_PIPE, CV_PRINT, SITE_WORDS, usage } from '../engine/commands.ts';
 import type { CommandName, RunContext, SiteRun } from '../engine/commands.ts';
@@ -17,7 +17,7 @@ import { fill } from '../../../site-text.ts';
 import { CLEARED, fileText, HOME, MARK } from './fs.ts';
 import { GNU } from './gnu.ts';
 import type { TerminalFs } from './fs.ts';
-import type { Recorded } from './protocol.ts';
+import type { Limit, Recorded } from './protocol.ts';
 import { helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
 
 export type ShellCommand = ReturnType<typeof defineCommand>;
@@ -41,6 +41,8 @@ export type RunRecord = {
   pipedFunctions: number;
   // Set while `help <builtin>` asks just-bash's own `help` for its text.
   builtinHelp: boolean;
+  // A limit a command met without just-bash stopping the line (T315).
+  stopped: Limit | null;
 };
 
 export type SiteShell = {
@@ -175,7 +177,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: false, new: true }, null, ''));
       return ok();
     }
-    if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: `ls ${typed}` })}\n`, 1);
+    if (stat.isDirectory) return ok('', `${fill(replies.isFolder, { path: typed, command: pathLine('ls', typed) })}\n`, 1);
     const content = await shell.fs.readFile(path);
     run.effects.push(vimEffect({ name: shownPath(typed), path, readonly: shell.fs.isProtected(path), new: false, ...(content === '\n' ? { blank: true } : {}) }, null, content.replace(/\n$/, '')));
     return ok();
@@ -273,83 +275,203 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   // `ls`: a listing whose names are controls, a folder running `ls` on it
   // and a file `cat`, in the design's order for the home folder (FR-043,
-  // FR-050).
+  // FR-050). Plain, it draws columns; with any option or several paths, each
+  // line as GNU's text has it (T327).
   // `ls -l`: just-bash gives every entry `user user` and its own modes
   // (research G7); the owner is `root` for a protected entry, which is read
-  // only, and `guest` for the visitor's (FR-049, research R28). Shown
-  // unchanged, it is drawn with its names as controls, as `ls` is.
-  // Mode, links, owner, group, then the size and date with the padding
-  // before them, then the name.
-  const LONG_LINE = /^([-dl])([-rwx]{9}) +(\d+) (\S+) +(\S+)( +\d+ \S+ +\d+ +(?:\d\d:\d\d|\d{4})) (.+)$/;
-  const longListing = async (args: readonly string[], ctx: Context, result: Output): Promise<Output> => {
-    const flags = args.filter((arg) => arg.startsWith('-')).join('');
-    const paths = args.filter((arg) => !arg.startsWith('-'));
-    if (paths.length > 1 || result.exitCode !== 0) return result;
-    const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
-    const stat = await shell.fs.stat(target).catch(() => null);
-    if (stat === null) return result;
-    const inside = stat.isDirectory && !flags.includes('d');
-    const pathOf = (name: string) => (!inside ? target : name === '.' ? target : name === '..' ? parentOf(target) : `${target === '/' ? '' : target}/${name}`);
-    const lines = stdoutText(result).split('\n');
+  // only, and `guest` for the visitor's (FR-049, research R28). A folder has
+  // GNU's size and links, and each column is as wide as its widest (T329).
+  // Mode, links, owner, group, size, date, name.
+  const LONG_LINE = /^([-dl])([-rwx]{9}) +(\d+) (\S+) +(\S+) +(\S+) (\S+ +\d+ +(?:\d\d:\d\d|\d{4})) (.+)$/;
+  const CONTROL = (path: string, label: string, folder: boolean) => (folder ? command(pathLine('ls', shownPath(path)), 'inline', { label, req: 'ls', tone: 'folder' }) : command(pathLine('cat', shownPath(path)), 'inline', { label, req: 'ls' }));
+  const statOf = (path: string) => shell.fs.stat(path).catch(() => null);
+  const under = (folder: string, name: string) => `${folder === '/' ? '' : folder}/${name}`;
+  const textNode = (value: string, tone?: Tone): Node => ({ kind: 'text', text: value, stream: 'stdout', ...(tone === undefined ? {} : { tone }) });
+
+  // What a line of a listing names, its name with no `-F` mark, from `folder`.
+  const named = async (shown: string, folder: string, ctx: Context) => {
+    for (const name of [shown, shown.replace(/[/*@=|]$/, '')]) {
+      if (name === '.' || name === '..') return null;
+      const path = shell.fs.canonical(ctx.fs.resolvePath(folder, name));
+      const stat = await statOf(path);
+      if (stat !== null) return { path, folder: stat.isDirectory };
+    }
+    return null;
+  };
+
+  // Each section of a listing: its lines, and the folder its names are in. A
+  // `path:` line starts one; the file operands of several paths come first.
+  const sections = (lines: readonly string[], ctx: Context, inside: string) => {
+    const found: { header: number; lines: number[]; folder: string }[] = [{ header: -1, lines: [], folder: inside }];
+    lines.forEach((entry, at) => {
+      const header = /^(.+):$/.exec(entry);
+      if (header !== null && (at === 0 || lines[at - 1] === '')) found.push({ header: at, lines: [], folder: shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, header[1]!)) });
+      else if (entry !== '' && !/^total \S+$/.test(entry)) found.at(-1)!.lines.push(at);
+    });
+    return found;
+  };
+
+  const longLines = async (lines: string[], part: { lines: number[]; folder: string }, ctx: Context) => {
     const entries = await Promise.all(
-      lines.map(async (entry) => {
-        const match = LONG_LINE.exec(entry);
+      part.lines.map(async (at) => {
+        const match = LONG_LINE.exec(lines[at]!);
         if (match === null) return null;
-        const [, kind, mode, links, , , rest, name] = match;
-        const path = pathOf(name!);
+        const [, kind, mode, links, , , size, date, name] = match;
+        const path = shell.fs.canonical(ctx.fs.resolvePath(part.folder, name!));
         const folder = kind === 'd';
         const info = shell.fs.info(path, folder ? 'folder' : 'file');
-        return { kind: kind!, mode: info.protected ? (folder ? 'r-xr-xr-x' : 'r--r--r--') : mode!, links: links!, owner: info.owner as string, rest: rest!, name: name!, path, folder };
+        let inner = 0;
+        if (folder) for (const child of await shell.fs.readdir(path).catch(() => [] as string[])) if ((await statOf(under(path, child)))?.isDirectory === true) inner += 1;
+        return { at, kind: kind!, mode: info.protected ? (folder ? 'r-xr-xr-x' : 'r--r--r--') : mode!, links: folder ? String(inner + 2) : links!, owner: info.owner as string, size: folder ? '4096' : size!, date: date!, name: name!, path, folder };
       }),
     );
-    const width = Math.max(0, ...entries.map((entry) => entry?.owner.length ?? 0));
-    const text = lines.map((entry, index) => {
-      const found = entries[index];
-      return found === null || found === undefined ? entry : `${found.kind}${found.mode} ${found.links} ${found.owner.padEnd(width)} ${found.owner.padEnd(width)}${found.rest} ${found.name}`;
+    const known = entries.filter((entry) => entry !== null);
+    const newest = known.find((entry) => entry.name !== '.' && entry.name !== '..')?.date;
+    const widest = (of: (entry: (typeof known)[number]) => string) => Math.max(0, ...known.map((entry) => of(entry).length));
+    const [linkWidth, ownerWidth, sizeWidth] = [widest((entry) => entry.links), widest((entry) => entry.owner), widest((entry) => entry.size)];
+    return known.map((entry) => {
+      const date = (entry.name === '.' || entry.name === '..') && newest !== undefined ? newest : entry.date;
+      const owners = `${entry.owner.padEnd(ownerWidth)} ${entry.owner.padEnd(ownerWidth)}`;
+      const lead = `${entry.kind}${entry.mode} ${entry.links.padStart(linkWidth)} `;
+      const tail = ` ${entry.size.padStart(sizeWidth)} ${date} `;
+      lines[entry.at] = `${lead}${owners}${tail}${entry.name}`;
+      return { ...entry, lead, owners, tail };
     });
-    const stdout = text.join('\n');
-    if (!piped(ctx)) {
-      const out = (value: string, tone?: Tone): Node => ({ kind: 'text', text: value, stream: 'stdout', ...(tone === undefined ? {} : { tone }) });
-      const block: Block = text
-        .filter((entry) => entry !== '')
-        .map((entry, index) => {
-          const found = entries.filter((_, at) => lines[at] !== '')[index];
-          if (found === null || found === undefined || found.name === '.' || found.name === '..') return { kind: 'line', children: [out(entry, 'dim')] } as Node;
-          const owners = `${found.owner.padEnd(width)} ${found.owner.padEnd(width)}`;
-          const name = found.folder ? command(`ls ${shownPath(found.path)}`, 'inline', { label: `${found.name}/`, req: 'ls', tone: 'folder' }) : command(`cat ${shownPath(found.path)}`, 'inline', { label: found.name, req: 'ls' });
-          return { kind: 'line', children: [out(`${found.kind}${found.mode} ${found.links} `, 'dim'), out(owners, found.owner === 'guest' ? 'secondary' : 'dim'), out(`${found.rest} `, 'dim'), name] } as Node;
+  };
+
+  // GNU's `-m` and `-C`, which just-bash doesn't have, over its one name a line.
+  const WIDTH = 80;
+  const commas = (names: readonly string[]) => {
+    const rows: string[] = [];
+    let row = '';
+    names.forEach((name, at) => {
+      const item = at === names.length - 1 ? name : `${name},`;
+      if (row !== '' && row.length + 1 + item.length > WIDTH - 1) {
+        rows.push(row);
+        row = item;
+      } else row = row === '' ? item : `${row} ${item}`;
+    });
+    return row === '' ? [] : [...rows, row];
+  };
+  const inColumns = (names: readonly string[]) => {
+    for (let count = names.length; count > 1; count -= 1) {
+      const height = Math.ceil(names.length / count);
+      const columns = Array.from({ length: count }, (_, column) => names.slice(column * height, (column + 1) * height));
+      const widths = columns.map((column) => Math.max(0, ...column.map((name) => name.length)));
+      if (widths.reduce((sum, width) => sum + width + 2, -2) >= WIDTH) continue;
+      return Array.from({ length: height }, (_, row) => {
+        let text = '';
+        let from = 0;
+        let to = 0;
+        columns.forEach((column, at) => {
+          if (column[row] === undefined) return;
+          // Tabs where they fit, as GNU does.
+          while (from < to) {
+            const tab = Math.floor(to / 8) > Math.floor((from + 1) / 8);
+            text += tab ? '\t' : ' ';
+            from = tab ? from + 8 - (from % 8) : from + 1;
+          }
+          text += column[row];
+          from += column[row]!.length;
+          to += widths[at]! + 2;
         });
-      shell.run().recorded.push({ text: stdout, block });
+        return text;
+      });
     }
-    return { ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output;
+    return [...names];
   };
 
   const ls = defineCommand('ls', async (args, ctx) => {
-    const result = await ctx.origCommand!(args);
-    if (args.some((arg) => /^-[a-zA-Z]*l[a-zA-Z]*$/.test(arg))) return longListing(args, ctx, result);
-    const paths = args.filter((arg) => !arg.startsWith('-'));
-    if (result.exitCode !== 0 || result.stdout === '' || piped(ctx) || paths.length < args.length || paths.length > 1) return result;
-    const target = shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0] ?? '.'));
-    const stat = await shell.fs.stat(target).catch(() => null);
-    if (stat === null) return result;
-    const names = stdoutText(result).split('\n').filter((name) => name !== '');
-    const folder = stat.isDirectory ? target : parentOf(target);
-    const order = stat.isDirectory ? (await shell.fs.readdir(target)).filter((name) => names.includes(name)) : [nameOf(target)];
-    if (order.length !== names.length) return result;
-    const cells: Node[] = [];
-    for (const name of order) {
-      const at = `${folder === '/' ? '' : folder}/${name}`;
-      const isFolder = (await shell.fs.stat(at).catch(() => null))?.isDirectory === true;
-      cells.push(isFolder ? command(`ls ${shownPath(at)}`, 'inline', { label: `${name}/`, req: 'ls', tone: 'folder' }) : command(`cat ${shownPath(at)}`, 'inline', { label: name, req: 'ls' }));
+    if (args.includes('--help')) {
+      const help = await ctx.origCommand!(args);
+      return { ...help, stdout: help.stdout.replace(/^(\s+--help)/m, '  -C                   list entries by columns\n      --color[=WHEN]   colors never show here; WHEN is always, auto or never\n  -m                   fill width with a comma separated list of entries\n  -p                   append / indicator to directories\n$1') };
     }
-    const block: Block = [{ kind: 'columns', cells, req: 'ls' }];
-    shell.run().recorded.push({ text: stdoutText(result), block });
-    return result;
+    // The options just-bash lacks: taken out, and done to its text below.
+    const end = args.indexOf('--');
+    const options = (end < 0 ? args : args.slice(0, end)).filter((arg) => arg.startsWith('-') && arg !== '-');
+    const has = (letter: string) => options.some((arg) => !arg.startsWith('--') && arg.includes(letter));
+    const [slashes, columns, comma] = [has('p'), has('C'), has('m')];
+    const list = args.flatMap((arg, at) => {
+      if (end >= 0 && at >= end) return [arg];
+      if (/^--colou?r(=.*)?$/.test(arg)) return [];
+      if (!arg.startsWith('-') || arg.startsWith('--') || arg === '-') return [arg];
+      const left = arg.slice(1).replace(/[pCm]/g, '');
+      return left === '' ? [] : [`-${left}`];
+    });
+    const result = await ctx.origCommand!(list);
+    const flags = options.filter((arg) => !arg.startsWith('--')).join('');
+    const paths = end < 0 ? list.filter((arg) => !arg.startsWith('-')) : [...list.slice(0, list.indexOf('--')).filter((arg) => !arg.startsWith('-')), ...list.slice(list.indexOf('--') + 1)];
+    const long = flags.includes('l');
+    const plain = list.length === paths.length && options.length === 0 && paths.length <= 1;
+    if (result.stdout === '') return result;
+    const target = paths.length === 1 ? shell.fs.canonical(ctx.fs.resolvePath(ctx.cwd, paths[0]!)) : ctx.cwd;
+    const stat = await statOf(target);
+    if (stat === null) return result;
+    const inside = paths.length === 1 && stat.isDirectory && !flags.includes('d') ? target : ctx.cwd;
+
+    if (plain && !piped(ctx) && result.exitCode === 0) {
+      const names = stdoutText(result).split('\n').filter((name) => name !== '');
+      const folder = stat.isDirectory ? target : parentOf(target);
+      const order = stat.isDirectory ? (await shell.fs.readdir(target)).filter((name) => names.includes(name)) : [nameOf(target)];
+      if (order.length === names.length) {
+        const cells: Node[] = [];
+        for (const name of order) {
+          const at = under(folder, name);
+          const isFolder = (await statOf(at))?.isDirectory === true;
+          cells.push(CONTROL(at, isFolder ? `${name}/` : name, isFolder));
+        }
+        shell.run().recorded.push({ text: stdoutText(result), block: [{ kind: 'columns', cells, req: 'ls' }] });
+        return result;
+      }
+    }
+
+    const lines = stdoutText(result).split('\n');
+    const parts = sections(lines, ctx, inside);
+    const rows = new Map<number, Awaited<ReturnType<typeof longLines>>[number]>();
+    if (long) for (const part of parts) for (const row of await longLines(lines, part, ctx)) rows.set(row.at, row);
+    if (slashes && !long) for (const part of parts) for (const at of part.lines) if ((await named(lines[at]!, part.folder, ctx))?.folder === true && !lines[at]!.endsWith('/')) lines[at] += '/';
+    if ((comma || columns) && !long) {
+      const out: string[] = [];
+      const skip = new Set(parts.flatMap((part) => part.lines));
+      const firstOf = new Map(parts.filter((part) => part.lines.length > 0).map((part) => [part.lines[0]!, part] as const));
+      lines.forEach((entry, at) => {
+        const part = firstOf.get(at);
+        if (part !== undefined) out.push(...(comma ? commas : inColumns)(part.lines.map((index) => lines[index]!)));
+        else if (!skip.has(at)) out.push(entry);
+      });
+      const stdout = out.join('\n');
+      return { ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output;
+    }
+    const stdout = lines.join('\n');
+    const changed = long || slashes;
+    if (piped(ctx)) return changed ? ({ ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output) : result;
+
+    const block: Node[] = [];
+    const folderOf = new Map(parts.flatMap((part) => part.lines.map((at) => [at, part.folder] as const)));
+    for (const [at, entry] of lines.entries()) {
+      if (at === lines.length - 1 && entry === '') break;
+      const folder = folderOf.get(at);
+      if (long) {
+        const row = rows.get(at);
+        if (row === undefined || row.name === '.' || row.name === '..') block.push({ kind: 'line', children: [textNode(entry, 'dim')] });
+        else block.push({ kind: 'line', children: [textNode(row.lead, 'dim'), textNode(row.owners, row.owner === 'guest' ? 'secondary' : 'dim'), textNode(row.tail, 'dim'), CONTROL(row.path, row.folder ? `${row.name}/` : row.name, row.folder)] });
+        continue;
+      }
+      const name = folder === undefined ? null : await named(entry, folder, ctx);
+      block.push({ kind: 'line', children: [name === null ? textNode(entry) : CONTROL(name.path, entry, name.folder)] });
+    }
+    shell.run().recorded.push({ text: stdout, block });
+    return changed ? ({ ...result, stdout, stdoutKind: undefined, stdoutEncoding: undefined } as Output) : result;
   });
 
   // `jq`: what it printed, when it is one JSON value, as JSON rows (R31).
   const jq = defineCommand('jq', async (args, ctx) => {
     const result = await ctx.origCommand!(args);
+    // jq never ends where just-bash runs out of room (T315, research R25).
+    if (result.exitCode !== 0 && /too many iterations|limit exceeded|Maximum call stack/.test(result.stderr)) {
+      shell.run().stopped = 'time';
+      return ok('', '', result.exitCode);
+    }
     if (result.exitCode !== 0 || result.stdout === '' || piped(ctx)) return result;
     const printed = stdoutText(result);
     const json = printJson(printed);
@@ -452,10 +574,23 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
 
   const own = [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
   // GNU's fixes (gnu.ts), in front of the wrapper or just-bash's command.
+  // A command run again on other input (`Next`): `origCommand` keeps the input
+  // it was given, so through the shell, this once past its fix.
+  let passing: string | null = null;
+  const shellWord = (word: string) => `'${word.replaceAll("'", `'\\''`)}'`;
   const fixed = (name: string, runs: (args: string[], ctx: Context) => Promise<Output>) =>
     defineCommand(name, async (args, ctx) => {
+      if (passing === name) {
+        passing = null;
+        return runs(args, ctx);
+      }
       // What it says it printed no longer holds if a fix changed that.
-      const { internalOutputAccounting: _accounted, ...result } = (await GNU[name]!(args, ctx, (list) => runs(list, ctx), shell.fs)) as Output & { internalOutputAccounting?: unknown };
+      const list = args.map((arg) => (arg === '/dev/stdin' ? '-' : arg));
+      const { internalOutputAccounting: _accounted, ...result } = (await GNU[name]!(list, ctx, (each, input) => {
+        if (input === undefined) return runs(each, ctx);
+        passing = name;
+        return ctx.exec!(`/usr/bin/${name} ${each.map(shellWord).join(' ')}`, { cwd: ctx.cwd, stdin: input, env: Object.fromEntries(ctx.env) }) as Promise<Output>;
+      }, shell.fs)) as Output & { internalOutputAccounting?: unknown };
       return result;
     });
   return [...own.map((command) => (GNU[command.name] === undefined ? command : fixed(command.name, (args, ctx) => command.execute(args, ctx)))), ...Object.keys(GNU).filter((name) => !own.some((command) => command.name === name)).map((name) => fixed(name, (args, ctx) => ctx.origCommand!(args)))];

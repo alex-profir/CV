@@ -128,11 +128,40 @@ describe('006-terminal-FR-008: help lists every command, the standard group incl
 });
 
 describe('006-terminal-FR-017: a standard command’s wrong option gives its own message', () => {
+  test('date reads the same in any zone: its dates are UTC, each side of Greenwich (T321)', async () => {
+    const zone = process.env.TZ;
+    try {
+      for (const name of ['Asia/Tokyo', 'America/Los_Angeles']) {
+        process.env.TZ = name;
+        const shell = shellFor('every-field');
+        for (const typed of ['15 Jan 2020', '2020/01/15', '01/15/2020', 'jan 15 2020', '2020-01-15']) expect((await runLine(shell, `date -u -d '${typed}' +%F`)).stdout, `${name} ${typed}`).toBe('2020-01-15\n');
+        expect((await runLine(shell, "date -u -d 'next monday' +%a")).stdout).toBe('Mon\n');
+        expect((await runLine(shell, "date -u -d '12:00' +%H:%M")).stdout).toBe('12:00\n');
+      }
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
+
+  test('find -delete on a protected file, cp and mv of a file on itself, and uniq’s OUTPUT (T322)', async () => {
+    const shell = shellFor('every-field');
+    expect((await runLine(shell, 'find about -delete')).stderr).toBe('find: cannot delete ‘about’: Permission denied\n');
+    expect((await runLine(shell, 'touch a; mv a a')).stderr).toBe("mv: 'a' and 'a' are the same file\n");
+    expect((await runLine(shell, 'cp a a')).stderr).toBe("cp: 'a' and 'a' are the same file\n");
+    expect((await runLine(shell, 'cp a b nope')).stderr).toBe("cp: target 'nope': No such file or directory\n");
+    expect((await runLine(shell, "printf 'x\\nx\\n' > i; uniq i o; cat o")).stdout).toBe('x\n');
+    expect((await runLine(shell, 'mkdir d; diff d d; echo $?')).stdout).toBe('0\n');
+    expect((await runLine(shell, 'diff --version')).stdout).toContain('diff (GNU diffutils)');
+    expect((await runLine(shell, 'sed')).status).toBe(1);
+    expect((await runLine(shell, 'awk')).status).toBe(2);
+  });
+
   test('ls --badopt, grep alone and head -n x about', async () => {
     const shell = shellFor('every-field');
     expect(await runLine(shell, 'ls --badopt')).toMatchObject({ stderr: "ls: unrecognized option '--badopt'\nTry 'ls --help' for more information.\n", status: 2 });
     expect(await runLine(shell, 'grep')).toMatchObject({ stderr: "Usage: grep [OPTION]... PATTERNS [FILE]...\nTry 'grep --help' for more information.\n", status: 2 });
-    expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines\n', status: 1 });
+    expect(await runLine(shell, 'head -n x about')).toMatchObject({ stderr: 'head: invalid number of lines: ‘x’\n', status: 1 });
   });
 });
 

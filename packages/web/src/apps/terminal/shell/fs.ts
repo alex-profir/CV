@@ -30,6 +30,10 @@ export const WROTE = `${MARK}wrote`;
 const WROTE_CALL = ` /usr/bin/${WROTE} $? "$_";`;
 const WRAPPED = new RegExp(`\\{ ([^{}]*); /usr/bin/${WROTE} \\$\\? "\\$_"; \\}`, 'g');
 
+// Where a check writes what the shell lists, kept apart from the visitor's
+// files and the line's output (T326).
+export const CHECK_FILE = `/dev/${MARK}check`;
+
 // Starts the message of a `${x:?word}`, which tells it from `exit` (T286).
 export const FATAL = '\u0002';
 
@@ -37,6 +41,9 @@ export const FATAL = '\u0002';
 // answers, as `type` prints them.
 const FINISHED = new RegExp(`\\{ /usr/bin/${MARK}hold "\\$\\?" (\\S*) .*?/usr/bin/${MARK}after "\\$${MARK}l"; \\}`, 'g');
 const HELPED = new RegExp(`/usr/bin/${MARK}usage ([^\\s;]+)`, 'g');
+
+// `exit` as the adapter runs it (T314).
+const EXITING = new RegExp(`\\{ /usr/bin/${MARK}exiting \\$\\?; ([^;{}]*); \\}`, 'g');
 
 const OWN_LINE = new RegExp(`^(?:declare -\\S+ )?${MARK}.*\\n`, 'gm');
 
@@ -105,6 +112,13 @@ export class TerminalFs extends InMemoryFs {
       this.mkdirSync(folder, { recursive: true });
       this.lock(folder);
     }
+    // As much as anything here reads: FR-069's limit stops what never ends (T323).
+    const random = new Uint8Array(QUOTA);
+    for (let at = 0; at < random.length; at += 65_536) crypto.getRandomValues(random.subarray(at, at + 65_536));
+    for (const [device, bytes] of [['/dev/zero', new Uint8Array(QUOTA)], ['/dev/urandom', random], ['/dev/random', random]] as const) {
+      this.writeFileSync(device, bytes);
+      this.lock(device);
+    }
     this.mkdirSync(HOME, { recursive: true });
     this.mkdirSync(TMP, { recursive: true });
     for (const child of tree.children) {
@@ -140,6 +154,8 @@ export class TerminalFs extends InMemoryFs {
   }
 
   override writeFileSync(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding, metadata?: { mode?: number; mtime?: Date }) {
+    // just-bash empties it for every shell it starts (T323).
+    if (path === '/dev/zero' && byteLength(content) === 0) return;
     if (path.startsWith('/proc/')) throw failure('ENOSYS', 'ENOSYS: no /proc');
     super.writeFileSync(path, content, options, metadata);
     if (!this.building && path !== '/dev/null' && (path.startsWith('/dev/') || path.startsWith('/bin/') || path.startsWith('/usr/'))) this.lock(path);
@@ -257,7 +273,7 @@ export class TerminalFs extends InMemoryFs {
       last = body;
       body = body.replace(WRAPPED, '$1');
     }
-    body = body.replaceAll(WROTE_CALL, '');
+    body = body.replaceAll(WROTE_CALL, '').replace(EXITING, '$1');
     // The adapter's variables, where a name from an expansion runs `set` or
     // `declare -p` beside them (T297).
     if (body.includes(MARK)) body = body.replace(OWN_LINE, '');
@@ -307,7 +323,20 @@ export class TerminalFs extends InMemoryFs {
     return stat?.isDirectory === true;
   }
 
+  // What a check listed, as text, and gone.
+  private checked = '';
+  takeCheck(): string {
+    const text = this.checked;
+    this.checked = '';
+    return text;
+  }
+  private listed(content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    const encoding = typeof options === 'string' ? options : options?.encoding;
+    this.checked += typeof content !== 'string' ? new TextDecoder().decode(content) : encoding === 'binary' || encoding === 'latin1' ? new TextDecoder().decode(Uint8Array.from(content, (char) => char.charCodeAt(0))) : content;
+  }
+
   override async writeFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
+    if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
     await this.writable(path, at, content, options);
     if (at === '/dev/null') return;
@@ -320,6 +349,7 @@ export class TerminalFs extends InMemoryFs {
 
   override async appendFile(path: string, content: FileContent, options?: WriteFileOptions | BufferEncoding) {
     if (path.endsWith(OPENING)) return this.open(path.slice(0, -OPENING.length));
+    if (path === CHECK_FILE) return this.listed(content, options);
     const at = this.canonical(path);
     await this.writable(path, at, content, options);
     if (at === '/dev/null') return;

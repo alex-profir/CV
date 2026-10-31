@@ -280,7 +280,7 @@ describe('006-terminal-FR-049: whole command lines on protected paths', () => {
   test('a missing file or folder keeps its own reason', async () => {
     const shell = shellFor('every-field');
     expect((await runLine(shell, 'echo hi | tee nope/x')).stderr).toBe('tee: nope/x: No such file or directory\n');
-    expect((await runLine(shell, 'sed -i s/a/b/ work/nope')).stderr).toBe('sed: work/nope: No such file or directory\n');
+    expect((await runLine(shell, 'sed -i s/a/b/ work/nope')).stderr).toBe("sed: can't read work/nope: No such file or directory\n");
   });
 
   test('rm -rf ~ removes the visitor’s files and names each protected file once', async () => {

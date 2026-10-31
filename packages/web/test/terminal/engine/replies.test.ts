@@ -1,6 +1,7 @@
 // The Terminal's replies (contracts/commands.md Replies).
 import { describe, expect, test } from 'vitest';
 import { plainText } from '../../../src/apps/terminal/engine/block.ts';
+import { mapOutput } from '../../../src/apps/terminal/engine/output-map.ts';
 import { fullText } from '../../../src/shell-text.ts';
 import { contextFor, nodes, output, run, textOf } from './context.ts';
 
@@ -79,6 +80,13 @@ describe('006-terminal-FR-048: a path that is missing, or the wrong kind', () =>
       expect(commands.map((node) => node.kind === 'command' && node.line), line).toEqual(lines);
       for (const node of commands) expect(node).toMatchObject({ req: 'path' });
     }
+  });
+
+  test('a reply’s control quotes the path it names (T316)', () => {
+    const nodesOf = (stderr: string) => nodes(mapOutput({ stdout: '', stderr, recorded: [], end: 'done', state: { cwd: '/home/guest' } }, 'x', { text: fullText, columns: 80 }).block).flatMap((node) => (node.kind === 'command' ? [node.line] : []));
+    expect(nodesOf('cat: my dir: Is a directory\n')).toEqual(['ls my\\ dir']);
+    expect(nodesOf('bash: cd: a;b: Not a directory\n')).toEqual(['cat a\\;b']);
+    expect(nodesOf('-x is a folder. Try ls -- -x.\n')).toEqual(['ls -- -x']);
   });
 
   test('ls on a file lists that file alone', async () => {

@@ -23,6 +23,7 @@ const INSTALL = 'brew install bash python, then put bash first on PATH';
 
 // Each covers one of R45's cases.
 const LINES: readonly string[] = [
+  'FOO=cv',
   'ab', // a command
   'experi', // an alias
   'expo', // a builtin

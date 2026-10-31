@@ -65,6 +65,18 @@ describe('006-terminal-FR-069: a line is stopped at 5 s and the page keeps answe
     expect(await page.evaluate(() => document.querySelector('.terminal section.run:last-of-type')!.nextElementSibling?.matches('form.prompt-line'))).toBe(true);
   });
 
+  test('a loop inside awk or sed, which the shell’s clock can’t reach, ends in the time line with the page answering (T315)', async () => {
+    const page = await runawayTerminal();
+    for (const line of ["awk 'BEGIN{while(1);}'", "printf 'a\\n' | sed ':a;ba'"]) {
+      const start = Date.now();
+      await page.locator(COMMAND_LINE).fill(line);
+      await page.keyboard.press('Enter');
+      await expect.poll(() => busy(page), { timeout: 15_000 }).toBe(0);
+      expect(Date.now() - start, line).toBeLessThan(12_000);
+      expect(await page.locator('section.run').last().innerText(), line).toContain(siteText.terminal.replies.stopped.time);
+    }
+  });
+
   test('a worker that never answers is ended after 6 s and started again, keeping a variable and a visitor’s file', async () => {
     const page = await runawayTerminal();
     await runGroup(page, 'KEPT=yes; mkdir mine');

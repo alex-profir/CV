@@ -104,10 +104,10 @@ describe('006-terminal-FR-057: a syntax error runs nothing', () => {
 
   test('a pipe with an empty side (research G2)', async () => {
     const shell = shellFor('every-field');
-    for (const line of ['ls |', '| jq', 'ls |||  x', 'touch made |']) {
+    for (const [line, word] of [['ls |', 'syntax error: unexpected end of file'], ['| jq', "syntax error near unexpected token `|'"], ['ls |||  x', "syntax error near unexpected token `|'"], ['touch made |', 'syntax error: unexpected end of file']] as const) {
       const result = await runLine(shell, line);
       expect(result, line).toMatchObject({ stdout: '', end: 'syntax', status: 2 });
-      expect(result.stderr, line).toContain("syntax error near unexpected token `|'");
+      expect(result.stderr, line).toContain(word);
     }
     expect((await runLine(shell, 'ls')).stdout).not.toContain('made');
   });
@@ -527,8 +527,31 @@ describe('006-terminal-FR-067: the adapter’s script stays apart from the visit
 });
 
 describe('006-terminal-FR-067 and 006-terminal-FR-068: failures worded as bash words them', () => {
-  test.each(['for i in 1', 'f() {', '(', 'case x in', 'if true; then', 'while true; do', 'until true; do', 'if', 'a=(', 'true &&', 'foo()'])('%s is an unfinished line', async (line) => {
+  test.each(['a=(', 'true &&', 'foo()'])('%s is an unfinished line', async (line) => {
     expect(await runLine(shellFor('every-field'), line)).toMatchObject({ stderr: 'bash: line 1: syntax error: unexpected end of file\n', status: 2, end: 'syntax' });
+  });
+
+  test.each([['for i in 1', 'for'], ['f() {', '{'], ['(', '('], ['case x in', 'case'], ['if true; then', 'if'], ['while true; do', 'while'], ['until true; do', 'until'], ['if', 'if'], ['if a; then while b', 'while'], ['echo if; while', 'while'], ['select x', 'select']])('%s names what it leaves open, as bash 5.3 (T324)', async (line, word) => {
+    expect(await runLine(shellFor('every-field'), line)).toMatchObject({ stderr: `bash: line 1: syntax error: unexpected end of file from \`${word}' command on line 1\n`, status: 2, end: 'syntax' });
+  });
+
+  test.each(['echo >', 'echo a 2>', 'cat <', '<<<', '>&', '&>', 'cat <<', 'function', 'for', 'case', 'select', 'coproc'])('%s is unexpected at its end, in bash’s words (T324)', async (line) => {
+    expect(await runLine(shellFor('every-field'), line)).toMatchObject({ stderr: "bash: line 1: syntax error near unexpected token `newline'\n", status: 2, end: 'syntax' });
+  });
+
+  test('an unfinished [[, $(( and a stray ; in bash’s words (T323, T324)', async () => {
+    for (const [line, stderr] of [
+      ['[[', "bash: line 1: unexpected token `EOF' in conditional command\nbash: line 1: syntax error: unexpected end of file from `[[' command on line 1\n"],
+      ['[[ a', "bash: line 1: unexpected token `newline', conditional binary operator expected\nbash: line 1: syntax error near `a'\n"],
+      ['[[ a ==', "bash: line 1: unexpected argument `newline' to conditional binary operator\nbash: line 1: syntax error near `=='\n"],
+      ['[[ -f', "bash: line 1: unexpected argument `newline' to conditional unary operator\nbash: line 1: syntax error near `-f'\n"],
+      ['$((', "bash: line 1: unexpected EOF while looking for matching `)'\n"],
+      ['echo $((', "bash: line 1: unexpected EOF while looking for matching `)'\n"],
+      ['echo a; ;', "bash: line 1: syntax error near unexpected token `;'\n"],
+    ] as const) {
+      expect(await runLine(shellFor('every-field'), line), line).toMatchObject({ stdout: '', stderr, status: 2, end: 'syntax' });
+    }
+    expect((await runLine(shellFor('every-field'), "echo '$((' 'a; ;'")).stdout).toBe('$(( a; ;\n');
   });
 
   test('echo ${ names line 1 and bash’s quotes; a closing word that is there is still unexpected', async () => {

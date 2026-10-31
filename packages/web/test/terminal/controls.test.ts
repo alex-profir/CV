@@ -25,6 +25,26 @@ vi.setConfig({ testTimeout: 300_000 });
 
 const CONTROLS = 'button.command-chip, button.command-inline';
 
+describe('006-terminal-FR-050 and 006-terminal-FR-018: a control’s line quotes the path it runs (T316)', () => {
+  test('a file’s name is never run as a command, and what the control echoes is what runs', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, `mkdir "my dir"; touch "my dir/in" 'q;touch pwned' '$(touch sub)'`);
+    for (const [label, typed] of [['my dir', 'ls ~/my\\ dir'], ['q;touch pwned', 'cat ~/q\\;touch\\ pwned'], ['$(touch sub)', 'cat ~/\\$\\(touch\\ sub\\)']] as const) {
+      const listing = await runGroup(page, 'ls -1');
+      await linesRun(page);
+      const before = await runCount(page);
+      await listing.locator(CONTROLS).filter({ hasText: label }).first().click();
+      await expect.poll(() => runCount(page)).toBeGreaterThan(before);
+      await linesRun(page);
+      expect(await page.locator('.terminal section.run').last().locator('.run-line').innerText()).toContain(typed);
+      await settle(page);
+    }
+    const last = await runGroup(page, 'ls pwned sub');
+    await linesRun(page);
+    expect(await last.innerText()).toContain('No such file or directory');
+  });
+});
+
 const HELP_LINES = [
   'help', '?', 'about', 'whoami', 'work', 'experience', 'projects', 'education', 'skills', 'languages', 'interests', 'contact',
   'cv', 'site', 'specs', 'ls', 'cd', 'cat', 'jq', 'vim', 'pwd', 'open', 'history', 'clear', 'exit',

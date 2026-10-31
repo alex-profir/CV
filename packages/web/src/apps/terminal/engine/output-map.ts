@@ -6,7 +6,7 @@
 import { fill } from '../../../site-text.ts';
 import type { SiteText } from '../../../site-text.ts';
 import { announce, counted, rows } from './announce.ts';
-import { command, line, plainText, text } from './block.ts';
+import { command, line, pathLine, plainText, text } from './block.ts';
 import type { Announcement, Block, Node } from './block.ts';
 import { COMMAND_TABLE, commandNamed, pattern } from './command-table.ts';
 import { suggest } from './suggest.ts';
@@ -51,11 +51,11 @@ const stderrLine = (value: string): Node => line({ kind: 'text', text: value, st
 // `{path}` captured.
 function patternOf(template: string): RegExp {
   const escaped = template.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escaped.replace('\\{path\\}', '(.+)').replace('\\{command\\}', '\\S+ \\1')}$`);
+  return new RegExp(`^${escaped.replace('\\{path\\}', '(.+)').replace('\\{command\\}', '\\S+ .+')}$`);
 }
 
 // `{path} is a file. Try cat {path}.` with its control (FR-048).
-const tryLine = (template: string, path: string, run: string): Node => line(...pattern(fill(template, { path }), { command: command(`${run} ${path}`, 'inline', { req: 'path' }) }));
+const tryLine = (template: string, path: string, run: string): Node => line(...pattern(fill(template, { path }), { command: command(pathLine(run, path), 'inline', { req: 'path' }) }));
 
 // `{typed}: command not found. Run help to see them all, or try:` and the
 // suggestions as chips, over the site's commands only (FR-016).
