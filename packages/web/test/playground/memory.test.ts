@@ -66,11 +66,11 @@ describe('008-typescript-playground-FR-045: a run out of memory ends with a note
 
   test('a run that stops unexpectedly with the page alive gets the note, and the next run works', async () => {
     const page = await openPlaygroundPage();
-    // TypeScript emits this with its error, and the worker's script doesn't
-    // parse: the worker's `error` event, not memory.
-    await start(page, 'const twice = 1;\nconst twice = 2;\nconsole.log("never");');
+    // The frame loaded again: its document, and so the worker, is lost.
+    await start(page, 'console.log("going");\nsetInterval(() => {}, 1000);');
+    await expect.poll(async () => (await readLogs(page)).map((row) => row.text)).toContain('going');
+    await page.locator('iframe.playground-runner').evaluate((frame: HTMLIFrameElement) => void (frame.srcdoc += ' '));
     await expect.poll(() => state(page), { timeout: 30_000 }).toMatch(shape(forms.crashed));
-    expect((await readLogs(page)).map((row) => row.text)).not.toContain('never');
     await nextRunWorks(page);
   });
 });
