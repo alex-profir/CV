@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { bundled } from '../helpers/bundled-typescript.ts';
-import { EDITOR, engine, onMac, openPlaygroundPage, outputText, paneTab, paneText, PLAYGROUND, readErrors, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, engine, freshProfile, holdTypeScript, onMac, openPlayground, waitReady, openPlaygroundPage, outputText, paneTab, paneText, PLAYGROUND, readErrors, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -91,6 +91,20 @@ describe('008-typescript-playground-FR-021: the JavaScript and Declarations pane
 });
 
 describe('008-typescript-playground-FR-022: the Errors pane lists each error with its place, message and number', () => {
+  test('opened before the first check has answered, the pane shows and the Playground stays', async () => {
+    const page = await freshProfile();
+    // The first check stays out, so the gap can't close first.
+    const hold = await holdTypeScript(page, 'getCheck');
+    await openPlayground(page);
+    await waitReady(page);
+    expect(await hold.waiting()).toBeGreaterThan(0);
+    await showPane(page, 'errors');
+    expect(await page.locator(`${PLAYGROUND} .pane-errors[role="tabpanel"]`).count()).toBe(1);
+    await hold.release();
+    await waitChecked(page);
+    expect(await page.locator(`${PLAYGROUND} .pane-errors[role="tabpanel"]`).count()).toBe(1);
+  });
+
   test('each error reads line:column, message and TS number, and activating one moves the cursor there', async () => {
     const page = await openPlaygroundPage();
     const code = 'const a = 1;\nconst n: number = "one";\nlet s: string = 2;';

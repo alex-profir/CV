@@ -176,9 +176,11 @@ async function cacheFirst(request: Request, url: URL): Promise<Response> {
 // The page's download says so, as it needs the network, to replace a stored
 // file that was cut short or won't open. `request.cache` can't tell: a browser's
 // reload, or its tools, set it too, and those must be answered offline.
+// The query is ignored: the loader opens an entry again under `?retry=<n>`, as
+// the browser remembers a module that failed by its URL.
 async function engineFile(request: Request): Promise<Response> {
   if (request.headers.has('x-playground-download')) return fetch(request);
-  return (await caches.match(request, { ignoreVary: true })) ?? fetch(request);
+  return (await caches.match(request, { ignoreVary: true, ignoreSearch: true })) ?? fetch(request);
 }
 
 self.addEventListener('install', (event) => event.waitUntil(install()));

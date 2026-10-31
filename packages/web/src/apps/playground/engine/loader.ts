@@ -144,10 +144,13 @@ async function forgetMarker(cache: Cache, folder: string): Promise<void> {
 }
 
 // The stored copy the loaded engine came from, when the engine then won't
-// start: it counts as incomplete, and its entry opens under a new URL.
-export async function forgetCopy(manifest: EngineManifest, env: Pick<LoaderEnv, 'caches'> = browserEnv()): Promise<void> {
+// start: it counts as incomplete, and its entry opens under a new URL. Offline
+// it stays, since nothing could replace it and the fault may not be the copy's,
+// as with a slow machine past the limit: Retry opens it again, and a copy that
+// still won't start goes on the first failure back online.
+export async function forgetCopy(manifest: EngineManifest, env: Pick<LoaderEnv, 'caches' | 'onLine'> = browserEnv()): Promise<void> {
   failedImports.set(manifest.entry, (failedImports.get(manifest.entry) ?? 0) + 1);
-  if (env.caches === undefined) return;
+  if (env.caches === undefined || !env.onLine()) return;
   try {
     await forgetMarker(await env.caches.open(`${CACHE_PREFIX}${manifest.version}`), `/playground/${manifest.version}`);
   } catch {

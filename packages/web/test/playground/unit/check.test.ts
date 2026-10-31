@@ -61,6 +61,21 @@ describe('008-typescript-playground-FR-016: errors are checked once typing pause
     expect(asked.at(-1)).toBe(3);
   });
 
+  test('a change queued while the last retry was out is still asked about', () => {
+    const { checker, asked, change } = setUp();
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    for (let lost = 0; lost < LOST_CHECK_RETRIES; lost += 1) checker.lost();
+    expect(asked).toEqual([1, 1, 1, 1]);
+    change();
+    vi.advanceTimersByTime(CHECK_PAUSE_MS);
+    checker.lost();
+    expect(asked).toEqual([1, 1, 1, 1, 2]);
+    // And that was the one: with nothing newer, the limit holds again.
+    checker.lost();
+    expect(asked).toEqual([1, 1, 1, 1, 2]);
+  });
+
   test('a result long after its check was counted lost still shows, and ends the checking state', () => {
     const { checker, checking, change } = setUp();
     change();

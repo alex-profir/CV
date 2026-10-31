@@ -265,7 +265,9 @@ export function startEngine(input: StartInput): void {
         onTabFocus: (on) => session.update({ tabMovesFocus: on }),
       });
       const created = await startWithin(creating, (late) => late.dispose()).catch(async (error: unknown) => {
-        await forgetCopy(manifest);
+        // A start given up on says nothing of the copy: a newer start restarts
+        // the worker under it, so it only ever runs out of time.
+        if (!controller.signal.aborted) await forgetCopy(manifest);
         throw error;
       });
       if (controller.signal.aborted) {

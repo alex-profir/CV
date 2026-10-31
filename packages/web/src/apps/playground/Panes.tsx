@@ -17,6 +17,10 @@ const words = siteText.playground.panes;
 
 export const PANES: readonly Pane[] = ['javascript', 'declarations', 'errors', 'logs'];
 
+// Before the first result. One array, as a snapshot of the store must stay the
+// same object until the store changes, or React renders it without end.
+const NO_DIAGNOSTICS: CheckResult['diagnostics'] = [];
+
 const tabId = (pane: Pane) => `playground-tab-${pane}`;
 const panelId = (pane: Pane) => `playground-pane-${pane}`;
 
@@ -59,7 +63,7 @@ function OutputPane({ kind }: { kind: 'javascript' | 'declarations' }) {
 }
 
 function ErrorsPane() {
-  const diagnostics = useSession((state) => state.check?.diagnostics ?? []);
+  const diagnostics = useSession((state) => state.check?.diagnostics ?? NO_DIAGNOSTICS);
   const errors = diagnostics.filter((entry) => entry.category === 'error').length;
   return (
     <>

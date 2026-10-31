@@ -76,6 +76,11 @@ const CHECK_LIMIT_MS = 15_000;
 
 let set = false;
 
+// The engines holding the one model. An engine given up on while it started
+// is disposed only when it finishes, perhaps with a newer one already using
+// the model, so the last to go disposes it.
+let modelUsers = 0;
+
 // Monaco's workers, from the engine's own folder (research R3, R6).
 function setUp(theme: EditorTheme): void {
   if (set) return;
@@ -126,13 +131,14 @@ export function createEditing(init: EngineInit) {
     inlayHints: false,
   });
   const model = editor.getModel(CODE_URI) ?? editor.createModel(init.code, 'typescript', CODE_URI);
+  modelUsers += 1;
   model.updateOptions({ tabSize: 2, insertSpaces: true });
   let view: editor.IStandaloneCodeEditor | null = null;
   let checking: symbol | null = null;
   let optionsSet = JSON.stringify(compilerOptions(init.options));
   let again = false;
 
-  model.onDidChangeContent(() => init.onChange(model.getVersionId()));
+  const changes = model.onDidChangeContent(() => init.onChange(model.getVersionId()));
 
   // Names colored by what TypeScript knows they are (FR-068): the theme's
   // `function`, `property` and `type` rules, for what the tokenizer can't
@@ -496,7 +502,9 @@ export function createEditing(init: EngineInit) {
       opener.dispose();
       peeks.dispose();
       refactors.dispose();
-      model.dispose();
+      changes.dispose();
+      modelUsers -= 1;
+      if (modelUsers === 0) model.dispose();
     },
   };
 }

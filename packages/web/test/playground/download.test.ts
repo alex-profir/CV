@@ -8,7 +8,7 @@ import { fill, siteText } from '../../src/site-text.ts';
 import { megabytes } from '../../src/apps/playground/text.ts';
 import { builtSite } from '../helpers/site.ts';
 import { settle, waitForReady } from '../helpers/shell.ts';
-import { EDITOR, engineManifest, freshProfile, holdEngine, LOADING, openPlayground, waitReady } from '../helpers/playground.ts';
+import { EDITOR, engineManifest, freshProfile, holdEngine, holdTypeScript, LOADING, openPlayground, outputText, PLAYGROUND, setCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -219,6 +219,29 @@ describe('008-typescript-playground-FR-011: a file cut short stops the download,
   });
 });
 
+describe('008-typescript-playground-FR-046: a window closed while the editor starts loses nothing', () => {
+  test('reopened before the first start ended, the editor works, and the start given up leaves the stored copy alone', async () => {
+    const page = await freshProfile();
+    await page.clock.install();
+    const hold = await holdTypeScript(page);
+    await openPlayground(page);
+    await expect.poll(hold.waiting, { timeout: 60_000 }).toBeGreaterThan(0);
+    await closePlayground(page);
+    await openPlayground(page);
+    // The second start reads its stored copy and reaches the model.
+    await page.waitForTimeout(1_000);
+    await hold.release();
+    await waitReady(page);
+    await setCode(page, 'export const after = 1;');
+    await expect.poll(() => outputText(page, 'javascript'), { timeout: 30_000 }).toContain('after');
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+    await page.clock.fastForward(61_000);
+    await page.waitForTimeout(500);
+    expect(await markerKept(page, engineFolder())).toBe(true);
+    expect(await page.locator(`${PLAYGROUND} .monaco-editor`).count()).toBeGreaterThan(0);
+  });
+});
+
 describe('008-typescript-playground-FR-011: an engine that won\'t open says so, and Retry starts over', () => {
   const words = siteText.playground.loading;
   const RETRY = `${LOADING} button.playground-retry`;
@@ -256,6 +279,38 @@ describe('008-typescript-playground-FR-011: an engine that won\'t open says so, 
     await waitReady(page);
     await expect.poll(() => page.locator(EDITOR).textContent()).toContain('kept');
     expect(await page.evaluate(() => localStorage.getItem('cv-playground'))).toContain('kept through the failure');
+  });
+
+  test('offline, a stored copy whose engine failed to start stays stored, and Retry opens it', async () => {
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    await expect.poll(() => markerKept(page, engineFolder())).toBe(true);
+    const { entry, version } = engineManifest(builtSite());
+    const swap = (script: string | null) =>
+      page.evaluate(
+        async ({ path, name, script }) => {
+          const cache = await caches.open(name);
+          const aside = await caches.open('test-aside');
+          if (script !== null) {
+            await aside.put(path, (await cache.match(path))!);
+            await cache.put(path, new Response(script, { headers: { 'content-type': 'text/javascript' } }));
+          } else await cache.put(path, (await aside.match(path))!);
+        },
+        { path: entry, name: `playground-${version}`, script },
+      );
+    await swap('export const api = 1; export async function createEngine() { throw new Error("broken engine"); }');
+    await page.context().setOffline(true);
+    await page.reload();
+    await page.waitForSelector('#os[data-ready]', { state: 'attached' });
+    await settle(page);
+    await openPlayground(page);
+    await page.waitForSelector(RETRY, { timeout: 60_000 });
+    expect(await page.locator(`${LOADING} h2`).textContent()).toBe(words.wontOpen);
+    expect(await markerKept(page, engineFolder())).toBe(true);
+    await swap(null);
+    await page.locator(RETRY).click();
+    await waitReady(page);
   });
 
   test('a stored copy that won\'t open is downloaded again, and the editor opens', async () => {

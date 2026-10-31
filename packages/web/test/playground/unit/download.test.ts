@@ -320,8 +320,16 @@ describe('008-typescript-playground-FR-011: a copy that won\'t open shows the st
     const caches = new FakeCaches();
     const current = manifestFor('aaaa');
     await loadEngine('/playground/aaaa/files.json', 1000, record().events, new AbortController().signal, env(caches, [current], { online: true, requests: [] }));
-    await forgetCopy(current, { caches: caches as unknown as CacheStorage });
+    await forgetCopy(current, { caches: caches as unknown as CacheStorage, onLine: () => true });
     expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(false);
+  });
+
+  test('forgetCopy keeps the marker offline, where nothing could replace the copy', async () => {
+    const caches = new FakeCaches();
+    const current = manifestFor('aaaa');
+    await loadEngine('/playground/aaaa/files.json', 1000, record().events, new AbortController().signal, env(caches, [current], { online: true, requests: [] }));
+    await forgetCopy(current, { caches: caches as unknown as CacheStorage, onLine: () => false });
+    expect((await caches.open('playground-aaaa')).entries.has('/playground/aaaa/complete')).toBe(true);
   });
 });
 

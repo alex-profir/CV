@@ -67,11 +67,14 @@ export function createChecker({ check, setChecking, timers = { set: (run, ms) =>
       return true;
     },
     // The check out brought no result.
+    // The retries count only for the same code: a change that came while the
+    // check was out is always asked about.
     lost() {
+      const changedSince = queued;
       out = false;
       queued = false;
       lostInARow += 1;
-      if (lostInARow <= LOST_CHECK_RETRIES) ask();
+      if (changedSince || lostInARow <= LOST_CHECK_RETRIES) ask();
     },
     dispose() {
       if (pause !== null) timers.clear(pause);

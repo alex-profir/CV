@@ -220,6 +220,41 @@ export async function holdEngine(page: Page): Promise<{ release: () => void }> {
   return { release: letGo };
 }
 
+// Keeps messages to TypeScript's worker in the page until released, all of them
+// or those naming `only`, whatever answers for the worker's script. It applies
+// from the next load, so a reload follows.
+export async function holdTypeScript(page: Page, only: string | null = null): Promise<{ waiting: () => Promise<number>; release: () => Promise<void> }> {
+  await page.addInitScript((named) => {
+    const hold = window as unknown as { heldMessages: (() => void)[] | null };
+    hold.heldMessages = [];
+    const Real = Worker;
+    window.Worker = class extends Real {
+      readonly typescript: boolean;
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        this.typescript = options?.name === 'typescript';
+      }
+      override postMessage(...sent: [never]) {
+        if (this.typescript && hold.heldMessages !== null && (named === null || JSON.stringify(sent[0]).includes(named))) hold.heldMessages.push(() => super.postMessage(...sent));
+        else super.postMessage(...sent);
+      }
+    };
+  }, only);
+  await page.reload();
+  await page.waitForSelector('#os[data-ready]', { state: 'attached' });
+  await settle(page);
+  return {
+    waiting: () => page.evaluate(() => (window as unknown as { heldMessages: unknown[] }).heldMessages.length),
+    release: () =>
+      page.evaluate(() => {
+        const hold = window as unknown as { heldMessages: (() => void)[] | null };
+        const waiting = hold.heldMessages!;
+        hold.heldMessages = null;
+        for (const send of waiting) send();
+      }),
+  };
+}
+
 // A link as contracts/share-link.md writes it, made here from the content's
 // JSON, so the page's reading is checked against the contract.
 export function linkFrom(origin: string, json: string): string {
