@@ -2397,7 +2397,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       return { ...shared, stdout: kept ? keptOut : '', stderr: kept ? keptErr : '', recorded: kept ? record.recorded : [], effects: [], status: result.exitCode, end: 'limit', limit, state: stopped };
     }
     // FR-069's text says why, not just-bash's words (T315).
-    if (limit !== null) return { ...shared, stderr: result.exitCode === 126 || result.exitCode === 124 ? stderr.replace(LIMIT_LINE, '') : stderr, effects: [], status: result.exitCode, end: 'limit', limit, state: stopped };
+    if (limit !== null) return { ...shared, stderr: result.exitCode === 126 ? stderr.replace(LIMIT_LINE, '') : stderr, effects: [], status: result.exitCode, end: 'limit', limit, state: stopped };
     if (finished) return { ...shared, effects: record.effects, status: taken!.status, end: 'done', state: stateFrom(taken!, state) };
     // Ended by an error that leaves an interactive bash open (FR-021, T286):
     // what ran up to the last check stays.

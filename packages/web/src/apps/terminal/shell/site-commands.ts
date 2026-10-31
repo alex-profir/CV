@@ -514,7 +514,8 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
         return stat.isDirectory ? 'folder' : { text: await shell.fs.readFile(path) };
       },
       env: new Map([...ctx.env].filter(([name]) => !name.includes(MARK))),
-      deadline: shell.run().deadline,
+      // Ahead of just-bash's own, so the line's stop is this one and says only the site's text.
+      deadline: shell.run().deadline - 100,
       maxOutput: piped(ctx) ? shell.limits.pipe : shell.limits.output,
     });
     if (result.stopped !== undefined) {
