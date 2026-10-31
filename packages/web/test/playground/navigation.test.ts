@@ -73,6 +73,9 @@ describe('008-typescript-playground-FR-081: definitions, uses and renames, as Ty
     await page.keyboard.press('F2');
     const input = page.locator(`${EDITOR} .rename-box input`);
     await input.waitFor({ timeout: 10_000 });
+    // Monaco focuses the box 100 ms after showing it. An Enter sent before
+    // that is lost about once in 150 times, and a visitor can't be that quick.
+    await page.waitForFunction((selector) => document.activeElement === document.querySelector(selector), `${EDITOR} .rename-box input`, { timeout: 10_000 });
     await input.fill('surface');
     await page.keyboard.press('Enter');
     await expect.poll(() => editorText(page)).toBe(expected);
