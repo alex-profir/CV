@@ -113,7 +113,8 @@ describe('005-os-shell-FR-060: the shell checks run in the same one command as t
     expect(renderReport(second)).toBe(renderReport(first));
     expect(first.problems.map(renderProblem)).toEqual([]);
     expect(first.result).toBe('pass');
-  }, 1_500_000);
+    // Two whole site checks: over 10 minutes on a CI machine.
+  }, 1_800_000);
 
   test('problem lines on / name the shell, the state and the width', async () => {
     const copy = seededCopy((repo) => replaceIn(repo, 'packages/web/src/shells/desktop/TitleBar.tsx', 'className="control control-close" aria-label={fill(siteText.desktop.controls.close, { window: name })}', 'className="control control-close"'));

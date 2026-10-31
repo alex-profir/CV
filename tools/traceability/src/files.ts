@@ -21,6 +21,13 @@ export const TEST_EXCLUDE_GLOBS = [...EXCLUDED_DIR_NAMES.map((name) => `**/${nam
 // (FR-030, research R14). A directory joins only when none of its tests needs
 // a browser or the site build, and test-sets.test.ts checks that choice. The
 // check itself never reads this list: it reads every test, in either set.
+// What only holds on the owner's Mac, so the daily full run on Linux leaves it
+// out and a feature's local run keeps it (001 FR-041). The parity test compares
+// with that machine's GNU tools and jq, whose versions and error text differ on
+// Linux; Linux has its own browser keys; and on Linux the temporary directory
+// is `/tmp`, which the specs' text rightly contains.
+export const OWNER_MAC_TESTS = ['packages/web/test/terminal/shell/bash-parity.test.ts', 'packages/web/test/terminal/line-keys.test.ts', 'packages/web/test/requirement-data/public.test.ts'];
+
 export const FAST_TEST_GLOBS = [
   'tools/traceability/test',
   'tools/content-check/test',

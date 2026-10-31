@@ -10,8 +10,8 @@ contracts, and are listed here because the amendment's "nothing else" rule cover
 workflow.
 
 **Amended 2026-10-31**: green CI is what merges a pull request. The ruleset requires neither
-`local-verify` nor an up-to-date branch, and `full.yml` runs every test daily on `main` (FR-035,
-FR-041). Anything below that says otherwise is superseded.
+`local-verify` nor an up-to-date branch, and `full.yml` runs every test daily on `main`, but
+those bound to the owner's Mac (FR-035, FR-041). Anything below that says otherwise is superseded.
 
 This contract fixes what the repository promises to reviewers: which checks run on every pull
 request, under which names, and what blocks a merge. The automated tests assert every point

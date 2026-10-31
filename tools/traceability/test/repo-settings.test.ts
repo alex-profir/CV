@@ -7,8 +7,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { FAST_TEST_GLOBS, OWNER_MAC_TESTS } from '../src/files.ts';
 import { REPO_ROOT } from './helpers/project.ts';
 
+const isFastTest = (file: string) => FAST_TEST_GLOBS.some((glob) => path.posix.matchesGlob(file, glob));
 const WORKFLOW = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci.yml'), 'utf8');
 const LINES = WORKFLOW.split('\n');
 const RULESET = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.github/rulesets/main.json'), 'utf8'));
@@ -178,7 +180,7 @@ describe('001-requirement-traceability-FR-035: green CI is what merges a pull re
   });
 });
 
-describe('001-requirement-traceability-FR-041: every test runs every day on the default branch', () => {
+describe('001-requirement-traceability-FR-041: every test runs every day on the default branch, but those bound to the owner\'s Mac', () => {
   const FULL = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/full.yml'), 'utf8');
   const lines = FULL.split('\n');
 
@@ -190,9 +192,19 @@ describe('001-requirement-traceability-FR-041: every test runs every day on the 
 
   test('it runs the whole test set with no filter, with a read-only token', () => {
     expect(lines).toContain('      - run: npm test');
-    expect(lines).toContain('      - run: npx playwright install chromium');
-    expect(lines).toContain('    runs-on: macos-latest');
+    expect(lines).toContain('      - run: npx playwright install --with-deps chromium');
+    expect(lines).toContain('    runs-on: ubuntu-latest');
     expect(block(lines, /^permissions:\s*$/).filter((line) => line.trim() !== '')).toEqual(['  contents: read']);
+  });
+
+  test('what it leaves out is a short list of real test files, none of the fast set or the site check, left out on Linux alone', () => {
+    expect(OWNER_MAC_TESTS).toHaveLength(3);
+    for (const file of OWNER_MAC_TESTS) {
+      expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
+      expect(file.startsWith('tools/site-check/'), file).toBe(false);
+      expect(isFastTest(file), file).toBe(false);
+    }
+    expect(fs.readFileSync(path.join(REPO_ROOT, 'vitest.config.ts'), 'utf8')).toContain("process.platform === 'linux' ? OWNER_MAC_TESTS : []");
   });
 });
 

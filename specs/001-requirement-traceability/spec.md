@@ -460,7 +460,9 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
 - **FR-040** *(added 2026-10-31)*: A local run MUST stop at the first failing check, and its test
   check at the first failing test.
 - **FR-041** *(added 2026-10-31)*: Every test MUST run every day on the main branch, in CI, and it
-  MUST be possible to start that run by hand.
+  MUST be possible to start that run by hand. The only exceptions are tests that hold only on the
+  owner's Mac, which a feature's local run MUST still cover: the parity test against real commands,
+  the line-keys test and the public-data test.
 
 ### Key Entities
 
@@ -533,7 +535,7 @@ and `/cv` remains a plain server-rendered page.
   passing, whoever merges it, the owner included.
 - **SC-010** *(added 2026-10-29, amended 2026-10-31; it said the local full run runs 100% of the
   test files)*: A feature's local run covers 100% of the test files but the site check's own, and
-  the daily full run covers 100% of them.
+  the daily full run covers 100% of them but those FR-041 excepts.
 - **SC-011** *(added 2026-10-31)*: After a failure, a local run takes no test file that passed
   unless that file changed, and a bug fix can go from push to mergeable in 10 minutes.
 

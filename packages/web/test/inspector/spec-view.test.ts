@@ -224,6 +224,10 @@ describe('007-requirement-inspector-FR-006: a view lists exactly what its app ca
       if (at < 0) throw new Error('CvDocument.tsx carries no 004 requirement to add to');
       const start = at + 'data-req="'.length;
       fs.writeFileSync(file, `${source.slice(0, start)}${all.join(' ')} ${source.slice(start)}`);
+      // These ids aren't part of the site, so they don't count against the
+      // script's size budget, which the real build keeps to.
+      const buildScript = path.join(root, 'packages/web/scripts/build-site.ts');
+      fs.writeFileSync(buildScript, fs.readFileSync(buildScript, 'utf8').replace(/OS_BUDGET = [\d_]+/, 'OS_BUDGET = 200_000'));
     });
     const data = requirementData(site);
     const spec = data.specs.find((record) => record.feature === feature)!;

@@ -281,8 +281,9 @@ Merge requirements:
   its commits, and its description names the commit and the result. It leaves out the site check's
   own tests. A failure is fixed and picked up with `--failed`, which reruns only what failed, what
   never ran and the test files that changed. Later commits don't need another run.
-- **Daily full run**: every test runs on the default branch every day, in CI. When it fails, fixing
-  or reverting comes before merging anything else.
+- **Daily full run**: every test runs on the default branch every day, in CI, except the few that
+  only hold on the owner's machine, which a new feature's run covers. When it fails, fixing or
+  reverting comes before merging anything else.
 - Until the interim provision on deferred manual checks ends, checks that only a person can do
   may be done after merge (see that section).
 - Hardcoded CV data or literal design-token values block merge (Principle IV).

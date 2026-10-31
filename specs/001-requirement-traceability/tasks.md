@@ -1098,5 +1098,5 @@ in a follow-up pull request of their own, signed off locally like any other.
 - [X] T091 Add the quick run and the area rules, per FR-038: `tools/local-verify/src/quick.ts`, `tools/local-verify/src/affected.ts`
 - [X] T092 Add `--failed` to both runs, per FR-039: `tools/local-verify/src/run-plan.ts`
 - [X] T093 Drop `local-verify` and the up-to-date requirement from the committed ruleset, per FR-035: `.github/rulesets/main.json`, and its four `repo-settings.test.ts`
-- [X] T094 Add the daily full run, per FR-041: `.github/workflows/full.yml`
+- [X] T094 Add the daily full run, per FR-041: `.github/workflows/full.yml`, on Linux, without `OWNER_MAC_TESTS` (`tools/traceability/src/files.ts`). Trials on 2026-10-31: Linux 37 minutes and 121 failures, macOS 62 minutes and 1,007 failures, the most from bash 3.2 and from a slow machine and no glass, so Linux it is
 - [ ] T095 Owner action: apply `.github/rulesets/main.json` to the live ruleset, which already leaves `local-verify` out but still requires up-to-date branches
