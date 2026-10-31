@@ -34,12 +34,12 @@ file lists what 006 adds.
 
 `build-site.ts` fails the build when the `os` entry imports anything (as today), when the worker
 isn't exactly one file with no import, or when the `os` script's gzipped size passes its budget:
-113,581 bytes (gzip -9, `main` before the amendment, re-measured at `a3f9532` when 007 was merged; T127 measured 108,962 before 007) plus 5%, `OS_BUDGET = 119_260` (research R34).
+142,646 bytes (gzip -9, before the amendment, re-measured with 008's Playground interface; 113,581 at `a3f9532` with 007, and T127 measured 108,962 before 007) plus 5%, `OS_BUDGET = 149_778` (research R34). Amended 2026-10-31 by 008-typescript-playground: the base was 113,581 bytes and the budget 119,260.
 The license file and the worker's header comment are written by the worker build's
 `scripts/shell-licenses.ts` plugin.
 
 No new route, page or font file, and no other-site request. Budget for `/`, compressed: script
-about 115 KB as built with 007 merged, within 5% of its 113,581 bytes (gzip -9) before the amendment; style sheet
+about 148 KB as built with 007 and 008 merged, within 5% of its 142,646 bytes (gzip -9) before the amendment (amended 2026-10-31 by 008-typescript-playground: about 115 KB with 007, against 113,581); style sheet
 about 12 KB and HTML about 16 KB, unchanged by the shell (SC-005, SC-013).
 
 ## Service worker (research R35, added 2026-10-29)
