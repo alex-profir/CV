@@ -11,10 +11,10 @@ import { RESUME_FILE, SITE_DIR, readManifest, runCheck } from '../src/check.ts';
 import { CV_COMMANDS, terminalFields } from '../src/expected.ts';
 import type { CvCommand } from '../src/expected.ts';
 import { elementSequence, fieldProblems } from '../src/parts/no-script.ts';
-import { terminalVariant } from '../src/parts/terminal.ts';
+import { summaryWord, terminalVariant } from '../src/parts/terminal.ts';
 import { renderProblem } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
-import { openTerminal, runCommand, shellContext, SHELL_SIZES, waitForShell } from '../src/shell-states.ts';
+import { ENDLESS_LINE, openTerminal, runCommand, shellContext, SHELL_SIZES, waitForShell } from '../src/shell-states.ts';
 import type { Shell } from '../src/shell-states.ts';
 import { repoCopy } from '../../../packages/web/test/helpers/copy.ts';
 import { runCli as runContentCheck } from '../../content-check/test/helpers/cli.ts';
@@ -50,7 +50,7 @@ describe('006-terminal-FR-040: the terminal part runs every CV command, the JSON
     const report = await runCheck(realSiteProject(), { parts: ['terminal'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
     expect(report.results.map(({ variant, status }) => `${variant} ${status}`)).toEqual(
-      SHELLS.flatMap((shell) => [...CV_COMMANDS, 'json', 'files'].map((name) => `${terminalVariant(shell, name, SHELL_SIZES[shell].width)} pass`)),
+      SHELLS.flatMap((shell) => [...CV_COMMANDS, 'json', 'files', 'shell'].map((name) => `${terminalVariant(shell, name, SHELL_SIZES[shell].width)} pass`)),
     );
   });
 
@@ -100,6 +100,71 @@ describe('006-terminal-FR-040: the terminal part runs every CV command, the JSON
     const token = (line: string) => line.match(/"(?:[^"\\]|\\.)*"|[^\s"]+/g)![0];
     const lines = report.problems.map(renderProblem);
     expect(lines).toEqual(variants('json').map((variant) => `terminal / ${variant} json-mismatch cv.json line 4: the vim view shows ${token(expected[4]!)} where the CV document has ${token(expected[3]!)}`));
+  });
+});
+
+// The shell's lines (contracts/cli.md, added 2026-10-29), under
+// `<shell>/terminal/shell/<width>px`.
+const ADAPTER = 'packages/web/src/apps/terminal/shell/adapter.ts';
+
+const SHARED_OUTPUT = 'const shared = { id, stdout: result.stdout, stderr,';
+
+// A copy whose shell prints nothing for lines that start with `start`.
+const silent = (start: string) => (copy: string) => replaceIn(copy, ADAPTER, SHARED_OUTPUT, `const shared = { id, stdout: request.line.startsWith(${JSON.stringify(start)}) ? '' : result.stdout, stderr,`);
+
+describe("006-terminal-FR-040: the terminal part types the shell's lines in both shells, and names the line that differs", () => {
+  test('a copy where rm about succeeds fails, naming the line and about', async () => {
+    const root = seededCopy((copy) =>
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/fs.ts', '  override async rm(path: string, options?: RmOptions) {\n    const at = this.canonical(path);\n    this.guard(at);\n', '  override async rm(path: string, options?: RmOptions) {\n    const at = this.canonical(path);\n'),
+    );
+    const report = await runCheck(root, { parts: ['terminal'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of variants('shell')) {
+      expect(lines).toContain(`terminal / ${variant} line-mismatch rm about: prints nothing where it should print "Permission denied"`);
+      expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch cat about: prints .+ after echo and rm, where it printed .+ before$`)));
+    }
+  });
+
+  test('006-terminal-FR-040: a copy where :w writes a protected file fails, naming the line', async () => {
+    const root = seededCopy((copy) => {
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/site-commands.ts', 'readonly: shell.fs.isProtected(path), new: false', 'readonly: false, new: false');
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/adapter.ts', "if (stat?.isDirectory === true || fs.refusesWrite(path)) return refuse('cant-open');", "if (stat?.isDirectory === true) return refuse('cant-open');");
+    });
+    const lines = (await runCheck(root, { parts: ['terminal'] })).problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch vim about :w: .+, where it should show E45$`)));
+  });
+
+  test('006-terminal-FR-040: a copy where :wq loses the typed line fails, naming the shell and cat notes', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/terminal/session.ts', 'void write(next.write.path, next.write.text, next.write.force, next.write.own)', "void write(next.write.path, '', next.write.force, next.write.own)"));
+    const lines = (await runCheck(root, { parts: ['terminal'] })).problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant} line-mismatch cat notes: prints .+ after :wq, where it should print "a line of notes"$`)));
+  });
+
+  test("a copy where jq '.work[0].name' cv.json prints nothing fails, naming the line and the CV's name", async () => {
+    const report = await runCheck(seededCopy(silent('jq ')), { parts: ['terminal'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContain(`terminal / ${variant} line-mismatch jq '.work[0].name' cv.json: prints nothing where the CV document has ${JSON.stringify(resume.work[0].name)}`);
+    // `cat cv.json | jq` starts otherwise, so the JSON still passes.
+    expect(report.problems.filter((problem) => problem.variant.includes('/json/'))).toEqual([]);
+  });
+
+  test('a copy where grep -ril misses a work file fails, naming the line and the file', async () => {
+    const word = summaryWord(resume)!;
+    const report = await runCheck(seededCopy(silent('grep -ril ')), { parts: ['terminal'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of variants('shell')) {
+      expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^terminal / ${variant.replace(/[.]/g, '\\.')} line-mismatch grep -ril ${word} ~/work: misses ~/work/\\S+, which holds "${word}"$`)));
+    }
+  });
+
+  test('a copy where a line that never ends is not stopped fails, naming the line', async () => {
+    const root = seededCopy((copy) => {
+      replaceIn(copy, ADAPTER, 'export const LIMITS = { time: 5000, commands: 10_000,', 'export const LIMITS = { time: 600_000, commands: 1_000_000_000,');
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell-client.ts', '  run: 6_000,', '  run: 600_000,');
+    });
+    const report = await runCheck(root, { parts: ['terminal'] });
+    const lines = report.problems.map(renderProblem);
+    for (const variant of variants('shell')) expect(lines).toContain(`terminal / ${variant} not-stopped ${ENDLESS_LINE}: still running 10 s after Enter`);
   });
 });
 

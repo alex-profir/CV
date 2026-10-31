@@ -130,7 +130,7 @@ describe('003-design-tokens-FR-008: durations and easing curves live in the moti
   test('every duration and cubic Bézier is in the motion source, and the export has none', () => {
     expect([...ofType(EXPORT_TOKENS, 'duration'), ...ofType(EXPORT_TOKENS, 'cubicBezier')]).toEqual([]);
     expect(MOTION_TOKENS.every((token) => token.$type === 'duration' || token.$type === 'cubicBezier')).toBe(true);
-    expect(runCheck(REPO_ROOT).sources[1]).toMatchObject({ label: 'Motion token source', state: 'checked', tokens: 4 });
+    expect(runCheck(REPO_ROOT).sources[1]).toMatchObject({ label: 'Motion token source', state: 'checked', tokens: MOTION_TOKENS.length });
   });
 });
 

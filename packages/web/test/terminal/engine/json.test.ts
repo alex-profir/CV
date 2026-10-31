@@ -4,8 +4,9 @@ import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { resume } from '@cv/content';
 import { cvJson } from '../../../src/apps/terminal/data.ts';
-import { printJson } from '../../../src/apps/terminal/engine/json.ts';
+import { lexLine, printJson } from '../../../src/apps/terminal/engine/json.ts';
 import type { JsonRow } from '../../../src/apps/terminal/engine/block.ts';
+import { fixture } from '../../helpers/fixtures.ts';
 import { contextFor, contextOf, output, run, textOf } from './context.ts';
 
 const RESUME_FILE = path.resolve(import.meta.dirname, '../../../../content/resume.json');
@@ -66,35 +67,37 @@ describe('006-terminal-FR-056: jq pretty-prints JSON with keys and numbers as wr
     for (const text of ['{', '', 'about', '{"a":}', '[1,]', '{"a":1}x', "{'a':1}", '01', '1.', 'tru']) expect(printJson(text), text).toEqual({ error: 'not-json' });
   });
 
-  test('jq takes a path or piped input, and accepts the filter . only', () => {
+  test('jq . cv.json and cat cv.json | jq . show the JSON block', async () => {
     const context = contextFor('every-field');
-    expect(output(run('jq cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('jq . cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('cat cv.json | jq .', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(textOf('jq .work cv.json', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
-    expect(textOf('cat cv.json | jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
+    expect(output(await run('jq . cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(await run('cat cv.json | jq .', context)).some((node) => node.kind === 'json')).toBe(true);
+    expect(output(await run('jq . ./cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
   });
 
-  test('006-terminal-FR-045: a path with . or .. is read as a path, not a filter', () => {
-    const context = contextFor('every-field');
-    const inWork = { ...context, folder: ['work'] };
-    expect(output(run('jq ./cv.json', context)).some((node) => node.kind === 'json')).toBe(true);
-    expect(output(run('jq ../cv.json', inWork)).some((node) => node.kind === 'json')).toBe(true);
-    expect(textOf('jq .work', context)).toBe('jq here only pretty-prints. Usage: jq [path], or … | jq');
-    expect(textOf('jq ./nowhere', context)).toBe('./nowhere: no such file or folder.');
-  });
-
-  test('cat about | jq and jq on text that is not JSON name | or the path', () => {
-    const context = contextFor('every-field');
-    expect(textOf('cat about | jq', context)).toBe('jq: | is not JSON.');
-    expect(textOf('pwd | jq', context)).toBe('jq: | is not JSON.');
-    expect(textOf('jq nowhere', context)).toBe('nowhere: no such file or folder.');
-    expect(textOf('jq', context)).toBe('jq takes at most one path, or piped input. Usage: jq [path]');
-  });
-
-  test("jq's output passes on the printed text", () => {
+  test("jq's output passes on the printed text", async () => {
     const context = contextOf(resume);
-    const result = run('cat cv.json | jq', context);
-    expect(result.kind === 'output' && result.text).toBe(cvJson);
+    const result = await run('cat cv.json | jq', context);
+    expect(result.kind === 'output' && result.result.stdout).toBe(`${cvJson}\n`);
+  });
+});
+
+describe('006-terminal-FR-079: lexLine colors one line at a time', () => {
+  test('each line printJson prints gets the same tokens, and joins back to the line', () => {
+    const printed = printJson(JSON.stringify(fixture('every-field'), null, 2));
+    if ('error' in printed) throw new Error('not JSON');
+    for (const row of printed.rows) {
+      const line = rowText(row);
+      const tokens = lexLine(line);
+      expect(tokens.map((token) => token.text).join('')).toBe(line);
+      expect(row.indent === 0 ? tokens : tokens.slice(1)).toEqual(row.tokens);
+    }
+  });
+
+  test('an unfinished line is colored as far as it lexes, and the rest is plain', () => {
+    expect(lexLine('"work": [')).toEqual([{ kind: 'key', text: '"work"' }, { kind: 'punctuation', text: ':' }, { kind: 'space', text: ' ' }, { kind: 'punctuation', text: '[' }]);
+    expect(lexLine('"na')).toEqual([{ kind: 'space', text: '"na' }]);
+    expect(lexLine('12,')).toEqual([{ kind: 'number', text: '12' }, { kind: 'punctuation', text: ',' }]);
+    expect(lexLine('12x, y')).toEqual([{ kind: 'space', text: '12x, y' }]);
+    expect(lexLine('')).toEqual([]);
   });
 });

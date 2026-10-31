@@ -173,6 +173,63 @@ describe('006-terminal-FR-021: minimizing, going home and a shell switch keep th
   });
 });
 
+// The shell's own state: a variable, a function, a visitor's folder and the
+// working folder (FR-021, research R27).
+const SET_UP = 'X=kept; f() { echo fn; }; mkdir notes; cd work';
+const READ_BACK = 'echo $X; f; ls -d ~/notes; pwd';
+
+const printed = async (page: Page, line: string) => (await runGroup(page, line)).locator('.run-output p.out-line').allTextContents();
+
+async function expectShellKept(page: Page, how: string): Promise<void> {
+  expect(await printed(page, READ_BACK), how).toEqual(['kept', 'fn', '/home/guest/notes', '/home/guest/work']);
+}
+
+describe('006-terminal-FR-021: the shell’s variables, functions, files and working folder are kept with the session', () => {
+  test('minimize and restore', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Minimize Terminal' }).click();
+    await settle(page);
+    await page.locator(DOCK_ITEM).click();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await expectShellKept(page, 'minimized and restored');
+  });
+
+  test('on a phone, Home and opening the Terminal again', async () => {
+    const page = await openTerminalPage('mobile');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Home' }).tap();
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await openTerminal(page, 'mobile');
+    await expectShellKept(page, 'home and back');
+  });
+
+  test('a 1440 → 375 → 1440 resize', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await resize(page, 375, 812);
+    await page.locator(VIEW).waitFor();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await resize(page, 1440, 900);
+    await page.locator(WINDOW).waitFor();
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await expectShellKept(page, '1440 → 375 → 1440');
+  });
+
+  test('closing and opening again keeps none of them', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, SET_UP);
+    await page.getByRole('button', { name: 'Close Terminal' }).click();
+    await expect.poll(() => page.locator(WINDOW).count()).toBe(0);
+    await settle(page);
+    await openTerminal(page, 'desktop');
+    expect(await printed(page, 'echo "[$X]"')).toEqual(['[]']);
+    expect((await printed(page, 'f'))[0]).toMatch(/^f: command not found\./);
+    expect(await printed(page, 'ls notes')).toEqual(['ls: notes: No such file or directory']);
+    expect(await printed(page, 'pwd')).toEqual(['/home/guest']);
+  });
+});
+
 // Closes the Terminal one way.
 const CLOSE: Record<string, (page: Page) => Promise<void>> = {
   'the close control': (page) => page.getByRole('button', { name: 'Close Terminal' }).click(),
@@ -186,7 +243,7 @@ const CLOSE: Record<string, (page: Page) => Promise<void>> = {
 
 describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
   for (const [way, close] of Object.entries(CLOSE)) {
-    test(`closed by ${way} and opened again, it shows the greeting, no output, no history and no draft`, async () => {
+    test(`closed by ${way} and opened again, it shows the starter chips, no output, no history and no draft`, async () => {
       const page = await openTerminalPage('desktop');
       await runGroup(page, 'work');
       await runGroup(page, 'pwd');
@@ -202,7 +259,7 @@ describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
       await openTerminal(page, 'desktop');
       expect(await vimView(page).count()).toBe(0);
       expect(await runCount(page)).toBe(0);
-      expect(await page.locator('.terminal .greeting').isVisible()).toBe(true);
+      expect(await page.locator('.terminal .starter').isVisible()).toBe(true);
       expect(await page.locator(COMMAND_LINE).inputValue()).toBe('');
       expect((await page.locator('#os .window[data-view="terminal"] .window-title').textContent())?.trim()).toBe('Terminal — ~');
       await page.keyboard.press('ArrowUp');
@@ -210,4 +267,83 @@ describe('006-terminal-FR-021: closing the Terminal starts it afresh', () => {
       await expectHistory(page, []);
     });
   }
+});
+
+describe('006-terminal-FR-021: an open editor is kept with the session', () => {
+  const edited = async (page: Page) => {
+    await typeLine(page, 'vim todo');
+    await vimView(page).waitFor();
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.type('ione');
+    await page.keyboard.press('Escape');
+    await page.keyboard.type('otwo');
+    await page.keyboard.press('Escape');
+  };
+  const buffer = (page: Page) => page.locator('.terminal .vim-code').allTextContents();
+  const status = (page: Page) => page.locator('.terminal .vim-status').textContent();
+
+  test('minimize and restore keep the changes, the cursor and undo', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    const before = await status(page);
+    await page.locator('#os .window[data-view="terminal"] .window-control[data-control="minimize"], #os .window[data-view="terminal"] button[aria-label^="Minimize"]').first().click();
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await vimView(page).waitFor();
+    expect(await status(page)).toBe(before);
+    expect(await status(page)).toContain('[+]');
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('u');
+    expect(await buffer(page)).toEqual(['one']);
+  });
+
+  test('minimize and restore keep insert mode', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('i');
+    await page.locator('.terminal textarea.vim-insert').waitFor();
+    await page.getByRole('button', { name: 'Minimize Terminal' }).click();
+    await settle(page);
+    await page.locator(DOCK_ITEM).click();
+    await page.locator('.terminal textarea.vim-insert').waitFor();
+    expect(await status(page)).toContain('-- INSERT --');
+  });
+
+  test('on a phone, Home and opening the Terminal again keep the changes, the cursor and undo', async () => {
+    const page = await openTerminalPage('mobile');
+    await edited(page);
+    const before = await status(page);
+    await page.getByRole('button', { name: 'Home' }).tap();
+    await expect.poll(() => page.locator('#os .full-screen').count()).toBe(0);
+    await page.locator('#os .home .app-icon[data-view="terminal"]').tap();
+    await vimView(page).waitFor();
+    expect(await status(page)).toBe(before);
+    await page.locator('.terminal .vim-text').focus();
+    await page.keyboard.press('u');
+    expect(await buffer(page)).toEqual(['one']);
+  });
+
+  test('a 1440 → 375 → 1440 resize keeps them', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await vimView(page).waitFor();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await vimView(page).waitFor();
+    expect(await buffer(page)).toEqual(['one', 'two']);
+    expect(await status(page)).toContain('[+]');
+  });
+
+  test('close and reopen starts afresh, the unwritten changes gone with no question', async () => {
+    const page = await openTerminalPage('desktop');
+    await edited(page);
+    await page.getByRole('button', { name: 'Close Terminal' }).click();
+    // Opening it again during the closing animation keeps the window (005 R13).
+    await expect.poll(() => page.locator(WINDOW).count()).toBe(0);
+    await settle(page);
+    await openTerminal(page, 'desktop');
+    expect(await vimView(page).count()).toBe(0);
+    await typeLine(page, 'cat todo');
+    expect(await page.locator('.terminal section.run').last().textContent()).toContain('No such file');
+  });
 });

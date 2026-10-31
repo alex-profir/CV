@@ -2,9 +2,12 @@
 // output block). Every string reaches the page as a React text child, so
 // typed text can never become markup or a link (FR-018). Headings sit below
 // the run's own `h2` (FR-029).
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import { TERMINAL } from '../../os/metrics.ts';
 import { Arrow } from '../../cv/Arrow.tsx';
 import { VisuallyHidden } from '../../cv/VisuallyHidden.tsx';
+import { columns } from './engine/columns.ts';
 import { rowIndent } from './engine/block.ts';
 import type { Block, JsonRow, Node } from './engine/block.ts';
 
@@ -70,6 +73,34 @@ export function JsonRows({ rows }: { rows: readonly JsonRow[] }) {
   );
 }
 
+// A second Tab's list, in readline's columns at the screen's own width, so a
+// phone gets fewer than a window (FR-076, research R44).
+function CompletionList({ matches }: { matches: Extract<Node, { kind: 'completion' }>['matches'] }) {
+  const list = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(TERMINAL.columns);
+  useLayoutEffect(() => {
+    const element = list.current;
+    const screen = element?.closest('.terminal-screen');
+    if (element === null || screen === null || screen === undefined) return;
+    const { paddingLeft, paddingRight } = getComputedStyle(screen);
+    const advance = Number.parseFloat(getComputedStyle(element).fontSize) * TERMINAL.advance;
+    setWidth(Math.floor((screen.clientWidth - Number.parseFloat(paddingLeft) - Number.parseFloat(paddingRight)) / advance));
+  }, []);
+  return (
+    <div ref={list} className="completion-list" data-req="006-terminal-FR-076">
+      {columns(matches, width).map((row, index) => (
+        <div key={index} className="completion-row">
+          {row.map((cell) => (
+            <span key={cell} className={cell.trimEnd().endsWith('/') ? 'completion-folder' : 'completion-file'}>
+              {cell}
+            </span>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run: RunControl; level: number }) {
   // A list of rows, so a screen reader hears how many there are (FR-029).
   const rows = node.rows.map((row, index) => (
@@ -99,6 +130,9 @@ function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run
 function One({ node, run, level }: { node: Node; run: RunControl; level: number }): ReactNode {
   switch (node.kind) {
     case 'text':
+      // What a command printed keeps its spaces and tabs, as a terminal
+      // shows them (FR-067).
+      if (node.stream !== undefined) return <span className={['out-stream', toneClass(node.tone)].filter(Boolean).join(' ')}>{node.text}</span>;
       return node.tone === undefined ? node.text : <span className={toneClass(node.tone)}>{node.text}</span>;
     case 'time':
       return node.spoken === undefined ? (
@@ -121,6 +155,20 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
         </a>
       );
     case 'line':
+      // `help`'s standard group's heading and note, and a stopped run's line
+      // (FR-008, FR-068, FR-069).
+      if (node.req === 'standard')
+        return (
+          <p className="out-line out-standard-heading" data-req="006-terminal-FR-008 006-terminal-FR-068">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'stopped')
+        return (
+          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
       return (
         <p className="out-line">
           <Nodes block={node.children} run={run} level={level} />
@@ -144,20 +192,30 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
           ))}
         </ul>
       );
-    case 'columns':
+    case 'columns': {
+      const cells = node.cells.map((cell, index) => (
+        <li key={index}>
+          <One node={cell} run={run} level={level} />
+        </li>
+      ));
+      if (node.req === 'standard')
+        return (
+          <ul className="out-columns out-standard" data-req="006-terminal-FR-008 006-terminal-FR-068">
+            {cells}
+          </ul>
+        );
       return (
         <ul className="out-columns" data-req="006-terminal-FR-043 006-terminal-FR-050">
-          {node.cells.map((cell, index) => (
-            <li key={index}>
-              <One node={cell} run={run} level={level} />
-            </li>
-          ))}
+          {cells}
         </ul>
       );
+    }
     case 'rows':
       return <Rows node={node} run={run} level={level} />;
     case 'json':
       return <JsonRows rows={node.rows} />;
+    case 'completion':
+      return <CompletionList matches={node.matches} />;
   }
 }
 

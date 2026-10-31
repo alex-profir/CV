@@ -2,6 +2,7 @@
 // separators, links and the focus outline stay visible and nothing relies on
 // a background image; and no element moves, with or without reduced motion.
 import type { Page } from 'playwright';
+import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
 import { INSPECTOR, SHELL, TERMINAL, control, leaveSpecs, openAbout, openCvApp, openTerminal, openView, settle, showSpecs, tapPocketKey, typeLine } from '../shell-states.ts';
 import type { InspectorView } from '../shell-states.ts';
@@ -188,10 +189,12 @@ export async function shellForcedColorsProblems(page: Page, shell: 'desktop' | '
 
 // What must stay visible in the Terminal in forced colors (006 FR-033):
 // each is drawn by its text, a border, an outline or a system color the
-// design keeps, never by a background image or an author color alone.
+// design keeps, never by a background image or an author color alone. The
+// command line's field is unseen and has no box (FR-072): its mirror draws
+// the typed text.
 const TERMINAL_SHOWN: Record<'desktop' | 'mobile', readonly string[]> = {
-  desktop: ['#os .terminal .prompt', TERMINAL.commandLine, '#os .terminal .cursor-block', '#os .terminal .command-chip'],
-  mobile: ['#os .terminal .prompt', TERMINAL.commandLine, '#os .terminal .cursor-block', '#os .terminal .command-chip', TERMINAL.pocketKey],
+  desktop: ['#os .terminal .prompt', TERMINAL.cursorMirror, '#os .terminal .cursor-block', '#os .terminal .command-chip'],
+  mobile: ['#os .terminal .prompt', TERMINAL.cursorMirror, '#os .terminal .cursor-block', '#os .terminal .command-chip', TERMINAL.pocketKey],
 };
 
 async function shownProblems(page: Page, selectors: readonly string[], found: Found[]): Promise<void> {
@@ -218,7 +221,19 @@ async function shownProblems(page: Page, selectors: readonly string[], found: Fo
 
 async function terminalForcedColors(page: Page, shell: 'desktop' | 'mobile', found: Found[]): Promise<void> {
   await openTerminal(page, shell);
+  // A typed line, for the mirror to draw.
+  await page.locator(TERMINAL.commandLine).focus();
+  await page.keyboard.type('help');
   await shownProblems(page, TERMINAL_SHOWN[shell], found);
+  // The cursor filled and steady with focus, hollow without (006 FR-033).
+  const focused = await cursorStyle(page);
+  if (focused === null || !focused.focused || !focused.filled) found.push({ type: 'invisible', subject: 'span.cursor-block', detail: 'the filled cursor is not shown in forced colors' });
+  else if (focused.blinking) found.push({ type: 'blinking', subject: 'span.cursor-block', detail: 'blinks in forced colors' });
+  // With a line typed Tab completes, so Escape first (FR-026).
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  const hollow = await cursorStyle(page);
+  if (hollow === null || hollow.focused || !hollow.outlined) found.push({ type: 'invisible', subject: 'span.cursor-block', detail: 'the hollow cursor has no outline in forced colors' });
   // The fold lines, in the vim view.
   await typeLine(page, 'cv');
   await page.locator(TERMINAL.vimText).waitFor({ timeout: 5_000 });
@@ -229,6 +244,23 @@ async function terminalForcedColors(page: Page, shell: 'desktop' | 'mobile', fou
     return active !== null && active !== document.body && getComputedStyle(active).outlineStyle !== 'none';
   });
   if (!outlined) found.push({ type: 'invisible', subject: TERMINAL.vimText, detail: 'its focus indicator is not shown in forced colors' });
+}
+
+// The command line's cursor: whether the line has focus, and whether its
+// block is filled, outlined and running an animation that repeats.
+function cursorStyle(page: Page) {
+  return page.evaluate(([mirrorSelector, blockSelector]) => {
+    const mirror = document.querySelector(mirrorSelector);
+    const block = document.querySelector(blockSelector);
+    if (mirror === null || block === null) return null;
+    const style = getComputedStyle(block);
+    return {
+      focused: mirror.hasAttribute('data-focused'),
+      filled: style.backgroundColor !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(style.backgroundColor),
+      outlined: style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0,
+      blinking: block.getAnimations().some((animation) => animation.playState === 'running' && animation.effect?.getComputedTiming().endTime === Infinity),
+    };
+  }, [TERMINAL.cursorMirror, TERMINAL.cursorBlock] as const);
 }
 
 type Recorded = { subject: string; properties: string[]; scales: number[]; transforms: string[]; translates: string[] };
@@ -386,6 +418,33 @@ async function blinkProblems(page: Page, found: Found[]): Promise<void> {
       .map((element) => `${element.tagName.toLowerCase()}${element.classList.length === 0 ? '' : `.${element.classList[0]}`}`),
   );
   for (const subject of new Set(blinking)) found.push({ type: 'blinking', subject, detail: 'repeats an animation for ever, so it blinks' });
+}
+
+// How long the focused cursor blinks after the last key press (006 FR-032),
+// and the time the check gives it beyond that to stop.
+const CURSOR_IDLE_MS = Number.parseFloat(tokenValue('motion.duration.cursor-idle'));
+
+const STOP_SLACK_MS = 500;
+
+// Without reduced motion (006 FR-032): the focused cursor blinks after a key
+// press, and has stopped, filled, once the idle time has passed since the
+// last one.
+export async function cursorBlinkProblems(page: Page, shell: 'desktop' | 'mobile', pageLabel: string, variant: string): Promise<Problem[]> {
+  const found: Found[] = [];
+  await openTerminal(page, shell);
+  const line = page.locator(TERMINAL.commandLine);
+  if (shell === 'desktop') await line.click();
+  else await line.tap();
+  await page.keyboard.type('h');
+  const pressed = Date.now();
+  const blinking = await cursorStyle(page);
+  if (blinking === null || !blinking.blinking) found.push({ type: 'no-blink', subject: 'span.cursor-block', detail: 'the focused cursor does not blink after a key press' });
+  await page.waitForTimeout(Math.max(0, pressed + CURSOR_IDLE_MS + STOP_SLACK_MS - Date.now()));
+  const idle = await cursorStyle(page);
+  if (idle === null || idle.blinking) found.push({ type: 'blinking', subject: 'span.cursor-block', detail: `still blinks ${(CURSOR_IDLE_MS + STOP_SLACK_MS) / 1000} s after the last key press` });
+  else if (!idle.focused || !idle.filled) found.push({ type: 'cursor', subject: 'span.cursor-block', detail: 'is not filled once it stops blinking' });
+  await line.fill('');
+  return problems(found, pageLabel, variant);
 }
 
 // ---- The inspector (007 FR-023) ---------------------------------------------

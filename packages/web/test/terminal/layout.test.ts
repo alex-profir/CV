@@ -91,6 +91,23 @@ describe('006-terminal-FR-023: output wraps, with no horizontal scroll', () => {
     expect(await sideways(page)).toEqual([]);
   });
 
+  test('the shell’s long lines, seq -s \' \' 400 and a 400-character echo, wrap in a 400 px window and at 320 px', async () => {
+    const lines = ["seq -s ' ' 400", `echo ${'x'.repeat(400)}`];
+    const page = await openShell(SHELL_PAGE.desktop);
+    await openTerminal(page, 'desktop');
+    await narrowWindow(page);
+    for (const line of lines) {
+      await runGroup(page, line);
+      expect(await sideways(page), `400 px: ${line}`).toEqual([]);
+    }
+    const phone = await openShell({ ...SHELL_PAGE.mobile, width: 320, height: 568 });
+    await openTerminal(phone, 'mobile');
+    for (const line of lines) {
+      await runGroup(phone, line);
+      expect(await sideways(phone), `320 px: ${line}`).toEqual([]);
+    }
+  });
+
   test('a mouse drag selects output text and copies it, and focus stays where it was', async () => {
     const page = await openShell(SHELL_PAGE.desktop);
     await openTerminal(page, 'desktop');

@@ -1,6 +1,7 @@
 // `npm run build` (004 research R2, contracts/site.md Output layout):
 //
-//   1. a Vite client build of the assets into `<out>/site/assets/`;
+//   1. a Vite client build of the assets into `<out>/site/assets/`, the
+//      shell worker and its license file included;
 //   2. a Vite SSR build of `src/render.tsx` into a temporary directory;
 //   3. the requirement data, `<out>/site/assets/requirements-<hash>.json`
 //      (007 contracts/requirement-data.md), then each route rendered to
@@ -22,6 +23,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import zlib from 'node:zlib';
+import { parseSync } from 'oxc-parser';
 import { build, mergeConfig } from 'vite';
 import type { Manifest, Plugin, UserConfig } from 'vite';
 import { resume, siteData } from '@cv/content';
@@ -54,6 +57,18 @@ const REGISTER_ENTRY = 'src/client/register-sw.ts';
 const SHELL_ENTRY = 'src/client/os.tsx';
 
 const SSR_ENTRY = 'src/render.tsx';
+
+// The os script's gzipped size may grow by at most 5% with the shell (006
+// SC-013): 113,581 bytes at `gzip -9` before the amendment, measured on
+// `main` at a3f9532 (with 007's inspector) when it was merged, plus 5%.
+// T127 measured 108,962 on the `main` it branched from.
+export const OS_BUDGET = 119_260;
+
+// The shell worker's file, and the words only the worker's code holds
+// (no-network.ts, no-zlib.ts): the os script holding them has the shell
+// in it (006 research R34).
+const WORKER_SCRIPT = /^shell-[\w-]+\.js$/;
+const SHELL_MARK = "is not available in the Terminal's shell";
 
 // The service worker's source, and where its built copy is served.
 const WORKER_SOURCE = path.join(WEB_ROOT, 'src/sw/service-worker.ts');
@@ -145,6 +160,32 @@ function shellAssets(manifest: Manifest, page: PageAssets): PageAssets {
   const css = (entry.css ?? []).map((file) => `/${file}`);
   if (css.length === 0) throw new Error(`Vite's manifest gives no style sheet for ${SHELL_ENTRY}`);
   return { css, scripts: [`/${entry.file}`, ...page.scripts], preloadFonts: page.preloadFonts };
+}
+
+// The import declarations and `import()` calls of a script.
+function importsOf(file: string, code: string): number {
+  const { module: record } = parseSync(file, code, { sourceType: 'module' });
+  return record.staticImports.length + record.dynamicImports.length;
+}
+
+// The scripts the client build wrote (006 research R34, contracts/site.md):
+// the `os` script, one file with no import, that holds no part of the shell
+// and is within its gzip budget; and exactly one worker script, one file
+// with no import.
+function checkScripts(siteDir: string, manifest: Manifest): void {
+  const assets = path.join(siteDir, 'assets');
+  const scripts = fs.readdirSync(assets).filter((name) => name.endsWith('.js'));
+  const known = new Set(Object.values(manifest).map((entry) => path.basename(entry.file)));
+  const workers = scripts.filter((name) => !known.has(name));
+  if (workers.length !== 1 || !WORKER_SCRIPT.test(workers[0]!)) throw new Error('the shell worker is not one file');
+  const worker = fs.readFileSync(path.join(assets, workers[0]!), 'utf8');
+  if (importsOf(workers[0]!, worker) > 0 || /\bimportScripts\s*\(/.test(worker)) throw new Error('the shell worker is not one file');
+  const entry = manifest[SHELL_ENTRY];
+  if (entry === undefined) throw new Error(`Vite's manifest has no entry for ${SHELL_ENTRY}`);
+  const os = fs.readFileSync(path.join(siteDir, entry.file), 'utf8');
+  if (os.includes(SHELL_MARK) || (entry.dynamicImports ?? []).length > 0) throw new Error('the os script loads the shell');
+  const gzipped = zlib.gzipSync(os, { level: 9 }).length;
+  if (gzipped > OS_BUDGET) throw new Error(`the os script is ${gzipped} bytes gzipped, over its budget of ${OS_BUDGET} bytes (SC-013)`);
 }
 
 // The root page holds what the shell needs before and without its script
@@ -254,6 +295,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
   const viteManifest: Manifest = JSON.parse(fs.readFileSync(path.join(viteDir, 'manifest.json'), 'utf8'));
   fs.rmSync(viteDir, { recursive: true, force: true });
   checkContainerBreakpoints(siteDir);
+  checkScripts(siteDir, viteManifest);
   const assets = pageAssets(viteManifest);
   const requirements = writeRequirementData(siteDir);
 

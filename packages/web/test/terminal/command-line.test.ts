@@ -108,6 +108,15 @@ describe('006-terminal-FR-018: typed and pasted text is shown as text and never 
     expect(dialogs).toEqual([]);
   });
 
+  test('what echo and printf print is text: markup and a terminal link make no element', async () => {
+    const page = await openTerminalPage('desktop');
+    const markup = await runGroup(page, "echo '<b>x</b>'");
+    expect(await markup.locator('.run-output').textContent()).toBe('<b>x</b>');
+    const hyperlink = await runGroup(page, "printf '\\e]8;;https://x\\e\\\\x'");
+    expect(await hyperlink.locator('.run-output').textContent()).toContain('https://x');
+    expect(await page.locator('.terminal .run-output :is(b, a)').count()).toBe(0);
+  });
+
   test('a pasted `help\\nwork` becomes `help work`, and nothing runs until Enter', async () => {
     const page = await openTerminalPage('desktop');
     await paste(page, 'help\nwork');

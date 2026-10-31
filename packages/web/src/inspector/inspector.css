@@ -439,30 +439,6 @@
   margin-block-start: var(--token-space-1);
 }
 
-/* ---- Showing and leaving (FR-022) -------------------------------------- */
-
-/* The scroller's old and new content cross-fade; nothing moves or scales. */
-:is(.window-content, .view-content)[data-spec-swap] {
-  view-transition-name: spec-swap;
-}
-
-::view-transition-group(spec-swap) {
-  animation: none;
-}
-
-::view-transition-old(spec-swap),
-::view-transition-new(spec-swap) {
-  animation-duration: var(--token-motion-duration-fast);
-  animation-timing-function: var(--token-motion-easing-standard);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(spec-swap),
-  ::view-transition-new(spec-swap) {
-    animation: none;
-  }
-}
-
 /* ---- Forced colors (FR-023) -------------------------------------------- */
 
 /* Every control, chip and note keeps its border, solid or dashed; dots stay

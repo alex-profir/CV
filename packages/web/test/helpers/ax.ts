@@ -2,12 +2,13 @@
 // page tests see roles and names as assistive technology gets them.
 import type { Page } from 'playwright';
 
-export type AxNode = { role: string; name: string; level?: number; ignored: boolean };
+export type AxNode = { role: string; name: string; description?: string; level?: number; ignored: boolean };
 
 type RawAxNode = {
   ignored: boolean;
   role?: { value?: string };
   name?: { value?: string };
+  description?: { value?: string };
   properties?: { name: string; value: { value?: unknown } }[];
 };
 
@@ -26,6 +27,7 @@ export async function axNodes(page: Page, selector: string): Promise<AxNode[]> {
         role: node?.role?.value ?? '',
         name: node?.name?.value ?? '',
         ignored: node?.ignored ?? true,
+        ...(node?.description?.value ? { description: node.description.value } : {}),
         ...(typeof level === 'number' ? { level } : {}),
       });
     }

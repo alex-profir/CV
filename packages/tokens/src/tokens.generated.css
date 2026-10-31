@@ -82,6 +82,7 @@
   --token-color-terminal-caret: #5eead4;
   --token-color-terminal-control: #a5b4fc;
   --token-color-terminal-cursor: #c9cad6;
+  --token-color-terminal-cursor-text: #0c0d12;
   --token-color-terminal-dim: #a3a3b0;
   --token-color-terminal-draft: #fcd34d;
   --token-color-terminal-error: #fda4af;
@@ -89,6 +90,8 @@
   --token-color-terminal-heading: #818cf8;
   --token-color-terminal-path: #a5b4fc;
   --token-color-terminal-rim: #ffffff29;
+  --token-color-terminal-selection: #818cf8;
+  --token-color-terminal-selection-text: #0c0d12;
   --token-color-terminal-sheen: #ffffff0d;
   --token-color-terminal-text: #ececf2;
   --token-color-terminal-text-secondary: #c9cad6;
@@ -113,6 +116,7 @@
   --token-color-vim-punctuation: #a3a3b0;
   --token-color-vim-status: #ffffff14;
   --token-color-vim-string: #c9cad6;
+  --token-color-vim-warning: #fcd34d;
   --token-color-wallpaper: #0c0d12;
   --token-color-wallpaper-dots: #ffffff0d;
   --token-color-wallpaper-glow: #818cf861;
@@ -160,6 +164,8 @@
   --token-font-weight-regular: 400;
   --token-font-weight-semibold: 600;
   --token-motion-duration-base: 250ms;
+  --token-motion-duration-cursor-blink: 1000ms;
+  --token-motion-duration-cursor-idle: 5000ms;
   --token-motion-duration-fast: 150ms;
   --token-motion-duration-slow: 500ms;
   --token-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);

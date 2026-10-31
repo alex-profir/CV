@@ -58,3 +58,14 @@ describe('006-terminal-FR-020: Up and Down step through the commands run, and hi
     ]);
   });
 });
+
+describe('006-terminal-FR-020: history takes a count, and -c empties it', () => {
+  test('history 2 lists the last two; history -c empties the list', async () => {
+    const page = await openTerminalPage('desktop');
+    for (const line of ['about', 'work', 'skills']) await runGroup(page, line);
+    const lastTwo = await runGroup(page, 'history 2');
+    expect(await lastTwo.locator('.run-output li').allTextContents()).toEqual(['3  skills', '4  history 2']);
+    await runGroup(page, 'history -c');
+    expect((await historyRows(page)).map((row) => row.line)).toEqual(['history']);
+  });
+});

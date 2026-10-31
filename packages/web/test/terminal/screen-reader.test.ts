@@ -9,7 +9,10 @@ import { resume } from '@cv/content';
 import { COMMANDS } from '../../src/apps/terminal/engine/commands.ts';
 import { axNodes } from '../helpers/ax.ts';
 import { REPO_ROOT } from '../helpers/copy.ts';
-import { COMMAND_LINE, commandLineFocused, openTerminalPage, runGroup, typedLines } from '../helpers/terminal.ts';
+import { openShell } from '../helpers/shell.ts';
+import { COMMAND_LINE, commandLineFocused, linesRun, openTerminalLoading, openTerminalPage, runGroup, SHELL_PAGE, typedLines, typeLine, vimEntry, vimView } from '../helpers/terminal.ts';
+import { STANDARD_GROUP } from '../../src/apps/terminal/shell/site-commands.ts';
+import { siteText } from '../../src/site-text.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -45,7 +48,7 @@ describe('006-terminal-FR-028: each output is announced once', () => {
   test('after Enter the status region holds the announcement once, focus stays in the command line, and scrolling doesn’t change it', async () => {
     const page = await openTerminalPage('desktop');
     await runGroup(page, 'pwd');
-    expect(await status(page)).toEqual({ text: '~', children: 1 });
+    expect(await status(page)).toEqual({ text: '/home/guest', children: 1 });
     expect(await commandLineFocused(page)).toBe(true);
     await runGroup(page, 'work');
     expect(await status(page)).toEqual({ text: `work: ${resume.work!.length} ${resume.work!.length === 1 ? 'entry' : 'entries'}`, children: 1 });
@@ -65,7 +68,7 @@ describe('006-terminal-FR-028: each output is announced once', () => {
     await runGroup(page, 'pwd');
     // A new element each time, so the same text is spoken again.
     expect(await first.evaluate((element) => element.isConnected)).toBe(false);
-    expect(await status(page)).toEqual({ text: '~', children: 1 });
+    expect(await status(page)).toEqual({ text: '/home/guest', children: 1 });
     await page.locator(COMMAND_LINE).fill('cd work');
     await page.keyboard.press('Enter');
     await expect.poll(async () => (await status(page)).text).toBe('Now in ~/work');
@@ -75,7 +78,94 @@ describe('006-terminal-FR-028: each output is announced once', () => {
   });
 });
 
+describe('006-terminal-FR-028: the shell’s events are announced once', () => {
+  test('Loading the shell once while loading, a stopped line’s text once, and Cancelled once after Ctrl+C; focus stays in the command line', async () => {
+    const page = await openShell(SHELL_PAGE.desktop);
+    const release = await openTerminalLoading(page, 'desktop');
+    expect(await status(page)).toEqual({ text: siteText.terminal.announce.loading, children: 1 });
+    await release();
+    expect(await status(page)).toEqual({ text: siteText.terminal.announce.loading, children: 1 });
+    await page.locator(COMMAND_LINE).focus();
+    await page.keyboard.type('while true; do :; done');
+    await page.keyboard.press('Enter');
+    await linesRun(page);
+    expect(await status(page)).toEqual({ text: siteText.terminal.replies.stopped.commands, children: 1 });
+    expect(await commandLineFocused(page)).toBe(true);
+    await page.keyboard.type('abc');
+    await page.keyboard.press('Control+C');
+    await expect.poll(() => status(page)).toEqual({ text: siteText.terminal.announce.cancelled, children: 1 });
+    expect(await commandLineFocused(page)).toBe(true);
+  });
+});
+
+describe('006-terminal-FR-065 and 006-terminal-FR-028: the vim editor to a screen reader', () => {
+  const INSERT = '.terminal textarea.vim-insert';
+  const VIM_TEXT = '.terminal .vim-text';
+  const openVim = async (line: string) => {
+    const page = await openTerminalPage('desktop');
+    await typeLine(page, line);
+    await vimView(page).waitFor();
+    return page;
+  };
+
+  test('in insert mode the text area is a text field named after the file and described by the status line; the mode is announced once each way', async () => {
+    const page = await openVim('vim notes.txt');
+    await page.locator(VIM_TEXT).focus();
+    await page.keyboard.press('i');
+    await page.locator(INSERT).waitFor();
+    await expect.poll(() => status(page)).toEqual({ text: '-- INSERT --', children: 1 });
+    const [field] = await axNodes(page, INSERT);
+    expect(field!.role).toBe('textbox');
+    expect(field!.name).toBe('notes.txt, new');
+    expect(field!.description).toContain('-- INSERT --');
+    expect(await page.evaluate((selector) => document.activeElement?.matches(selector), INSERT)).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => status(page)).toEqual({ text: 'NORMAL', children: 1 });
+    expect(await page.evaluate((selector) => document.activeElement?.matches(selector), VIM_TEXT)).toBe(true);
+  });
+
+  test('a protected file’s field says read only; W10, E45, E37 and a written message are each announced once, and focus stays', async () => {
+    const page = await openVim('vim about');
+    await expect.poll(async () => (await status(page)).text).toMatch(/^about, read only, \d+ lines\. Type :q to leave\.$/);
+    await page.locator(VIM_TEXT).focus();
+    await page.keyboard.press('i');
+    await page.locator(INSERT).waitFor();
+    expect((await axNodes(page, INSERT))[0]!.name).toBe('about, read only');
+    await page.keyboard.press('Escape');
+    await page.keyboard.type('x');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.W10);
+    await vimEntry(page, ':', 'w');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.E45);
+    await vimEntry(page, ':', 'q');
+    await expect.poll(async () => (await status(page)).text).toBe(siteText.terminal.vim.messages.E37);
+    await vimEntry(page, ':', 'w ~/about-copy');
+    await expect.poll(async () => (await status(page)).text).toContain('written');
+    expect((await status(page)).children).toBe(1);
+    expect(await vimView(page).count()).toBe(1);
+  });
+
+  test('opening a new file announces it new with 0 lines', async () => {
+    const page = await openVim('vim notes.txt');
+    await expect.poll(async () => (await status(page)).text).toBe('notes.txt, new, 0 lines. Type :q to leave.');
+  });
+});
+
 describe('006-terminal-FR-029: headings, lists, links and controls a screen reader can move by', () => {
+  test('a pipe’s output is text with no heading; help’s standard group is one list, a list item per name', async () => {
+    const page = await openTerminalPage('desktop');
+    const word = (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+    const piped = await runGroup(page, `work | grep -i ${word}`);
+    expect(await piped.locator('.run-output :is(h1, h2, h3, h4, h5, h6)').count()).toBe(0);
+    expect(await piped.locator('.run-output p.out-line').count()).toBeGreaterThan(0);
+    await runGroup(page, 'help');
+    const run = '.terminal section.run:last-of-type .run-output';
+    const [list] = await axNodes(page, `${run} ul.out-standard`);
+    const items = await axNodes(page, `${run} ul.out-standard > *`);
+    expect(list?.role).toBe('list');
+    expect(items.filter((node) => !node.ignored && node.role === 'listitem')).toHaveLength(STANDARD_GROUP.length);
+    expect(await page.locator(`${run} ul.out-standard`).count()).toBe(1);
+  });
+
   test('one h1 Terminal, an h2 per run, an h3 per entry in work and projects with no section heading between, and no level skipped', async () => {
     const page = await openTerminalPage('desktop');
     await runGroup(page, 'work');

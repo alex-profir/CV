@@ -96,9 +96,12 @@
   font: inherit;
 }
 
-.terminal ::selection {
-  background: var(--token-color-selection);
-  color: var(--token-color-selection-text);
+/* A selection in the output, and the line's in the mirror, in the
+   terminal's selection colors (research R36). */
+.terminal ::selection,
+.cursor-selected {
+  background: var(--token-color-terminal-selection);
+  color: var(--token-color-terminal-selection-text);
 }
 
 /* A link is a target of a control row's height, and still wraps inside
@@ -119,32 +122,13 @@
   stroke-width: var(--token-border-thick);
 }
 
-/* ---- The greeting ----------------------------------------------------- */
+/* ---- The starter chips ------------------------------------------------ */
 
-.greeting {
-  display: grid;
-  gap: var(--token-space-1);
-  margin-block-end: var(--token-space-4);
-}
-
-.greeting-status {
-  color: var(--token-color-terminal-dim);
-}
-
-.greeting-name {
-  color: var(--token-color-terminal-heading);
-  font-weight: var(--token-font-weight-semibold);
-}
-
-.greeting-intro {
-  color: var(--token-color-terminal-text-secondary);
-}
-
-.chips {
+.starter {
   display: flex;
   flex-wrap: wrap;
   gap: var(--token-space-2);
-  margin-block-start: var(--token-space-2);
+  margin-block-end: var(--token-space-4);
 }
 
 /* ---- Command controls (FR-015, FR-034) -------------------------------- */
@@ -276,6 +260,22 @@
   list-style: none;
 }
 
+/* Printed text keeps its spaces and tabs, and still wraps (FR-023). */
+.out-stream {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* `help`'s standard group: the heading bold, then the names two spaces
+   apart, each a 24 px target (FR-008, FR-034, FR-068). */
+.out-standard-heading .tone-primary {
+  font-weight: var(--token-font-weight-semibold);
+}
+
+.out-standard {
+  gap: 0 var(--token-space-4);
+}
+
 .out-json .json-row,
 .out-json {
   white-space: pre-wrap;
@@ -333,12 +333,18 @@
   color: var(--token-color-vim-punctuation);
 }
 
-/* ---- The command line and its cursor (FR-032) ------------------------- */
+/* ---- The command line and its cursor (FR-032, FR-072) ---------------- */
 
 .prompt-line {
   display: flex;
   flex-wrap: wrap;
   align-items: start;
+}
+
+/* The field's name and hint are for screen readers: select all and a copy
+   leave them out (FR-075). */
+.prompt-line .visually-hidden {
+  user-select: none;
 }
 
 /* The mirror sets the field's height, wrapping a long line; the input lies
@@ -364,13 +370,22 @@
   inset: 0;
   inline-size: 100%;
   border: 0;
-  outline-offset: var(--token-border-thick);
+  outline: none;
   background: none;
+  box-shadow: none;
   color: transparent;
   caret-color: transparent;
 }
 
+/* No box, focused or not: the cursor is the command line's focus indicator,
+   so the shell's focus outline is off for it alone (research R36). */
+#os .command-line:focus-visible {
+  outline: none;
+}
+
+/* The mirror draws the line's selection; the field's own stays unseen. */
 .command-line::selection {
+  background: transparent;
   color: transparent;
 }
 
@@ -384,19 +399,58 @@
 
 .cursor-block {
   background: var(--token-color-terminal-cursor);
-  color: var(--token-color-terminal-glass);
+  color: var(--token-color-terminal-cursor-text);
 }
 
-.command-field:not(:focus-within) .cursor-block {
+/* Past the line's end the block holds no text, so a copy of the Terminal's
+   text has none (FR-075); generated content is never copied. */
+.cursor-block[data-end]::before {
+  content: '\a0';
+}
+
+/* Without focus: hollow, an outline inside the block, steady. */
+.cursor-mirror:not([data-focused]) .cursor-block {
   background: none;
   color: inherit;
-  outline: var(--token-border-thin) solid var(--token-color-terminal-cursor);
-  outline-offset: calc(-1 * var(--token-border-thin));
+  outline: var(--token-border-thick) solid var(--token-color-terminal-cursor);
+  outline-offset: calc(-1 * var(--token-border-thick));
+}
+
+/* With focus: it blinks, half on and half off with no fade, until the idle
+   time ends, then stays filled. Never with reduced motion. The keyframes
+   hold each half, so the change between them is a step whatever the
+   easing: there is no step easing token. */
+@media (prefers-reduced-motion: no-preference) {
+  .cursor-mirror[data-blinking] .cursor-block {
+    animation: cursor-blink var(--token-motion-duration-cursor-blink) infinite;
+  }
+}
+
+@keyframes cursor-blink {
+  0%,
+  50% {
+    background: var(--token-color-terminal-cursor);
+    color: var(--token-color-terminal-cursor-text);
+  }
+
+  50.01%,
+  100% {
+    background: none;
+    color: inherit;
+  }
 }
 
 /* ---- The vim view (FR-058 to FR-065) ---------------------------------- */
 
 .vim {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-block-size: 0;
+}
+
+.vim-body {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -413,6 +467,27 @@
   color: var(--token-color-vim-string);
 }
 
+/* Below the text, vim's `~` rows, in what height is left, so they never add
+   to the scroll; the alternative text keeps them from being read. */
+.vim-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.vim-line {
+  flex: none;
+}
+
+.vim-text::after {
+  flex: 1 1 0;
+  min-block-size: 0;
+  overflow: hidden;
+  padding-inline-start: var(--token-size-terminal-padding);
+  color: var(--token-color-terminal-dim);
+  content: "~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~\A~" / "";
+  white-space: pre;
+}
+
 /* The text and the help fill the view to its edges, where an outline
    outside them would be cut off, so theirs is drawn inside, one thin
    border wider: inside, its corners overlap, and it must still cover a
@@ -421,6 +496,34 @@
 #os .vim-help:focus-visible {
   outline-width: calc(var(--token-border-thick) + var(--token-border-thin));
   outline-offset: calc(-1 * (var(--token-border-thick) + var(--token-border-thin)));
+}
+
+/* Insert mode's real text field (research R48): over the text and
+   transparent, as the command line is over its mirror; clicks go through to
+   the text, which moves the cursor. Its focus outline is the view's. */
+.vim-insert {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  resize: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#os .vim-insert:focus-visible {
+  outline-width: calc(var(--token-border-thick) + var(--token-border-thin));
+  outline-offset: calc(-1 * (var(--token-border-thick) + var(--token-border-thin)));
+}
+
+/* The insert cursor: a bar before the character it inserts at (design). */
+.vim-insert-bar {
+  margin-inline-end: calc(-1 * var(--token-border-thick));
+  border-inline-start: var(--token-border-thick) solid var(--token-color-terminal-cursor);
 }
 
 .vim-line {
@@ -455,7 +558,7 @@
   color: inherit;
   font: inherit;
   text-align: start;
-  text-indent: inherit;
+  text-indent: 0;
   white-space: inherit;
   cursor: pointer;
 }
@@ -523,19 +626,23 @@
 }
 
 .vim-mode {
-  color: var(--token-color-vim-mode);
+  padding-inline: var(--token-space-1-5);
+  border-radius: var(--token-radius-small);
+  background: var(--token-color-vim-mode);
+  color: var(--token-color-terminal-user-text);
   font-weight: var(--token-font-weight-semibold);
 }
 
 .vim-mode.is-help {
-  color: var(--token-color-vim-mode-help);
+  background: var(--token-color-vim-mode-help);
 }
 
 .vim-pipe {
   color: var(--token-color-terminal-dim);
 }
 
-.vim-scroll {
+/* The type, position and scroll at the right, as the design has them. */
+.vim-type {
   margin-inline-start: auto;
 }
 
@@ -547,6 +654,14 @@
   min-block-size: var(--token-size-vim-message);
   padding-inline: var(--token-size-terminal-padding);
   padding-block: var(--token-space-1);
+}
+
+.vim-message-text[data-tone="warning"] {
+  color: var(--token-color-vim-warning);
+}
+
+.vim-message-text[data-tone="error"] {
+  color: var(--token-color-terminal-error);
 }
 
 .vim-message-text,
@@ -593,8 +708,13 @@
     backdrop-filter: none;
   }
 
-  .command-field {
-    border: var(--token-border-thin) solid CanvasText;
+  /* The command line has no box here either: the cursor is its focus
+     indicator (FR-072, research R36). */
+  .command-field,
+  .command-line {
+    border: none;
+    outline: none;
+    background: none;
   }
 
   .terminal,
@@ -629,8 +749,25 @@
     color: HighlightText;
   }
 
-  .command-field:not(:focus-within) .cursor-block {
+  /* Steady: a blink's colors are computed values, which the mode paints
+     over as Canvas, so the cursor would vanish half the time. */
+  .cursor-mirror[data-blinking] .cursor-block {
+    animation: none;
+  }
+
+  /* Without focus: a 2 px Highlight outline and nothing else. */
+  .cursor-mirror:not([data-focused]) .cursor-block {
+    border-block-end: none;
     outline-color: Highlight;
+    background: none;
+    color: CanvasText;
+  }
+
+  /* A selection, in the line and in the output, in the system's colors. */
+  .terminal ::selection,
+  .cursor-selected {
+    background: Highlight;
+    color: HighlightText;
   }
 
   .vim-match {
@@ -647,6 +784,31 @@
     background: Canvas;
   }
 
+  /* The code says what a message is, not its color (FR-033). */
+  .vim-message-text[data-tone] {
+    color: CanvasText;
+  }
+
+  .vim-mode,
+  .vim-mode.is-help {
+    border: var(--token-border-thin) solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .vim-insert-bar {
+    border-inline-start-color: Highlight;
+  }
+
+  .completion-file,
+  .completion-folder {
+    color: CanvasText;
+  }
+
+  .vim-text::after {
+    color: CanvasText;
+  }
+
   .terminal-glyph .terminal-tile {
     fill: Canvas;
     stroke: CanvasText;
@@ -655,4 +817,19 @@
   .terminal-glyph :is(.terminal-mark, .terminal-underscore) {
     stroke: CanvasText;
   }
+}
+
+/* ---- A second Tab's list (FR-076) ------------------------------------- */
+
+.completion-row {
+  white-space: pre;
+}
+
+.completion-file {
+  color: var(--token-color-terminal-text);
+}
+
+.completion-folder {
+  color: var(--token-color-terminal-path);
+  font-weight: var(--token-font-weight-semibold);
 }

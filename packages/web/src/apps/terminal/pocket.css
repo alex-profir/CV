@@ -76,6 +76,7 @@
 
 .pocket .terminal {
   flex: 1;
+  min-inline-size: 0;
   font-family: var(--token-typography-terminal-pocket-narrow-font-family);
   font-size: var(--token-typography-terminal-pocket-narrow-font-size);
   font-weight: var(--token-typography-terminal-pocket-narrow-font-weight);
@@ -98,10 +99,34 @@
   padding-inline: var(--token-size-terminal-padding-pocket-narrow);
 }
 
-.pocket-keys {
+.pocket-keys,
+.pocket-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--token-space-2);
+}
+
+/* The keyboard open: the Tab key, or Esc, alone at the right, in the column
+   the keys give it; the row's gap counts in the height the screen gives the
+   strip (FR-078). */
+.pocket-strip {
+  margin-block-start: calc(-1 * var(--token-space-2));
+  padding-block-start: var(--token-space-2);
+}
+
+.pocket-strip .pocket-key {
+  grid-column: 4;
+}
+
+/* The vim keys' third row takes the grille's place; `:q` is the way out. */
+.pocket[data-vim] .pocket-grille {
+  display: none;
+}
+
+.pocket[data-vim] .pocket-keys .pocket-key:last-child {
+  grid-column: span 2;
+  background: var(--token-color-terminal-approved);
+  color: var(--token-color-terminal-user-text);
 }
 
 .pocket-key {
@@ -116,6 +141,14 @@
   font-size: var(--token-typography-chip-font-size);
   overflow-wrap: anywhere;
   touch-action: manipulation;
+}
+
+.tab-mark {
+  inline-size: var(--token-space-3);
+  block-size: var(--token-space-3);
+  margin-inline-start: var(--token-space-1);
+  stroke-width: var(--token-border-thin);
+  vertical-align: middle;
 }
 
 .pocket-key:active {
@@ -177,12 +210,16 @@
     grid-column: 1 / -1;
   }
 
-  .pocket-foot,
-  .pocket .greeting-status {
+  .pocket-foot {
     display: none;
   }
 
-  .pocket-keys {
+  .pocket-strip .pocket-key {
+    grid-column: 2;
+  }
+
+  .pocket-keys,
+  .pocket-strip {
     grid-template-columns: repeat(2, minmax(var(--token-size-home-target), auto));
     align-content: start;
     gap: var(--token-space-1);
@@ -212,7 +249,8 @@
     background: Canvas;
   }
 
-  .pocket-key {
+  .pocket-key,
+  .pocket[data-vim] .pocket-keys .pocket-key:last-child {
     border: var(--token-border-thin) solid ButtonText;
     background: ButtonFace;
     color: ButtonText;

@@ -17,7 +17,7 @@ import { unservedFonts } from '../../../tools/site-check/src/parts/fonts.ts';
 import { fieldProblems, mainSequence, unstyledDetail } from '../../../tools/site-check/src/parts/no-script.ts';
 import { waitForWorker } from '../../../tools/site-check/src/parts/offline.ts';
 import { openHtml } from './helpers/browser.ts';
-import { HANG_MS, cacheNames, firstPage, goOffline, settled, switchableServer, until, version, visit } from './helpers/offline.ts';
+import { HANG_MS, cacheNames, firstPage, goOffline, keptRecord, settled, switchableServer, until, version, visit } from './helpers/offline.ts';
 import { builtSite } from './helpers/site.ts';
 import type { BuiltSite } from './helpers/site.ts';
 
@@ -108,15 +108,21 @@ describe('004-cv-page-FR-039: a new version shows on the next visit and replaces
     expect(othersA).toEqual([]);
 
     // B, published: the next visit shows it, and its worker replaces A's
-    // stored copy.
+    // stored copy once the pages open at its activation have closed (006
+    // research R35).
     await server.serve(b.site);
     const second = await visit(context, `${server.url}/cv`);
     expect(await second.locator('h1').textContent()).toBe('Version Bee Name');
+    expect(await until(async () => (await cacheNames(second)).some((name) => name !== storedA))).toBe(true);
+    expect(await until(async () => (await keptRecord(second)) !== null)).toBe(true);
+    await first.close();
+    await second.close();
+    const later = await visit(context, `${server.url}/cv`);
     expect(await until(async () => {
-      const names = await cacheNames(second);
+      const names = await cacheNames(later);
       return names.length === 1 && names[0] !== storedA;
     })).toBe(true);
-    const [storedB] = await cacheNames(second);
+    const [storedB] = await cacheNames(later);
 
     await goOffline(context);
     const offlineB = await visit(context, `${server.url}/cv`);
@@ -209,12 +215,19 @@ describe('004-cv-page-FR-041: offline support adds no step, prompt or error', ()
     await server.serve(b.site);
     const second = await visit(context, `${server.url}/cv`);
     const loaded = await bodyHtml(second);
-    expect(await until(async () => {
-      const names = await cacheNames(second);
-      return names.length === 1 && names[0] !== storedA;
-    })).toBe(true);
+    expect(await until(async () => (await cacheNames(second)).some((name) => name !== storedA))).toBe(true);
     expect(await bodyHtml(second)).toBe(loaded);
     expect(await bodyHtml(first)).toBe(before);
+    // A's copy goes once the pages open at B's activation close (006
+    // research R35).
+    expect(await until(async () => (await keptRecord(second)) !== null)).toBe(true);
+    await first.close();
+    await second.close();
+    const later = await visit(context, `${server.url}/cv`);
+    expect(await until(async () => {
+      const names = await cacheNames(later);
+      return names.length === 1 && names[0] !== storedA;
+    })).toBe(true);
     expect(seen).toEqual([]);
   });
 
@@ -230,5 +243,81 @@ describe('004-cv-page-FR-041: offline support adds no step, prompt or error', ()
     expect(await cvPageProblems(page, expectedFields(resume))).toEqual([]);
     expect(await page.evaluate(async () => ('serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0))).toBe(0);
     expect(seen).toEqual([]);
+  });
+});
+
+describe('006-terminal-FR-070: a page from an older version still loads its shell (research R35)', () => {
+  async function openTerminalIn(page: Page): Promise<string> {
+    await page.locator('#os .dock-item[data-app="terminal"]').click();
+    await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="failed"])');
+    const state = (await page.locator('.terminal').getAttribute('data-shell-state'))!;
+    if (state === 'ready') {
+      await page.locator('.terminal input.command-line').fill('echo hi');
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null && document.querySelectorAll('.terminal section.run').length > 0);
+    }
+    return state;
+  }
+
+  test('with pages from A open, B activates; they open the Terminal online and offline; A’s cache goes once they close', async () => {
+    const b = version('Version Bee Name');
+    const server = await switchableServer();
+    await server.serve(builtSite());
+    const first = await firstPage(`${server.url}/`, { width: 1440, height: 900 });
+    const context = first.context();
+    expect(await waitForWorker(first)).toBe(true);
+    const [storedA] = await cacheNames(first);
+    const second = await visit(context, `${server.url}/`);
+
+    // B, published, found by A's page checking for an update.
+    await server.serve(b.site);
+    await first.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
+    expect(await until(async () => (await keptRecord(first)) !== null)).toBe(true);
+    const names = await cacheNames(first);
+    expect(names).toHaveLength(2);
+    expect(names).toContain(storedA);
+
+    // A's pages still load their own shell, online and offline.
+    expect(await openTerminalIn(first)).toBe('ready');
+    expect(await first.locator('.terminal section.run').last().locator('p.out-line').allTextContents()).toEqual(['hi']);
+    await goOffline(context);
+    expect(await openTerminalIn(second)).toBe('ready');
+
+    // Every cache is one complete version: A's holds A's files, B's B's and
+    // its record.
+    const files = (site: BuiltSite) => site.manifest.files.filter((file) => file.path !== '/sw.js').length;
+    const sizes = await first.evaluate(async () => Object.fromEntries(await Promise.all((await caches.keys()).map(async (name) => [name, (await (await caches.open(name)).keys()).length] as const))));
+    expect(sizes[storedA!]).toBe(files(builtSite()));
+    expect(sizes[names.find((name) => name !== storedA)!]).toBe(files(b.site) + 1);
+
+    // Once they close, the next request deletes A's cache.
+    await first.close();
+    await second.close();
+    await context.setOffline(false);
+    const after = await visit(context, `${server.url}/`);
+    expect(await until(async () => {
+      const left = await cacheNames(after);
+      return left.length === 1 && left[0] !== storedA;
+    })).toBe(true);
+    await server.close();
+  });
+
+  test('with no page open, B’s activation deletes A’s cache at once', async () => {
+    const b = version('Version Bee Name');
+    const server = await switchableServer();
+    await server.serve(builtSite());
+    const first = await firstPage(`${server.url}/`);
+    const context = first.context();
+    expect(await waitForWorker(first)).toBe(true);
+    const [storedA] = await cacheNames(first);
+    await server.serve(b.site);
+    await first.evaluate(() => void navigator.serviceWorker.getRegistration().then((registration) => registration?.update()));
+    await first.close();
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    const later = await visit(context, `${server.url}/`);
+    const left = await cacheNames(later);
+    expect(left).toHaveLength(1);
+    expect(left[0]).not.toBe(storedA);
+    await server.close();
   });
 });

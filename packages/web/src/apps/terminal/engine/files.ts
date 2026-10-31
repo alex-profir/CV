@@ -21,7 +21,7 @@ export type FileBuilders = { cvJson: string; readme: () => Block; spec: (entry: 
 const HOME = '~';
 
 // A value with no accents, in lower case: how names are made and matched.
-const folded = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+export const folded = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 // A file's name from a CV value (FR-044): no accents, lower case, every
 // letter and digit of any script kept, every run of other characters one

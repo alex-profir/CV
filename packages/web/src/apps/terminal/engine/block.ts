@@ -21,16 +21,22 @@ export const WRAP_INDENT = 2;
 export const rowIndent = (indent: number) => ({ '--indent': `${indent}ch`, '--wrap': `${indent + WRAP_INDENT}ch` });
 export type JsonFold = { key: string; start: number; end: number };
 
-// What the vim view shows (data-model.md Vim view): `name` as the status
-// line shows it, `pipe` the command line that opened it, if any (FR-059).
-export type VimSource = { name: string; pipe: string | null; rows: readonly JsonRow[]; folds: readonly JsonFold[]; type: 'json' | 'text' };
+// What the vim view has open (data-model.md Vim view): `name` as typed, or
+// `[No Name]` for piped text, whose `path` is null until `:w <path>` names it.
+// `readonly`: a protected file (FR-081). `new`: the path didn't exist when
+// opened, until first written (FR-080).
+export type VimFile = { name: string; path: string | null; readonly: boolean; new: boolean };
 
 // Only sets a color token: the words carry the meaning (FR-031).
 export type Tone = 'primary' | 'secondary' | 'dim' | 'heading' | 'error' | 'approved' | 'draft' | 'folder';
 
 export type Node =
-  | { kind: 'text'; text: string; tone?: Tone }
-  | { kind: 'line'; children: Block }
+  // `stream`: which of the shell's streams printed it, for text the shell
+  // printed as text (research R30).
+  | { kind: 'text'; text: string; tone?: Tone; stream?: 'stdout' | 'stderr' }
+  // `stopped`: the line a stopped run ends with (FR-069); `standard`, the
+  // heading of `help`'s standard group (FR-008).
+  | { kind: 'line'; children: Block; req?: 'stopped' | 'standard' }
   // Depth 1 is a section, 2 an entry, relative to the command's heading
   // (FR-029); a command showing one section uses 1 for its entries.
   | { kind: 'heading'; depth: 1 | 2; children: Block }
@@ -39,13 +45,15 @@ export type Node =
   | { kind: 'time'; datetime: string; text: string; spoken?: string }
   // A command control (FR-015): `line` is the exact command line it runs,
   // `label` the shorter text it may show.
-  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone }
-  // `ls`'s names (FR-043).
-  | { kind: 'columns'; cells: readonly Node[]; req?: 'ls' }
+  | { kind: 'command'; line: string; label?: string; style: 'chip' | 'inline'; req?: 'suggestion' | 'path' | 'ls' | 'standard'; tone?: Tone }
+  // `ls`'s names (FR-043), and `help`'s standard commands (FR-008).
+  | { kind: 'columns'; cells: readonly Node[]; req?: 'ls' | 'standard' }
   // `help`'s and `specs`' table rows.
   | { kind: 'rows'; rows: readonly (readonly Block[])[]; req?: 'help' | 'specs' }
   // `jq`'s output (FR-056).
-  | { kind: 'json'; rows: readonly JsonRow[] };
+  | { kind: 'json'; rows: readonly JsonRow[] }
+  // A second Tab's list: names as text, never controls (FR-076).
+  | { kind: 'completion'; matches: readonly { name: string; folder: boolean }[] };
 
 export type Block = readonly Node[];
 
@@ -54,16 +62,14 @@ export type Block = readonly Node[];
 export type Unit = 'entries' | 'commands' | 'files' | 'lines' | 'specs';
 export type Announcement = { full: string } | { command: string; count: number; unit: Unit };
 
-export type OsAction = { open: 'cv' | 'about' } | { exit: true };
-
-export type Result =
-  // `text`: what a pipe passes on to the next command; `name` the file it
-  // came from, kept through the pipe for the vim view's status line.
-  | { kind: 'output'; block: Block; announce: Announcement; text?: string; name?: string }
+// What a site command asks of the interface after its line (data-model.md
+// Run request and result): clear the output, open the vim view, open an
+// app, or empty the history (FR-019, FR-058, FR-014, FR-020).
+export type Effect =
   | { kind: 'clear' }
-  | { kind: 'open-vim'; file: VimSource }
-  | { kind: 'os'; action: OsAction; block: Block }
-  | { kind: 'cd'; folder: Path; block: Block; announce: Announcement };
+  | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
+  | { kind: 'open'; view: 'cv' | 'about' }
+  | { kind: 'clear-history' };
 
 export const text = (value: string, tone?: Tone): Node => (tone === undefined ? { kind: 'text', text: value } : { kind: 'text', text: value, tone });
 
@@ -78,20 +84,26 @@ export const link = (href: string, children: Block, external: boolean): Node => 
 export const time = (datetime: string, value: string, spoken?: string): Node =>
   spoken === undefined ? { kind: 'time', datetime, text: value } : { kind: 'time', datetime, text: value, spoken };
 
-export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls'; tone?: Tone } = {}): Node => ({
+export const command = (commandLine: string, style: 'chip' | 'inline', options: { label?: string; req?: 'suggestion' | 'path' | 'ls' | 'standard'; tone?: Tone } = {}): Node => ({
   kind: 'command',
   line: commandLine,
   style,
   ...options,
 });
 
-// A block's text as a pipe passes it on and as a summary reads it: each
-// line, heading, list item and row on a line of its own.
-export function plainText(block: Block): string {
+// A block's lines: each line, heading, list item and row on a line of its
+// own; with `marks`, list items start with `- `, except history's numbered
+// lines.
+function textLines(block: Block, marks: boolean): string[] {
   const lines: string[] = [];
   let current = '';
+  // A list item's mark, put before its first line.
+  let mark = '';
   const flush = () => {
-    if (current !== '') lines.push(current);
+    if (current !== '') {
+      lines.push(mark + current);
+      mark = '';
+    }
     current = '';
   };
   const walk = (nodes: Block) => {
@@ -116,21 +128,27 @@ export function plainText(block: Block): string {
         case 'list':
           flush();
           for (const item of node.items) {
+            if (marks && node.req !== 'history') mark = '- ';
             walk(item);
             flush();
           }
           break;
         case 'columns':
           flush();
-          current = node.cells.map((cell) => plainText([cell])).join('  ');
+          current = node.cells.map((cell) => textLines([cell], marks).join(' ')).join('  ');
           flush();
           break;
         case 'rows':
           flush();
           for (const row of node.rows) {
-            current = row.map((cell) => plainText(cell)).join('  ');
+            current = row.map((cell) => textLines(cell, marks).join(' ')).join('  ');
             flush();
           }
+          break;
+        case 'completion':
+          flush();
+          current = node.matches.map((match) => match.name).join('  ');
+          flush();
           break;
         case 'json':
           flush();
@@ -141,5 +159,14 @@ export function plainText(block: Block): string {
   };
   walk(block);
   flush();
-  return lines.join('\n');
+  return lines;
 }
+
+// A block's text as a summary reads it.
+export const plainText = (block: Block): string => textLines(block, false).join('\n');
+
+// A block's visible text in reading order, as a site command prints it and a
+// protected file holds it (research R29, data-model.md Site command run):
+// links by their text, times by their text, controls by their label, JSON
+// rows as their tokens, list items marked `- `.
+export const blockText = (block: Block): string => textLines(block, true).join('\n');

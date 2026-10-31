@@ -4,11 +4,12 @@ import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, onTestFinished, test, vi } from 'vitest';
 import { launchChromium } from '../src/browser.ts';
 import { SITE_DIR, readManifest, runCheck } from '../src/check.ts';
-import { INSPECTOR, INSPECTOR_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
+import { ENDLESS_LINE, INSPECTOR, INSPECTOR_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
 import type { ShellState } from '../src/shell-states.ts';
 import { renderProblem, renderReport } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
 import { realSiteProject } from './helpers/root.ts';
+import { siteText } from '../../../packages/web/src/site-text.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -38,6 +39,31 @@ const vim = async (page: Page) => ({ vim: await shown(page, TERMINAL.vimText), h
 
 const searched = async (page: Page) => ({ vim: await shown(page, TERMINAL.vimText), matches: (await count(page, `${TERMINAL.vim} mark`)) > 0 });
 
+// The amendment's states (2026-10-29): the shell's state, the cursor, a
+// stopped line and the page's selection.
+const shellState = (page: Page) => page.getAttribute('#os .terminal', 'data-shell-state');
+
+const lineFocused = (page: Page) => page.locator(TERMINAL.commandLine).evaluate((input) => input === document.activeElement);
+
+const stoppedRun = async (page: Page) => ({ run: await lastRun(page), stopped: await page.locator(TERMINAL.run).last().locator(TERMINAL.stopped).textContent(), state: await shellState(page) });
+
+// Whether the help's standard group is in the screen's view.
+const standardInView = (page: Page) =>
+  page.evaluate(([screen, group]) => {
+    const view = document.querySelector(screen)!.getBoundingClientRect();
+    const box = document.querySelector(`${screen} ${group}`)?.getBoundingClientRect();
+    return box !== undefined && box.top < view.bottom && box.bottom > view.top;
+  }, [TERMINAL.screen, TERMINAL.standard] as const);
+
+const selection = (page: Page) =>
+  page.evaluate((screen) => {
+    const chosen = document.getSelection()!;
+    const view = document.querySelector(screen)!;
+    return { inside: !chosen.isCollapsed && view.contains(chosen.anchorNode) && view.contains(chosen.focusNode), text: chosen.toString() };
+  }, TERMINAL.screen);
+
+const STOPPED = expect.stringMatching(/^stopped: it /);
+
 const TERMINAL_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'desktop/terminal-open': async (page) => ({ window: await shown(page, SHELL.terminalWindow), runs: await runs(page), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view') }),
   'desktop/terminal-help': async (page) => ({ run: await lastRun(page), help: await shown(page, `${TERMINAL.run} .out-help`) }),
@@ -66,6 +92,21 @@ const TERMINAL_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'mobile/pocket-long-command': async (page) => ({ length: await lineLength(page), runs: await runs(page) }),
   'mobile/pocket-vim-search': searched,
   'mobile/pocket-vim-help': vim,
+  'desktop/terminal-unfocused': async (page) => ({ run: await lastRun(page), focused: await lineFocused(page), filled: await count(page, `${TERMINAL.cursorMirror}[data-focused]`) }),
+  'desktop/terminal-help-standard': async (page) => ({ run: await lastRun(page), heading: await page.locator(`${TERMINAL.run} p.out-standard-heading`).count(), inView: await standardInView(page) }),
+  'desktop/terminal-loading': async (page) => ({ state: await shellState(page), waiting: await shown(page, TERMINAL.shellLoading), busy: await count(page, TERMINAL.busyRun), run: await lastRun(page) }),
+  'desktop/terminal-load-failed': async (page) => ({ state: await shellState(page), failed: await page.locator(TERMINAL.shellFailed).textContent() }),
+  'desktop/terminal-stopped': stoppedRun,
+  'desktop/terminal-selected-all': async (page) => {
+    const { inside, text } = await selection(page);
+    return { inside, help: text.includes('help'), focused: await lineFocused(page) };
+  },
+  'mobile/pocket-stopped': stoppedRun,
+  'desktop/terminal-tab-list': async (page) => ({ list: await shown(page, TERMINAL.completionList), line: await page.locator(TERMINAL.commandLine).inputValue() }),
+  'desktop/terminal-vim-insert': async (page) => ({ mode: await page.locator(`${TERMINAL.vim} .vim-mode`).textContent(), focused: await page.locator(TERMINAL.vimInsert).evaluate((area) => area === document.activeElement) }),
+  'desktop/terminal-vim-readonly': async (page) => ({ marks: (await page.locator(`${TERMINAL.vim} :is(.vim-ro, .vim-modified)`).allTextContents()).join(' '), message: (await page.locator(TERMINAL.vimMessage).textContent())?.slice(0, 3) }),
+  'mobile/pocket-tab-key': async (page) => ({ list: await shown(page, TERMINAL.completionList), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
+  'mobile/pocket-vim-insert': async (page) => ({ mode: await page.locator(`${TERMINAL.vim} .vim-mode`).textContent(), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
 };
 
 const TERMINAL_EXPECTED: Record<string, unknown> = {
@@ -96,6 +137,18 @@ const TERMINAL_EXPECTED: Record<string, unknown> = {
   'mobile/pocket-long-command': { length: 500, runs: 0 },
   'mobile/pocket-vim-search': { vim: true, matches: true },
   'mobile/pocket-vim-help': { vim: true, help: true },
+  'desktop/terminal-unfocused': { run: 'help', focused: false, filled: 0 },
+  'desktop/terminal-help-standard': { run: 'help', heading: 1, inView: true },
+  'desktop/terminal-loading': { state: 'loading', waiting: true, busy: 1, run: 'help' },
+  'desktop/terminal-load-failed': { state: 'failed', failed: `${siteText.terminal.shellFailed} ${siteText.terminal.tryAgain}` },
+  'desktop/terminal-stopped': { run: ENDLESS_LINE, stopped: STOPPED, state: 'ready' },
+  'desktop/terminal-selected-all': { inside: true, help: true, focused: true },
+  'mobile/pocket-stopped': { run: ENDLESS_LINE, stopped: STOPPED, state: 'ready' },
+  'desktop/terminal-tab-list': { list: true, line: 'cat ~/' },
+  'desktop/terminal-vim-insert': { mode: '-- INSERT --', focused: true },
+  'desktop/terminal-vim-readonly': { marks: '[RO] [+]', message: 'E45' },
+  'mobile/pocket-tab-key': { list: true, key: 'Tab' },
+  'mobile/pocket-vim-insert': { mode: '-- INSERT --', key: 'Esc' },
 };
 
 // The inspector's states (007 contracts/cli.md States): which spec view
@@ -221,8 +274,24 @@ describe('005-os-shell-FR-048: the checks measure the root in every shell state'
   });
 });
 
+// The states contracts/cli.md adds on 2026-10-29.
+const AMENDMENT_STATES = [
+  'desktop/terminal-tab-list/1440px',
+  'desktop/terminal-vim-insert/1440px',
+  'desktop/terminal-vim-readonly/1440px',
+  'mobile/pocket-tab-key/375px',
+  'mobile/pocket-vim-insert/375px',
+  'desktop/terminal-unfocused/1440px',
+  'desktop/terminal-help-standard/1440px',
+  'desktop/terminal-loading/1440px',
+  'desktop/terminal-load-failed/1440px',
+  'desktop/terminal-stopped/1440px',
+  'desktop/terminal-selected-all/1440px',
+  'mobile/pocket-stopped/375px',
+];
+
 describe("006-terminal-FR-038: the checks measure the Terminal in every state of contracts/cli.md", () => {
-  test('the driver lists 15 desktop states at 1440 × 900 and 12 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
+  test('the driver lists 24 desktop states at 1440 × 900 and 15 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
     expect(TERMINAL_STATES.map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
       ...[
         'terminal-open',
@@ -240,10 +309,21 @@ describe("006-terminal-FR-038: the checks measure the Terminal in every state of
         'terminal-two-windows',
         'terminal-specs',
         'terminal-menu',
+        'terminal-unfocused',
+        'terminal-help-standard',
+        'terminal-loading',
+        'terminal-load-failed',
+        'terminal-stopped',
+        'terminal-selected-all',
+        'terminal-tab-list',
+        'terminal-vim-insert',
+        'terminal-vim-readonly',
       ].map((state) => `desktop/${state}/1440px 900`),
       'mobile/pocket/375px 812',
       'mobile/pocket-landscape/812px 375',
-      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help'].map((state) => `mobile/${state}/375px 812`),
+      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help', 'pocket-stopped', 'pocket-tab-key', 'pocket-vim-insert'].map(
+        (state) => `mobile/${state}/375px 812`,
+      ),
     ]);
   });
 
@@ -254,6 +334,10 @@ describe("006-terminal-FR-038: the checks measure the Terminal in every state of
     expect(report.problems).toEqual([]);
     const summary = renderReport(report);
     for (const { shell, state, width } of TERMINAL_STATES) expect(summary).toContain(stateVariant(shell, state, width));
+    // The amendment's states (2026-10-29), each measured on `/`.
+    expect(variants).toEqual(expect.arrayContaining(AMENDMENT_STATES));
+    const line = summary.split('\n').find((text) => text.startsWith('  accessibility '))!;
+    for (const variant of AMENDMENT_STATES) expect(line).toContain(`/ ${variant}`);
   });
 });
 

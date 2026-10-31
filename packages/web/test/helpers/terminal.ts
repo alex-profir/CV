@@ -5,6 +5,7 @@
 import type { Locator, Page } from 'playwright';
 import type { RunningServer } from '../../../../tools/site-check/src/server.ts';
 import { axText } from './ax.ts';
+import { resume } from '@cv/content';
 import { fixture } from './fixtures.ts';
 import type { FixtureName } from './fixtures.ts';
 import { openShell, PHONE_USER_AGENT, serveShellFixture, settle } from './shell.ts';
@@ -21,12 +22,38 @@ export const SHELL_PAGE: Record<TerminalShell, ShellOptions> = {
 export const COMMAND_LINE = '.terminal input.command-line';
 
 // Opens the Terminal in an open shell: from the dock, or by a tap on its home
-// screen icon, then waits until its command line has focus.
-export async function openTerminal(page: Page, shell: TerminalShell): Promise<void> {
+// screen icon, then waits until its command line is shown.
+async function openTerminalOnly(page: Page, shell: TerminalShell): Promise<void> {
   if (shell === 'desktop') await page.locator('#os .dock-item[data-app="terminal"]').click();
   else await page.locator('#os .home .app-icon[data-view="terminal"]').tap();
   await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+}
+
+// Opens the Terminal, then waits until its shell has loaded (006 FR-070),
+// so a test starts with the shell ready.
+export async function openTerminal(page: Page, shell: TerminalShell): Promise<void> {
+  await openTerminalOnly(page, shell);
+  await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="running"])');
   await settle(page);
+}
+
+// Opens the Terminal with the shell worker's script held back, for the
+// loading state (006 FR-070). The returned function lets it load.
+export async function openTerminalLoading(page: Page, shell: TerminalShell): Promise<() => Promise<void>> {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/assets/shell-*.js', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openTerminalOnly(page, shell);
+  await page.waitForSelector('.terminal p.shell-loading');
+  await settle(page);
+  return async () => {
+    release();
+    await page.waitForSelector('.terminal:is([data-shell-state="ready"], [data-shell-state="running"])');
+    await page.unroute('**/assets/shell-*.js');
+  };
 }
 
 // The shell opened at its size, with the Terminal open in it.
@@ -39,13 +66,18 @@ export async function openTerminalPage(shell: TerminalShell, options: Partial<Sh
 // How many runs the output holds.
 export const runCount = (page: Page) => page.locator('.terminal section.run').count();
 
-// Types a line into the command line and presses Enter.
+// Until no line waits for the shell or runs (006 FR-070).
+export const linesRun = (page: Page) => page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
+
+// Types a line into the command line, presses Enter, and waits for it to
+// have run.
 export async function typeLine(page: Page, line: string): Promise<void> {
   const input = page.locator(COMMAND_LINE);
   await input.focus();
   await input.fill('');
   await page.keyboard.type(line);
   await page.keyboard.press('Enter');
+  await linesRun(page);
 }
 
 // A run's selector, by its place among the runs from 1.
@@ -134,7 +166,9 @@ export async function quitVim(page: Page): Promise<void> {
 // FR-035's states, each reached from a just-opened Terminal by real input.
 // `desktop` and `mobile` list the states of each shell (contracts/cli.md
 // States); a state's `size` is the page it needs, when not the shell's.
-export type TerminalState = { name: string; size?: { width: number; height: number }; reach: (page: Page) => Promise<void> };
+// `shell`: the shell worker held back (`loading`) or answered 503
+// (`failed`) when the Terminal opens.
+export type TerminalState = { name: string; size?: { width: number; height: number }; shell?: 'loading' | 'failed'; reach: (page: Page) => Promise<void> };
 
 const ok = async () => {};
 
@@ -151,7 +185,85 @@ async function catInFolder(page: Page): Promise<void> {
   const before = await runCount(page);
   await listing.locator('.run-output button[aria-label^="cat "]').first().click();
   await page.waitForFunction((count) => document.querySelectorAll('.terminal section.run').length > count, before);
+  await linesRun(page);
 }
+
+// Select all, with the key the page's platform uses (research R37).
+async function selectAll(page: Page): Promise<void> {
+  const mac = await page.evaluate(() => /^mac/i.test((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform));
+  await page.keyboard.press(mac ? 'Meta+A' : 'Control+A');
+}
+
+// A word of the first role's summary, read from the CV.
+const summaryWord = () => (resume.work?.[0]?.summary ?? '').split(/\W+/).find((part) => part.length > 4)!;
+
+// The amendment's states (006, 2026-10-29), in both shells.
+const SHELL_STATES: TerminalState[] = [
+  {
+    name: 'focus elsewhere',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.press('Tab');
+    },
+  },
+  {
+    name: 'help scrolled to its standard group',
+    reach: async (page) => {
+      const help = await runGroup(page, 'help');
+      await help.locator('ul.out-standard').scrollIntoViewIfNeeded();
+    },
+  },
+  {
+    name: 'a selection in the line',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('help work');
+      await page.locator(COMMAND_LINE).evaluate((input: HTMLInputElement) => input.setSelectionRange(0, 4));
+    },
+  },
+  {
+    name: 'selected all',
+    reach: async (page) => {
+      await runGroup(page, 'help');
+      await page.locator(COMMAND_LINE).focus();
+      await selectAll(page);
+    },
+  },
+  {
+    name: 'after Ctrl+C',
+    reach: async (page) => {
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('abc');
+      await page.keyboard.press('Control+C');
+      await page.waitForSelector('.terminal .run-cancel');
+    },
+  },
+  { name: 'loading', shell: 'loading', reach: ok },
+  { name: 'failed to load', shell: 'failed', reach: ok },
+  { name: 'stopped by its limit', reach: async (page) => void (await runGroup(page, 'while true; do :; done')) },
+  {
+    name: 'ls with the visitor’s files',
+    reach: async (page) => {
+      await runGroup(page, 'touch zz; mkdir notes');
+      await runGroup(page, 'ls');
+    },
+  },
+  {
+    name: 'rm and ls -l',
+    reach: async (page) => {
+      await runGroup(page, 'touch mine; rm about');
+      await runGroup(page, 'ls -l');
+    },
+  },
+  { name: 'a pipe and a filter', reach: async (page) => void (await runGroup(page, `work | grep -i ${summaryWord()}`)) },
+  {
+    name: 'a syntax error after command not found',
+    reach: async (page) => {
+      await runGroup(page, 'nosuch');
+      await runGroup(page, 'ls |');
+    },
+  },
+];
 
 const SHARED_STATES: TerminalState[] = [
   { name: 'just opened', reach: ok },
@@ -187,6 +299,52 @@ const SHARED_STATES: TerminalState[] = [
     reach: async (page) => {
       await page.locator(COMMAND_LINE).focus();
       await page.keyboard.insertText('help '.repeat(100));
+    },
+  },
+  ...SHELL_STATES,
+  {
+    name: 'tab list',
+    reach: async (page) => {
+      await typeLine(page, 'mkdir notes && touch todo');
+      await linesRun(page);
+      await page.locator(COMMAND_LINE).focus();
+      await page.keyboard.type('cat ~/');
+      await page.keyboard.press('Tab');
+      await settle(page);
+      await page.keyboard.press('Tab');
+      await page.locator('.terminal div.completion-list').waitFor();
+    },
+  },
+  {
+    name: 'vim insert',
+    reach: async (page) => {
+      await typeLine(page, 'vim notes.txt');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('i');
+      await page.locator('.terminal textarea.vim-insert').waitFor();
+      await page.keyboard.type('a line');
+    },
+  },
+  {
+    name: 'vim W10',
+    reach: async (page) => {
+      await typeLine(page, 'vim about');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('x');
+      await page.locator('.terminal .vim-message-text[data-tone="warning"]').waitFor();
+    },
+  },
+  {
+    name: 'vim E45',
+    reach: async (page) => {
+      await typeLine(page, 'vim about');
+      await vimView(page).waitFor();
+      await page.locator('.terminal .vim-text').focus();
+      await page.keyboard.press('x');
+      await vimEntry(page, ':', 'w');
+      await page.locator('.terminal .vim-message-text[data-tone="error"]').waitFor();
     },
   },
 ];
@@ -236,13 +394,49 @@ export const TERMINAL_STATES: Record<TerminalShell, TerminalState[]> = {
         await vimView(page).waitFor();
       },
     },
+    {
+      name: 'vim keys at 320',
+      size: { width: 320, height: 568 },
+      reach: async (page) => {
+        await page.locator('#os .pocket-keys button.pocket-key[aria-label="cv"]').tap();
+        await vimView(page).waitFor();
+      },
+    },
+    {
+      name: 'the strip with the Tab key',
+      reach: async (page) => {
+        await page.locator(COMMAND_LINE).tap();
+        await page.keyboard.type('cat ~/');
+        await page.setViewportSize({ width: 375, height: 512 });
+        await page.waitForSelector('#os .pocket-strip');
+      },
+    },
+    {
+      name: 'the strip with Esc',
+      reach: async (page) => {
+        await typeLine(page, 'vim notes.txt');
+        await vimView(page).waitFor();
+        await page.locator('#os .pocket-keys button.pocket-key[aria-label="i, Insert"]').tap();
+        await page.setViewportSize({ width: 375, height: 512 });
+        await page.waitForSelector('#os .pocket-strip');
+      },
+    },
   ],
 };
 
 // A fresh page in a state: the shell at its size, the Terminal open, and
 // the state reached.
 export async function terminalInState(shell: TerminalShell, state: TerminalState, options: Partial<ShellOptions> = {}): Promise<Page> {
-  const page = await openTerminalPage(shell, { ...(state.size ?? {}), ...options });
+  const size = { ...(state.size ?? {}), ...options };
+  let page: Page;
+  if (state.shell === 'loading') {
+    page = await openShell({ ...SHELL_PAGE[shell], ...size });
+    await openTerminalLoading(page, shell);
+  } else if (state.shell === 'failed') {
+    page = await openShell({ ...SHELL_PAGE[shell], ...size, beforeGoto: async (opened) => void (await opened.route('**/assets/shell-*.js', (route) => route.fulfill({ status: 503, body: '' }))) });
+    await openTerminalOnly(page, shell);
+    await page.waitForSelector('.terminal p.shell-failed');
+  } else page = await openTerminalPage(shell, size);
   await state.reach(page);
   await settle(page);
   return page;

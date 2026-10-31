@@ -1,4 +1,4 @@
-// `jq` and the read-only vim view (FR-056, FR-058 to FR-064): the CV's JSON
+// `jq` and the vim view (FR-056, FR-058 to FR-064): the CV's JSON
 // colored in the output, and in a vim view with folds, search, wrapping and
 // a way back.
 import { describe, expect, test, vi } from 'vitest';
@@ -61,8 +61,20 @@ describe('006-terminal-FR-056: cat cv.json | jq prints the JSON colored, in the 
   });
 });
 
+describe('006-terminal-FR-056: jq’s colored rows are its printed text, and piped on it is plain', () => {
+  test('cat cv.json | jq’s rows read, row by row, as what it prints; jq . cv.json | head is plain text', async () => {
+    const page = await openTerminalPage('desktop');
+    const colored = await runGroup(page, 'cat cv.json | jq');
+    const rows = await colored.locator('.run-output .json-row').allTextContents();
+    expect(rows.map((row) => row.trim())).toEqual(CV_LINES.map((row) => row.trim()));
+    const plain = await runGroup(page, 'jq . cv.json | head');
+    expect(await plain.locator('[data-req~="006-terminal-FR-056"], .json-row').count()).toBe(0);
+    expect(await plain.locator('.run-output p.out-line').allTextContents()).toEqual(CV_LINES.slice(0, 10));
+  });
+});
+
 describe('006-terminal-FR-058: the vim view fills the window, with line numbers, a status line and a message line', () => {
-  test('cv opens it with NORMAL, the name, [RO], json, line and column and position, and the opening message', async () => {
+  test('cv opens it with NORMAL, [No Name], not [RO], json, line and column and position, and the opening message', async () => {
     const page = await openTerminalPage('desktop');
     await openVimView(page);
     expect(await page.locator('.terminal .terminal-screen').count()).toBe(0);
@@ -73,9 +85,10 @@ describe('006-terminal-FR-058: the vim view fills the window, with line numbers,
     expect(numbers.slice(0, 3)).toEqual(['1', '2', '3']);
     expect(numbers.at(-1)).toBe(String(CV_LINES.length));
     const line = await status(page);
-    for (const part of ['NORMAL', 'cv.json', '[RO]', 'json', '3,1']) expect(line, part).toContain(part);
+    for (const part of ['NORMAL', '[No Name]', 'json', '3,1']) expect(line, part).toContain(part);
+    for (const part of ['[RO]', '[+]', '[New]']) expect(line, part).not.toContain(part);
     expect(await page.locator(`${VIM} .vim-scroll`).textContent()).toMatch(/^(?:Top|Bot|All|\d+%)$/);
-    expect(await message(page)).toContain(`"cv.json" [readonly] ${CV_LINES.length} lines`);
+    expect(await message(page)).toContain(`"[No Name]" ${CV_LINES.length} lines`);
     expect(await page.locator(`${VIM} .vim-message button.command-chip`).evaluateAll((list) => list.map((chip) => chip.textContent?.trim()))).toEqual([':help', ':q']);
     expect((await page.locator(`${WINDOW} .window-title`).textContent())?.trim()).toBe('Terminal — vim');
     await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
@@ -292,7 +305,7 @@ describe('006-terminal-FR-064: :q and the :q chip go back to the output; :help o
     await vimView(page).getByRole('button', { name: ':help', exact: true }).click();
     const help = page.locator(`${VIM} .vim-help`);
     await help.waitFor();
-    expect(words(await help.textContent())).toContain('KEYS FOR cv.json');
+    expect(words(await help.textContent())).toContain('KEYS FOR [No Name] · :w <path> writes it to a file');
     expect(await page.locator(`${VIM} .vim-text`).isVisible()).toBe(true);
     await vimView(page).getByRole('button', { name: ':q', exact: true }).click();
     await expect.poll(() => help.count()).toBe(0);
@@ -332,14 +345,14 @@ describe('006-terminal-FR-065: a screen reader hears the vim view, and focus is 
   const STATUS = '.terminal .terminal-status[role="status"]';
   const spoken = (page: Page) => page.locator(STATUS).evaluate((element) => ({ text: (element.textContent ?? '').trim(), children: element.children.length }));
 
-  test('on opening, focus is on .vim-text, named and read only, and the status region says the file, read only, its lines and :q', async () => {
+  test('on opening, focus is on .vim-text, named, and the status region says the file, its lines and :q', async () => {
     const page = await openTerminalPage('desktop');
     await openVimView(page);
     await expect.poll(() => page.evaluate(() => document.activeElement?.matches('.terminal section.vim .vim-text') ?? false)).toBe(true);
     const [text] = await axNodes(page, `${VIM} .vim-text`);
-    expect(text!.name).toBe('cv.json (read only)');
+    expect(text!.name).toBe('[No Name]');
     expect(await page.locator(`${VIM} .vim-text`).getAttribute('role')).toBe('document');
-    expect(await spoken(page)).toEqual({ text: `cv.json, read only, ${CV_LINES.length} lines. Type :q to leave.`, children: 1 });
+    expect(await spoken(page)).toEqual({ text: `[No Name], ${CV_LINES.length} lines. Type :q to leave.`, children: 1 });
   });
 
   test('a message change is announced once; fold lines say whether they are open', async () => {
@@ -377,5 +390,97 @@ describe('006-terminal-FR-065: a screen reader hears the vim view, and focus is 
     expect(await page.evaluate(() => document.activeElement?.closest('.terminal') === null)).toBe(true);
     await page.keyboard.press('Shift+Tab');
     expect(await at(`${VIM} button.command-chip[aria-label=":q"]`)).toBe(true);
+  });
+});
+
+describe('006-terminal-FR-058: the status line and the opening message, by the file open', () => {
+  const opened = async (page: Page, line: string) => {
+    await runGroup(page, line).catch(() => undefined);
+    await vimView(page).waitFor();
+    await settle(page);
+  };
+
+  test('a new file opens [New] in the message line only; a protected one [RO] and [readonly]', async () => {
+    const page = await openTerminalPage('desktop');
+    await opened(page, 'vim todo');
+    expect(await message(page)).toContain('"todo" [New]');
+    expect(await status(page)).not.toContain('[New]');
+    expect(await status(page)).not.toContain('[RO]');
+    await page.keyboard.press('x');
+    await vimEntry(page, ':', 'q');
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await opened(page, 'vim about');
+    expect(await status(page)).toContain('[RO]');
+    expect(await message(page)).toMatch(/"about" \[readonly\] \d+ lines/);
+  });
+
+  test('006-terminal-FR-065: the view’s name says read only or new', async () => {
+    const page = await openTerminalPage('desktop');
+    await opened(page, 'vim about');
+    expect((await axNodes(page, `${VIM} .vim-text`))[0]!.name).toBe('about, read only');
+    await vimEntry(page, ':', 'q');
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    await opened(page, 'vim todo');
+    expect((await axNodes(page, `${VIM} .vim-text`))[0]!.name).toBe('todo, new');
+  });
+
+  test('006-terminal-FR-064: the :q chip with unwritten changes shows E37 and the view stays; :q! closes it', async () => {
+    const page = await openTerminalPage('desktop');
+    await opened(page, 'vim todo');
+    await page.locator(`${VIM} .vim-text`).focus();
+    await page.keyboard.type('ihi');
+    await page.keyboard.press('Escape');
+    await vimView(page).getByRole('button', { name: ':q', exact: true }).click();
+    expect(await message(page)).toContain('E37: No write since last change (add ! to override)');
+    expect(await status(page)).toContain('[+]');
+    await vimEntry(page, ':', 'q!');
+    await page.waitForSelector(COMMAND_LINE, { state: 'visible' });
+    expect(await commandLineFocused(page)).toBe(true);
+  });
+
+  test('the help’s rows include the editing keys, and its heading the suffix for a protected file', async () => {
+    const page = await openTerminalPage('desktop');
+    await opened(page, 'vim about');
+    await vimEntry(page, ':', 'help');
+    const help = words(await page.locator(`${VIM} .vim-help`).textContent());
+    expect(help).toContain('KEYS FOR about · read only: :w <path> keeps a copy');
+    for (const label of ['Insert', 'Edit', 'Write', 'Leave']) expect(help).toContain(label);
+  });
+
+  test('006-terminal-FR-060: Ctrl+D, F and U are never taken; Ctrl+R only on macOS, where it redoes', async () => {
+    for (const platform of ['macOS', 'Windows', 'Linux'] as const) {
+      const page = await openShell({ ...SHELL_PAGE.desktop, platform });
+      await openTerminal(page, 'desktop');
+      await opened(page, 'vim todo');
+      await page.evaluate(() => {
+        (window as unknown as { seen: string[] }).seen = [];
+        window.addEventListener('keydown', (event) => {
+          if (event.ctrlKey && event.key !== 'Control') (window as unknown as { seen: string[] }).seen.push(`${event.key}:${event.defaultPrevented}`);
+        });
+      });
+      await page.locator(`${VIM} .vim-text`).focus();
+      for (const key of ['Control+d', 'Control+f', 'Control+u']) await page.keyboard.press(key);
+      const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+      expect(seen, platform).toEqual(['d:false', 'f:false', 'u:false']);
+      if (platform === 'macOS') {
+        await page.keyboard.type('ihi');
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('u');
+        await page.keyboard.press('Control+r');
+        expect(await page.locator(`${VIM} .vim-line`).first().textContent()).toContain('hi');
+      }
+      await page.close();
+    }
+  });
+
+  test('006-terminal-FR-065: in normal mode Tab moves to the chips, then out of the Terminal', async () => {
+    const page = await openTerminalPage('desktop');
+    await openVimView(page);
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe(':help');
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe(':q');
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => document.activeElement?.closest('section.vim') === null)).toBe(true);
   });
 });

@@ -88,8 +88,8 @@ function inOrder(haystack: string, needles: string[]): string | null {
   return null;
 }
 
-function checkSection(resume: Resume, section: keyof typeof SECTION_COMMANDS, label: string) {
-  const block = output(run(SECTION_COMMANDS[section], contextOf(resume)));
+async function checkSection(resume: Resume, section: keyof typeof SECTION_COMMANDS, label: string) {
+  const block = output(await run(SECTION_COMMANDS[section], contextOf(resume)));
   const text = plainText(block);
   const all = nodes(block);
   const hrefs = all.flatMap((node) => (node.kind === 'link' ? [node.href] : []));
@@ -116,27 +116,27 @@ function checkSection(resume: Resume, section: keyof typeof SECTION_COMMANDS, la
 
 describe("006-terminal-FR-009: each CV command shows /cv's fields for its section, in order, by /cv's rules", () => {
   for (const name of FIXTURES) {
-    test(`${name}: about, contact, work, projects, education, skills, languages and interests`, () => {
+    test(`${name}: about, contact, work, projects, education, skills, languages and interests`, async () => {
       const resume = fixture(name);
       for (const section of Object.keys(SECTION_COMMANDS) as (keyof typeof SECTION_COMMANDS)[]) {
         const entries = entriesOf(resume, section);
         if (entries.length === 0) continue;
-        checkSection(resume, section, name);
+        await checkSection(resume, section, name);
       }
     });
   }
 
-  test('ongoing entries end in Present, and absent fields leave no label', () => {
-    const { text } = checkSection(fixture('partial-dates'), 'work', 'partial-dates');
+  test('ongoing entries end in Present, and absent fields leave no label', async () => {
+    const { text } = await checkSection(fixture('partial-dates'), 'work', 'partial-dates');
     expect(text).toContain(`${siteText.rangeSeparator}${siteText.present.visible}`);
-    const bare = plainText(output(run('about', contextFor('nothing-optional'))));
+    const bare = plainText(output(await run('about', contextFor('nothing-optional'))));
     expect(bare).not.toMatch(new RegExp(`${siteText.basedIn}|${siteText.email}|${siteText.website}`));
-    const contact = plainText(output(run('contact', contextFor('every-field'))));
+    const contact = plainText(output(await run('contact', contextFor('every-field'))));
     expect(contact).toContain(siteText.email);
   });
 
-  test('contact links are named as /cv names them: the address, the website without its scheme, network: username', () => {
-    const block = output(run('contact', contextFor('every-field')));
+  test('contact links are named as /cv names them: the address, the website without its scheme, network: username', async () => {
+    const block = output(await run('contact', contextFor('every-field')));
     const links = nodes(block).flatMap((node) => (node.kind === 'link' ? [{ href: node.href, text: plainText(node.children) }] : []));
     expect(links).toEqual([
       { href: 'mailto:fixture.person@example.org', text: 'fixture.person@example.org' },
@@ -165,37 +165,37 @@ describe("006-terminal-FR-009: each CV command shows /cv's fields for its sectio
 });
 
 describe('006-terminal-FR-010: a CV fact changes in the Terminal with one edit, in the CV document', () => {
-  test('changing one fact in a fixture CV changes the output, with no other edit', () => {
+  test('changing one fact in a fixture CV changes the output, with no other edit', async () => {
     const before = fixture('every-field');
     const after = fixture('every-field');
     after.work![0]!.position = 'A Changed Position';
     after.skills![0]!.level = 'A Changed Level';
     after.basics!.summary = 'A changed summary.';
-    const text = (resume: Resume, line: string) => plainText(output(run(line, contextOf(resume))));
-    expect(text(before, 'work')).not.toContain('A Changed Position');
-    expect(text(after, 'work')).toContain('A Changed Position');
-    expect(text(after, 'skills')).toContain('A Changed Level');
-    expect(text(after, 'about')).toContain('A changed summary.');
-    expect(text(after, 'projects')).toBe(text(before, 'projects'));
+    const text = async (resume: Resume, line: string) => plainText(output(await run(line, contextOf(resume))));
+    expect(await text(before, 'work')).not.toContain('A Changed Position');
+    expect(await text(after, 'work')).toContain('A Changed Position');
+    expect(await text(after, 'skills')).toContain('A Changed Level');
+    expect(await text(after, 'about')).toContain('A changed summary.');
+    expect(await text(after, 'projects')).toBe(await text(before, 'projects'));
   });
 });
 
 describe('006-terminal-FR-011: an empty or absent section says the CV lists none, with no heading or list', () => {
   const SECTIONS = { work: 'work', projects: 'projects', education: 'education', skills: 'skills', languages: 'languages', interests: 'interests' } as const;
 
-  test('empty-sections: each empty command gives The CV lists no {section}., and help still lists it', () => {
+  test('empty-sections: each empty command gives The CV lists no {section}., and help still lists it', async () => {
     const context = contextFor('empty-sections');
     const resume = fixture('empty-sections');
     for (const [section, command] of Object.entries(SECTIONS)) {
       const entries = ((resume as Record<string, unknown>)[section] as unknown[] | undefined) ?? [];
-      const block: Block = output(run(command, context));
+      const block: Block = output(await run(command, context));
       if (entries.length > 0) continue;
       const name = siteText.sections[section as keyof typeof siteText.sections].toLowerCase();
       expect(plainText(block), command).toBe(`The CV lists no ${name}.`);
       expect(nodes(block).some((node) => node.kind === 'heading' || node.kind === 'list'), command).toBe(false);
-      expect(plainText(output(run('help', context)))).toContain(command);
+      expect(plainText(output(await run('help', context)))).toContain(command);
     }
-    expect(plainText(output(run('contact', context)))).toBe('The CV lists no contact details.');
-    expect(plainText(output(run('about', contextOf({}))))).toBe('The CV lists no basics.');
+    expect(plainText(output(await run('contact', context)))).toBe('The CV lists no contact details.');
+    expect(plainText(output(await run('about', contextOf({}))))).toBe('The CV lists no basics.');
   });
 });

@@ -61,6 +61,18 @@ describe('006-terminal-FR-014: open cv and open about open them as the shell doe
   });
 });
 
+describe('006-terminal-FR-014: open runs inside a command line', () => {
+  test('echo before && open cv shows the line’s output, then opens the CV in front', async () => {
+    const page = await openTerminalPage('desktop');
+    expect(await frontWindow(page)).toBe('terminal');
+    const group = await runGroup(page, 'true && echo before && open cv');
+    expect(await group.locator('.run-output').textContent()).toBe('before');
+    await settle(page);
+    expect(await frontWindow(page)).toBe('cv');
+    expect((await typedLines(page)).at(-1)).toBe('true && echo before && open cv');
+  });
+});
+
 describe('006-terminal-FR-014: exit closes the Terminal as its close control does', () => {
   test('as the only window, exit closes it and focus lands on its dock item', async () => {
     const page = await openShell(SHELL_PAGE.desktop);

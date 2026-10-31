@@ -16,11 +16,15 @@ export function rows(block: Block, columns: number): number {
   return names + lines.reduce((sum, text) => sum + Math.max(1, Math.ceil(text.length / columns)), 0);
 }
 
-// What a long output counts, by the first node that lists something.
-function counted(block: Block): Pick<Extract<Announcement, { count: number }>, 'count' | 'unit'> {
+// What a long output counts, by the first node that lists something; `help`
+// counts its standard group's names with its table's (design). Text the
+// shell printed counts its lines.
+export function counted(block: Block, text = false): Pick<Extract<Announcement, { count: number }>, 'count' | 'unit'> {
+  if (text) return { count: plainText(block).split('\n').length, unit: 'lines' };
   const find = <K extends Node['kind']>(kind: K) => block.find((node): node is Extract<Node, { kind: K }> => node.kind === kind);
   const table = find('rows');
-  if (table !== undefined) return { count: table.rows.length, unit: table.req === 'specs' ? 'specs' : 'commands' };
+  const standard = block.find((node) => node.kind === 'columns' && node.req === 'standard');
+  if (table !== undefined) return { count: table.rows.length + (standard?.kind === 'columns' ? standard.cells.length : 0), unit: table.req === 'specs' ? 'specs' : 'commands' };
   const columns = find('columns');
   if (columns !== undefined) return { count: columns.cells.length, unit: 'entries' };
   const entries = block.filter((node) => node.kind === 'heading' && node.depth === 1).length;

@@ -28,17 +28,17 @@ describe('006-terminal-FR-003: the Terminal has its own menu in the menu bar', (
 });
 
 describe('006-terminal-FR-019: Clear output clears the output', () => {
-  test('it removes every run and the greeting, and focus returns to the command line', async () => {
+  test('it removes every run and the starter chips, and focus returns to the command line', async () => {
     const page = await openTerminalPage('desktop');
     await runGroup(page, 'help');
     await runGroup(page, 'about');
     expect(await runCount(page)).toBe(2);
-    expect(await page.locator('.terminal .greeting').count()).toBe(1);
+    expect(await page.locator('.terminal .starter').count()).toBe(1);
     await page.click('#menu-title-app');
     await page.getByRole('menuitem', { name: 'Clear output' }).click();
     await settle(page);
     await expect.poll(() => runCount(page)).toBe(0);
-    expect(await page.locator('.terminal .greeting').count()).toBe(0);
+    expect(await page.locator('.terminal .starter').count()).toBe(0);
     expect(await page.locator('#os [role="menu"]').count()).toBe(0);
     await expect.poll(() => commandLineFocused(page)).toBe(true);
   });

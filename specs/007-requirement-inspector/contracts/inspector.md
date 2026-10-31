@@ -141,8 +141,9 @@ Every control and link is at least 24 × 24 px; `button.show-specs` on mobile is
 ## Motion and modes
 
 - Showing and leaving: a cross-fade of the scroller's old and new content over
-  `motion.duration.fast` with `motion.easing.standard`; nothing moves or scales. With reduced
-  motion, no fade (FR-022, research R11).
+  `motion.duration.fast` with `motion.easing.standard`; nothing moves or scales. The old content
+  is an inert copy laid over the scroller, `[data-spec-swap]`, gone when the fade ends. With
+  reduced motion, no fade (FR-022, research R11, revised 2026-10-30).
 - Forced colors: `button.show-specs`, the status chips and the notes keep a visible border (solid
   or dashed), dots stay filled or hollow, links stay underlined, and no part relies on a
   background color or image (FR-023).

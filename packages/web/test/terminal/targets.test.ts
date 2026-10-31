@@ -35,7 +35,7 @@ describe('006-terminal-FR-034: every control is big enough to hit', () => {
         if (state.name !== 'minimized') expect(all.length, state.name).toBeGreaterThan(0);
         expectAtLeast(all, 24, `${shell}, ${state.name}`);
         expectAtLeast(await targets(page, '#os .terminal button.vim-fold'), 24, `${shell}, ${state.name}: fold lines`);
-        if (shell === 'mobile') expectAtLeast(await targets(page, '#os .pocket-keys button.pocket-key'), 44, `${shell}, ${state.name}: keys`);
+        if (shell === 'mobile') expectAtLeast(await targets(page, '#os :is(.pocket-keys, .pocket-strip) button.pocket-key'), 44, `${shell}, ${state.name}: keys`);
       });
     }
   }

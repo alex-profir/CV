@@ -1,16 +1,23 @@
 // Engine test helpers: a run context built from a fixture CV and a fixture
-// spec list, as the Terminal builds its own from the real ones, and ways to
-// read a block. Tests may hold literal values and CV text.
+// spec list, as the Terminal builds its own from the real ones, lines run
+// through the shell on that context and shown as the session shows them,
+// and ways to read a block. Tests may hold literal values and CV text.
 import type { Resume } from '@cv/content';
 import { resume as realResume, siteData } from '@cv/content';
 import { dateRange } from '../../../src/format/dates.ts';
 import { locationLine } from '../../../src/format/location.ts';
-import { withoutScheme } from '../../../src/cv/CvLink.tsx';
+import { withoutScheme } from '../../../src/format/url.ts';
 import { siteText } from '../../../src/site-text.ts';
-import { engineContext, runLine } from '../../../src/apps/terminal/engine/commands.ts';
+import { engineContext } from '../../../src/apps/terminal/engine/commands.ts';
 import type { RunContext } from '../../../src/apps/terminal/engine/commands.ts';
 import { plainText } from '../../../src/apps/terminal/engine/block.ts';
-import type { Block, Node, Result } from '../../../src/apps/terminal/engine/block.ts';
+import type { Announcement, Block, Node, Path } from '../../../src/apps/terminal/engine/block.ts';
+import type { VimSource } from '../../../src/apps/terminal/engine/vim.ts';
+import { mapOutput } from '../../../src/apps/terminal/engine/output-map.ts';
+import { createShell } from '../../../src/apps/terminal/shell/adapter.ts';
+import type { Shell } from '../../../src/apps/terminal/shell/adapter.ts';
+import { INITIAL_STATE } from '../../../src/apps/terminal/shell/protocol.ts';
+import type { RunResult } from '../../../src/apps/terminal/shell/protocol.ts';
 import { readSpecList } from '../../../scripts/spec-list.ts';
 import type { SpecList } from '../../../scripts/spec-list.ts';
 import type { FsNode } from '../../../src/apps/terminal/engine/files.ts';
@@ -29,21 +36,56 @@ export const COLUMNS = 85;
 
 export function contextOf(resume: Resume, extra: Partial<RunContext> = {}): RunContext {
   return {
-    ...engineContext({ text: siteText, format: FORMAT, resume, siteData, specs: SPECS, cvJson: JSON.stringify(resume, null, 2), columns: COLUMNS }),
+    ...engineContext({ text: siteText, format: FORMAT, resume, siteData, specs: SPECS, cvJson: JSON.stringify(resume, null, 2) }),
     ...extra,
   };
 }
 
 export const contextFor = (name: FixtureName, extra: Partial<RunContext> = {}) => contextOf(fixture(name), extra);
 
-export function output(result: Result): Block {
-  if (result.kind === 'output' || result.kind === 'cd' || result.kind === 'os') return result.block;
-  throw new Error(`expected an output, got ${result.kind}`);
+// A line's run as the session shows it: its output, or what it asks of the
+// interface.
+export type Shown =
+  | { kind: 'output'; block: Block; announce: Announcement; result: RunResult }
+  | { kind: 'clear' }
+  | { kind: 'open-vim'; file: VimSource }
+  | { kind: 'os'; action: { open: 'cv' | 'about' } | { exit: true }; block: Block }
+  | { kind: 'cd'; folder: Path; block: Block; announce: Announcement };
+
+export function output(shown: Shown): Block {
+  if (shown.kind === 'output' || shown.kind === 'cd' || shown.kind === 'os') return shown.block;
+  throw new Error(`expected an output, got ${shown.kind}`);
 }
 
-export const run = (line: string, context: RunContext) => runLine(line, context);
+const HOME = '/home/guest';
 
-export const textOf = (line: string, context: RunContext) => plainText(output(runLine(line, context)));
+// The shell for a context, made once per context.
+const shells = new WeakMap<RunContext, Shell>();
+const shellOf = (context: RunContext): Shell => {
+  let shell = shells.get(context);
+  if (shell === undefined) {
+    shell = createShell({ text: context.text, format: context.format, resume: context.resume, siteData: context.siteData, specs: context.specs, cvJson: context.cvJson });
+    shells.set(context, shell);
+  }
+  return shell;
+};
+
+const folderOf = (cwd: string): Path => (cwd === HOME ? [] : cwd.startsWith(`${HOME}/`) ? cwd.slice(HOME.length + 1).split('/') : cwd.split('/').filter((part) => part !== ''));
+
+// One line, from the context's working folder, with its history.
+export async function run(line: string, context: RunContext): Promise<Shown> {
+  const result = await shellOf(context).run({ id: 1, line, state: { ...INITIAL_STATE, cwd: context.cwd }, history: context.history, shell: context.shell });
+  const { block, announce } = mapOutput(result, line, { text: context.text, columns: COLUMNS, cwd: context.cwd });
+  if (result.end === 'exited') return { kind: 'os', action: { exit: true }, block };
+  const effect = result.effects.find((entry) => entry.kind !== 'clear-history');
+  if (effect?.kind === 'vim') return { kind: 'open-vim', file: { file: effect.file, pipe: effect.pipe, text: effect.text, type: effect.type } };
+  if (effect?.kind === 'open') return { kind: 'os', action: { open: effect.view }, block };
+  if (effect?.kind === 'clear') return { kind: 'clear' };
+  if (result.state.cwd !== context.cwd) return { kind: 'cd', folder: folderOf(result.state.cwd), block, announce };
+  return { kind: 'output', block, announce, result };
+}
+
+export const textOf = async (line: string, context: RunContext) => plainText(output(await run(line, context)));
 
 // Every node of a block, depth first.
 export function nodes(block: Block): Node[] {
@@ -67,8 +109,11 @@ export const controls = (block: Block) => nodes(block).flatMap((node) => (node.k
 // Every file of the real site's tree, as the line its `ls` control runs:
 // `cat ~/{path}`.
 export function siteFiles(): string[] {
-  const { fs } = engineContext({ text: siteText, format: FORMAT, resume: realResume, siteData, specs: readSpecList(), cvJson: JSON.stringify(realResume, null, 2), columns: COLUMNS });
+  const { fs } = engineContext({ text: siteText, format: FORMAT, resume: realResume, siteData, specs: readSpecList(), cvJson: JSON.stringify(realResume, null, 2) });
   const walk = (node: FsNode, path: string[]): string[] =>
     node.kind === 'file' ? [`cat ~/${[...path, node.name].join('/')}`] : node.children.flatMap((child) => walk(child, node.name === '~' ? path : [...path, node.name]));
   return walk(fs, []);
 }
+
+// The block a printing command's run gives, with no arguments.
+export const blockOf = async (name: string, context: RunContext): Promise<Block> => output(await run(name, context));

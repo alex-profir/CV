@@ -15,7 +15,7 @@ import { unservedFonts } from '../../../../tools/site-check/src/parts/fonts.ts';
 import { fieldProblems, mainSequence } from '../../../../tools/site-check/src/parts/no-script.ts';
 import { waitForWorker } from '../../../../tools/site-check/src/parts/offline.ts';
 import { buildCopy, repoCopy } from '../helpers/copy.ts';
-import { cacheNames, firstPage, goOffline, switchableServer, until } from '../helpers/offline.ts';
+import { cacheNames, firstPage, goOffline, keptRecord, switchableServer, until } from '../helpers/offline.ts';
 import { builtSite } from '../helpers/site.ts';
 import type { BuiltSite } from '../helpers/site.ts';
 import { settle, waitForReady } from '../helpers/shell.ts';
@@ -140,16 +140,15 @@ describe('005-os-shell-FR-053: an update never interrupts an open shell, and the
       (window as Window & { stillHere?: boolean }).stillHere = true;
     });
 
-    // B, published and installed by a visit in another tab.
+    // B, published and installed by a visit in another tab. With A open at
+    // B's activation, A's cache stays beside B's (006 research R35).
     await server.serve(b);
     const other = await context.newPage();
     await other.goto(`${server.url}/cv`, { waitUntil: 'load' });
-    expect(
-      await until(async () => {
-        const names = await cacheNames(other);
-        return names.length === 1 && names[0] !== storedA;
-      }),
-    ).toBe(true);
+    expect(await until(async () => (await keptRecord(other)) !== null)).toBe(true);
+    const names = await cacheNames(other);
+    expect(names).toHaveLength(2);
+    expect(names).toContain(storedA);
     await other.close();
 
     // A is still the page it was, with the CV window open.
@@ -178,6 +177,18 @@ describe('005-os-shell-FR-053: an update never interrupts an open shell, and the
     await next.goto(`${server.url}/`, { waitUntil: 'load' });
     await waitForReady(next);
     expect(await next.locator('#os .window[data-view="cv"] .cv h1').textContent()).toBe('Version Bee Name');
+
+    // Once A closes, the next visit leaves B's cache alone.
+    await a.close();
+    await next.close();
+    const later = await context.newPage();
+    await later.goto(`${server.url}/cv`, { waitUntil: 'load' });
+    expect(
+      await until(async () => {
+        const left = await cacheNames(later);
+        return left.length === 1 && left[0] !== storedA;
+      }),
+    ).toBe(true);
   });
 
   test('with service workers blocked, the shell works in both shells and shows no error', async () => {

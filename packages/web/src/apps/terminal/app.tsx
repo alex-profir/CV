@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from 'react';
 import type { App } from '../index.ts';
 import { fill, siteText } from '../../site-text.ts';
-import { formatPath } from './engine/files.ts';
+import { formatPrompt } from './engine/output-map.ts';
 import { session } from './session.ts';
 import type { AppProps } from '../index.ts';
 import { Pocket } from './Pocket.tsx';
@@ -15,7 +15,7 @@ import { TerminalIcon } from './TerminalIcon.tsx';
 // `Terminal — ~/work`, or `Terminal — vim` while the vim view is open (FR-046).
 function WindowTitle() {
   const state = useSyncExternalStore(session.subscribe, session.get, session.get);
-  const path = state.vim === null ? formatPath(state.folder) : siteText.terminal.vimTitle;
+  const path = state.vim === null ? formatPrompt(state.cwd) : siteText.terminal.vimTitle;
   return <span data-req="006-terminal-FR-046">{fill(siteText.terminal.windowTitle, { name: siteText.os.views.terminal, path })}</span>;
 }
 

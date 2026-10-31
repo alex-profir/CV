@@ -1,13 +1,27 @@
-// The Terminal's engine stays pure (006 research R2, R23): no React, no DOM,
-// no tokens, no component and no style sheet, so it runs and is tested in
-// Node, and design values and words reach it only as arguments.
+// The Terminal's engine and its shell stay pure (006 research R2, R23,
+// contracts/shell-worker.md): no React, no DOM, no tokens, no component and
+// no style sheet, so they run and are tested in Node, and design values and
+// words reach them only as arguments. The engine never reaches the shell,
+// and the page reaches the shell only through shell-client.ts.
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 
-const ENGINE = path.resolve(import.meta.dirname, '../../../src/apps/terminal/engine');
+const TERMINAL = path.resolve(import.meta.dirname, '../../../src/apps/terminal');
+const ENGINE = path.join(TERMINAL, 'engine');
+const SHELL = path.join(TERMINAL, 'shell');
 
-const files = () => fs.readdirSync(ENGINE).filter((name) => /\.tsx?$/.test(name));
+const filesIn = (folder: string) => fs.readdirSync(folder).filter((name) => /\.tsx?$/.test(name));
+const files = () => filesIn(ENGINE);
+
+// Every file of the Terminal outside shell/, as a path from the Terminal's
+// folder.
+const outsideShell = (folder = TERMINAL): string[] =>
+  fs.readdirSync(folder, { withFileTypes: true }).flatMap((entry) => {
+    const at = path.join(folder, entry.name);
+    if (entry.isDirectory()) return at === SHELL ? [] : outsideShell(at);
+    return /\.tsx?$/.test(entry.name) ? [path.relative(TERMINAL, at)] : [];
+  });
 
 const FORBIDDEN_IMPORTS: { name: string; test: (specifier: string) => boolean }[] = [
   { name: 'react', test: (specifier) => specifier === 'react' || specifier.startsWith('react/') },
@@ -42,6 +56,48 @@ describe('the engine imports no React, DOM, token, component or style sheet', ()
     for (const name of files()) {
       const source = code(fs.readFileSync(path.join(ENGINE, name), 'utf8'));
       expect(source, name).not.toMatch(/\b(?:document|window|navigator)\b/);
+    }
+  });
+});
+
+describe('the shell imports no React, DOM, token, component or style sheet, and only the page’s client reaches it', () => {
+  const shellFiles = () => filesIn(SHELL);
+
+  test('the shell folder holds TypeScript files only', () => {
+    expect(shellFiles().length).toBeGreaterThan(0);
+    for (const name of shellFiles()) expect(name, name).toMatch(/\.ts$/);
+  });
+
+  test('no shell file imports react, react-dom, @cv/tokens, a .tsx or .css file, or metrics.ts, or names document, window or navigator', () => {
+    for (const name of shellFiles()) {
+      const source = fs.readFileSync(path.join(SHELL, name), 'utf8');
+      for (const specifier of imports(source)) {
+        for (const forbidden of FORBIDDEN_IMPORTS) expect(forbidden.test(specifier), `shell/${name} imports ${specifier} (${forbidden.name})`).toBe(false);
+      }
+      expect(code(source), `shell/${name}`).not.toMatch(/\b(?:document|window|navigator)\b/);
+    }
+  });
+
+  test('no engine file imports just-bash or the shell', () => {
+    for (const name of files()) {
+      for (const specifier of imports(fs.readFileSync(path.join(ENGINE, name), 'utf8'))) {
+        expect(specifier.startsWith('just-bash'), `engine/${name} imports ${specifier}`).toBe(false);
+        expect(specifier.includes('/shell/') || specifier.startsWith('../shell'), `engine/${name} imports ${specifier}`).toBe(false);
+      }
+    }
+  });
+
+  test('outside shell/, the Terminal imports only shell/protocol.ts, and shell-client.ts names the worker only through new URL', () => {
+    for (const name of outsideShell()) {
+      const source = fs.readFileSync(path.join(TERMINAL, name), 'utf8');
+      for (const specifier of imports(source)) {
+        expect(specifier.startsWith('just-bash'), `${name} imports ${specifier}`).toBe(false);
+        if (/(^|\/)shell\//.test(specifier)) expect(specifier, `${name} imports ${specifier}`).toMatch(/(^|\/)shell\/protocol\.ts$/);
+      }
+      const named = [...code(source).matchAll(/['"]([^'"]*shell\/(?!protocol\.ts)[^'"]+)['"]/g)].map((match) => match[0]);
+      if (name === 'shell-client.ts') {
+        for (const specifier of named) expect(code(source), name).toContain(`new URL(${specifier}, import.meta.url)`);
+      } else expect(named, name).toEqual([]);
     }
   });
 });

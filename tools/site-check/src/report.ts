@@ -38,7 +38,13 @@ export type Part = (typeof PARTS)[number];
 // `<shell>/terminal/json/<width>px` and `desktop/terminal-keyboard/1440px`,
 // and types `missing-field`, `out-of-order`, `json-mismatch`,
 // `missing-file`, `extra-file`, `file-mismatch` and `offline-mismatch`. The
-// inspector (007 data-model.md Check results) adds variants
+// amendment (2026-10-29) adds the variants `<shell>/terminal/shell/<width>px`
+// for the shell's lines and `<shell>/cursor-blink/<width>px` for `modes`,
+// and types `line-mismatch`, `not-stopped` and `unresponsive` (`terminal`,
+// naming the line), `cursor`, `outline`, `line-key`, `select-all` and
+// `cancel` (`keyboard`, naming the step), and `no-blink` (`modes`). The
+// amendment of 2026-10-30 adds `not-written` (`keyboard`, naming the step); a
+// way out that fails is `trapped`, naming the step. The inspector (007 data-model.md Check results) adds variants
 // `<shell>/<view>-specs/<width>px`, `<shell>/elements/<width>px` and
 // `desktop/inspector-keyboard/1440px`, and types `missing-requirement`,
 // `extra-requirement`, `out-of-order`, `wrong-count`, `text-mismatch`,

@@ -31,9 +31,11 @@ function watchNextClick(page: Page, control: string, state: string): Promise<voi
     ({ control, state }) => {
       const timing = { start: 0, last: 0 };
       window.__specTiming = timing;
+      // The fading copy of the old content (R11) is for the eye alone: the
+      // view is what is live.
       const read = () => {
-        const view = document.querySelector(state);
-        return view === null ? 'gone' : String(view.querySelectorAll('section.spec-group').length);
+        const view = [...document.querySelectorAll(state)].find((element) => element.closest('[data-spec-swap]') === null);
+        return view === undefined ? 'gone' : String(view.querySelectorAll('section.spec-group').length);
       };
       let seen = read();
       const observer = new MutationObserver(() => {

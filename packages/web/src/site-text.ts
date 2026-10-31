@@ -74,22 +74,13 @@ export const siteText = deepFreeze({
     vimTitle: 'vim',
     clearOutput: 'Clear output',
     commandLine: 'Command',
+    // The command line's description (FR-077).
+    commandLineHint: 'Tab completes. Escape then Tab leaves.',
+    // A second Tab with 100 matches or more asks first (FR-076).
+    completionQuestion: 'Display all {n} possibilities? (y or n)',
     prompt: { user: 'guest' },
-    greeting: {
-      desktop: {
-        status: 'cv-os terminal · read only · nothing you type leaves your browser',
-        intro: 'This is my CV as a terminal. Type a command and press Enter, or pick one to start. New here? Try {help}.',
-      },
-      phone: {
-        status: 'read only · stays in your browser',
-        statusNarrow: 'read only · in your browser',
-        intro: 'My CV as a terminal. Tap a key below, or type a command. New? Try {help}.',
-      },
-      name: '{name} — {label}',
-      // A CV with a name and no label.
-      nameAlone: '{name}',
-      commands: ['help', 'about', 'work', 'projects', 'cv'],
-    },
+    // The command chips the Terminal opens on, before the first prompt.
+    starter: ['help', 'about', 'work', 'projects', 'cv'],
     // By command name, in `help`'s order: the arguments `help` shows after
     // the name, the one-line description and the command's own help.
     commands: {
@@ -102,14 +93,14 @@ export const siteText = deepFreeze({
       languages: { args: '', description: 'Every language with its fluency', help: 'Shows every language in the CV with its fluency.' },
       interests: { args: '', description: 'Every interest', help: 'Shows every interest in the CV with its keywords.' },
       contact: { args: '', description: 'Email, website and profiles', help: 'Shows the email address, the website and every profile, as links.' },
-      cv: { args: '', description: "The CV's JSON in vim: cat cv.json | jq | vim -", help: 'Opens the whole CV as JSON in a read-only vim view, by running cat cv.json | jq | vim -. Type :q to come back.' },
+      cv: { args: '', description: "The CV's JSON in vim: cat cv.json | jq | vim -", help: 'Opens the whole CV as JSON in a vim view, by running cat cv.json | jq | vim -. Type :q to come back.' },
       site: { args: '', description: 'What this site is and how it was built', help: 'Says what this site is and how it was built, with a link to its source code.' },
       specs: { args: '', description: "The site's feature specs", help: 'Lists every feature spec the site was built from, with its status and its number of requirements.' },
       ls: { args: '[path]', description: 'List a folder', help: 'Lists the folder you are in, or the folder or file a path names. Click a name to open it.' },
       cd: { args: '[path]', description: 'Change folder. cd alone goes home', help: 'Changes the folder you are in. cd .. goes up, and cd alone goes back to the home folder, ~.' },
       cat: { args: '<path>', description: 'Show a file', help: 'Shows a file. cat cv.json shows the whole CV as JSON.' },
       jq: { args: '[path]', description: 'Pretty-print JSON', help: 'Pretty-prints JSON, from a path or from what is piped in, such as cat cv.json | jq.' },
-      vim: { args: '[path | -]', description: 'Read a file in vim. - reads what is piped in', help: 'Opens a file in a read-only vim view. vim - reads what is piped in. Type :help there for its keys, and :q to leave.' },
+      vim: { args: '[path | -]', description: 'Edit a file in vim. - reads what is piped in', help: 'Opens a file in a vim view to read or edit. vim - reads what is piped in. Type :help there for its keys, and :q to leave.' },
       pwd: { args: '', description: 'Show the current folder', help: 'Shows the path of the folder you are in.' },
       open: { args: '<name>', description: 'Open cv or about in the shell', help: 'Opens the CV app with open cv, or About this site with open about.' },
       history: { args: '', description: 'Commands run so far', help: 'Lists the commands run since the Terminal opened, oldest first. The Up and Down arrows step through them.' },
@@ -118,6 +109,7 @@ export const siteText = deepFreeze({
     },
     // `help`'s lead, before the table.
     helpLead: { desktop: 'Click a command to run it, or type it and press Enter.', phone: 'Tap a command to run it.' },
+    helpTab: { desktop: 'Tab completes a command or path; Escape then Tab leaves the command line.', phone: 'Tab completes a command or path.' },
     // What a command takes, by its kind of arguments, for the usage reply.
     takes: {
       none: 'no arguments',
@@ -129,7 +121,7 @@ export const siteText = deepFreeze({
       'optional-path-or-input': 'at most one path, or piped input',
     },
     replies: {
-      unknown: '{typed} is not a command.',
+      unknown: '{typed}: command not found.',
       unknownRun: 'Run {help} to see them all, or try:',
       unknownRunAlone: 'Run {help} to see them all.',
       usage: '{command} takes {what}. Usage: {usage}',
@@ -137,13 +129,25 @@ export const siteText = deepFreeze({
       isFile: '{path} is a file. Try {command}.',
       isFolder: '{path} is a folder. Try {command}.',
       open: 'open takes {cv} or {about}.',
-      jqNotJson: 'jq: {source} is not JSON.',
-      jqFilter: 'jq here only pretty-prints. Usage: jq [path], or … | jq',
-      noInput: "{command} doesn't read piped input. Pipe into jq or vim -.",
-      pipeUsage: 'Usage: {command} | jq, or {command} | vim -',
-      pipeExample: 'cat cv.json',
       emptySection: 'The CV lists no {section}.',
+      // A line the shell stopped (FR-069, FR-075).
+      stopped: {
+        time: 'stopped: it ran for 5 seconds, the longest a command line runs here.',
+        commands: 'stopped: it ran 10,000 commands, the most a command line runs here.',
+        output: 'stopped: it printed 1 MB, the most a command line prints here.',
+        cancelled: 'stopped: you pressed Ctrl+C.',
+      },
+      // After a line cancelled with Ctrl+C.
+      cancelMark: '^C',
     },
+    // `help`'s group of the shell's own commands (FR-008, FR-068).
+    standard: { heading: 'Standard commands', note: 'as in bash. help <command> shows its options.' },
+    // The shell, loaded when the Terminal first opens (FR-070).
+    shellLoading: 'loading the shell · type away, commands run once it is ready',
+    shellFailed: "The shell couldn't load. Check the connection, then try again.",
+    tryAgain: 'try again',
+    // Who `ls -l` says owns an entry (FR-049).
+    owners: { protected: 'root', visitor: 'guest' },
     // The section names in the empty-section reply where 004's section
     // headings don't name them.
     emptyNames: { about: 'basics', contact: 'contact details' },
@@ -176,33 +180,56 @@ export const siteText = deepFreeze({
       },
       cd: 'Now in {path}',
       cleared: 'Cleared',
-      vim: '{file}, read only, {n} lines. Type :q to leave.',
+      cancelled: 'Cancelled',
+      loading: 'Loading the shell',
+      vimOpened: { plain: '{file}, {n} lines. Type :q to leave.', readonly: '{file}, read only, {n} lines. Type :q to leave.', new: '{file}, new, {n} lines. Type :q to leave.' },
+      possibilities: '{n} possibilities',
     },
     vim: {
-      label: '{file} (read only)',
+      labels: { plain: '{file}', readonly: '{file}, read only', new: '{file}, new' },
       roleDescription: 'vim view',
       readOnlyMark: '[RO]',
-      modes: { normal: 'NORMAL', help: 'HELP' },
+      modes: { normal: 'NORMAL', insert: '-- INSERT --', help: 'HELP' },
+      modifiedMark: '[+]',
+      noName: '[No Name]',
       positions: { top: 'Top', bottom: 'Bot', all: 'All' },
       fold: '+-- {n} lines: "{key}": {bracket} ',
       // The message line (contracts/commands.md The vim view's keys).
-      opened: { desktop: '"{file}" [readonly] {n} lines  ·  za or click opens a fold', phone: '"{file}" {n} lines  ·  tap a fold' },
-      readOnly: '{file} is read only: nothing can be changed',
-      unknown: ':{typed} is not a command here. :help lists the keys.',
+      openings: { plain: '"{file}" {n} lines', readonly: '"{file}" [readonly] {n} lines', new: '"{file}" [New]', piped: '"{file}" {n} lines' },
+      foldHint: { desktop: '  ·  za or click opens a fold', phone: '  ·  tap a fold' },
+      written: '"{file}" {new}{n}L, {b}B written',
+      writtenNew: '[New] ',
+      // vim's own messages, word for word (FR-060, FR-080, FR-081).
+      messages: {
+        W10: 'W10: Warning: Changing a readonly file',
+        E13: 'E13: File exists (add ! to override)',
+        E32: 'E32: No file name',
+        E37: 'E37: No write since last change (add ! to override)',
+        E45: "E45: 'readonly' option is set (add ! to override)",
+        E212: '"{path}" E212: Can\'t open file for writing',
+        E492: 'E492: Not an editor command: {typed}',
+        E514: '"{path}" E514: Write error (file system full?)',
+        oldest: 'Already at oldest change',
+        newest: 'Already at newest change',
+      },
       match: '/{text}   match {index} of {count}  ·  n next  ·  N previous',
       notFound: '/{text}   not found',
       entry: { '/': 'Search', ':': 'Command' },
       chips: { help: ':help', quit: ':q' },
       helpName: 'keys',
-      helpHeading: 'KEYS FOR {file} · the file is read only',
+      keysHeading: 'KEYS FOR {file}',
+      keysSuffix: { piped: ' · :w <path> writes it to a file', readonly: ' · read only: :w <path> keeps a copy' },
       helpRows: [
         { label: 'Move', keys: ['h j k l or arrows', 'w b word', '0 $ line start, end', 'gg G top, bottom', '{ } previous, next section', 'PgUp PgDn'] },
         { label: 'Search', keys: ['/text then Enter', 'n N next, previous match'] },
         { label: 'Folds', keys: ['za open or close', 'zR open all', 'zM close all'] },
         { label: 'Lines', keys: [':12 go to line 12', ':set nu / :set nonu'] },
-        { label: 'Leave', keys: [':q back to the Terminal', 'Tab moves focus out'] },
+        { label: 'Insert', keys: ['i a I A o O type text', 'Esc back to normal'] },
+        { label: 'Edit', keys: ['x dd dw D delete', 'cw cc C change', 'r replace', 'J join', 'yy yw copy', 'p P paste', 'u undo', ':redo redo', '. repeat'] },
+        { label: 'Write', keys: [':w write', ':w path write to a path', ':wq :x ZZ write and leave'] },
+        { label: 'Leave', keys: [':q back to the Terminal', ':q! leave without writing', 'Tab moves focus out; in insert mode, Esc then Tab'] },
       ],
-      helpNote: "i, a, o, x, dd and :w can't change the file. Folds and the cursor can be clicked or tapped too.",
+      keysNote: 'A count goes first: 3dd deletes three lines. On a Mac, Ctrl+R redoes too. Folds and the cursor can be clicked or tapped.',
     },
     pocket: {
       brand: 'cv-os pocket',
@@ -212,7 +239,9 @@ export const siteText = deepFreeze({
       // A vim key's name: the key it shows, then what it does, so the
       // name starts with the key's own text (WCAG 2.5.3).
       vimKeyName: '{key}, {name}',
-      commands: ['help', 'about', 'work', 'projects', 'skills', 'cv', 'ls', 'clear'],
+      commands: ['help', 'about', 'work', 'projects', 'cv', 'ls', 'clear'],
+      tabKey: { key: 'Tab', name: 'Tab, complete' },
+      escKey: { key: 'Esc', name: 'Esc, back to normal mode' },
       vim: [
         { key: 'j', name: 'Down' },
         { key: 'k', name: 'Up' },
@@ -221,6 +250,9 @@ export const siteText = deepFreeze({
         { key: 'n', name: 'Next match' },
         { key: 'gg', name: 'Top' },
         { key: 'G', name: 'Bottom' },
+        { key: 'i', name: 'Insert' },
+        { key: 'u', name: 'Undo' },
+        { key: ':w', name: 'Write' },
         { key: ':q', name: 'Quit' },
       ],
     },

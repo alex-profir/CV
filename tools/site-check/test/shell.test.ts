@@ -3,10 +3,10 @@
 // the repository with one change, built (see 005 tasks.md Notes).
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
-import { renderProblem } from '../src/report.ts';
+import { renderProblem, renderReport } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
 
-vi.setConfig({ testTimeout: 180_000 });
+vi.setConfig({ testTimeout: 300_000 });
 
 const TITLE_BAR = 'packages/web/src/shells/desktop/TitleBar.tsx';
 
@@ -92,9 +92,10 @@ describe("006-terminal-FR-035: accessibility measures every Terminal state, and 
 });
 
 describe("006-terminal-FR-038: layout and modes measure the Terminal's states", () => {
-  test('on the real build layout and modes pass with the Terminal in them', async () => {
+  test('on the real build layout and modes pass with the Terminal in them, the cursor stopping its blink within 5 s', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['layout', 'modes'] });
     expect(report.problems.map(renderProblem)).toEqual([]);
+    expect(report.results.filter((result) => result.part === 'modes' && result.variant.includes('/cursor-blink/')).map(({ variant, status }) => `${variant} ${status}`)).toEqual(['desktop/cursor-blink/1440px pass', 'mobile/cursor-blink/375px pass']);
     const variants = report.results.filter((result) => result.part === 'layout' && result.page === '/').map((result) => result.variant);
     expect(variants).toEqual(
       expect.arrayContaining([
@@ -124,5 +125,47 @@ describe("006-terminal-FR-038: layout and modes measure the Terminal's states", 
     const lines = rootLines(report.problems.map(renderProblem));
     expect(lines).toContain('modes / desktop/reduced-motion/1440px blinking span.cursor-block: repeats an animation for ever, so it blinks');
     expect(lines).toContain('modes / mobile/reduced-motion/375px blinking span.cursor-block: repeats an animation for ever, so it blinks');
+  });
+});
+
+const COMMAND_LINE_FILE = 'packages/web/src/apps/terminal/CommandLine.tsx';
+
+describe("006-terminal-FR-035: modes checks the cursor's blink stops, and never runs under reduced motion", () => {
+  test('a copy whose cursor never stops blinking fails modes in both shells', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, COMMAND_LINE_FILE, '    idle.current = setTimeout(() => setBlinking(false), TERMINAL.cursorIdle);', '    idle.current = undefined;'));
+    const report = await runCheck(root, { parts: ['modes'] });
+    expect(rootLines(report.problems.map(renderProblem))).toEqual([
+      'modes / desktop/cursor-blink/1440px blinking span.cursor-block: still blinks 5.5 s after the last key press',
+      'modes / mobile/cursor-blink/375px blinking span.cursor-block: still blinks 5.5 s after the last key press',
+    ]);
+  });
+
+  test('a copy whose cursor blinks under reduced motion fails modes in both shells', async () => {
+    const root = seededCopy((copy) => replaceIn(copy, TERMINAL_STYLES, '@media (prefers-reduced-motion: no-preference) {\n  .cursor-mirror[data-blinking] .cursor-block {', '@media all {\n  .cursor-mirror[data-blinking] .cursor-block {'));
+    const report = await runCheck(root, { parts: ['modes'] });
+    const lines = rootLines(report.problems.map(renderProblem));
+    expect(lines).toContain('modes / desktop/reduced-motion/1440px blinking span.cursor-block: repeats an animation for ever, so it blinks');
+    expect(lines).toContain('modes / mobile/reduced-motion/375px blinking span.cursor-block: repeats an animation for ever, so it blinks');
+  });
+});
+
+describe("006-terminal-FR-042: the Terminal's new problem lines name the shell, the line or step and the width, and two runs agree", () => {
+  // The types the amendment adds (data-model.md Site check results).
+  const NEW_TYPES = /^(?:line-mismatch|not-stopped|unresponsive|cursor|outline|line-key|select-all|cancel|no-blink)$/;
+
+  test('two runs of terminal and keyboard on a copy with two faults give the same report, each new line naming the shell, the line or step, and the width', async () => {
+    const root = seededCopy((copy) => {
+      replaceIn(copy, 'packages/web/src/apps/terminal/shell/fs.ts', '  override async rm(path: string, options?: RmOptions) {\n    const at = this.canonical(path);\n    this.guard(at);\n', '  override async rm(path: string, options?: RmOptions) {\n    const at = this.canonical(path);\n');
+      replaceIn(copy, TERMINAL_STYLES, '#os .command-line:focus-visible {\n  outline: none;\n}', '#os .command-line:focus-visible {\n  outline: 2px solid red;\n}');
+    });
+    const first = await runCheck(root, { parts: ['terminal', 'keyboard'] });
+    const second = await runCheck(root, { parts: ['terminal', 'keyboard'] });
+    expect(renderReport(second)).toBe(renderReport(first));
+    const added = first.problems.filter((problem) => NEW_TYPES.test(problem.type));
+    expect(new Set(added.map((problem) => problem.type))).toEqual(new Set(['line-mismatch', 'outline']));
+    for (const problem of added) {
+      expect(problem.variant).toMatch(/^(?:desktop\/[a-z/-]+\/1440px|mobile\/[a-z/-]+\/375px)$/);
+      expect(problem.subject).toMatch(problem.part === 'terminal' ? /^(?:rm about|cat about|vim about :w)$/ : /^step \d+ "[^"]+"$/);
+    }
   });
 });

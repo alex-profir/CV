@@ -25,6 +25,17 @@ export const TERMINAL_DESKTOP_STATES = [
   'terminal-two-windows',
   'terminal-specs',
   'terminal-menu',
+  // The amendment's (006 contracts/cli.md States, added 2026-10-29).
+  'terminal-unfocused',
+  'terminal-help-standard',
+  'terminal-loading',
+  'terminal-load-failed',
+  'terminal-stopped',
+  'terminal-selected-all',
+  // The amendment's (006 contracts/cli.md States, added 2026-10-30).
+  'terminal-tab-list',
+  'terminal-vim-insert',
+  'terminal-vim-readonly',
 ] as const;
 
 export const TERMINAL_MOBILE_STATES = [
@@ -40,6 +51,9 @@ export const TERMINAL_MOBILE_STATES = [
   'pocket-long-command',
   'pocket-vim-search',
   'pocket-vim-help',
+  'pocket-stopped',
+  'pocket-tab-key',
+  'pocket-vim-insert',
 ] as const;
 
 // The inspector's states (007 contracts/cli.md States) follow the
@@ -125,6 +139,8 @@ export const SHELL = Object.freeze({
 export const TERMINAL = Object.freeze({
   commandLine: '#os .terminal input.command-line',
   run: '#os .terminal section.run',
+  busyRun: '#os .terminal section.run[aria-busy="true"]',
+  shellSettled: '#os .terminal:is([data-shell-state="ready"], [data-shell-state="running"], [data-shell-state="failed"])',
   output: '.run-output',
   vim: '#os .terminal section.vim',
   vimText: '#os .terminal section.vim .vim-text',
@@ -135,7 +151,26 @@ export const TERMINAL = Object.freeze({
   vimChip: '#os .terminal section.vim .vim-chips button.command-chip',
   pocket: '#os .pocket',
   pocketKey: '#os .pocket-keys button.pocket-key',
+  pocketStrip: '#os .pocket-strip',
+  completionList: '#os .terminal div.completion-list',
+  vimInsert: '#os .terminal textarea.vim-insert',
+  vimMessage: '#os .terminal .vim-message-text',
+  // The amendment's: the screen, the cursor, the shell worker's states, a
+  // stopped line and help's standard group (006 FR-008, FR-069, FR-070).
+  screen: '#os .terminal .terminal-screen',
+  cursorMirror: '#os .terminal span.cursor-mirror',
+  cursorBlock: '#os .terminal span.cursor-mirror .cursor-block',
+  shellLoading: '#os .terminal p.shell-loading',
+  shellFailed: '#os .terminal p.shell-failed',
+  stopped: 'p.run-stopped',
+  standard: 'ul.out-standard',
 });
+
+// The shell worker's script, as the check's server serves it (006 FR-070).
+export const SHELL_WORKER = '**/assets/shell-*.js';
+
+// A line that never ends, which the shell stops (006 FR-069).
+export const ENDLESS_LINE = 'while true; do :; done';
 
 // The inspector's elements (007 contracts/inspector.md): a view's "Show
 // specs", in its window or full-screen view, and its spec view.
@@ -158,6 +193,8 @@ export const control = (view: 'cv' | 'about' | 'terminal', name: 'close' | 'mini
 
 // How long an element the driver waits for may take to appear.
 const WAIT_MS = 5_000;
+// How long the shell may take to load or run a line.
+const SHELL_LOAD_MS = 10_000;
 
 // A context's options for a shell at a size: a phone has touch.
 export function shellContext({ shell, width, height }: { shell: Shell; width: number; height: number }): BrowserContextOptions {
@@ -186,7 +223,7 @@ export async function settle(page: Page): Promise<void> {
   });
 }
 
-const shown = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'visible', timeout: WAIT_MS });
+export const shown = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'visible', timeout: WAIT_MS });
 
 const gone = (page: Page, selector: string) => page.locator(selector).first().waitFor({ state: 'hidden', timeout: WAIT_MS });
 
@@ -223,8 +260,30 @@ export async function openTerminal(page: Page, shell: Shell): Promise<void> {
   if (shell === 'desktop') await page.click(SHELL.terminalDockItem);
   else await page.tap(SHELL.terminalIcon);
   await shown(page, TERMINAL.commandLine);
+  // The shell loads in a worker on first open (006 FR-070): until it is
+  // ready, or has failed, lines wait.
+  await page.waitForSelector(TERMINAL.shellSettled, { timeout: SHELL_LOAD_MS });
   await settle(page);
 }
+
+// Opens the Terminal without waiting for its shell: for the states where
+// the worker's file is held back or refused.
+async function openTerminalOnly(page: Page, shell: Shell): Promise<void> {
+  if (shell === 'desktop') await page.click(SHELL.terminalDockItem);
+  else await page.tap(SHELL.terminalIcon);
+  await shown(page, TERMINAL.commandLine);
+}
+
+// Select all with the key the page's platform uses: Cmd+A on macOS, Ctrl+A
+// elsewhere (006 FR-075, research R37).
+export async function selectAll(page: Page): Promise<void> {
+  const mac = await page.evaluate(() => /^mac/i.test((navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform));
+  await page.keyboard.press(mac ? 'Meta+A' : 'Control+A');
+}
+
+// Until no line waits for the shell or runs (006 FR-070), or the Terminal
+// has closed.
+const linesRun = (page: Page) => page.waitForFunction((busy) => document.querySelector(busy) === null, TERMINAL.busyRun, { timeout: SHELL_LOAD_MS });
 
 const runs = (page: Page) => page.locator(TERMINAL.run).count();
 
@@ -235,6 +294,7 @@ export async function typeLine(page: Page, line: string): Promise<void> {
   await input.fill('');
   await page.keyboard.type(line);
   await page.keyboard.press('Enter');
+  await linesRun(page);
 }
 
 // Waits for the run a line, a key or a control adds, and gives it back.
@@ -242,6 +302,7 @@ export async function newRun(page: Page, act: () => Promise<void>): Promise<Loca
   const before = await runs(page);
   await act();
   await page.waitForFunction(([selector, count]) => document.querySelectorAll(selector as string).length > (count as number), [TERMINAL.run, before] as const, { timeout: WAIT_MS });
+  await linesRun(page);
   return page.locator(TERMINAL.run).last();
 }
 
@@ -323,6 +384,9 @@ const lsControl = (page: Page, folder: boolean) =>
     .last()
     .locator('ul.out-columns button')
     .filter({ hasText: folder ? /\/$/ : /[^/]$/ });
+
+// The newest run ends with its stopped line (006 FR-069).
+const stoppedRun = (page: Page) => page.locator(TERMINAL.run).last().locator(TERMINAL.stopped).waitFor({ state: 'visible', timeout: WAIT_MS });
 
 async function driveTerminal(page: Page, shell: Shell, state: string): Promise<void> {
   if (state === 'pocket-landscape' || state === 'pocket' || state === 'terminal-open' || state === 'terminal-two-windows') return;
@@ -410,8 +474,85 @@ async function driveTerminal(page: Page, shell: Shell, state: string): Promise<v
       await shown(page, TERMINAL.vimText);
       await page.locator(TERMINAL.vimChip).filter({ hasText: /^:help$/ }).first().tap();
       return shown(page, TERMINAL.vimHelp);
+    case 'terminal-unfocused':
+      await runCommand(page, 'help');
+      await page.locator(TERMINAL.commandLine).focus();
+      await page.keyboard.press('Tab');
+      return void (await page.waitForFunction((line) => document.activeElement !== document.querySelector(line), TERMINAL.commandLine, { timeout: WAIT_MS }));
+    case 'terminal-help-standard':
+      return (await runCommand(page, 'help')).locator(TERMINAL.standard).scrollIntoViewIfNeeded({ timeout: WAIT_MS });
+    case 'terminal-stopped':
+      await runCommand(page, ENDLESS_LINE);
+      return stoppedRun(page);
+    case 'terminal-selected-all':
+      await runCommand(page, 'help');
+      await page.locator(TERMINAL.commandLine).focus();
+      await selectAll(page);
+      return void (await page.waitForFunction((screen) => {
+        const selection = document.getSelection();
+        return selection !== null && !selection.isCollapsed && document.querySelector(screen)?.contains(selection.anchorNode) === true;
+      }, TERMINAL.screen, { timeout: WAIT_MS }));
+    case 'pocket-stopped':
+      await page.locator(TERMINAL.commandLine).tap();
+      await runCommand(page, ENDLESS_LINE);
+      return stoppedRun(page);
+    case 'terminal-tab-list':
+      await runCommand(page, 'mkdir notes && touch todo');
+      await page.locator(TERMINAL.commandLine).focus();
+      await page.keyboard.type('cat ~/');
+      await page.keyboard.press('Tab');
+      await settle(page);
+      await page.keyboard.press('Tab');
+      return shown(page, TERMINAL.completionList);
+    case 'terminal-vim-insert':
+      await typeLine(page, 'vim notes.txt');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['i']);
+      await shown(page, TERMINAL.vimInsert);
+      return void (await page.keyboard.type('a line'));
+    case 'terminal-vim-readonly':
+      await typeLine(page, 'vim about');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['o']);
+      await shown(page, TERMINAL.vimInsert);
+      await page.keyboard.type('word');
+      await page.keyboard.press('Escape');
+      await vimEntry(page, ':', 'w');
+      return void (await page.locator(TERMINAL.vimMessage).filter({ hasText: /^E45/ }).waitFor({ timeout: WAIT_MS }));
+    case 'pocket-tab-key':
+      await page.locator(TERMINAL.commandLine).tap();
+      await page.keyboard.type('cat ~/');
+      await tapPocketKey(page, 'Tab');
+      await settle(page);
+      await tapPocketKey(page, 'Tab');
+      await shown(page, TERMINAL.completionList);
+      await page.setViewportSize({ width: SHELL_SIZES.mobile.width, height: SHELL_SIZES.mobile.height - 300 });
+      return void (await page.waitForSelector(TERMINAL.pocketStrip, { timeout: WAIT_MS }));
+    case 'pocket-vim-insert':
+      await typeLine(page, 'vim notes.txt');
+      await shown(page, TERMINAL.vimText);
+      await tapPocketKey(page, 'i');
+      await shown(page, TERMINAL.vimInsert);
+      await page.setViewportSize({ width: SHELL_SIZES.mobile.width, height: SHELL_SIZES.mobile.height - 300 });
+      return void (await page.waitForSelector(TERMINAL.pocketStrip, { timeout: WAIT_MS }));
   }
   throw new Error(`no way to reach ${shell}/${state}`);
+}
+
+// The Terminal opened with the worker's file held back, and `help` typed:
+// the waiting line; or with the file answered 503: the failure (006 FR-070).
+// The held request is never answered, and goes with the page.
+async function driveShellLoad(page: Page, shell: Shell, state: 'terminal-loading' | 'terminal-load-failed'): Promise<void> {
+  if (state === 'terminal-loading') await page.route(SHELL_WORKER, () => undefined);
+  else await page.route(SHELL_WORKER, (route) => route.fulfill({ status: 503, body: '' }));
+  await openTerminalOnly(page, shell);
+  if (state === 'terminal-load-failed') return shown(page, TERMINAL.shellFailed);
+  await shown(page, TERMINAL.shellLoading);
+  const input = page.locator(TERMINAL.commandLine);
+  if (!(await input.evaluate((element) => element === document.activeElement))) await input.focus();
+  await page.keyboard.type('help');
+  await page.keyboard.press('Enter');
+  await shown(page, TERMINAL.busyRun);
 }
 
 // ---- The inspector (007 contracts/cli.md States) -------------------------
@@ -515,6 +656,7 @@ async function drive(page: Page, { shell, state }: ShellState): Promise<void> {
   }
   if (state.startsWith('terminal-') || state.startsWith('pocket')) {
     if (shell === 'desktop') await shown(page, SHELL.cvWindow);
+    if (state === 'terminal-loading' || state === 'terminal-load-failed') return driveShellLoad(page, shell, state);
     await openTerminal(page, shell);
     return driveTerminal(page, shell, state);
   }

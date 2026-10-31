@@ -1,238 +1,387 @@
-// The vim view's model (006 research R12, data-model.md Vim view).
+// The vim view's reducer (006 research R47 to R49, data-model.md Vim view
+// transitions), on buffers opened from text: no DOM, no worker.
 import { describe, expect, test } from 'vitest';
-import { printJson } from '../../../src/apps/terminal/engine/json.ts';
 import { lineText, openVim, shownLines, vimReducer } from '../../../src/apps/terminal/engine/vim.ts';
-import type { VimInput, VimState } from '../../../src/apps/terminal/engine/vim.ts';
+import type { VimFile } from '../../../src/apps/terminal/engine/block.ts';
+import type { VimInput, VimOutput, VimState } from '../../../src/apps/terminal/engine/vim.ts';
 
-// A small CV-like document: a string, two top-level sections, a number.
-const JSON_TEXT = JSON.stringify(
-  {
-    $schema: 'https://example.org/schema.json',
-    basics: { name: 'Rest Person', label: 'Engineer of REST things', summary: 'Builds rest services and tests.' },
-    work: [
-      { name: 'Company', position: 'Engineer', summary: 'Wrote a REST API.' },
-      { name: 'Other', position: 'Lead', highlights: ['More rest.', 'Less noise.'] },
-    ],
-    year: 2020,
-  },
-  null,
-  2,
-);
+const FILE: VimFile = { name: 'todo', path: '/home/guest/todo', readonly: false, new: false };
+const open = (text: string, file = FILE, type: 'json' | 'text' = 'text') => openVim({ file, pipe: null, text, type });
+const JSON_TEXT = ['{', '  "a": "x",', '  "basics": {', '    "name": "N"', '  },', '  "work": [', '    1,', '    2', '  ],', '  "z": {}', '}'].join('\n');
+const json = (file = FILE) => open(JSON_TEXT, file, 'json');
 
-function source() {
-  const printed = printJson(JSON_TEXT);
-  if ('error' in printed) throw new Error('fixture is not JSON');
-  return { name: 'cv.json', pipe: 'cat cv.json | jq | vim -', rows: printed.rows, folds: printed.folds, type: 'json' as const };
-}
+const state = (out: VimOutput): VimState => {
+  if (out === 'quit' || 'write' in out) throw new Error(`expected a state, got ${JSON.stringify(out)}`);
+  return out;
+};
+// Keys typed one by one; `:x` as a word is typed with `command`.
+const keys = (from: VimState, ...typed: string[]) => typed.flatMap((word) => [...word]).reduce((at, key) => state(vimReducer(at, { key })), from);
+const inputs = (from: VimState, ...sent: VimInput[]) => sent.reduce((at, input) => state(vimReducer(at, input)), from);
+const command = (from: VimState, typed: string): VimOutput => vimReducer(state(vimReducer(from, { key: ':' })), { submit: typed });
+const text = (at: VimState) => at.lines.join('\n');
+const at = (s: VimState) => [s.cursor.line, s.cursor.column];
+const Esc: VimInput = { key: 'Escape' };
 
-const open = () => openVim(source());
-
-function apply(state: VimState, ...inputs: (VimInput | string)[]): VimState {
-  let current = state;
-  for (const input of inputs) {
-    const next = vimReducer(current, typeof input === 'string' ? { key: input } : input);
-    if (next === 'quit') throw new Error(`quit after ${JSON.stringify(input)}`);
-    current = next;
-  }
-  return current;
-}
-
-// The text never changes, and the cursor is never inside a closed fold.
-function invariants(state: VimState) {
-  expect(state.source).toEqual(source());
-  const shown = shownLines(state);
-  expect(shown, JSON.stringify(state.cursor)).toContain(state.cursor.line);
-}
-
-const BASICS = 2;
-const WORK = 7;
-
-describe('006-terminal-FR-061: folds', () => {
-  test('on opening, each top-level object or array is one closed fold, everything else open, the cursor on the first fold', () => {
-    const state = open();
-    expect([...state.closed].sort((a, b) => a - b)).toEqual([BASICS, WORK]);
-    expect(state.source.folds.map((fold) => fold.key)).toEqual(['basics', 'work']);
-    expect(shownLines(state)).toEqual([0, 1, BASICS, WORK, 22, 23]);
-    expect(state.cursor).toEqual({ line: BASICS, column: 0 });
-    expect(state.message).toEqual({ kind: 'opened' });
-    expect(state.numbers).toBe(true);
+describe('006-terminal-FR-060: moves, and what cancels them', () => {
+  test('every move, each after a count', () => {
+    const s = open('one two three\nfour\nfive\nsix\nseven\nend');
+    expect(at(keys(s, 'l'))).toEqual([0, 1]);
+    expect(at(keys(s, '3l'))).toEqual([0, 3]);
+    expect(at(keys(s, '3lh'))).toEqual([0, 2]);
+    expect(at(keys(s, 'j'))).toEqual([1, 0]);
+    expect(at(keys(s, '3j'))).toEqual([3, 0]);
+    expect(at(keys(s, '3jk'))).toEqual([2, 0]);
+    expect(at(keys(s, 'w'))).toEqual([0, 4]);
+    expect(at(keys(s, '2w'))).toEqual([0, 8]);
+    expect(at(keys(s, '3w'))).toEqual([1, 0]);
+    expect(at(keys(s, '2wb'))).toEqual([0, 4]);
+    expect(at(keys(s, '$'))).toEqual([0, 12]);
+    expect(at(keys(s, '2$'))).toEqual([1, 3]);
+    expect(at(keys(s, '$0'))).toEqual([0, 0]);
+    expect(at(keys(s, 'G'))).toEqual([5, 0]);
+    expect(at(keys(s, '3G'))).toEqual([2, 0]);
+    expect(at(keys(s, 'Ggg'))).toEqual([0, 0]);
+    expect(at(keys(s, 'G2gg'))).toEqual([1, 0]);
+    expect(at(inputs(s, { key: 'PageDown', page: 2 }))).toEqual([2, 0]);
+    expect(at(inputs(s, { key: 'PageDown', page: 2 }, { key: 'PageUp', page: 1 }))).toEqual([1, 0]);
+    expect(at(inputs(s, { key: 'ArrowDown' }, { key: 'ArrowRight' }, { key: 'End' }, { key: 'Home' }))).toEqual([1, 0]);
   });
 
-  test('za toggles, zo opens, zc closes, zR opens all and zM closes all; a fold input toggles that fold', () => {
-    let state = apply(open(), 'z', 'a');
-    expect(state.closed.has(BASICS)).toBe(false);
-    state = apply(state, 'z', 'a');
-    expect(state.closed.has(BASICS)).toBe(true);
-    state = apply(state, 'z', 'o');
-    expect(state.closed.has(BASICS)).toBe(false);
-    state = apply(state, 'j', 'j', 'z', 'c');
-    expect(state.closed.has(BASICS)).toBe(true);
-    expect(state.cursor.line).toBe(BASICS);
-    state = apply(state, 'z', 'R');
-    expect(state.closed.size).toBe(0);
-    state = apply(state, 'j', 'j', 'z', 'M');
-    expect(state.closed.size).toBe(2);
-    invariants(state);
-    state = apply(state, { fold: WORK });
-    expect(state.closed.has(WORK)).toBe(false);
-    expect(state.cursor.line).toBe(WORK);
-    state = apply(state, { fold: WORK });
-    expect(state.closed.has(WORK)).toBe(true);
-    invariants(state);
+  test('closed folds count as one line, and the cursor never lands inside one', () => {
+    const s = json();
+    expect(s.closed).toEqual(new Set(['basics', 'work']));
+    expect(at(s)).toEqual([2, 0]);
+    expect(shownLines(s)).toEqual([0, 1, 2, 5, 9, 10]);
+    expect(at(keys(s, 'j'))).toEqual([5, 0]);
+    expect(at(keys(s, '2j'))).toEqual([9, 0]);
+    expect(at(keys(s, 'k'))).toEqual([1, 0]);
+    expect(at(inputs(s, { point: { line: 3, column: 2 } }))).toEqual([2, 0]);
+    expect(at(keys(s, '}'))).toEqual([5, 0]);
+    expect(at(keys(s, '{'))).toEqual([0, 0]);
   });
 
-  test('Enter and Space toggle the fold line the cursor is on, and do nothing on any other line', () => {
-    let state = apply(open(), 'j');
-    expect(state.cursor.line).toBe(WORK);
-    state = apply(state, 'Enter');
-    expect(state.closed.has(WORK)).toBe(false);
-    state = apply(state, ' ');
-    expect(state.closed.has(WORK)).toBe(true);
-    expect(state.cursor.line).toBe(WORK);
-    state = apply(state, ' ', 'j');
-    expect(state.cursor.line).toBe(WORK + 1);
-    for (const key of ['Enter', ' ']) expect(apply(state, key), key).toEqual(state);
-    invariants(state);
-  });
-});
-
-describe('006-terminal-FR-060: the keys move as vim does, and nothing changes the file', () => {
-  test('j, k and the arrows move a line, skipping closed folds as one line', () => {
-    let state = apply(open(), 'j');
-    expect(state.cursor.line).toBe(WORK);
-    state = apply(state, 'ArrowDown');
-    expect(state.cursor.line).toBe(22);
-    state = apply(state, 'k', 'ArrowUp', 'k', 'k', 'k');
-    expect(state.cursor.line).toBe(0);
-    state = apply(state, 'G');
-    expect(state.cursor.line).toBe(23);
-    state = apply(state, 'j');
-    expect(state.cursor.line).toBe(23);
-    invariants(state);
+  test('folds: za zo zc zR zM, Enter, a fold activated; plain text has none; each JSON object or array is closed on opening', () => {
+    expect(open('  "a": {\n  }').folds).toEqual([]);
+    const s = json();
+    expect(keys(s, 'za').closed.has('basics')).toBe(false);
+    expect(keys(s, 'zazc').closed.has('basics')).toBe(true);
+    expect(keys(s, 'zo').closed.has('basics')).toBe(false);
+    expect(keys(s, 'zR').closed.size).toBe(0);
+    expect(keys(s, 'zRzM').closed.size).toBe(2);
+    expect(inputs(s, { key: 'Enter' }).closed.has('basics')).toBe(false);
+    expect(inputs(s, { fold: 5 }).closed.has('work')).toBe(false);
   });
 
-  test('h, l, the arrows, 0 and $ move along the line; w and b by words', () => {
-    let state = apply(open(), 'k');
-    expect(state.cursor).toEqual({ line: 1, column: 0 });
-    state = apply(state, '$');
-    expect(state.cursor.column).toBe(lineText(state, 1).length - 1);
-    state = apply(state, '0', 'l', 'l', 'ArrowRight');
-    expect(state.cursor.column).toBe(3);
-    state = apply(state, 'h', 'ArrowLeft', 'h', 'h', 'h');
-    expect(state.cursor.column).toBe(0);
-    // `  "$schema": "https://…"`: words are `"$`, `schema`, `":`, `"`, `https`…
-    state = apply(state, 'w');
-    expect(state.cursor.column).toBe(2);
-    state = apply(state, 'w');
-    expect(state.cursor.column).toBe(4);
-    state = apply(state, 'b');
-    expect(state.cursor.column).toBe(2);
+  test('Escape cancels /, :, and a pending count, operator, g, z, Z or r', () => {
+    const s = open('abc\ndef');
+    for (const first of ['3', 'd', 'c', 'y', 'g', 'z', 'Z', 'r']) expect(inputs(keys(s, first), Esc).pending, first).toBeNull();
+    for (const first of ['/', ':']) expect(inputs(keys(s, first), Esc).entry, first).toBeNull();
+    expect(at(keys(inputs(keys(s, '3'), Esc), 'j'))).toEqual([1, 0]);
+    expect(text(inputs(keys(s, 'd'), Esc))).toBe('abc\ndef');
   });
 
-  test('gg and G, { and }, Page Up and Page Down, and :12', () => {
-    let state = apply(open(), 'z', 'R', 'G');
-    expect(state.cursor.line).toBe(23);
-    state = apply(state, 'g', 'g');
-    expect(state.cursor.line).toBe(0);
-    state = apply(state, '}');
-    expect(state.cursor.line).toBe(BASICS);
-    state = apply(state, '}');
-    expect(state.cursor.line).toBe(WORK);
-    state = apply(state, '{');
-    expect(state.cursor.line).toBe(BASICS);
-    state = apply(state, { key: 'PageDown', page: 10 });
-    expect(state.cursor.line).toBe(12);
-    state = apply(state, { key: 'PageUp', page: 10 });
-    expect(state.cursor.line).toBe(BASICS);
-    state = apply(state, ':', { submit: '12' });
-    expect(state.cursor.line).toBe(11);
-    state = apply(state, 'z', 'M', ':', { submit: '12' });
-    expect(state.cursor.line).toBe(WORK);
-    invariants(state);
+  test('Ctrl, Alt and Meta keys are ignored but { key: r, ctrl: true }', () => {
+    const s = open('abc');
+    for (const input of [{ key: 'x', ctrl: true }, { key: 'x', alt: true }, { key: 'x', meta: true }, { key: 'r', meta: true }, { key: 'd', ctrl: true }]) expect(vimReducer(s, input)).toBe(s);
   });
 
-  test(':set nu and :set nonu show and hide line numbers', () => {
-    let state = apply(open(), ':', { submit: 'set nonu' });
-    expect(state.numbers).toBe(false);
-    state = apply(state, ':', { submit: 'set nu' });
-    expect(state.numbers).toBe(true);
+  test('search: / Enter, n N, wrapping, and not found', () => {
+    const s = open('foo\nbar foo\nbaz');
+    const found = inputs(keys(s, '/'), { submit: 'foo' });
+    expect(at(found)).toEqual([1, 4]);
+    expect(found.message).toEqual({ kind: 'match', index: 2, count: 2 });
+    expect(at(keys(found, 'n'))).toEqual([0, 0]);
+    expect(at(keys(found, 'N'))).toEqual([0, 0]);
+    expect(inputs(keys(s, '/'), { submit: 'nope' }).message).toEqual({ kind: 'not-found', text: 'nope' });
   });
 
-  test('i, a, o, x, dd, p, :w, :wq, :w! and :x change nothing and say the file is read only', () => {
-    const start = apply(open(), 'j');
-    for (const keys of [['i'], ['a'], ['o'], ['x'], ['d', 'd'], ['p'], ['A'], ['O']]) {
-      const state = apply(start, ...keys);
-      expect(state.message, keys.join('')).toEqual({ kind: 'read-only' });
-      expect(state.cursor).toEqual(start.cursor);
-      expect(state.closed).toEqual(start.closed);
-      invariants(state);
-    }
-    for (const command of ['w', 'wq', 'w!', 'x']) expect(apply(start, ':', { submit: command }).message, command).toEqual({ kind: 'read-only' });
-  });
-
-  test('an unknown : command is named; Escape cancels /, : and a pending key', () => {
-    expect(apply(open(), ':', { submit: 'foo' }).message).toEqual({ kind: 'unknown', command: 'foo' });
-    for (const key of ['/', ':']) {
-      const state = apply(open(), key);
-      expect(state.entry).toEqual({ kind: key, text: '' });
-      expect(apply(state, { cancel: true }).entry).toBeNull();
-      expect(apply(state, 'Escape').entry).toBeNull();
-    }
-    for (const key of ['g', 'z', 'd']) {
-      const pending = apply(open(), key);
-      expect(pending.pending).toBe(key);
-      const cancelled = apply(pending, 'Escape');
-      expect(cancelled.pending).toBeNull();
-      expect(apply(cancelled, 'g').cursor).toEqual(open().cursor);
-    }
-  });
-
-  test('a Ctrl, Alt or Meta key is ignored, as is any key not listed', () => {
-    const start = open();
-    for (const input of [{ key: 'd', ctrl: true }, { key: 'f', ctrl: true }, { key: 'u', ctrl: true }, { key: 'j', alt: true }, { key: 'G', meta: true }, { key: 'q' }, { key: 'Tab' }, { key: 'F5' }]) {
-      expect(vimReducer(start, input), JSON.stringify(input)).toEqual(start);
-    }
+  test(':number, :set nu, :set nonu, and an unknown command gives E492', () => {
+    const s = open('a\nb\nc');
+    expect(at(state(command(s, '2')))).toEqual([1, 0]);
+    expect(state(command(s, 'set nonu')).numbers).toBe(false);
+    expect(state(command(state(command(s, 'set nonu')), 'set nu')).numbers).toBe(true);
+    expect(state(command(s, 'foo')).message).toEqual({ kind: 'vim', code: 'E492', arg: 'foo' });
   });
 });
 
-describe('006-terminal-FR-062: search', () => {
-  test('/REST finds every match across the file without regard to capitals, opens the fold holding the current one, and n and N wrap', () => {
-    let state = apply(open(), '/', { submit: 'REST' });
-    expect(state.search?.matches.map((match) => match.line)).toEqual([3, 4, 5, 11, 17]);
-    expect(state.search?.current).toBe(0);
-    expect(state.message).toEqual({ kind: 'match', index: 1, count: 5 });
-    expect(state.cursor).toEqual({ line: 3, column: state.search!.matches[0]!.start });
-    expect(state.closed.has(BASICS)).toBe(false);
-    expect(state.closed.has(WORK)).toBe(true);
-    invariants(state);
-    state = apply(state, 'n', 'n', 'n');
-    expect(state.cursor.line).toBe(11);
-    expect(state.closed.has(WORK)).toBe(false);
-    expect(state.message).toEqual({ kind: 'match', index: 4, count: 5 });
-    state = apply(state, 'n', 'n');
-    expect(state.message).toEqual({ kind: 'match', index: 1, count: 5 });
-    state = apply(state, 'N');
-    expect(state.message).toEqual({ kind: 'match', index: 5, count: 5 });
-    invariants(state);
+describe('006-terminal-FR-079: editing', () => {
+  test('a character outside the BMP is one character to moves, x and r', () => {
+    const s = open('a😀b');
+    expect(at(keys(s, 'l'))).toEqual([0, 1]);
+    expect(at(keys(s, 'll'))).toEqual([0, 3]);
+    expect(at(keys(s, 'llh'))).toEqual([0, 1]);
+    expect(at(keys(s, '$'))).toEqual([0, 3]);
+    expect(text(keys(s, 'lx'))).toBe('ab');
+    expect(text(keys(s, 'l2x'))).toBe('a');
+    expect(text(keys(s, 'lrz'))).toBe('azb');
+    const end = open('a😀');
+    expect(at(keys(end, '$'))).toEqual([0, 1]);
+    const typed = inputs(keys(end, 'A'), { key: 'ArrowLeft' }, { text: 'Z' });
+    expect(text(typed)).toBe('aZ😀');
+    expect(at(inputs(keys(end, 'A'), Esc))).toEqual([0, 1]);
   });
 
-  test('a word that is not there says so, and the cursor stays', () => {
-    const start = open();
-    const state = apply(start, '/', { submit: 'nowhere' });
-    expect(state.message).toEqual({ kind: 'not-found', text: 'nowhere' });
-    expect(state.cursor).toEqual(start.cursor);
+  const s = open('  hello world\nsecond line');
+
+  test('i a I A o O enter insert mode at vim’s places', () => {
+    const atWorld = keys(s, '2w');
+    expect(atWorld.cursor.column).toBe(8);
+    expect(keys(atWorld, 'i').mode).toBe('insert');
+    expect(at(keys(atWorld, 'i'))).toEqual([0, 8]);
+    expect(at(keys(atWorld, 'a'))).toEqual([0, 9]);
+    expect(at(keys(atWorld, 'I'))).toEqual([0, 2]);
+    expect(at(keys(atWorld, 'A'))).toEqual([0, 13]);
+    const below = keys(s, 'o');
+    expect(at(below)).toEqual([1, 0]);
+    expect(below.lines).toEqual(['  hello world', '', 'second line']);
+    const above = keys(s, 'O');
+    expect(at(above)).toEqual([0, 0]);
+    expect(above.lines).toEqual(['', '  hello world', 'second line']);
+  });
+
+  test('text, Backspace, Delete, Enter and Tab edit; Escape moves back one and the insert is one undo step', () => {
+    let e = keys(s, 'A');
+    e = inputs(e, { text: '!' }, { text: '?' }, { delete: 'backward' }, { key: 'Tab' }, { lineBreak: true }, { text: 'x' });
+    expect(e.lines).toEqual(['  hello world!\t', 'x', 'second line']);
+    expect(at(e)).toEqual([1, 1]);
+    e = inputs(e, { key: 'Home' }, { delete: 'forward' });
+    expect(e.lines[1]).toBe('');
+    e = inputs(e, { delete: 'forward' });
+    expect(e.lines).toEqual(['  hello world!\t', 'second line']);
+    e = inputs(e, { delete: 'backward' });
+    expect(e.lines).toEqual(['  hello world!\tsecond line']);
+    e = inputs(e, Esc);
+    expect(e.mode).toBe('normal');
+    expect(at(e)).toEqual([0, 14]);
+    expect(e.undo).toHaveLength(1);
+    expect(text(keys(e, 'u'))).toBe(text(s));
+  });
+
+  test('x dd dw D, with counts', () => {
+    const t = open('one two three\nb\nc\nd');
+    expect(keys(t, 'x').lines[0]).toBe('ne two three');
+    expect(keys(t, '5x').lines[0]).toBe('wo three');
+    expect(keys(t, 'dw').lines[0]).toBe('two three');
+    expect(keys(t, '2dw').lines[0]).toBe('three');
+    expect(keys(t, 'd2w').lines[0]).toBe('three');
+    expect(keys(t, 'wD').lines[0]).toBe('one ');
+    expect(keys(t, 'dd').lines).toEqual(['b', 'c', 'd']);
+    expect(keys(t, '3dd').lines).toEqual(['d']);
+    expect(keys(t, 'ddp').lines).toEqual(['b', 'one two three', 'c', 'd']);
+    expect(keys(open('only'), 'dd').lines).toEqual(['']);
+    expect(keys(t, 'Gdd').cursor.line).toBe(2);
+  });
+
+  test('cw cc C r J, c… ending in insert mode', () => {
+    const t = open('one two\n  next\nlast');
+    const cw = keys(t, 'cw');
+    expect(cw.mode).toBe('insert');
+    expect(cw.lines[0]).toBe(' two');
+    expect(text(inputs(cw, { text: 'ONE' }, Esc)).split('\n')[0]).toBe('ONE two');
+    expect(keys(t, 'cc').lines).toEqual(['', '  next', 'last']);
+    expect(keys(t, 'cc').mode).toBe('insert');
+    expect(keys(t, 'wC').lines[0]).toBe('one ');
+    expect(keys(t, 'wC').mode).toBe('insert');
+    expect(keys(t, 'rZ').lines[0]).toBe('Zne two');
+    expect(keys(t, '3rZ').lines[0]).toBe('ZZZ two');
+    expect(keys(t, '9rZ').lines[0]).toBe('one two');
+    const joined = keys(t, 'J');
+    expect(joined.lines).toEqual(['one two next', 'last']);
+    expect(at(joined)).toEqual([0, 7]);
+    expect(keys(t, '3J').lines).toEqual(['one two next last']);
+  });
+
+  test('yy yw p P, by line and by character, with counts', () => {
+    const t = open('one two\nb');
+    expect(keys(t, 'yyp').lines).toEqual(['one two', 'one two', 'b']);
+    expect(keys(t, 'yyP').lines).toEqual(['one two', 'one two', 'b']);
+    expect(keys(t, 'yy3p').lines).toEqual(['one two', 'one two', 'one two', 'one two', 'b']);
+    expect(keys(t, '2yyGp').lines).toEqual(['one two', 'b', 'one two', 'b']);
+    expect(keys(t, 'yw$p').lines[0]).toBe('one twoone ');
+    expect(keys(t, 'ywP').lines[0]).toBe('one one two');
+    expect(keys(t, 'x2p').lines[0]).toBe('nooe two');
+    expect(keys(t, 'yy').modified).toBe(false);
+  });
+
+  test('. replays the last change with its count, or a new one', () => {
+    const t = open('a\nb\nc\nd\ne\nf\ng');
+    expect(keys(t, 'dd.').lines).toEqual(['c', 'd', 'e', 'f', 'g']);
+    expect(keys(t, '2dd.').lines).toEqual(['e', 'f', 'g']);
+    expect(keys(t, 'dd3.').lines).toEqual(['e', 'f', 'g']);
+    const typed = inputs(keys(open('x\ny'), 'A'), { text: '!' }, Esc);
+    const again = keys(keys(typed, 'j'), '.');
+    expect(again.lines).toEqual(['x!', 'y!']);
+    expect(keys(keys(open('abc'), 'x'), 'j.').lines[0]).toBe('c');
+    expect(keys(open('a'), '.').lines).toEqual(['a']);
+  });
+
+  test('u and :redo step through changes, with vim’s words at the ends', () => {
+    const t = open('a\nb\nc');
+    const two = keys(t, 'dddd');
+    expect(keys(two, 'u').lines).toEqual(['b', 'c']);
+    expect(keys(two, 'uu').lines).toEqual(['a', 'b', 'c']);
+    expect(keys(two, '2u').lines).toEqual(['a', 'b', 'c']);
+    expect(keys(two, 'uuu').message).toEqual({ kind: 'oldest' });
+    expect(state(command(keys(two, 'uu'), 'redo')).lines).toEqual(['b', 'c']);
+    expect(state(command(two, 'redo')).message).toEqual({ kind: 'newest' });
+    expect(inputs(keys(two, 'u'), { key: 'r', ctrl: true }).lines).toEqual(['c']);
+    expect(keys(two, 'u').modified).toBe(true);
+    expect(keys(two, 'uu').modified).toBe(false);
+    const fresh = keys(keys(two, 'u'), 'x');
+    expect(fresh.redo).toEqual([]);
+  });
+
+  test('at most 1,000 undo steps are kept', () => {
+    let e = open('a'.repeat(1100));
+    for (let times = 0; times < 1100; times += 1) e = keys(e, 'x');
+    expect(e.undo).toHaveLength(1000);
+  });
+
+  test('on a closed fold dd and yy take it whole; x and i open it first', () => {
+    const s2 = json();
+    expect(keys(s2, 'dd').lines).toEqual(['{', '  "a": "x",', '  "work": [', '    1,', '    2', '  ],', '  "z": {}', '}']);
+    expect(keys(s2, 'yy').register).toEqual({ text: '  "basics": {\n    "name": "N"\n  },', lines: true });
+    expect(keys(s2, 'x').closed.has('basics')).toBe(false);
+    expect(keys(s2, 'i').closed.has('basics')).toBe(false);
+    expect(keys(s2, 'o').lines[5]).toBe('');
+    expect(keys(s2, 'O').lines[2]).toBe('');
+    expect(keys(s2, 'yyp').lines.slice(5, 8)).toEqual(['  "basics": {', '    "name": "N"', '  },']);
+  });
+
+  test('folds follow the lines, keeping their closed state by key', () => {
+    const s2 = json();
+    const below = keys(keys(s2, 'k'), 'dd');
+    expect(below.folds.find((fold) => fold.key === 'basics')).toEqual({ key: 'basics', start: 1, end: 3 });
+    expect(below.closed.has('basics')).toBe(true);
+    expect(shownLines(below)).toEqual([0, 1, 4, 8, 9]);
+  });
+
+  test('{ point } moves the cursor in both modes; in insert it may sit past the end', () => {
+    const t = open('abc\ndef');
+    expect(at(inputs(t, { point: { line: 1, column: 9 } }))).toEqual([1, 2]);
+    expect(at(inputs(keys(t, 'i'), { point: { line: 1, column: 3 } }))).toEqual([1, 3]);
   });
 });
 
-describe('006-terminal-FR-064: :help and :q', () => {
-  test(':help opens the split; the first :q closes it, the second quits; :q! likewise', () => {
-    const help = apply(open(), ':', { submit: 'help' });
+describe('006-terminal-FR-080: writing', () => {
+  const written = (name: string, created = false) => ({ wrote: { id: 1, ok: true as const, path: `/home/guest/${name}`, created, lines: 1, bytes: 2, files: { folders: [], files: {}, bytes: 0 } } });
+  const changed = keys(open('a'), 'x');
+  const writeOf = (out: VimOutput) => {
+    if (out === 'quit' || !('write' in out)) throw new Error('expected a write');
+    return out;
+  };
+
+  test(':w, :w path, :w! path, :wq, :x and ZZ give { write, then }', () => {
+    expect(writeOf(command(changed, 'w'))).toMatchObject({ write: { path: FILE.path, text: '', force: true }, then: 'stay' });
+    const typed = inputs(keys(open('a'), 'A'), { text: 'b' }, Esc);
+    expect(writeOf(command(typed, 'w')).write.text).toBe('ab\n');
+    expect(writeOf(command(typed, 'w other'))).toMatchObject({ write: { path: 'other', force: false }, then: 'stay' });
+    expect(writeOf(command(typed, 'w! other'))).toMatchObject({ write: { path: 'other', force: true }, then: 'stay' });
+    expect(writeOf(command(typed, 'wq')).then).toBe('quit');
+    expect(writeOf(command(typed, 'x')).then).toBe('quit');
+    expect(writeOf(vimReducer(keys(typed, 'Z'), { key: 'Z' })).then).toBe('quit');
+  });
+
+  test(':x and ZZ only write when modified, else quit', () => {
+    expect(command(open('a'), 'x')).toBe('quit');
+    expect(vimReducer(keys(open('a'), 'Z'), { key: 'Z' })).toBe('quit');
+  });
+
+  test(':w with [No Name] gives E32', () => {
+    const noName = open('a', { name: '[No Name]', path: null, readonly: false, new: false });
+    expect(state(command(noName, 'w')).message).toEqual({ kind: 'vim', code: 'E32' });
+  });
+
+  test('{ wrote } ok names the message, clears modified for its own file, keeps it for a copy, quits after :wq', () => {
+    const own = state(vimReducer(writeOf(command(changed, 'w')).state, written('todo', true)));
+    expect(own.message).toEqual({ kind: 'written', name: 'todo', created: true, lines: 1, bytes: 2 });
+    expect(own.modified).toBe(false);
+    expect(own.source.file.new).toBe(false);
+    const copy = state(vimReducer(writeOf(command(changed, 'w ~/copy')).state, written('copy', true)));
+    expect(copy.modified).toBe(true);
+    expect(copy.source.file.name).toBe('todo');
+    expect(copy.message).toMatchObject({ kind: 'written', name: '~/copy' });
+    expect(vimReducer(writeOf(command(changed, 'wq')).state, written('todo'))).toBe('quit');
+  });
+
+  test('a [No Name] buffer takes the path as its name', () => {
+    const noName = keys(open('ab', { name: '[No Name]', path: null, readonly: false, new: false }), 'x');
+    const next = state(vimReducer(writeOf(command(noName, 'w notes')).state, written('notes', true)));
+    expect(next.source.file).toEqual({ name: 'notes', path: '/home/guest/notes', readonly: false, new: false });
+    expect(next.modified).toBe(false);
+  });
+
+  test('a failed write gives E13, E212 or E514, with the view open and the text kept', () => {
+    const fail = (error: 'exists' | 'cant-open' | 'full') => state(vimReducer(writeOf(command(changed, 'wq')).state, { wrote: { ok: false, error, path: 'todo' } }));
+    expect(fail('exists').message).toEqual({ kind: 'vim', code: 'E13' });
+    expect(fail('cant-open').message).toEqual({ kind: 'vim', code: 'E212', arg: 'todo' });
+    expect(fail('full').message).toEqual({ kind: 'vim', code: 'E514', arg: 'todo' });
+    expect(fail('full').modified).toBe(true);
+  });
+
+  test('keys pressed while a write is on its way keep the buffer modified, and :wq stays open', () => {
+    const sent = writeOf(command(keys(open('abc'), 'x'), 'w'));
+    expect(sent.write.text).toBe('bc\n');
+    const later = state(vimReducer(keys(sent.state, 'x'), written('todo')));
+    expect(text(later)).toBe('c');
+    expect(later.modified).toBe(true);
+    expect(state(command(later, 'q')).message).toEqual({ kind: 'vim', code: 'E37' });
+    const quitting = writeOf(command(keys(open('abc'), 'x'), 'wq'));
+    expect(state(vimReducer(keys(quitting.state, 'x'), written('todo'))).modified).toBe(true);
+  });
+
+  test('another name for the open file is the file itself, by the worker’s answer', () => {
+    const sent = writeOf(command(changed, 'w ./todo'));
+    expect(sent.write).toMatchObject({ path: './todo', force: false, own: FILE.path });
+    const own = state(vimReducer(sent.state, { wrote: { ...written('todo').wrote, own: true } }));
+    expect(own.modified).toBe(false);
+    expect(own.source.file.name).toBe('todo');
+    const ro = keys(open('a', { ...FILE, name: 'about', readonly: true }), 'x');
+    const refused = state(vimReducer(writeOf(command(ro, 'w ~/about')).state, { wrote: { ok: false, error: 'readonly', path: '/home/guest/about' } }));
+    expect(refused.message).toEqual({ kind: 'vim', code: 'E45' });
+  });
+});
+
+describe('006-terminal-FR-081: a read-only buffer', () => {
+  const ro = open('a\nb', { ...FILE, name: 'about', readonly: true });
+
+  test('it changes on screen, with W10 once at the first change', () => {
+    const first = keys(ro, 'x');
+    expect(first.message).toEqual({ kind: 'vim', code: 'W10' });
+    expect(first.lines[0]).toBe('');
+    const later = keys({ ...first, message: { kind: 'none' } }, 'j', 'x');
+    expect(later.message).toEqual({ kind: 'none' });
+    expect(inputs(keys(ro, 'i'), { text: 'z' }).message).toEqual({ kind: 'vim', code: 'W10' });
+    expect(keys(ro, 'i').message).toEqual({ kind: 'opened' });
+  });
+
+  test(':w, :wq and :x give E45 and no write; :w! tries; :w ~/copy writes the changed text', () => {
+    const edited = keys(ro, 'x');
+    for (const typed of ['w', 'wq', 'x']) expect(state(command(edited, typed)).message, typed).toEqual({ kind: 'vim', code: 'E45' });
+    const forced = command(edited, 'w!');
+    if (forced === 'quit' || !('write' in forced)) throw new Error('expected a write');
+    expect(forced.write).toMatchObject({ force: true });
+    const copy = command(edited, 'w ~/copy');
+    if (copy === 'quit' || !('write' in copy)) throw new Error('expected a write');
+    expect(copy.write).toMatchObject({ path: '~/copy', text: '\nb\n', force: false });
+  });
+});
+
+describe('006-terminal-FR-064 and 006-terminal-FR-061: the help split, and leaving', () => {
+  test(':help opens the split; the first :q closes it, the second quits, or gives E37 when modified; :q! always quits', () => {
+    const s = open('a');
+    const help = state(command(s, 'help'));
     expect(help.help).toBe(true);
-    const closed = apply(help, ':', { submit: 'q' });
+    const closed = state(command(help, 'q'));
     expect(closed.help).toBe(false);
-    expect(vimReducer(apply(closed, ':'), { submit: 'q' })).toBe('quit');
-    const bang = apply(open(), ':', { submit: 'help' }, ':', { submit: 'q!' });
-    expect(bang.help).toBe(false);
-    expect(vimReducer(apply(bang, ':'), { submit: 'q!' })).toBe('quit');
+    expect(command(closed, 'q')).toBe('quit');
+    const edited = keys(s, 'x');
+    expect(state(command(edited, 'q')).message).toEqual({ kind: 'vim', code: 'E37' });
+    expect(command(edited, 'q!')).toBe('quit');
+    expect(command(state(command(edited, 'help')), 'q!')).toBe('quit');
+  });
+
+  test('lineText reads the buffer', () => {
+    expect(lineText(open('a\nb'), 1)).toBe('b');
   });
 });

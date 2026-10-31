@@ -1,0 +1,139 @@
+// Parity with bash (006 SC-014, research R38): the Terminal's file system
+// for the real CV, written to a temporary folder, and the same command
+// lines run in the shell adapter and in real bash with GNU tools, from that
+// folder as HOME. Each line's stdout, stderr and status must be the same,
+// with bash's `bash: line N: ` prefix read as the shell's `bash: `.
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import type { FsNode } from '../../../src/apps/terminal/engine/files.ts';
+import { fileText } from '../../../src/apps/terminal/shell/fs.ts';
+import { runLine, shellFor, treeFor } from './context.ts';
+
+const INSTALL = 'brew install bash coreutils grep gnu-sed gawk findutils diffutils, then put bash and each gnubin folder first on PATH';
+
+// Whether bash and grep on PATH are GNU's, and bash at least 5.
+function gnuMissing(): string | null {
+  const bash = spawnSync('bash', ['--version'], { encoding: 'utf8' });
+  const grep = spawnSync('grep', ['--version'], { encoding: 'utf8' });
+  if (!/^GNU bash, version [5-9]/.test(bash.stdout ?? '')) return `bash on PATH is not GNU bash 5 (${(bash.stdout ?? '').split('\n')[0] || 'not found'})`;
+  if (!/GNU grep/.test(grep.stdout ?? '')) return 'grep on PATH is not GNU grep';
+  return null;
+}
+
+// Fails a case, saying what to install, when the tools aren't GNU's.
+function requireGnu() {
+  const missing = gnuMissing();
+  if (missing !== null) throw new Error(`the bash parity test needs bash 5 and the GNU tools: ${missing}. On macOS: ${INSTALL}.`);
+}
+
+// The lines, each covering a feature of FR-067 or a command of FR-068. None
+// depends on stdout and stderr interleaving (G3), on jq's errors (G12), on
+// a protected file's owner or mode (FR-049), or on capitals in a name
+// (FR-045). `ls` and `grep -r` list in their own orders, so a listing is
+// counted or sorted.
+const LINES: readonly string[] = [
+  'grep -ril rest ~/work | sort',
+  'ls | wc -l',
+  'cat about | tr a-z A-Z | head -3',
+  'for f in ~/work/*; do wc -l < "$f"; done',
+  'sed -n 2p skills',
+  "awk '{print $1}' languages",
+  "find ~ -name '*.json'",
+  'X=1; f() { echo $((X+1)); }; f',
+  'diff about contact',
+  'echo a; echo b',
+  'true && echo yes || echo no; false || echo again',
+  `echo 'single $HOME' "double $USER"`,
+  'echo a\\ b \\$HOME',
+  'V=x; echo ${V}y ${NOPE:-default}',
+  "export E=1; env | grep '^E='",
+  'false; echo $?',
+  'echo ~/w* ~/s?ills ~/[a]bout',
+  'echo one > notes; echo two >> notes; cat notes; rm notes',
+  'cat nowhere 2> errors; cat errors; rm errors',
+  'cat nowhere 2>&1 | wc -l',
+  'tr a-z A-Z < about | head -1',
+  'if [ -d work ]; then echo folder; else echo file; fi',
+  'for n in 1 2 3; do echo "n$n"; done',
+  'i=0; while [ $i -lt 3 ]; do i=$((i+1)); done; echo $i',
+  'i=0; until [ $i -ge 3 ]; do i=$((i+1)); done; echo $i',
+  "printf '%s-%d\\n' a 1 b 2",
+  'head -2 about; tail -1 about',
+  'sort languages | uniq | wc -l',
+  'cut -c1-5 about | head -2',
+  'cp about copy; mv copy moved; head -1 moved; rm moved',
+  'mkdir made; touch made/x; ls made; rm -r made',
+  'echo x | tee kept; cat kept; rm kept',
+  'ls | xargs echo | wc -w',
+  'seq 3; seq 2 2 6',
+  'basename ~/work/x.txt .txt; dirname /a/b/c',
+  'yes | head -2',
+  'echo "$SHELL $USER $LOGNAME"',
+  'which ls > /dev/null; echo $?',
+  'date -u -d @0 +%Y',
+  'grep -c . about; wc -w < skills',
+  'cat nowhere; echo "status $?"',
+  'cd work; pwd; cd ..; pwd',
+];
+
+let root = '';
+let home = '';
+
+// The file system of the real CV under `home`, protected files read-only.
+function writeTree() {
+  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cv-parity-')));
+  home = path.join(root, 'home', 'guest');
+  fs.mkdirSync(home, { recursive: true });
+  const folders: string[] = [];
+  const walk = (node: FsNode, at: string) => {
+    if (node.kind === 'file') {
+      fs.writeFileSync(at, fileText(node));
+      fs.chmodSync(at, 0o444);
+      return;
+    }
+    fs.mkdirSync(at);
+    for (const child of node.children) walk(child, path.join(at, child.name));
+    folders.push(at);
+  };
+  for (const child of treeFor().fs.children) walk(child, path.join(home, child.name));
+  for (const folder of folders) fs.chmodSync(folder, 0o555);
+}
+
+// bash's output with the temporary folder read as `/`, and its messages'
+// `bash: line N: ` prefix as the shell's `bash: `.
+const asShell = (text: string) => text.replaceAll(root, '').replace(/^bash: line \d+: /gm, 'bash: ');
+
+function inBash(line: string) {
+  const env = { PATH: process.env.PATH ?? '', HOME: home, USER: 'guest', LOGNAME: 'guest', SHELL: '/bin/bash', LC_ALL: 'C.UTF-8' };
+  const result = spawnSync('bash', ['-c', line], { cwd: home, env, encoding: 'utf8' });
+  return { stdout: asShell(result.stdout), stderr: asShell(result.stderr), status: result.status };
+}
+
+beforeAll(() => {
+  if (gnuMissing() === null) writeTree();
+});
+
+afterAll(() => {
+  if (root === '') return;
+  // Read-only folders first made writable again, so they can be removed.
+  for (const entry of fs.readdirSync(root, { recursive: true, withFileTypes: true })) if (entry.isDirectory()) fs.chmodSync(path.join(entry.parentPath, entry.name), 0o755);
+  fs.chmodSync(path.join(root, 'home', 'guest'), 0o755);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+describe('006-terminal-FR-067 and 006-terminal-FR-068: the shell gives what bash with GNU tools gives (SC-014)', () => {
+  test('at least 30 lines', () => {
+    expect(LINES.length).toBeGreaterThanOrEqual(30);
+  });
+
+  test.each(LINES)('%s', async (line) => {
+    requireGnu();
+    const shell = shellFor();
+    const ours = await runLine(shell, line);
+    const theirs = inBash(line);
+    expect({ stdout: ours.stdout, stderr: ours.stderr, status: ours.status }).toEqual(theirs);
+  });
+});

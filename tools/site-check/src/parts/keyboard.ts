@@ -3,10 +3,10 @@
 // show a focus indicator of 3:1 or more against the same pixels unfocused,
 // and not be covered by other content when focused.
 import zlib from 'node:zlib';
-import type { Page } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 import { tokenValue } from '@cv/tokens';
 import type { Problem } from '../report.ts';
-import { INSPECTOR, SHELL, TERMINAL, settle } from '../shell-states.ts';
+import { INSPECTOR, SHELL, TERMINAL, openTerminal, settle, shown, typeLine, vimEntry, vimKeys, waitForShell } from '../shell-states.ts';
 import type { InspectorView } from '../shell-states.ts';
 
 export type Box = { x: number; y: number; width: number; height: number };
@@ -343,6 +343,9 @@ type StepOptions = {
   // as typing into it would: the Terminal keeps a new output's start in
   // view, so its command line may be below (006 FR-019).
   reveal?: boolean;
+  // What else the step must show once focus has landed: each problem's type
+  // and detail, named by the step.
+  check?: () => Promise<{ type: string; detail: string }[]>;
 };
 
 function flow(page: Page, pageLabel: string, variant: string): Flow {
@@ -351,7 +354,7 @@ function flow(page: Page, pageLabel: string, variant: string): Flow {
   let number = 0;
   return {
     problems,
-    step: async (label, { keys = [], act, done, failed, target, targetName, inside = false, indicator = true, reveal = false }) => {
+    step: async (label, { keys = [], act, done, failed, target, targetName, inside = false, indicator = true, reveal = false, check }) => {
       number += 1;
       const name = `step ${number} "${label}"`;
       for (const key of keys) await page.keyboard.press(key);
@@ -371,6 +374,7 @@ function flow(page: Page, pageLabel: string, variant: string): Flow {
         const wrong = await indicatorProblem(page);
         if (wrong !== null) problem('no-focus-indicator', name, `${wrong} (${await describeFocus(page)})`);
       }
+      for (const { type, detail } of (await check?.()) ?? []) problem(type, name, detail);
       return true;
     },
   };
@@ -548,7 +552,10 @@ export async function terminalKeyboardProblems(page: Page, pageLabel: string, va
   const { problems, step } = flow(page, pageLabel, variant);
   const S = SHELL;
   const T = TERMINAL;
-  const lineName = "the Terminal's command line";
+  // The command line has no box: its cursor is its focus indicator, filled
+  // with focus and hollow without (FR-072, research R36), so a step that
+  // lands there checks the cursor instead of a change around the field.
+  const atLine = { target: T.commandLine, targetName: "the Terminal's command line", indicator: false, check: () => filledCursor(page) };
   const toTerminalItem = async () => void ((await focusOn(page, S.terminalDockItem)) || (await page.keyboard.press('ArrowRight')));
   const vimName = "the vim view's text";
   const runs = () => count(page, T.run);
@@ -556,7 +563,9 @@ export async function terminalKeyboardProblems(page: Page, pageLabel: string, va
   const lineValue = () => page.locator(T.commandLine).inputValue();
   const cursorFold = (expanded: boolean) => count(page, `${T.vimLine}:has(.vim-cursor) button.vim-fold[aria-expanded="${expanded}"]`);
   const typed = (line: string) => async () => {
-    await page.keyboard.press('ControlOrMeta+a');
+    // The line's text selected, so the typed line replaces it.
+    await pressLinux(page, 'Home');
+    await pressLinux(page, 'Shift+End');
     await page.keyboard.type(line);
     await page.keyboard.press('Enter');
   };
@@ -566,41 +575,395 @@ export async function terminalKeyboardProblems(page: Page, pageLabel: string, va
     if (!(await step('reach the CV window', { act: () => tabTo(page, S.cvWindow, FIRST_PRESSES, true), target: S.cvWindow, targetName: `the CV window within ${FIRST_PRESSES} presses of Tab`, inside: true }))) return;
     if (!(await step('close the CV window', { keys: ['Alt+Shift+W'], done: async () => (await count(page, S.cvWindow)) === 0, failed: { subject: 'Alt+Shift+W', detail: 'the CV window did not close' }, target: S.cvDockItem, targetName: 'the CV dock item' }))) return;
     if (!(await step("move to the Terminal's dock item", { act: toTerminalItem, target: S.terminalDockItem, targetName: "the Terminal's dock item" }))) return;
-    if (!(await step('open the Terminal', { keys: ['Enter'], done: () => visible(page, T.commandLine), failed: { subject: 'Enter', detail: "the Terminal's dock item did not open the Terminal" }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('open the Terminal', { keys: ['Enter'], done: () => visible(page, T.commandLine), failed: { subject: 'Enter', detail: "the Terminal's dock item did not open the Terminal" }, ...atLine }))) return;
     const before = await runs();
-    if (!(await step('run help', { act: typed('help'), done: async () => (await runs()) > before && (await lastLine()) === 'help', failed: { subject: 'help Enter', detail: 'help did not run' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('run help', { act: typed('help'), done: async () => (await runs()) > before && (await lastLine()) === 'help', failed: { subject: 'help Enter', detail: 'help did not run' }, ...atLine }))) return;
     // Back from the command line through help's controls to `about`'s.
     const reached = await until(async () => {
       if (await focusOn(page, `${T.run} button[aria-label="about"]`)) return true;
       await page.keyboard.press('Shift+Tab');
       return false;
-    }, 10_000);
+      // About 140 presses, with `until`'s 50 ms between them: 7 s when idle.
+    }, 30_000);
     if (!reached) {
       problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'focus-target', subject: 'Shift+Tab', detail: `focus went to ${await describeFocus(page)}, expected about's control in help's output` });
       return;
     }
-    if (!(await step("run about from help's output", { keys: ['Enter'], done: async () => (await lastLine()) === 'about', failed: { subject: 'Enter', detail: "about's control did not run about" }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
-    if (!(await step('recall it with Up', { keys: ['ArrowUp'], done: async () => (await lineValue()) === 'about', failed: { subject: 'ArrowUp', detail: 'Up did not recall about' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step("run about from help's output", { keys: ['Enter'], done: async () => (await lastLine()) === 'about', failed: { subject: 'Enter', detail: "about's control did not run about" }, ...atLine }))) return;
+    if (!(await step('recall it with Up', { keys: ['ArrowUp'], done: async () => (await lineValue()) === 'about', failed: { subject: 'ArrowUp', detail: 'Up did not recall about' }, ...atLine }))) return;
     if (!(await step('run cv', { act: typed('cv'), done: () => visible(page, T.vimText), failed: { subject: 'cv Enter', detail: 'cv did not open the vim view' }, target: T.vimText, targetName: vimName }))) return;
     const moved = async () => {
       for (let presses = 0; presses < 50 && (await cursorFold(false)) === 0; presses += 1) await page.keyboard.press('j');
     };
     if (!(await step('move with j to a fold', { act: moved, done: async () => (await cursorFold(false)) === 1, failed: { subject: 'j', detail: 'j did not reach a closed fold' }, target: T.vimText, targetName: vimName }))) return;
     if (!(await step('open the fold with za', { keys: ['z', 'a'], done: async () => (await cursorFold(true)) === 1, failed: { subject: 'za', detail: 'za did not open the fold' }, target: T.vimText, targetName: vimName }))) return;
-    if (!(await step('leave the vim view with :q', { keys: [':', 'q', 'Enter'], done: () => visible(page, T.commandLine), failed: { subject: ':q Enter', detail: ':q did not leave the vim view' }, target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('leave the vim view with :q', { keys: [':', 'q', 'Enter'], done: () => visible(page, T.commandLine), failed: { subject: ':q Enter', detail: ':q did not leave the vim view' }, ...atLine }))) return;
     await page.keyboard.press('Tab');
     if (await until(() => focusOn(page, T.commandLine).then((on) => !on), 500).then((left) => !left)) {
       problems.push({ part: 'keyboard', page: pageLabel, variant, type: 'trapped', subject: 'input.command-line', detail: "Tab didn't move focus out of the command line" });
       return;
     }
-    if (!(await step('come back with Shift+Tab', { keys: ['Shift+Tab'], target: T.commandLine, targetName: lineName, reveal: true }))) return;
+    if (!(await step('come back with Shift+Tab', { keys: ['Shift+Tab'], ...atLine }))) return;
     if (!(await step('go to the dock again', { keys: ['Alt+Shift+D'], done: () => focusIn(page, '#os .dock'), failed: { subject: 'Alt+Shift+D', detail: 'focus did not move to the dock' }, target: '#os .dock', targetName: 'the dock', inside: true }))) return;
     if (!(await step("move to the Terminal's dock item again", { act: toTerminalItem, target: S.terminalDockItem, targetName: "the Terminal's dock item" }))) return;
-    if (!(await step('back to the Terminal', { keys: ['Enter'], target: T.commandLine, targetName: lineName, reveal: true }))) return;
-    await step('exit', { act: typed('exit'), done: async () => (await count(page, S.terminalWindow)) === 0, failed: { subject: 'exit Enter', detail: 'exit did not close the Terminal' }, target: S.terminalDockItem, targetName: 'the Terminal dock item' });
+    if (!(await step('back to the Terminal', { keys: ['Enter'], ...atLine }))) return;
+    if (!(await step('exit', { act: typed('exit'), done: async () => (await count(page, S.terminalWindow)) === 0, failed: { subject: 'exit Enter', detail: 'exit did not close the Terminal' }, target: S.terminalDockItem, targetName: 'the Terminal dock item' }))) return;
+    // The added steps start from the Terminal's dock item; when `exit` sent
+    // focus elsewhere, that step has said so already.
+    if (await focusOn(page, S.terminalDockItem)) await commandLineSteps(page, step);
   };
   await run();
   return problems;
+}
+
+// ---- The command line's cursor and keys (006 FR-039, FR-072, FR-074,
+// FR-075, SC-015; contracts/cli.md `keyboard`, added 2026-10-29) -----------
+
+// The flow's page reports Linux, so the command line takes Linux's keys.
+export async function asLinux(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Linux x86_64', configurable: true });
+    Object.defineProperty(Navigator.prototype, 'userAgentData', { get: () => ({ platform: 'Linux', mobile: false, brands: [] }), configurable: true });
+  });
+}
+
+// Playwright gives a key the editing command of the machine it runs on, not
+// of the page's platform: on a Mac, Home and End scroll and Ctrl+Left does
+// nothing in a field. There these keys are sent through CDP with the command
+// Chromium gives them on Linux, or none where the Terminal takes the key;
+// elsewhere they are pressed as they are.
+const MAC_HOST = process.platform === 'darwin';
+
+type LinuxKey = { key: string; code: string; keyCode: number; modifiers: number; command?: string };
+
+const CTRL = 2;
+
+const SHIFT = 8;
+
+const LINUX_KEYS: Record<string, LinuxKey> = {
+  Home: { key: 'Home', code: 'Home', keyCode: 36, modifiers: 0, command: 'moveToBeginningOfLine' },
+  End: { key: 'End', code: 'End', keyCode: 35, modifiers: 0, command: 'moveToEndOfLine' },
+  'Shift+End': { key: 'End', code: 'End', keyCode: 35, modifiers: SHIFT, command: 'moveToEndOfLineAndModifySelection' },
+  'Control+ArrowLeft': { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37, modifiers: CTRL, command: 'moveWordLeft' },
+  'Control+ArrowRight': { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39, modifiers: CTRL, command: 'moveWordRight' },
+  'Control+Backspace': { key: 'Backspace', code: 'Backspace', keyCode: 8, modifiers: CTRL, command: 'deleteWordBackward' },
+  'Control+A': { key: 'a', code: 'KeyA', keyCode: 65, modifiers: CTRL },
+  'Control+C': { key: 'c', code: 'KeyC', keyCode: 67, modifiers: CTRL },
+};
+
+export async function pressLinux(page: Page, name: string): Promise<void> {
+  const key = LINUX_KEYS[name];
+  if (!MAC_HOST || key === undefined) return page.keyboard.press(name);
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    const event = { key: key.key, code: key.code, windowsVirtualKeyCode: key.keyCode, modifiers: key.modifiers };
+    await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...event, ...(key.command === undefined ? {} : { commands: [key.command] }) });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...event });
+  } finally {
+    await cdp.detach();
+  }
+}
+
+type Found = { type: string; detail: string };
+
+// The command line's cursor as drawn, read with its blink held at the start
+// (the filled half) so a blink's other half isn't taken for hollow; and any
+// outline or border on the line or its field.
+function cursorLook(page: Page) {
+  return page.evaluate(([mirrorSelector, lineSelector]) => {
+    const mirror = document.querySelector(mirrorSelector);
+    const block = mirror?.querySelector<HTMLElement>('.cursor-block');
+    const line = document.querySelector<HTMLElement>(lineSelector);
+    if (mirror === null || mirror === undefined || block === null || block === undefined || line === null) return null;
+    const animations = block.getAnimations();
+    const times = animations.map((animation) => animation.currentTime);
+    for (const animation of animations) {
+      animation.pause();
+      animation.currentTime = 0;
+    }
+    const style = getComputedStyle(block);
+    const painted = (color: string) => color !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(color);
+    const filled = painted(style.backgroundColor);
+    const hollow = !filled && style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0;
+    animations.forEach((animation, index) => {
+      animation.currentTime = times[index] ?? 0;
+      animation.play();
+    });
+    const edge = (element: HTMLElement | null): string | null => {
+      if (element === null) return null;
+      const box = getComputedStyle(element);
+      if (box.outlineStyle !== 'none' && Number.parseFloat(box.outlineWidth) > 0) return `an outline (${box.outlineStyle} ${box.outlineWidth})`;
+      const side = ['top', 'right', 'bottom', 'left'].find((name) => Number.parseFloat(box.getPropertyValue(`border-${name}-width`)) > 0 && box.getPropertyValue(`border-${name}-style`) !== 'none');
+      return side === undefined ? null : `a border (${box.getPropertyValue(`border-${side}-style`)} ${box.getPropertyValue(`border-${side}-width`)})`;
+    };
+    return { focused: mirror.hasAttribute('data-focused'), filled, hollow, edge: edge(line) ?? edge(line.closest<HTMLElement>('.command-field')) };
+  }, [TERMINAL.cursorMirror, TERMINAL.commandLine] as const);
+}
+
+// With focus in the command line: the cursor filled, and no box (SC-015).
+async function filledCursor(page: Page): Promise<Found[]> {
+  const look = await cursorLook(page);
+  if (look === null) return [{ type: 'cursor', detail: 'the command line draws no cursor' }];
+  const found: Found[] = [];
+  if (!look.focused || !look.filled) found.push({ type: 'cursor', detail: 'the cursor is not filled with focus in the command line' });
+  if (look.edge !== null) found.push({ type: 'outline', detail: `the focused command line has ${look.edge}` });
+  return found;
+}
+
+// Focus elsewhere: the cursor hollow, and still no box.
+async function hollowCursor(page: Page): Promise<Found[]> {
+  const look = await cursorLook(page);
+  if (look === null) return [{ type: 'cursor', detail: 'the command line draws no cursor' }];
+  const found: Found[] = [];
+  if (look.focused || look.filled) found.push({ type: 'cursor', detail: 'the cursor stays filled after Tab left the command line' });
+  else if (!look.hollow) found.push({ type: 'cursor', detail: 'the cursor is not hollow after Tab left the command line' });
+  if (look.edge !== null) found.push({ type: 'outline', detail: `the command line has ${look.edge} without focus` });
+  return found;
+}
+
+// The field's text and caret, and where the mirror draws its cursor: the
+// length of the text before its block.
+const field = (page: Page) =>
+  page.locator(TERMINAL.commandLine).evaluate((input: HTMLInputElement) => {
+    const mirror = input.parentElement?.querySelector('.cursor-mirror');
+    let cursor = 0;
+    for (const node of mirror?.childNodes ?? []) {
+      if (node instanceof Element && node.classList.contains('cursor-block')) break;
+      cursor += node.textContent?.length ?? 0;
+    }
+    const caret = input.selectionDirection === 'backward' ? input.selectionStart : input.selectionEnd;
+    return { value: input.value, caret: caret ?? input.value.length, cursor };
+  });
+
+// The line the key steps edit, and where FR-074's Linux keys put the caret
+// in it: Ctrl+Right at the first word's end, Ctrl+Left at the last word's
+// start.
+const LINE = 'cat cv.json | jq';
+
+async function caretProblems(page: Page, key: string, at: number, value = LINE): Promise<Found[]> {
+  const now = await field(page);
+  const found: Found[] = [];
+  if (now.value !== value) found.push({ type: 'line-key', detail: `${key} left ${JSON.stringify(now.value)} in the command line, expected ${JSON.stringify(value)}` });
+  else if (now.caret !== at) found.push({ type: 'line-key', detail: `${key} put the caret at ${now.caret}, expected ${at}` });
+  if (now.cursor !== now.caret) found.push({ type: 'line-key', detail: `the cursor is drawn at ${now.cursor}, the caret is at ${now.caret}` });
+  return found;
+}
+
+// The page's selection after select all: its text, and the first element
+// outside the Terminal's screen it takes in.
+const selected = (page: Page) =>
+  page.evaluate((screenSelector) => {
+    const selection = document.getSelection();
+    const screen = document.querySelector(screenSelector);
+    if (selection === null || selection.isCollapsed || screen === null) return { text: '', outside: null };
+    const describe = (element: Element) => `${element.tagName.toLowerCase()}${element.classList.length === 0 ? '' : `.${element.classList[0]}`}`;
+    for (const element of document.querySelectorAll('body *')) {
+      if (screen.contains(element) || element.contains(screen) || (element.textContent ?? '').trim() === '') continue;
+      if (selection.containsNode(element, true)) return { text: selection.toString(), outside: describe(element) };
+    }
+    return { text: selection.toString(), outside: null };
+  }, TERMINAL.screen);
+
+// The steps after `exit`: the Terminal opened again from its dock item,
+// where focus is; then its cursor with focus and without, the line's Linux
+// keys, select all and Ctrl+C. Each step with focus in the command line
+// checks its cursor is filled with no box around the line (SC-015).
+async function commandLineSteps(page: Page, step: Flow['step']): Promise<void> {
+  const T = TERMINAL;
+  const lineName = "the Terminal's command line";
+  const inLine = (label: string, options: Omit<StepOptions, 'target' | 'targetName'> & { also?: () => Promise<Found[]> }) =>
+    step(label, {
+      ...options,
+      target: T.commandLine,
+      targetName: lineName,
+      indicator: false,
+      check: async () => [...(await filledCursor(page)), ...((await options.also?.()) ?? [])],
+    });
+  const key = (name: string) => () => pressLinux(page, name);
+  if (!(await inLine('open the Terminal again', { keys: ['Enter'], done: () => visible(page, T.commandLine), failed: { subject: 'Enter', detail: "the Terminal's dock item did not open the Terminal" } }))) return;
+  if (
+    !(await step('leave the command line with Tab', {
+      keys: ['Tab'],
+      done: async () => !(await focusOn(page, T.commandLine)),
+      failed: { subject: 'Tab', detail: "Tab didn't move focus out of the command line" },
+      target: '#os',
+      targetName: 'the next control after the command line',
+      inside: true,
+      check: () => hollowCursor(page),
+    }))
+  )
+    return;
+  if (!(await inLine('come back with Shift+Tab', { keys: ['Shift+Tab'] }))) return;
+  if (!(await inLine('type a line', { act: () => page.keyboard.type(LINE), also: () => caretProblems(page, 'typing', LINE.length) }))) return;
+  if (!(await inLine('Home', { act: key('Home'), also: () => caretProblems(page, 'Home', 0) }))) return;
+  if (!(await inLine('Ctrl+Right', { act: key('Control+ArrowRight'), also: () => caretProblems(page, 'Ctrl+Right', LINE.indexOf(' ')) }))) return;
+  if (!(await inLine('End', { act: key('End'), also: () => caretProblems(page, 'End', LINE.length) }))) return;
+  if (!(await inLine('Ctrl+Left', { act: key('Control+ArrowLeft'), also: () => caretProblems(page, 'Ctrl+Left', LINE.lastIndexOf(' ') + 1) }))) return;
+  const shorter = LINE.slice(0, LINE.lastIndexOf(' ') + 1);
+  if (!(await inLine('Ctrl+Backspace at the end', { act: async () => (await key('End')(), await key('Control+Backspace')()), also: () => caretProblems(page, 'Ctrl+Backspace', shorter.length, shorter) }))) return;
+  if (
+    !(await inLine('select all with Ctrl+A', {
+      act: key('Control+A'),
+      also: async () => {
+        const { text, outside } = await selected(page);
+        if (text.trim() === '') return [{ type: 'select-all', detail: 'Ctrl+A selected nothing' }];
+        return outside === null ? [] : [{ type: 'select-all', detail: `Ctrl+A selected text outside the Terminal, in ${outside}` }];
+      },
+    }))
+  )
+    return;
+  // A letter first clears select all's selection, so Ctrl+C has nothing
+  // selected to copy.
+  const typedLine = `${shorter}x`;
+  const before = await count(page, T.run);
+  await inLine('Ctrl+C on a typed line', {
+    act: async () => {
+      await page.keyboard.type('x');
+      await pressLinux(page, 'Control+C');
+    },
+    also: async () => {
+      const added = await until(async () => (await count(page, T.run)) > before);
+      const last = page.locator(T.run).last();
+      if (!added || (await last.locator('.run-line').textContent()) !== typedLine || (await last.locator('.run-cancel').count()) === 0) return [{ type: 'cancel', detail: `Ctrl+C added no run of ${JSON.stringify(typedLine)} ending in ^C` }];
+      const left = await page.locator(T.commandLine).inputValue();
+      return left === '' ? [] : [{ type: 'cancel', detail: `the command line still holds ${JSON.stringify(left)} after Ctrl+C` }];
+    },
+  });
+  await tabAndVimSteps(page, step, inLine);
+}
+
+// ---- Tab and the editor (006 FR-039, SC-016; contracts/cli.md `keyboard`,
+// added 2026-10-30) ----------------------------------------------------------
+
+const TYPED = 'ship it';
+
+// Whether the next Tab reaches the browser, and where it goes. The listener is
+// on the page before the key is sent: on a busy page a key overtakes an
+// evaluate still on its way, and the listener would wait for ever.
+const nextTabTaken = async (page: Page) => {
+  await page.evaluate(() => {
+    (window as unknown as { tabTaken: Promise<boolean> }).tabTaken = new Promise<boolean>((resolve) => {
+      window.addEventListener('keydown', (event) => event.key === 'Tab' && resolve(event.defaultPrevented), { once: true });
+    });
+  });
+  await page.keyboard.press('Tab');
+  return page.evaluate(() => (window as unknown as { tabTaken: Promise<boolean> }).tabTaken);
+};
+
+// A state with focus in the command line or the vim view, on a fresh page.
+const LEAVING: { name: string; element: string; reach: (page: Page) => Promise<void> }[] = [
+  { name: 'an empty line', element: TERMINAL.commandLine, reach: async (page) => page.locator(TERMINAL.commandLine).focus() },
+  {
+    name: 'a typed line',
+    element: TERMINAL.commandLine,
+    reach: async (page) => {
+      await page.locator(TERMINAL.commandLine).focus();
+      await page.keyboard.type('ls');
+    },
+  },
+  {
+    name: 'the vim text',
+    element: TERMINAL.vimText,
+    reach: async (page) => {
+      await typeLine(page, 'vim todo');
+      await shown(page, TERMINAL.vimText);
+      await page.locator(TERMINAL.vimText).focus();
+    },
+  },
+  {
+    name: 'insert mode',
+    element: TERMINAL.vimInsert,
+    reach: async (page) => {
+      await typeLine(page, 'vim todo');
+      await shown(page, TERMINAL.vimText);
+      await vimKeys(page, ['i']);
+      await shown(page, TERMINAL.vimInsert);
+    },
+  },
+];
+
+// SC-016: from each state, Escape then Tab, and Shift+Tab, take focus out in
+// at most two keys and one, and the next Tab isn't taken (research R50).
+async function leavingProblems(page: Page): Promise<Found[]> {
+  const found: Found[] = [];
+  for (const state of LEAVING) {
+    for (const keys of [['Escape', 'Tab'], ['Shift+Tab']]) {
+      const fresh = await page.context().newPage();
+      try {
+        await fresh.goto(page.url(), { waitUntil: 'load' });
+        await waitForShell(fresh);
+        await openTerminal(fresh, 'desktop');
+        await state.reach(fresh);
+        await settle(fresh);
+        for (const key of keys) await fresh.keyboard.press(key);
+        const said = keys.join(' then ');
+        if (await focusOn(fresh, state.element)) {
+          found.push({ type: 'trapped', detail: `${said} left focus in ${state.name}` });
+          continue;
+        }
+        if (await nextTabTaken(fresh)) found.push({ type: 'trapped', detail: `after ${said} from ${state.name}, the next Tab was taken` });
+      } finally {
+        await fresh.close();
+      }
+    }
+  }
+  return found;
+}
+
+// After Ctrl+C: Tab completes, the ways out of the command line and of insert
+// mode leave it, and a line typed in vim reaches its file by `:wq`.
+async function tabAndVimSteps(page: Page, step: Flow['step'], inLine: (label: string, options: Omit<StepOptions, 'target' | 'targetName'> & { also?: () => Promise<Found[]> }) => Promise<boolean>): Promise<void> {
+  const T = TERMINAL;
+  const value = () => page.locator(T.commandLine).inputValue();
+  const out = (label: string, keys: string[], from: string, what: string, also: () => Promise<Found[]> = async () => []) =>
+    step(label, {
+      keys,
+      target: '#os',
+      targetName: 'the next control',
+      inside: true,
+      indicator: false,
+      check: async () => ((await focusOn(page, from)) ? [{ type: 'trapped', detail: `focus stayed in ${what}` }] : await also()),
+    });
+  const clear = async () => {
+    await page.locator(T.commandLine).focus();
+    await page.locator(T.commandLine).fill('');
+  };
+  await clear();
+  if (
+    !(await inLine('Tab completes', {
+      act: async () => {
+        await page.keyboard.type('ab');
+        await page.keyboard.press('Tab');
+      },
+      also: async () => ((await until(async () => (await value()) === 'about ')) ? [] : [{ type: 'line-key', detail: `Tab left the line as ${JSON.stringify(await value())}, expected "about "` }]),
+    }))
+  )
+    return;
+  if (!(await out('Escape then Tab', ['Escape', 'Tab'], T.commandLine, 'the command line', async () => ((await value()) === 'about ' ? [] : [{ type: 'line-key', detail: `Escape then Tab changed the line to ${JSON.stringify(await value())}` }])))) return;
+  await clear();
+  if (!(await out('Tab on an empty line', ['Tab'], T.commandLine, 'the command line'))) return;
+  await page.locator(T.commandLine).focus();
+  if (!(await step('vim todo', { act: () => page.keyboard.type('vim todo\n'), done: () => visible(page, T.vimText), failed: { subject: 'vim todo', detail: 'the vim view did not open' }, target: T.vimText, targetName: "the vim view's text", indicator: false }))) return;
+  if (!(await step('i enters insert mode', { keys: ['i'], done: () => visible(page, T.vimInsert), failed: { subject: 'i', detail: 'i did not open the text area' }, target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await step('type a line', { act: () => page.keyboard.type(TYPED), target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await out('Shift+Tab in insert mode', ['Shift+Tab'], T.vimInsert, 'insert mode'))) return;
+  if (!(await step('back in insert mode', { act: async () => page.locator(T.vimInsert).focus(), target: T.vimInsert, targetName: "the vim view's text area", indicator: false }))) return;
+  if (!(await step('Escape to normal mode', { keys: ['Escape'], target: T.vimText, targetName: "the vim view's text", indicator: false }))) return;
+  if (!(await step(':wq', { act: () => vimEntry(page, ':', 'wq'), done: () => visible(page, T.commandLine), failed: { subject: ':wq', detail: ':wq did not close the view' }, target: T.commandLine, targetName: "the Terminal's command line", indicator: false }))) return;
+  const before = await count(page, T.run);
+  await inLine('cat the file', {
+    act: async () => {
+      await page.keyboard.type('cat todo');
+      await page.keyboard.press('Enter');
+    },
+    also: async () => {
+      const added = await until(async () => (await count(page, T.run)) > before && (await count(page, T.busyRun)) === 0);
+      const shownOutput = page.locator(T.run).last().locator('.run-output');
+      const output = added && (await shownOutput.count()) > 0 ? await shownOutput.textContent() : null;
+      return output?.trim() === TYPED ? [] : [{ type: 'not-written', detail: `cat todo prints ${JSON.stringify(output?.trim() ?? '')} after :wq, where it should print "${TYPED}"` }];
+    },
+  });
+  await inLine('Escape then Tab, and Shift+Tab, from every state', { also: () => leavingProblems(page) });
 }
 
 // ---- The inspector (007 FR-032) ----------------------------------------------
@@ -672,7 +1035,7 @@ export async function inspectorKeyboardProblems(page: Page, pageLabel: string, v
       await pressTo('ArrowRight', SHELL.terminalDockItem, 5)();
       await page.keyboard.press('Enter');
     };
-    if (!(await step('open the Terminal', { act: openTerminal, done: () => visible(page, TERMINAL.commandLine), failed: { subject: 'Alt+Shift+D', detail: 'the dock did not open the Terminal' }, target: TERMINAL.commandLine, targetName: "the Terminal's command line", reveal: true }))) return;
+    if (!(await step('open the Terminal', { act: openTerminal, done: () => visible(page, TERMINAL.commandLine), failed: { subject: 'Alt+Shift+D', detail: 'the dock did not open the Terminal' }, target: TERMINAL.commandLine, targetName: "the Terminal's command line", reveal: true, indicator: false, check: () => filledCursor(page) }))) return;
     if (!(await step("reach the Terminal's Show specs", { act: pressTo('Shift+Tab', I.showSpecs('terminal', 'desktop')), target: I.showSpecs('terminal', 'desktop'), targetName: "the Terminal window's Show specs" }))) return;
     if (!(await show('terminal'))) return;
     if (!(await leave('terminal'))) return;
