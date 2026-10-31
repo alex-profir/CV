@@ -22,6 +22,22 @@ import { useFrameBatch } from './frame-batch.ts';
 // opens (FR-040).
 export const windowTitleId = (view: string) => `window-title-${view}`;
 
+// Cancels text selection until the pointer is released. Safari's engine
+// selects the text a drag from the title bar passes over, despite the bar's
+// `user-select: none`. Cancelling `mousedown` would stop it too, but would
+// leave keyboard focus in the window the visitor just left.
+function holdSelection() {
+  const cancel = (event: Event) => event.preventDefault();
+  const release = () => {
+    document.removeEventListener('selectstart', cancel, true);
+    document.removeEventListener('pointerup', release, true);
+    document.removeEventListener('pointercancel', release, true);
+  };
+  document.addEventListener('selectstart', cancel, true);
+  document.addEventListener('pointerup', release, true);
+  document.addEventListener('pointercancel', release, true);
+}
+
 export function TitleBar({ window, session, state, dispatch, viewName, viewTitle, apps }: ShellProps & { window: WindowState; session: Session }) {
   const { view, maximized } = window;
   const name = viewName(view);
@@ -33,6 +49,7 @@ export function TitleBar({ window, session, state, dispatch, viewName, viewTitle
   const schedule = useFrameBatch();
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button === 0) holdSelection();
     if (maximized !== null || event.button !== 0 || (event.target as Element).closest('.control, .show-specs') !== null) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     drag.current = { pointer: event.pointerId, startX: event.clientX, startY: event.clientY, x: window.geometry.x, y: window.geometry.y };
