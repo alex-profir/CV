@@ -190,7 +190,8 @@ describe('001-requirement-traceability-FR-041: every test runs every day on the 
 
   test('it runs the whole test set with no filter, with a read-only token', () => {
     expect(lines).toContain('      - run: npm test');
-    expect(lines).toContain('      - run: npx playwright install --with-deps chromium');
+    expect(lines).toContain('      - run: npx playwright install chromium');
+    expect(lines).toContain('    runs-on: macos-latest');
     expect(block(lines, /^permissions:\s*$/).filter((line) => line.trim() !== '')).toEqual(['  contents: read']);
   });
 });

@@ -1,7 +1,9 @@
 name: Full run
 
 # Every test, every day, on the default branch (Constitution, Merge
-# requirements). Pull requests run only the fast checks (ci.yml).
+# requirements). Pull requests run only the fast checks (ci.yml). It runs on
+# macOS because the Terminal's parity tests compare against the real commands
+# of the owner's machine, and on Linux those print different errors.
 on:
   schedule:
     - cron: '17 3 * * *'
@@ -13,7 +15,7 @@ permissions:
 jobs:
   full:
     name: full
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,7 +26,7 @@ jobs:
       - run: npm ci
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/ms-playwright
+          path: ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-1.64.1
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: npm test
