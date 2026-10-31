@@ -85,12 +85,14 @@ colors, with the site's three fonts.
   and the owner confirms the look is original as recorded above. Changes found later are made as
   amendments.
 
-## Amendment of 2026-10-30: awaiting sign-off
+## Amendment of 2026-10-30, extended 2026-10-31: awaiting sign-off
 
 The second convergence (T192) found site text and states added or needed since the sign-off. These
 are drawn in `wireframes.md` and in the new exports below. Until the owner signs, T195, T201's
-visible part and T204 stay unbuilt. The first two rows are already in the code (T182, T188), ahead
-of the gate.
+visible part, T204, T207 and T216 stay unbuilt. The rows marked Built are already in the code, ahead
+of the gate. On 2026-10-31 every string of `siteText.playground` was compared with the design,
+leaving out plural forms and `{}` values, and what was missing added here (T205), so one signature
+covers it.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
@@ -101,6 +103,16 @@ of the gate.
 | TypeScript won't open: a state of its own | "Arrived only in part" is untrue there (FR-011, T184, T204) | `desktop-27-wont-open-1440.png` | Not built |
 | Share with… beside the desktop's link field | FR-052 offers the device's sharing (T201) | `desktop-30-link-field-1440.png` | Not built |
 | The phone's link field | FR-052's field, missing on the phone (T201) | `phone-4-link-field-375.png`, `-320.png` | Not built |
+| A run the browser ends: "Stopped unexpectedly", "Ran out of memory" | Built since the sign-off, drawn nowhere (FR-045, T205) | `desktop-31-crashed-1440.png`, `desktop-32-out-of-memory-1440.png` | Built |
+| The empty Logs pane | The same (T205) | `desktop-33-no-logs-1440.png` | Built |
+| `[circular]`, `(anonymous)`, `confirm`'s note | The same (FR-034, FR-043, T205) | `desktop-34-log-values-1440.png` | Built |
+| "The Playground was reset…", "Code copied.", kept code's unknown option | The same (FR-080, FR-055, FR-019, T205) | `desktop-35-reset-done-1440.png`, `desktop-36-code-copied-1440.png`, `desktop-37-kept-options-1440.png` | Built |
+| "Every option is at its default." | The same (FR-025, T205) | `desktop-38-options-default-1440.png` | Built |
+| The whole list of keys, with the names as built, the second paragraph and the notes | `desktop-11` draws fewer commands under earlier names (FR-085, T205) | `desktop-39-keys-all-1440.png` | Built |
+| The phone says the code is too long for a link | "Code copied." alone can be taken for the link (FR-055, FR-059, T216) | `phone-5-too-long-375.png`, `-320.png` | Not built |
+| JavaScript only the browser refuses: the same note as `desktop-28`, with the browser's message | It ended as "Stopped unexpectedly" (FR-032, FR-035, T207) | Words in `wireframes.md` | Not built |
+| Several messages due at once show in turn; what a reload brings after a failed write | One notice replaced another; the code stopped being kept (FR-019, T213, T214) | Words in `wireframes.md` | Built, no new words |
+| Names and announcements: toolbar, log's line, panel's close, status bar, editor on Windows and Linux, the download's and the run's announcements | Site text heard, not seen, and nowhere in the design (FR-063 to FR-066, T205) | Listed under Site text in `wireframes.md` | Built |
 
 The accessibility check gains the contained state when it can be reached by real input; see T192 in
 `tasks.md`.

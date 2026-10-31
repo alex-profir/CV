@@ -69,10 +69,20 @@ today. Only `playground.css` and `proposed-tokens.css` are new. The CV window fr
 | Desktop, JavaScript that can't be read (amendment) | `desktop-28-cant-parse-1440.png` |
 | Desktop, the code closed its worker (amendment) | `desktop-29-worker-closed-1440.png` |
 | Desktop, Share: the link to copy by hand (amendment) | `desktop-30-link-field-1440.png` |
+| Desktop, a run that stopped unexpectedly (amendment) | `desktop-31-crashed-1440.png` |
+| Desktop, a run out of memory (amendment) | `desktop-32-out-of-memory-1440.png` |
+| Desktop, the Logs pane before a run (amendment) | `desktop-33-no-logs-1440.png` |
+| Desktop, values in the logs (amendment) | `desktop-34-log-values-1440.png` |
+| Desktop, Reset: done (amendment) | `desktop-35-reset-done-1440.png` |
+| Desktop, Share: the code copied (amendment) | `desktop-36-code-copied-1440.png` |
+| Desktop, kept code with an unknown option (amendment) | `desktop-37-kept-options-1440.png` |
+| Desktop, compiler options at their defaults (amendment) | `desktop-38-options-default-1440.png` |
+| Desktop, the list of keys, every command (amendment) | `desktop-39-keys-all-1440.png` |
 | Phone, the home screen | `phone-1-home-375.png` |
 | Phone, best on a desktop | `phone-2-best-on-desktop-375.png`, `-320.png` (320 × 568), `-landscape-812.png` (812 × 375) |
 | Phone, a shared link | `phone-3-shared-link-375.png`, `-320.png` (320 × 568) |
 | Phone, the link to copy by hand (amendment) | `phone-4-link-field-375.png`, `-320.png` (320 × 568) |
+| Phone, code too long for a link (amendment) | `phone-5-too-long-375.png`, `-320.png` (320 × 568) |
 
 ## Rendering the mockup
 
