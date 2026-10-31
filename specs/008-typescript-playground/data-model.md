@@ -305,16 +305,19 @@ FR-083 to FR-085.
 
 ```ts
 type KeyCommand = {
-  id: string;              // the editor's command id, or 'playground.run'
-  label: string;           // as the command palette and the list of keys show it
-  keys: { mac: string[]; other: string[] };          // what the Playground binds
-  vsCode: { mac: string[]; other: string[] };        // VS Code's defaults, for the list's notes
+  id: string;              // the editor's command id, 'playground.run', or one name for a run of commands
+  group: KeyGroup;         // its heading in the list of keys
+  keys: { mac: string[]; other: string[]; linux?: string[] };   // what the Playground binds; none: no row on that system
+  vsCode: { mac: string[]; other: string[]; linux?: string[] }; // VS Code's defaults, for the list's notes
   differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code';  // why `keys` differs (FR-084)
+  kept?: { mac: string; other: string };   // the key others keep, for the note
+  shown?: { mac: string; other: string };  // what the list shows for a run of keys
 };
 ```
 
 The table (`packages/web/src/apps/playground/keys.ts`) lists the commands the list of keys shows;
-the command palette lists every command the editor registers, with the key it actually has.
+the command palette lists the commands the editor offers it, with the key each actually has
+(FR-085's amendment).
 Research R12 sets the rebinds.
 
 ## Message

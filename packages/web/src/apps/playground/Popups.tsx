@@ -7,11 +7,11 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { fill, siteText } from '../../site-text.ts';
 import { focusEditor, resetPlayground, stopCode } from './controller.ts';
 import { CloseGlyph } from './Glyphs.tsx';
-import { hoverKey, KEY_COMMANDS, keyLabel, keysFor, tabFocusKey } from './keys.ts';
-import type { KeyCommand } from './keys.ts';
+import { hoverKey, KEY_COMMANDS, KEY_GROUPS, KEY_GROUPS_FIRST_COLUMN, keyLabel, keysFor, keysShown, tabFocusKey } from './keys.ts';
+import type { KeyCommand, KeyGroup } from './keys.ts';
 import { STUCK_SECONDS, keepWaiting } from './running.ts';
 import { session, useSession } from './session.ts';
-import { onMac } from './text.ts';
+import { onLinux, onMac } from './text.ts';
 
 const words = siteText.playground.popups;
 
@@ -141,9 +141,12 @@ function keyNote(command: KeyCommand, mac: boolean): string | null {
   return fill(words.keys.differs[command.differs], { key: command.kept?.[mac ? 'mac' : 'other'] ?? '' });
 }
 
-function KeyTable({ commands, mac }: { commands: readonly KeyCommand[]; mac: boolean }) {
+function KeyTable({ group, mac, linux }: { group: KeyGroup; mac: boolean; linux: boolean }) {
+  // A command with no key on this system has no row.
+  const commands = KEY_COMMANDS.filter((command) => command.group === group && keysFor(command, mac, linux).length > 0);
   return (
     <table className="key-table">
+      <caption>{words.keys.groups[group]}</caption>
       <thead>
         <tr>
           <th scope="col">{words.keys.command}</th>
@@ -160,7 +163,7 @@ function KeyTable({ commands, mac }: { commands: readonly KeyCommand[]; mac: boo
                 {note !== null && <span className="key-note">{note}</span>}
               </td>
               <td>
-                <kbd>{keysFor(command, mac).join(', ')}</kbd>
+                <kbd>{keysShown(command, mac, linux)}</kbd>
               </td>
             </tr>
           );
@@ -170,7 +173,8 @@ function KeyTable({ commands, mac }: { commands: readonly KeyCommand[]; mac: boo
   );
 }
 
-// The list of keys, generated from `keys.ts` in the design's two columns.
+// The list of keys, generated from `keys.ts` in the design's two columns, or
+// one when text is zoomed.
 // It goes back where it came from: the editor for `Alt+F1`, the menu bar's
 // title for the menu's `Keys…`.
 function KeysPopup() {
@@ -181,7 +185,7 @@ function KeysPopup() {
     close.current?.focus();
   }, []);
   const mac = onMac();
-  const half = Math.ceil(KEY_COMMANDS.length / 2);
+  const linux = onLinux();
   const done = () => {
     session.update({ popup: 'none' });
     if (fromEditor.current) requestAnimationFrame(focusEditor);
@@ -207,8 +211,13 @@ function KeysPopup() {
           <p>{fill(mac ? words.keys.help.mac : words.keys.help.other, { tab: tabFocusKey(mac), hover: hoverKey(mac) })}</p>
         </div>
         <div className="key-columns">
-          <KeyTable commands={KEY_COMMANDS.slice(0, half)} mac={mac} />
-          <KeyTable commands={KEY_COMMANDS.slice(half)} mac={mac} />
+          {[KEY_GROUPS.slice(0, KEY_GROUPS_FIRST_COLUMN), KEY_GROUPS.slice(KEY_GROUPS_FIRST_COLUMN)].map((groups) => (
+            <div key={groups[0]} className="key-column">
+              {groups.map((group) => (
+                <KeyTable key={group} group={group} mac={mac} linux={linux} />
+              ))}
+            </div>
+          ))}
         </div>
         <p className="popup-foot">{words.keys.footer}</p>
       </section>

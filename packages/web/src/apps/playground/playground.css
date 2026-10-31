@@ -848,17 +848,34 @@
   margin-block: var(--token-space-2) var(--token-space-3);
 }
 
+/* Two columns, as wide as their text; they wrap to one once zoomed text no
+   longer fits two. A note wraps to its row, and widens nothing. */
 .playground-popup .key-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   align-items: start;
   column-gap: var(--token-space-6);
+}
+
+.playground-popup .key-column {
+  flex: 1 1 max-content;
+  min-inline-size: 0;
 }
 
 .playground-popup .key-table {
   inline-size: 100%;
   border-collapse: collapse;
   font-size: var(--token-font-size-small);
+}
+
+.playground-popup .key-table {
+  margin-block-end: var(--token-space-3);
+}
+
+.playground-popup .key-table caption {
+  padding-block-end: var(--token-space-1);
+  font-weight: var(--token-font-weight-medium);
+  text-align: start;
 }
 
 .playground-popup .key-table th {
@@ -883,6 +900,7 @@
 
 .playground-popup .key-note {
   display: block;
+  contain: inline-size;
   color: var(--token-color-shell-text-secondary);
   font-size: var(--token-font-size-label);
 }

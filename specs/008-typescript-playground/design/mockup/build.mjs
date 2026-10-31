@@ -700,7 +700,7 @@ add('desktop-30-link-field', 'Share: the link to copy by hand', desktop({
 // ---- Amendment of 2026-10-31: the site text no export held (T205) ----------
 
 const { siteText } = await import('../../../../packages/web/src/site-text.ts');
-const { KEY_COMMANDS, keyLabel, keysFor, tabFocusKey, hoverKey } = await import('../../../../packages/web/src/apps/playground/keys.ts');
+const { KEY_COMMANDS, KEY_GROUPS, KEY_GROUPS_FIRST_COLUMN, keyLabel, keysShown, keysFor, tabFocusKey, hoverKey } = await import('../../../../packages/web/src/apps/playground/keys.ts');
 const TALL = { left: 40, top: 16, width: 1360, height: 776 };
 
 const ENDLESS = 'const grow: string[] = [];\nwhile (true) grow.push("x".repeat(1_000_000));\n';
@@ -775,13 +775,12 @@ add('desktop-38-options-default', 'Compiler options at their defaults', desktop(
 }));
 
 const keyWords = siteText.playground.popups.keys;
-const half = Math.ceil(KEY_COMMANDS.length / 2);
 const allKeyNote = (command) => command.differs === undefined ? '' : keyWords.differs[command.differs].replace('{key}', command.kept?.mac ?? '');
-const allKeysTable = (commands) => '<table class="pg-key-table"><thead><tr><th scope="col">Command</th><th scope="col">Key</th></tr></thead><tbody>' + commands.map((c) => {
+const allKeysTable = (group) => '<table class="pg-key-table"><caption>' + esc(keyWords.groups[group]) + '</caption><thead><tr><th scope="col">Command</th><th scope="col">Key</th></tr></thead><tbody>' + KEY_COMMANDS.filter((c) => c.group === group && keysFor(c, true).length > 0).map((c) => {
   const note = allKeyNote(c);
-  return '<tr><td>' + esc(keyLabel(c)) + (note ? '<span class="pg-key-note">' + esc(note) + '</span>' : '') + '</td><td><kbd>' + esc(keysFor(c, true).join(', ')) + '</kbd></td></tr>';
+  return '<tr><td>' + esc(keyLabel(c)) + (note ? '<span class="pg-key-note">' + esc(note) + '</span>' : '') + '</td><td><kbd>' + esc(keysShown(c, true)) + '</kbd></td></tr>';
 }).join('') + '</tbody></table>';
-const allKeysDialog = '<div class="pg-dialog pg-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title"><div class="pg-dialog-head"><h2 id="keys-title">Keys</h2><button type="button" class="pg-icon-button" aria-label="Close">' + G.x + '</button></div><p>' + esc(keyWords.lede.mac) + '</p><p>' + esc(keyWords.help.mac.replace('{tab}', tabFocusKey(true)).replace('{hover}', hoverKey(true))) + '</p><div class="pg-key-columns">' + allKeysTable(KEY_COMMANDS.slice(0, half)) + allKeysTable(KEY_COMMANDS.slice(half)) + '</div><p class="pg-dialog-foot">' + esc(keyWords.footer) + '</p></div>';
+const allKeysDialog = '<div class="pg-dialog pg-keys" role="dialog" aria-modal="true" aria-labelledby="keys-title"><div class="pg-dialog-head"><h2 id="keys-title">Keys</h2><button type="button" class="pg-icon-button" aria-label="Close">' + G.x + '</button></div><p>' + esc(keyWords.lede.mac) + '</p><p>' + esc(keyWords.help.mac.replace('{tab}', tabFocusKey(true)).replace('{hover}', hoverKey(true))) + '</p><div class="pg-key-columns">' + [KEY_GROUPS.slice(0, KEY_GROUPS_FIRST_COLUMN), KEY_GROUPS.slice(KEY_GROUPS_FIRST_COLUMN)].map((groups) => '<div class="pg-key-column">' + groups.map(allKeysTable).join('') + '</div>').join('') + '</div><p class="pg-dialog-foot">' + esc(keyWords.footer) + '</p></div>';
 add('desktop-39-keys-all', 'The list of keys, every command', desktop({
   cv: false, dock: { cv: false },
   playground: playgroundWindow(playground({
@@ -789,6 +788,20 @@ add('desktop-39-keys-all', 'The list of keys, every command', desktop({
     pane: 'Errors', counts: { errors: 1, logs: 0 }, paneHtml: errorsPane([jobsError]),
     status: { cursor: [9, 1], errors: 1 }, dialog: allKeysDialog,
   }), { geometry: TALL }),
+}));
+
+// The second amendment (T230) and what still waits for a signature (T238).
+add('desktop-40-code-refused', 'Share: the clipboard refused the code', desktop({
+  playground: playgroundWindow(playground({
+    ...jobsBase,
+    banner: banner('warn', '<b>This code is too long to share as a link,</b> and it couldn\'t be copied.', textButton('Copy the code')),
+  })),
+}));
+add('desktop-41-broken-link-undo', 'A broken shared link, with Undo (not signed)', desktop({
+  playground: playgroundWindow(playground({
+    editorHtml: editor(WELCOME, { cursor: [1, 1] }), pane: 'JavaScript', counts: { errors: 0, logs: 0 }, paneHtml: jsPane(WELCOME_JS), status: { cursor: [1, 1] },
+    banner: banner('error', '<b>The shared code couldn\'t be read.</b> The link may have been cut off or changed, so the Playground opened with the starting example. Nothing ran.', textButton('Undo')),
+  })),
 }));
 
 // ---- Phone --------------------------------------------------------------
