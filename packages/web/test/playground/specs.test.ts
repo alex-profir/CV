@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { fill, siteText } from '../../src/site-text.ts';
 import { openShell, PHONE_USER_AGENT, settle } from '../helpers/shell.ts';
-import { EDITOR, editorText, menu, openPlaygroundPage, paneTab, PLAYGROUND, readLogs, run, RUNNER, running, setCode, showPane, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { EDITOR, editorText, linkFrom, menu, openPlaygroundPage, paneTab, PLAYGROUND, readLogs, run, RUNNER, running, setCode, showPane, stop, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -92,6 +92,27 @@ describe('008-typescript-playground-FR-005: Show specs and Back from the phone\'
     await page.waitForSelector(SCREEN);
     expect((await page.locator(`${SCREEN} h2`).textContent())?.trim()).toBe(siteText.playground.mobile.app.heading);
     expect(await page.locator('#os .full-screen[data-view="playground"] button.show-specs').isVisible()).toBe(true);
+  });
+});
+
+describe('008-typescript-playground-FR-005: a link opened during the specs leaves the rest as it was', () => {
+  test('the Playground shows again, with the pane, logs and run that were going', async () => {
+    const page = await openPlaygroundPage();
+    const code = 'console.log("kept");\nsetInterval(() => {}, 1000);';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await run(page, { wait: 'start' });
+    await expect.poll(async () => (await readLogs(page)).some((row) => row.text === 'kept')).toBe(true);
+    await menu(page, siteText.inspector.show);
+    await expect.poll(() => page.locator(PLAYGROUND).count()).toBe(0);
+    await page.evaluate((hash) => void (location.hash = hash), new URL(`http://site${linkFrom('', JSON.stringify({ c: 'const shared = 1;' }))}`).hash);
+    await waitForCode(page, 'const shared = 1;');
+    expect(await page.locator('#os .window[data-view="playground"] .spec-heading').count()).toBe(0);
+    expect(await paneTab(page, 'logs').getAttribute('aria-selected')).toBe('true');
+    expect((await readLogs(page)).some((row) => row.text === 'kept')).toBe(true);
+    expect(await running(page)).toBe(true);
+    await stop(page);
   });
 });
 

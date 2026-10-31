@@ -39,12 +39,17 @@ const dataOf = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(Mess
 
 // Entries kept between two sends (R18): the latest 1,000; the rest dropped.
 const BATCH_LIMIT = LOG_LIMITS.entries;
-// A batch goes at once when this long has passed since the last.
+// Past the limit below, a batch goes this long after the last.
 const BATCH_MS = 50;
 // A loop can't hear back from the page, so what it may send is limited by the
-// clock: after each batch the next waits until the page has had time for this
-// one, and a port's queue on the page can't grow without end (FR-040, FR-044).
+// clock, and a port's queue on the page can't grow without end (FR-040, FR-044).
+// Within the limit each entry goes at once, as a task the code blocks never comes
+// (FR-034, FR-038); past it, the entries wait until the page has had time for
+// what went. Both allowances fill by the clock up to what they start with.
 const CHARS_PER_MS = 4_000;
+const CHARS_AT_ONCE = CHARS_PER_MS * BATCH_MS;
+const SENDS_PER_MS = 0.2;
+const SENDS_AT_ONCE = 200;
 // What an entry counts for at least, for the object that carries it.
 const ENTRY_CHARS = 50;
 
@@ -87,6 +92,9 @@ let bufferChars = 0;
 let dropped = 0;
 let cleared = false;
 let nextSend = -Infinity;
+let charsLeft = CHARS_AT_ONCE;
+let sendsLeft = SENDS_AT_ONCE;
+let earnedAt = now();
 let flushTimer: number | null = null;
 let entryIds = 0;
 
@@ -96,7 +104,11 @@ function flush(): void {
   flushTimer = null;
   if (buffer.length === 0 && dropped === 0 && !cleared) return;
   send({ logs: true, entries: buffer, dropped, cleared, uncaught });
-  nextSend = now() + Math.max(BATCH_MS, bufferChars / CHARS_PER_MS);
+  const at = now();
+  charsLeft = Math.min(CHARS_AT_ONCE, charsLeft + (at - earnedAt) * CHARS_PER_MS) - bufferChars;
+  sendsLeft = Math.min(SENDS_AT_ONCE, sendsLeft + (at - earnedAt) * SENDS_PER_MS) - 1;
+  earnedAt = at;
+  nextSend = charsLeft > 0 && sendsLeft >= 1 ? -Infinity : at + Math.max(BATCH_MS, -charsLeft / CHARS_PER_MS);
   buffer = [];
   sizes = [];
   bufferChars = 0;
@@ -116,6 +128,14 @@ function flushWhenDue(): void {
   }, wait);
 }
 
+function sendWhenAllowed(): void {
+  if (now() >= nextSend) flush();
+  else {
+    flushWanted = true;
+    queueTask();
+  }
+}
+
 function push(entry: Omit<LogEntry, 'id'> & { at?: { line: number; column: number } | null }): void {
   if (ended) return;
   entryIds += 1;
@@ -128,11 +148,7 @@ function push(entry: Omit<LogEntry, 'id'> & { at?: { line: number; column: numbe
     bufferChars -= sizes.shift()!;
     dropped += 1;
   }
-  if (now() >= nextSend) flush();
-  else {
-    flushWanted = true;
-    queueTask();
-  }
+  sendWhenAllowed();
 }
 
 function log(level: LogEntry['level'], values: readonly unknown[]): void {
@@ -202,8 +218,7 @@ playgroundConsole['clear'] = () => {
   bufferChars = 0;
   dropped = 0;
   cleared = true;
-  flushWanted = true;
-  queueTask();
+  sendWhenAllowed();
 };
 
 function define(name: string, value: unknown): void {
@@ -426,13 +441,65 @@ function counting<T>(promise: Promise<T>): Promise<T> {
   );
 }
 
+// A loop can't hear back from the browser either, and starting a request takes
+// the page's process's time: a loop of them left the page not answering, Stop
+// included (FR-038, FR-040). So they start by the clock, as logs go. Past what
+// may start at once each is held, in order and counted as pending, until the
+// code lets a task run; a loop that never does starts no more.
+const REQUESTS_AT_ONCE = 100;
+const REQUESTS_PER_MS = 1;
+let startsLeft = REQUESTS_AT_ONCE;
+let startsEarnedAt = now();
+let heldStarts: (() => void)[] = [];
+let nextHeld = 0;
+let startTimer: number | null = null;
+
+function earnStarts(): void {
+  const at = now();
+  startsLeft = Math.min(REQUESTS_AT_ONCE, startsLeft + (at - startsEarnedAt) * REQUESTS_PER_MS);
+  startsEarnedAt = at;
+}
+
+function startHeld(): void {
+  startTimer = null;
+  earnStarts();
+  while (nextHeld < heldStarts.length && startsLeft >= 1) {
+    startsLeft -= 1;
+    const start = heldStarts[nextHeld]!;
+    nextHeld += 1;
+    start();
+  }
+  if (nextHeld < heldStarts.length) startTimer = realSetTimeout(startHeld, (1 - startsLeft) / REQUESTS_PER_MS);
+  else {
+    heldStarts = [];
+    nextHeld = 0;
+  }
+}
+
+function startRequest(start: () => void): void {
+  earnStarts();
+  if (nextHeld === heldStarts.length && startsLeft >= 1) {
+    startsLeft -= 1;
+    start();
+    return;
+  }
+  heldStarts.push(start);
+  startTimer ??= realSetTimeout(startHeld, (1 - startsLeft) / REQUESTS_PER_MS);
+}
+
 // No request of the code's sends cookies or other credentials, whatever it
 // asks (FR-041): Firefox and WebKit would otherwise send the site's own to
 // another port on its host. The wrappers replace the originals where the
 // code could reach them, on the scope and its prototypes, and can't be
 // deleted to show them again.
 if (realFetch !== null) {
-  const omitting = (input: RequestInfo | URL, init?: RequestInit) => counting(realFetch(input, { ...init, credentials: 'omit' }));
+  const omitting = (input: RequestInfo | URL, init?: RequestInit) =>
+    counting(
+      new Promise<Response>((resolve) => {
+        const options: RequestInit = { ...init, credentials: 'omit' };
+        startRequest(() => resolve(realFetch(input, options)));
+      }),
+    );
   for (let holder: object | null = scope; holder !== null; holder = Object.getPrototypeOf(holder)) {
     if (holder === scope || Object.hasOwn(holder, 'fetch')) Object.defineProperty(holder, 'fetch', { value: omitting, writable: true, configurable: false, enumerable: false });
   }
@@ -600,32 +667,71 @@ countCalls(scope, ['createImageBitmap']);
 
 if (typeof scope['XMLHttpRequest'] === 'function') {
   const Real = scope['XMLHttpRequest'] as typeof XMLHttpRequest;
-  // On the original's prototype, so a subclass or the original can't set it.
+  // On the original's prototype, so a subclass or the original can't set or
+  // start it another way.
   Object.defineProperty(Real.prototype, 'withCredentials', { get: () => false, set: () => undefined, configurable: false });
-  define(
-    'XMLHttpRequest',
-    class extends Real {
-      override send(body?: Document | XMLHttpRequestBodyInit | null): void {
-        let pending = true;
-        const done = () => {
-          if (!pending) return;
-          pending = false;
-          requests -= 1;
-          changed();
-        };
-        requests += 1;
-        changed();
-        this.addEventListener('loadend', done, { once: true });
-        try {
-          super.send(body);
-        } catch (error) {
-          // `send` that throws never ends with `loadend`.
-          done();
-          throw error;
-        }
+  const { open: realOpen, send: realSend, abort: realAbort } = Real.prototype;
+  // A request that blocks the code can't be held, and paces itself.
+  const blocking = new WeakSet<XMLHttpRequest>();
+  // What a `send` waiting its turn would do if it were taken back.
+  const held = new WeakMap<XMLHttpRequest, () => void>();
+  const onPrototype = (name: string, value: unknown) => Object.defineProperty(Real.prototype, name, { value, writable: true, configurable: true });
+  onPrototype('open', function (this: XMLHttpRequest, ...args: unknown[]) {
+    held.get(this)?.();
+    held.delete(this);
+    if (args.length > 2 && args[2] === false) blocking.add(this);
+    else blocking.delete(this);
+    return (realOpen as (...all: unknown[]) => void).apply(this, args);
+  });
+  onPrototype('abort', function (this: XMLHttpRequest) {
+    const takeBack = held.get(this);
+    if (takeBack === undefined) return realAbort.call(this);
+    // As the browser's own `abort` of a request under way says.
+    takeBack();
+    held.delete(this);
+    this.dispatchEvent(new ProgressEvent('abort'));
+    this.dispatchEvent(new ProgressEvent('loadend'));
+  });
+  onPrototype('send', function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+    // A second `send`, as the browser refuses one of a request under way.
+    if (held.has(this)) throw new DOMException("The object's state must be OPENED.", 'InvalidStateError');
+    let pending = true;
+    const done = () => {
+      if (!pending) return;
+      pending = false;
+      requests -= 1;
+      changed();
+    };
+    requests += 1;
+    changed();
+    realListen.call(this, 'loadend', done, { once: true });
+    const start = () => realSend.call(this, body);
+    try {
+      if (blocking.has(this) || this.readyState !== Real.OPENED) {
+        start();
+        return;
       }
-    },
-  );
+    } catch (error) {
+      // `send` that throws never ends with `loadend`.
+      done();
+      throw error;
+    }
+    let taken = false;
+    held.set(this, () => {
+      taken = true;
+      done();
+    });
+    startRequest(() => {
+      if (taken) return;
+      held.delete(this);
+      try {
+        start();
+      } catch (error) {
+        done();
+        reportUncaught(error);
+      }
+    });
+  });
 }
 
 if (typeof scope['WebSocket'] === 'function') {

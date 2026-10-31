@@ -69,7 +69,7 @@ run's nonce; a message without it is ignored.
 | host → worker | `{ ping, nonce, n }` every 250 ms | Heartbeat (R19) |
 | worker → host | `{ pong, nonce, n }` | Answered as soon as the worker's event loop is free |
 | worker → host | `{ started, nonce }` | The code is about to run; the heartbeat starts |
-| worker → host | `{ logs, nonce, entries, dropped, cleared, uncaught }` | A batch (R18); `cleared` when `console.clear` emptied the logs before it; `uncaught` counts the run's uncaught errors so far, dropped ones too. An uncaught error or rejection is an `error` entry under the same limit (T220), with its place in the worker's script (`at`), which the host maps to the code's line |
+| worker → host | `{ logs, nonce, entries, dropped, cleared, uncaught }` | A batch, at once while within the limit, so what comes before a block isn't lost (R18, T242); `cleared` when `console.clear` emptied the logs before it; `uncaught` counts the run's uncaught errors so far, dropped ones too. An uncaught error or rejection is an `error` entry under the same limit (T220), with its place in the worker's script (`at`), which the host maps to the code's line |
 | worker → host | `{ pending, nonce, timers, requests }` | When the counts change, at most once per 50 ms: thousands of timers froze the page otherwise (T220) |
 | worker → host | `{ end, nonce, uncaught }` | Nothing is left to do (R18) |
 | host → bootstrap | `{ stop, nonce }` | `worker.terminate()` (R24) |
@@ -90,6 +90,7 @@ rendering stays in the Playground's window, with a Try again that clears the log
 | `prompt(…)`, `confirm(…)` | A note that they aren't available; return `null` and `false` (FR-043) |
 | `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `requestAnimationFrame` | As usual, counted while pending (FR-036, FR-037) |
 | `fetch`, `XMLHttpRequest`, `EventSource` | As usual, to any site, but with no cookies or other credentials whatever the code asks: `fetch` forces `credentials: 'omit'` (a `Request` too), `withCredentials` is always false, and `EventSource`'s option is dropped. The wrappers replace the originals where the code could reach them (the scope and its prototypes, the original constructor). Counted while pending or open (FR-041) |
+| Starting a request | `fetch` and an asynchronous `XMLHttpRequest.send` start by the clock: up to 100 at once, then one a millisecond. Past that each is held, in order and counted as pending, until the code lets a task run, so a loop that never does starts no more and Stop answers (FR-038, FR-040, T243). A held `XMLHttpRequest`'s `abort` says `abort` and `loadend` and sends nothing; its `open` takes it back silently; a second `send` throws as one of a request under way does. A blocking `XMLHttpRequest` can't be held, and goes at once. `WebSocket` and `EventSource` aren't limited: loops of them left the page answering when measured (load about 7, Chromium) |
 | `WebSocket` | As usual; can't be limited this way, so it relies on the sandbox alone (FR-041). Counted while open |
 | The browser's own promises | `Response`, `Request` and `Blob` reads, `crypto.subtle`, `caches`, `indexedDB.databases`, `WebAssembly`'s compiling and `createImageBitmap` count as pending, as they settle in a later task (FR-037) |
 | `cv` | The run's copy of the CV document (FR-029) |
@@ -108,6 +109,8 @@ Not counted, so a run with nothing else pending ends without them: what only an 
 ended and the code itself starts with no call of its own to count, as a codec's output with no `flush`,
 a `WebTransport`, and work submitted to a GPU device. Awaiting them holds nothing, as with a promise
 of the code's own; a timer or Stop is the way to wait (FR-036, T221).
+
+The code's top level has no `this` and no `arguments`, as a module's hasn't: `getRunnable` writes `this` there as `void 0` (T249), since an ordinary function round the body would add `arguments`. It leaves out a `#!` line's text, keeping the line, as only a file can start with one (T248). The JavaScript pane still shows both as TypeScript wrote them.
 
 A run ends 10 ms after nothing is left: the browser reports an unhandled rejection in a task of its
 own after the microtasks, which the end must not pass (FR-035, T218).

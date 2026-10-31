@@ -63,6 +63,19 @@ describe('008-typescript-playground-FR-034: logged values are shown by their kin
     expect(isShown(one(thrown))).toBe(true);
   });
 
+  test("the browser's own objects at the depth limit are shortened as any object is, and pass the page's check", () => {
+    const at = (value: unknown) => ({ a: { b: { c: { d: value } } } });
+    const deepest = (value: unknown) => (((((one(at(value)) as any).entries[0][1].entries[0][1].entries[0][1]).entries[0][1])));
+    for (const value of [new ArrayBuffer(8), new DataView(new ArrayBuffer(8)), new URL('http://x.test/')]) {
+      expect(deepest(value)).toEqual({ t: 'deep' });
+      expect(isShown(one(at(value)))).toBe(true);
+    }
+    expect(deepest(new Date(0))).toEqual({ t: 'date', v: '1970-01-01T00:00:00.000Z' });
+    expect(deepest(/a/)).toEqual({ t: 'text', v: '/a/' });
+    expect(deepest(new Error('e'))).toEqual({ t: 'err', name: 'Error', message: 'e' });
+    expect(isShown(one(at(new Error('e', { cause: new ArrayBuffer(8) }))))).toBe(true);
+  });
+
   test('circular parts are marked', () => {
     const loop: { self?: unknown } = {};
     loop.self = loop;

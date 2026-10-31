@@ -74,6 +74,26 @@ function stripExports(): any {
   };
 }
 
+// The code's top level has no `this`, as a module's hasn't (`moduleDetection:
+// force`), though its script body sits in a function that would see the worker's
+// (FR-032, R13). Any function or class member but an arrow has a `this` of its
+// own. A wrapper can't do it: an ordinary function round the body would give the
+// code an `arguments` a module doesn't have.
+function moduleThis(): any {
+  return (context: any) => (file: any) => {
+    const visit = (node: any): any => {
+      if (node.kind === ts.SyntaxKind.ThisKeyword) return ts.setTextRange(context.factory.createVoidZero(), node);
+      if ((ts.isFunctionLike(node) && !ts.isArrowFunction(node)) || ts.isClassElement(node)) return node;
+      return ts.visitEachChild(node, visit, context);
+    };
+    return ts.visitEachChild(file, visit, context);
+  };
+}
+
+// A `#!` line is only valid at the start of a file, and a script body isn't one.
+// Its line stays, empty, so the map's lines hold (FR-032, R13).
+const withoutHashbang = (text: string) => text.replace(/^#!.*/, '');
+
 const withoutMapComment = (text: string) => text.replace(/\n?\/\/# sourceMappingURL=.*\s*$/, '\n');
 
 class PlaygroundWorker extends TypeScriptWorker {
@@ -162,12 +182,12 @@ class PlaygroundWorker extends TypeScriptWorker {
       },
       undefined,
       false,
-      { after: [stripExports()] },
+      { after: [stripExports(), moduleThis()] },
     );
     // A declaration that can't be made skips the emit but leaves the JavaScript,
     // which runs (FR-033); `noEmitOnError` with errors leaves none.
     if (result.emitSkipped && code === '') return { code: '', map: '', imports, errors, skipped: true };
-    return { code: withoutMapComment(code), map, imports, errors, skipped: false };
+    return { code: withoutHashbang(withoutMapComment(code)), map, imports, errors, skipped: false };
   }
 
   // What each name in the code is, as TypeScript knows it, for the syntax

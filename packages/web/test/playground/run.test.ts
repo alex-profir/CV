@@ -201,3 +201,36 @@ describe("008-typescript-playground-FR-032: the script body doesn't change the v
     expect(await values(page)).toEqual(['1']);
   });
 });
+
+describe('008-typescript-playground-FR-032: the code runs as a module does', () => {
+  test('a #! line at the start runs, with no errors said', async () => {
+    const page = await openPlaygroundPage();
+    await withCode(page, '#!/usr/bin/env node\nconsole.log("after shebang");');
+    await run(page);
+    expect(await values(page)).toEqual(['after shebang']);
+    expect(await notes(page)).toContain(logs.noErrors);
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(/^Finished/);
+  });
+
+  test("the top level's this is undefined, in an arrow too; what has its own keeps it; and there's no arguments", async () => {
+    const page = await openPlaygroundPage();
+    await withCode(
+      page,
+      [
+        'console.log(typeof this);',
+        'console.log((() => typeof this)());',
+        'class C { x = this; m() { return this; } static s = this; }',
+        'const made = new C();',
+        'console.log(made.x === made, made.m() === made, C.s === C);',
+        'const holder = { f() { return this; } };',
+        'console.log(holder.f() === holder);',
+        'function own(this: unknown) { return this; }',
+        'console.log(own.call(1));',
+        '// @ts-expect-error A module has none.',
+        'console.log(typeof arguments);',
+      ].join('\n'),
+    );
+    await run(page);
+    expect(await values(page)).toEqual(['undefined', 'undefined', 'true true true', 'true', '1', 'undefined']);
+  });
+});

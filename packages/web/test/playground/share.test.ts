@@ -9,7 +9,7 @@ import { fill, siteText } from '../../src/site-text.ts';
 import { welcome } from '../../src/apps/playground/examples/index.ts';
 import { frontWindow, settle, waitForReady } from '../helpers/shell.ts';
 import type { ShellOptions } from '../helpers/shell.ts';
-import { editorText, freshProfile, linkFrom, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
+import { editorText, freshProfile, linkFrom, menu, MESSAGE, onMac, openPlayground, PLAYGROUND, readLogs, RUNNER, setCode, TOOLBAR, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -277,6 +277,28 @@ describe('008-typescript-playground-FR-053: a shared link opens the Playground i
     await waitForCode(page, second);
     expect(await page.locator(RUNNER).count()).toBe(0);
     expect(await readLogs(page)).toEqual([]);
+  });
+
+  test('a link opened while the specs show goes back to the Playground, with its message and focus in the editor', async () => {
+    const page = await freshProfile();
+    await openPlayground(page);
+    await waitReady(page);
+    const before = 'console.log("before the link");';
+    await setCode(page, before);
+    await waitForCode(page, before);
+    await menu(page, siteText.inspector.show);
+    await expect.poll(() => page.locator(PLAYGROUND).count()).toBe(0);
+    const code = 'console.log("opened during the specs");';
+    await page.evaluate((hash) => void (location.hash = hash), new URL(`http://site${pathFrom(JSON.stringify({ c: code }))}`).hash);
+    await waitForCode(page, code);
+    expect(await messageText(page)).toBe(messages.sharedReplaced);
+    expect(await frontWindow(page)).toBe('playground');
+    expect(new URL(page.url()).hash).toBe('');
+    await expect.poll(() => page.evaluate((selector) => document.activeElement?.closest(selector) !== null, `${PLAYGROUND} .playground-editor`)).toBe(true);
+    // Its Undo, which waited out of sight, works.
+    await page.locator(`${MESSAGE} .message-actions button.text-button`).filter({ hasText: messages.actions.undo }).click();
+    await waitForCode(page, before);
+    expect(await page.locator(RUNNER).count()).toBe(0);
   });
 
   test('Run in the message runs it; a reload shows the code with the visitor\'s edits', async () => {

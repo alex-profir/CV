@@ -103,6 +103,8 @@ The offline state tries again by itself after 5 s, doubling to at most 60 s, as 
 and Retry, because the `online` event can be missed, spent on a fetch that still fails, or never
 fire. The first try shows `downloading` at once; later tries show it only once a file answers, so
 they neither flicker nor announce.
-An entry or style that fails to open, or a `createEngine` that rejects, removes the copy's marker
+The loader's fetch of a file carries the header `x-playground-download`, which sends it past the service worker's
+caches to the network, so a stored file can be replaced (T236). A `createEngine` gets 60 s (`startWithin`).
+An entry or style that fails to open, or a `createEngine` that rejects or passes its 60 s, removes the copy's marker
 and shows `offline { stopped: true, wontOpen: true }`. Only Retry or `online` tries that again, since a whole copy
 that won't open won't by waiting. Retry imports the entry under a new URL (`?retry=<n>`).

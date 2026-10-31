@@ -79,11 +79,16 @@ describe("008-typescript-playground-FR-035: JavaScript the browser refuses says 
     ['import.meta, which TypeScript accepts', 'console.log(1);\nconsole.log(import.meta.url);', 2, 1],
   ])('%s: nothing runs, the note and the error, and "Nothing ran"', async (_name, code, line, count) => {
     const page = await openPlaygroundPage();
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
     await setCode(page, code);
     await waitForCode(page, code.split('\n')[0]!);
     await waitChecked(page);
     await run(page);
     await expect.poll(async () => (await readLogs(page)).length).toBe(2);
+    // The note says it: it isn't the page's own uncaught error too. WebKit reports
+    // a refused worker script to its inspector whatever the page does with the event.
+    if (engine() !== 'webkit') expect(pageErrors).toEqual([]);
     const [note, error] = await readLogs(page);
     expect(note!.level).toBe('note');
     expect(note!.text.startsWith('Nothing ran: the code has ')).toBe(true);
@@ -176,5 +181,22 @@ describe('008-typescript-playground-FR-035: a rejection of a promise the runtime
     expect(rows.filter((row) => row.level === 'error')).toEqual([]);
     const shown = rows.filter((row) => row.level === 'log').map((row) => row.text);
     expect(shown).toEqual(expect.arrayContaining(['caught', 'caught too', 'held']));
+  });
+});
+
+describe('008-typescript-playground-FR-035: a #! line keeps the lines of what follows', () => {
+  test("a throw after a #! line has the code's line, with no page error", async () => {
+    const page = await openPlaygroundPage();
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const code = '#!/usr/bin/env node\nconsole.log("after shebang");\nthrow new Error("on line 3");';
+    await setCode(page, code);
+    await waitForCode(page, code);
+    await waitChecked(page);
+    await run(page);
+    const rows = await readLogs(page);
+    expect(rows.find((row) => row.level === 'log')?.text).toBe('after shebang');
+    expect(rows.find((row) => row.level === 'error')).toMatchObject({ line: 3 });
+    expect(pageErrors).toEqual([]);
   });
 });
