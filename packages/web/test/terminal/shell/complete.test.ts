@@ -44,8 +44,10 @@ describe('006-terminal-FR-076: what Tab inserts, as bash’s readline does', () 
     ['after &&', 'ls && wc', 'ls && wc '],
     ['after ||', 'ls || wc', 'ls || wc '],
     ['after (', '(wc', '(wc '],
-    ['after then', 'if true; then wc', 'if true; then wc '],
-    ['after do', 'for x in a; do wc', 'for x in a; do wc '],
+    ['after then, files, not commands (T393)', 'if true; then wc', 'if true; then wc'],
+    ['after do, files, not commands (T393)', 'for x in a; do wc', 'for x in a; do wc'],
+    ['a word that starts with { is no command (T393)', 'ls {a', 'ls {a'],
+    ['{ alone starts a command (T393)', '{ wc', '{ wc '],
     ['no match changes nothing', 'xyz', 'xyz'],
     ['a command and the folder of its name: no mark', 'wo', 'work'],
   ])('%s: %s', async (_rule, typed, expected) => {

@@ -254,7 +254,9 @@ export class TerminalFs extends InMemoryFs {
     const stat = await super.stat(at).catch(() => null);
     if (stat?.isDirectory === true) return;
     const parent = await super.stat(parentOf(at)).catch(() => null);
-    const refusal = parent === null ? missing() : !parent.isDirectory ? failure('ENOTDIR', 'Not a directory') : this.refusesWrite(at) ? denied() : null;
+    // A final slash names a folder (T378).
+    const slashed = this.opened.get(at)?.endsWith('/') === true;
+    const refusal = parent === null || (slashed && stat === null) ? missing() : !parent.isDirectory || slashed ? failure('ENOTDIR', 'Not a directory') : this.refusesWrite(at) ? denied() : null;
     if (refusal === null) return;
     this.refused.set(this.opened.get(at) ?? at, refusal.message);
     throw refusal;

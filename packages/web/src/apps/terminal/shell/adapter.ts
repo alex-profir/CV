@@ -215,6 +215,7 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
         if (node.type === 'ParameterExpansion') {
           markFatal(node);
           countOfAll(node);
+          firstCase(node, tools);
           if (node.parameter === 'SECONDS' && tools.setsSeconds()) readSeconds(node, tools);
         }
         if (node.type === 'Word' && Array.isArray(node.parts)) {
@@ -234,16 +235,16 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
         if (node.type === 'For') {
           // `for a; do` holds every parameter whole, as `in "$@"` does (T362).
           node.words ??= [allParameters()];
-          if ((node.words as never[]).some(slashGlob)) return wrapSlashGlobs(node, 'words', tools);
+          if ((node.words as { parts?: AstNode[] }[]).some((word) => slashGlob(word) && !(tools.globStar() && starSlash(word)))) return wrapSlashGlobs(node, 'words', tools);
           return void listFirst(node, 'words', tools);
         }
         if (node.type === 'CommandSubstitution' && holdsNul(node.body)) return withoutNul(node, tools);
         if (node.type !== 'SimpleCommand' || tools.done.has(node)) return;
-        if ((node.args as never[]).some(slashGlob)) return wrapSlashGlobs(node, 'args', tools);
+        if ((node.args as { parts?: AstNode[] }[]).some((word) => slashGlob(word) && !(tools.globStar() && starSlash(word)))) return wrapSlashGlobs(node, 'args', tools);
         if (listFirst(node, 'args', tools) || listAssigned(node, tools)) return;
         const name = node.name as { parts?: AstNode[] } | null;
         if (name === null) {
-          if (setSeconds(node, tools)) return;
+          if (floatSubscript(node, tools) || setSeconds(node, tools)) return;
           return void checkInteger(node, tools);
         }
         if (readsFolder(node, tools)) return;
@@ -263,6 +264,13 @@ function sitePlugin(functions: () => ReadonlySet<string>, pathChanged: () => boo
         // `command help` and `builtin help` reach the site's too (T304).
         if ((word === 'command' || word === 'builtin') && !defined.has(word) && !tools.builtinHelp()) renameFirstArgument(node, word);
         if (!defined.has(word) && rewriteBashBuiltin(node, word, tools)) return;
+        // `>&-`: nowhere to write (T397).
+        if (!defined.has(word) && (word === 'echo' || word === 'printf') && (node.redirections as Redirection[]).some((redirection) => redirection.operator === '>&' && (redirection.fd === null || redirection.fd === 1) && staticWord(redirection.target as never) === '-')) {
+          node.name = literalWord(hidden('closed-output'));
+          node.args = [literalWord(word)];
+          node.redirections = (node.redirections as Redirection[]).filter((redirection) => redirection.operator !== '>&');
+          return;
+        }
         const lower = word.toLowerCase();
         const site = commandNamed(word) !== null && !defined.has(word);
         if (site) {
@@ -457,12 +465,34 @@ function rewriteBashBuiltin(node: AstNode, word: string, tools: Tools): boolean 
     const bad = badSetOption(words);
     if (bad !== null) return to('set-bad', [literalWord(bad)]);
   }
+  if (word === 'compgen') {
+    const kind = words[0] === '-A' ? { function: '-A', command: '-c', builtin: '-b', keyword: '-k', user: '-u' }[words[1] ?? ''] && words[1] : words[0];
+    const rest = words[0] === '-A' ? words.slice(2) : words.slice(1);
+    if (COMPGEN_KINDS.has(kind ?? '') && rest.length <= 1 && rest.every((each) => each !== null)) return to('compgen', [literalWord(kind!), ...args.slice(words[0] === '-A' ? 2 : 1)]);
+  }
+  if ((word === 'mapfile' || word === 'readarray') && rewriteMapfile(node, words, tools)) return true;
   if (word === 'shopt' && names(words)) return to('shopt', [literalWord('names'), BASHOPTS_WORD(), ...args]);
   if (word === 'shopt' && (words.length === 0 || (words.length === 1 && words[0] === '-p'))) return to('shopt', [literalWord(words[0] ?? ''), BASHOPTS_WORD()]);
   if (word === 'set' && words.length === 1 && (words[0] === '-o' || words[0] === '+o')) return to('set-o', [literalWord(words[0]), { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: 'SHELLOPTS', operation: null }] }] }]);
   // Two words of which the first isn't an operator, and the integer tests.
   if ((word === 'test' || word === '[') && (args.length - (word === '[' ? 1 : 0) === 2 || words.some((each) => each !== null && INTEGER_TESTS.has(each)))) return to('integer-test', [literalWord(word), ...args]);
   return false;
+}
+
+const COMPGEN_KINDS: ReadonlySet<string> = new Set(['-c', '-b', '-k', '-u', 'function', 'command', 'builtin', 'keyword', 'user']);
+
+// `mapfile`'s options, which just-bash takes and doesn't do (T391): what they ask
+// for is read by a command, which leaves the assignments to run in the line's shell.
+function rewriteMapfile(node: AstNode, words: readonly (string | null)[], tools: Tools): boolean {
+  if (words.some((each) => each === null) || !words.some((each) => /^-[a-zA-Z]*[nsOdCc]/.test(each!))) return false;
+  const typed = typedWord(tools.serialize({ ...node, assignments: [] }));
+  const { statements } = tools.parse(`${hidden('hold')} "$?" ${typed} "$_" && ((1)); ${hidden('mapfile')}; builtin eval "$${TARGET}"; ${CLEAN_UP}`);
+  const run = statements[1]!.pipelines[0]!.commands[0] as unknown as AstNode;
+  Object.assign(run, { args: node.args, redirections: node.redirections });
+  tools.done.add(run);
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+  return true;
 }
 
 const BASHOPTS_WORD = () => ({ type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: 'BASHOPTS', operation: null }] }] });
@@ -594,6 +624,12 @@ function countSubshells(node: unknown, depth = 0) {
     Object.assign(typed, { type: 'Literal', value: String(depth) });
     return;
   }
+  // just-bash's own, which says 5.1.0 beside `BASH_VERSINFO` (T397).
+  if (typed.type === 'ParameterExpansion' && typed.parameter === 'BASH_VERSION' && typed.operation === null) {
+    for (const key of Object.keys(typed)) delete typed[key];
+    Object.assign(typed, { type: 'Literal', value: '5.3.0(1)-release' });
+    return;
+  }
   const inside = typed.type === 'Subshell' || typed.type === 'CommandSubstitution' || typed.type === 'ProcessSubstitution' ? depth + 1 : depth;
   for (const [key, value] of Object.entries(typed)) if (key !== 'type') countSubshells(value, inside);
 }
@@ -630,6 +666,9 @@ function holdsExtendedPattern(node: unknown): boolean {
   return Object.entries(typed).some(([key, value]) => key !== 'type' && holdsExtendedPattern(value));
 }
 
+// Whether the loop being read holds a `break 0`.
+let outOfRange = false;
+
 // `break`, `continue` and `return` where bash says they mean nothing: the
 // ones no loop or function holds in the line itself (T305).
 function markOutOfPlace(node: unknown, inLoop = false, inFunction = false) {
@@ -645,12 +684,32 @@ function markOutOfPlace(node: unknown, inLoop = false, inFunction = false) {
     if (!help && (((word === 'break' || word === 'continue') && !inLoop && !inFunction) || (word === 'return' && !inFunction))) {
       typed.name = literalWord(hidden('out-of-place'));
       typed.args = [literalWord(word)];
+    } else if (!help && (word === 'break' || word === 'continue') && /^-?\d+$/.test(staticWord((typed.args as never[])[0]) ?? '') && Number(staticWord((typed.args as never[])[0])) <= 0) {
+      // Out of range: every loop ends, with status 1, and the line goes on (T397).
+      const count = (typed.args as unknown[])[0];
+      if (inLoop) {
+        outOfRange = true;
+        const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
+        for (const key of Object.keys(typed)) delete typed[key];
+        Object.assign(typed, { type: 'Group', body: [statement(simpleCommand(hidden('loop-count'), [literalWord(word), count])), statement(simpleCommand('break', [literalWord('1000')]))], redirections: [] });
+      } else {
+        typed.name = literalWord(hidden('out-of-place'));
+        typed.args = [literalWord(word)];
+      }
     }
     return;
   }
   const loop = inLoop || typed.type === 'For' || typed.type === 'CStyleFor' || typed.type === 'While' || typed.type === 'Until';
   const inside = inFunction || typed.type === 'FunctionDef';
+  const outermost = loop && !inLoop;
+  if (outermost) outOfRange = false;
   for (const [key, value] of Object.entries(typed)) if (key !== 'type') markOutOfPlace(value, loop, inside);
+  if (!outermost || !outOfRange) return;
+  outOfRange = false;
+  const statement = (command: unknown) => ({ type: 'Statement', pipelines: [{ type: 'Pipeline', commands: [command], negated: false, timed: false, timePosix: false }], operators: [], background: false });
+  const whole = { ...typed };
+  for (const key of Object.keys(typed)) delete typed[key];
+  Object.assign(typed, { type: 'Group', body: [statement(whole), statement(simpleCommand(hidden('loop-ended'), LAST_RESULT()))], redirections: [] });
 }
 
 // A glob ending in `/` matches only folders and keeps the slash, as bash's
@@ -702,6 +761,35 @@ function countOfAll(node: AstNode) {
   if ((node.parameter === '@' || node.parameter === '*') && (node.operation as { type?: string } | null)?.type === 'Length') Object.assign(node, { parameter: '#', operation: null });
 }
 
+// `${x^b}`: a pattern tests the first character alone, where just-bash changes the
+// first that matches (T390).
+function firstCase(node: AstNode, tools: Tools) {
+  const operation = node.operation as { type?: string; direction?: string; all?: boolean; pattern?: { parts?: AstNode[] } | null } | null;
+  if (operation?.type !== 'CaseModification' || operation.all === true || operation.pattern === null || operation.pattern === undefined) return;
+  if (/^(?:@|\*|\w+\[[@*]\])$/.test(node.parameter as string)) return;
+  const statement = tools.parse(`: "$(${hidden('case')} ${operation.direction!})"`).statements[0]!.pipelines[0]!.commands[0] as unknown as { args: { parts: { parts: AstNode[] }[] }[] };
+  const substitution = statement.args[0]!.parts[0]!.parts[0]!;
+  const inner = (substitution.body as { statements: { pipelines: { commands: AstNode[] }[] }[] }).statements[0]!.pipelines[0]!.commands[0]!;
+  (inner.args as unknown[]).push(operation.pattern, { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: node.parameter, operation: null }] }] });
+  tools.done.add(inner);
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, substitution);
+}
+
+// `${a[@]~}`, which just-bash's parser refuses (T390): written as a case change
+// whose pattern says which, and made item by item in `listing`.
+const TOGGLE = `${MARK}t`;
+
+// `"${a[@]^}"`: each item, where just-bash changes only the first (T390).
+function caseOfItems(word: { parts?: AstNode[] }): AstNode | null {
+  const only = word.parts?.length === 1 ? word.parts[0]! : null;
+  const inner = only?.type === 'DoubleQuoted' && (only.parts as AstNode[]).length === 1 ? (only.parts as AstNode[])[0]! : only;
+  const operation = inner?.operation as { type?: string; all?: boolean; pattern?: unknown } | null | undefined;
+  if (inner?.type !== 'ParameterExpansion' || operation?.type !== 'CaseModification' || !/^(?:@|\*|\w+\[[@*]\])$/.test(inner.parameter as string)) return null;
+  const toggles = (staticWord(operation.pattern as never) ?? '').startsWith(TOGGLE);
+  return operation.all !== true || toggles ? inner : null;
+}
+
 // An unquoted `${a[@]#x}`: bash drops what comes out empty, just-bash keeps it
 // (T367).
 const emptiedArray = (word: { parts?: AstNode[] }) => {
@@ -719,13 +807,32 @@ const starWord = (word: { parts?: AstNode[] }) => {
   return before === undefined || (before.type === 'Literal' && (before.value as string).endsWith('/'));
 };
 
+// `**/` at a word's end: every folder below (T397).
+const starSlash = (word: { parts?: AstNode[] }) => {
+  const parts = word.parts;
+  if (parts === undefined || parts.at(-1)?.type !== 'Literal' || parts.at(-1)!.value !== '/' || parts.at(-2)?.type !== 'Glob' || parts.at(-2)!.pattern !== '**' || parts.slice(0, -2).some((part) => part.type === 'Glob')) return false;
+  const before = parts.at(-3);
+  return before === undefined || (before.type === 'Literal' && (before.value as string).endsWith('/'));
+};
+
 // Where a word goes in the text below, as just-bash's `For` can't take it as text.
 const IN_PLACE = `${MARK}p`;
 
 // What makes a list for a word, into the array `name`, or null for any other word.
 const listedWords = new WeakSet<object>();
-function listing(word: { parts?: AstNode[] }, name: string, tools: Tools): { text: string; into: unknown } | null {
+function listing(word: { parts?: AstNode[] }, name: string, tools: Tools): { text: string; into: unknown; joined?: boolean } | null {
   if (listedWords.has(word)) return null;
+  const items = caseOfItems(word);
+  if (items !== null) {
+    const operation = items.operation as { direction: string; pattern: { parts?: AstNode[] } | null };
+    const parameter = items.parameter as string;
+    const whole = { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: parameter.replace('*', '@'), operation: null }] }] };
+    const pattern = staticWord(operation.pattern as never);
+    const toggled = pattern?.startsWith(TOGGLE) === true ? pattern.slice(TOGGLE.length) : null;
+    const made = toggled !== null ? `"$(${hidden('toggle')} ${toggled} "$${name}l")"` : pattern === null || pattern === undefined || pattern === '' ? `"\${${name}l${operation.direction === 'upper' ? '^' : ','}}"` : `"$(${hidden('case')} ${operation.direction} '${pattern.replaceAll("'", `'\\''`)}' "$${name}l")"`;
+    return { text: `${name}=(); for ${name}l in ${IN_PLACE}; do ${name}+=(${made}); done;`, into: whole, joined: parameter.includes('*') };
+  }
+  if (tools.globStar() && starSlash(word)) return { text: `builtin mapfile -t ${name} < <(${hidden('globstar')} "$BASHOPTS" ${word.parts!.length > 2 ? IN_PLACE : "''"} folders);`, into: { type: 'Word', parts: word.parts!.slice(0, -2) } };
   if (emptiedArray(word)) return { text: `${name}=(); for ${name}l in ${IN_PLACE}; do [[ -z $${name}l ]] || ${name}+=("$${name}l"); done;`, into: word };
   if (!tools.globStar() || !starWord(word)) return null;
   return { text: `builtin mapfile -t ${name} < <(${hidden('globstar')} "$BASHOPTS" ${word.parts!.length > 1 ? IN_PLACE : "''"});`, into: { type: 'Word', parts: word.parts!.slice(0, -1) } };
@@ -742,7 +849,7 @@ function listFirst(node: AstNode, field: 'args' | 'words' | 'array', tools: Tool
     const one = listing(word, name, tools);
     if (one === null) return word;
     made.push({ name, ...one });
-    return { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: `${name}[@]`, operation: null }] }] };
+    return { type: 'Word', parts: [{ type: 'DoubleQuoted', parts: [{ type: 'ParameterExpansion', parameter: `${name}[${one.joined === true ? '*' : '@'}]`, operation: null }] }] };
   });
   if (made.length === 0) return false;
   const typed = typedWord(tools.serialize({ ...node, assignments: [] }));
@@ -827,7 +934,7 @@ function tildeMinus(word: AstNode, tools: Tools) {
 // `$((…))` of numbers alone, in bash's 64 bits, where just-bash's are a double
 // (T323). Null for anything else, which just-bash reads.
 function bigArithmetic(text: string): string | null {
-  const tokens = text.match(/0[xX][0-9a-fA-F]+|\d+|\*\*|<<|>>|[-+*/%&^|~()]|\S/g) ?? [];
+  const tokens = text.match(/0[xX][0-9a-fA-F]*|\d+|\*\*|<<|>>|[-+*/%&^|~()]|\S/g) ?? [];
   let at = 0;
   const wrap = (value: bigint) => BigInt.asIntN(64, value);
   const atom = (): bigint | null => {
@@ -843,7 +950,8 @@ function bigArithmetic(text: string): string | null {
     }
     if (!/^\d/.test(token)) return null;
     if (/^0\d/.test(token)) return /^[0-7]+$/.test(token) ? wrap(BigInt(`0o${token.slice(1)}`)) : null;
-    return wrap(BigInt(token));
+    // `0x` alone is 0 (T397).
+    return wrap(BigInt(/^0[xX]$/.test(token) ? 0 : token));
   };
   const power = (): bigint | null => {
     const base = atom();
@@ -869,7 +977,7 @@ function bigArithmetic(text: string): string | null {
     }
     return left;
   };
-  if (tokens.length === 0 || tokens.some((token) => !/^(?:0[xX][0-9a-fA-F]+|\d+|\*\*|<<|>>|[-+*/%&^|~()])$/.test(token))) return null;
+  if (tokens.length === 0 || tokens.some((token) => !/^(?:0[xX][0-9a-fA-F]*|\d+|\*\*|<<|>>|[-+*/%&^|~()])$/.test(token))) return null;
   const value = binary(0);
   return value === null || at !== tokens.length ? null : value.toString();
 }
@@ -1081,6 +1189,16 @@ function checkable(redirection: Redirection): boolean {
     if (EFFECTS.has(part.type)) effects = true;
   });
   return !effects;
+}
+
+// `a[1.5]=1`: bash's error, which stops the line, as `$((1.5))`'s does (T397).
+function floatSubscript(node: AstNode, tools: Tools): boolean {
+  const subscript = (node.assignments as { name: string }[]).flatMap((each) => /^\w+\[(\d*\.\d[^\]]*)\]$/.exec(each.name)?.[1] ?? [])[0];
+  if (subscript === undefined) return false;
+  const { statements } = tools.parse(`: \${${BAD_ARITHMETIC}:?${typedWord(floatMessage(subscript))}}`);
+  for (const key of Object.keys(node)) delete node[key];
+  Object.assign(node, { type: 'Group', body: statements, redirections: [] });
+  return true;
 }
 
 const redirectTarget = (redirection: Redirection) => (redirection.target.type === 'Word' ? staticWord(redirection.target as never) : null);
@@ -1673,24 +1791,93 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   });
   // Every path under a folder, for `**` at a word's end, sorted as bash's (T375).
   const cvGlobstar = own('globstar', async (args, ctx) => {
-    const [settings = '', prefix = ''] = args;
+    const [settings = '', prefix = '', kind = ''] = args;
     const on = settings.split(':');
+    const folders = kind === 'folders';
     const paths: string[] = prefix === '' ? [] : [prefix];
     const under = async (typed: string, path: string) => {
       for (const name of await fs.readdir(path).catch(() => [] as string[])) {
         if (name.startsWith('.') && !on.includes('dotglob')) continue;
         const inner = `${typed}${name}`;
-        paths.push(inner);
         const at = `${path === '/' ? '' : path}/${name}`;
-        if ((await fs.stat(at).catch(() => null))?.isDirectory === true) await under(`${inner}/`, at);
+        const isFolder = (await fs.stat(at).catch(() => null))?.isDirectory === true;
+        if (!folders) paths.push(inner);
+        else if (isFolder) paths.push(`${inner}/`);
+        if (isFolder) await under(`${inner}/`, at);
       }
     };
     const root = fs.resolvePath(ctx.cwd, prefix === '' ? '.' : prefix);
     if ((await fs.stat(root).catch(() => null))?.isDirectory === true) await under(prefix, root);
     else paths.length = 0;
-    if (paths.length === 0) return { stdout: on.includes('nullglob') ? '' : `${prefix}**\n`, stderr: '', exitCode: 0 };
+    if (paths.length === 0) return { stdout: on.includes('nullglob') ? '' : `${prefix}**${folders ? '/' : ''}\n`, stderr: '', exitCode: 0 };
     return { stdout: `${paths.sort().join('\n')}\n`, stderr: '', exitCode: 0 };
   });
+  // `${x^b}`: the first character alone (T390).
+  const cvCase = own('case', async (args) => {
+    const [direction, pattern = '', value = ''] = args;
+    const [first = ''] = value;
+    const source = `^(?:${pattern.replace(/[.+^$(){}|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')})$`;
+    const matches = first !== '' && new RegExp(source, 'su').test(first);
+    return { stdout: matches ? `${direction === 'upper' ? first.toUpperCase() : first.toLowerCase()}${value.slice(first.length)}` : value, stderr: '', exitCode: 0 };
+  });
+  // `mapfile`'s options (T391): the assignments and calls, for the line's shell to run.
+  const cvMapfile = own('mapfile', async (args, ctx) => {
+    let [most, skip, origin, delimiter, callback, quantum, strip, name] = [0, 0, -1, '\n', '', 5000, false, 'MAPFILE'];
+    const valued = (letter: string, value: string) => {
+      if (letter === 'n') most = Number(value);
+      else if (letter === 's') skip = Number(value);
+      else if (letter === 'O') origin = Number(value);
+      else if (letter === 'd') delimiter = value === '' ? '\0' : [...value][0]!;
+      else if (letter === 'C') callback = value;
+      else if (letter === 'c') quantum = Number(value);
+    };
+    for (let at = 0; at < args.length; at += 1) {
+      const option = /^-([a-zA-Z])(.*)$/s.exec(args[at]!);
+      if (option === null) name = args[at]!;
+      else if (option[1] === 't') strip = true;
+      else valued(option[1]!, option[2] !== '' ? option[2]! : (args[(at += 1)] ?? ''));
+    }
+    const text = decodeStdin(ctx);
+    const items = text.split(delimiter).map((item, at, all) => (at < all.length - 1 ? `${item}${delimiter}` : item)).filter((item) => item !== '');
+    const taken = items.slice(skip, most > 0 ? skip + most : undefined);
+    const kept = (item: string) => (strip && item.endsWith(delimiter) ? item.slice(0, -delimiter.length) : item);
+    let script = origin < 0 ? `${name}=();` : '';
+    taken.forEach((item, at) => {
+      const place = Math.max(origin, 0) + at;
+      if (callback !== '' && (at + 1) % quantum === 0) script += ` ${callback} ${place} ${quoted(item)};`;
+      script += ` ${name}[${place}]=${quoted(kept(item))};`;
+    });
+    ctx.env.set(TARGET, script === '' ? ':' : script);
+    return quiet();
+  });
+  // `compgen`'s kinds, as Tab has them (T392).
+  const cvCompgen = own('compgen', async (args) => {
+    const [kind = '', prefix = ''] = args;
+    const named = [...functions, ...ran.keys()];
+    const lists: Readonly<Record<string, readonly string[]>> = {
+      '-k': SHELL_KEYWORDS,
+      keyword: SHELL_KEYWORDS,
+      '-b': SHELL_BUILTINS,
+      builtin: SHELL_BUILTINS,
+      function: named,
+      '-u': ['guest'],
+      user: ['guest'],
+    };
+    const all = lists[kind] ?? [...SHELL_KEYWORDS, ...named, ...SHELL_BUILTINS, ...SITE_WORDS, ...STANDARD_COMMANDS];
+    const found = [...new Set(all)].filter((name) => name.startsWith(prefix));
+    return { stdout: found.map((name) => `${name}\n`).join(''), stderr: '', exitCode: found.length > 0 ? 0 : 1 };
+  });
+  let rangeFailed = false;
+  const cvLoopCount = own('loop-count', async (args) => {
+    rangeFailed = true;
+    return { stdout: '', stderr: `bash: ${args[0]!}: ${args[1]!}: loop count out of range\n`, exitCode: 1 };
+  });
+  const cvLoopEnded = own('loop-ended', async (args) => {
+    const failed = rangeFailed;
+    rangeFailed = false;
+    return quiet(failed ? 1 : Number(args[0] ?? 0));
+  });
+  const cvClosedOutput = own('closed-output', async (args) => ({ stdout: '', stderr: `bash: ${args[0]!}: write error: Bad file descriptor\n`, exitCode: 1 }));
   const cvOutOfPlace = own('out-of-place', async (args) => {
     const word = args[0]!;
     if (word === 'return') return { stdout: '', stderr: "bash: return: can only `return' from a function or sourced script\n", exitCode: 2 };
@@ -1750,10 +1937,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     if (operands.length > 1) return refuse('bash: cd: too many arguments\n', 2);
     const [typed] = operands;
     let to = typed ?? ctx.env.get('HOME') ?? '';
-    if (to === '') {
-      if (typed === undefined) return refuse('bash: cd: HOME not set\n');
-      to = '.';
-    }
+    if (to === '') return refuse(typed === undefined ? 'bash: cd: HOME not set\n' : 'bash: cd: null directory\n');
     let stdout = '';
     if (typed === '-') {
       to = ctx.env.get('OLDPWD') ?? '';
@@ -1815,7 +1999,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       cwd: HOME,
       env: ENV,
       commands: [...STANDARD_COMMANDS],
-      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps, cvSetBad, cvRuns, cvListed, cvExportBare, cvInteger, cvExec, cvExecRan, cvExitCheck, cvExitStop, cvOpen, cvNulStatus, cvNul, cvReadFolder, cvBadArithmetic, cvSeconds, cvGlobstar, cvSlashes],
+      customCommands: [...commands, cvBegin, cvRead, cvEnd, cvOk, cvStart, cvUsage, cvHold, cvKeep, cvAfter, cvName, cvExportF, cvSetO, cvIntegerTest, cvOutOfPlace, cvPipedOn, cvPipedOff, cvSaw, cvDefined, cvCd, cvWrote, cvExiting, cvStop, yes, cvShopt, cvFunctionText, cvFunctionNames, cvAnyFound, cvHeld, cvToggle, cvFolder, cvKeeps, cvSetBad, cvRuns, cvListed, cvExportBare, cvInteger, cvExec, cvExecRan, cvExitCheck, cvExitStop, cvOpen, cvNulStatus, cvNul, cvReadFolder, cvBadArithmetic, cvSeconds, cvGlobstar, cvSlashes, cvCase, cvMapfile, cvCompgen, cvLoopCount, cvLoopEnded, cvClosedOutput],
       executionLimits: { maxExecutionTimeMs: limits.time, maxCommandCount: limits.commands + overhead, maxOutputSize: limits.pipe, ...UNREACHED },
     });
     // Runs on the first parse only: a command's own `exec` is its own script.
@@ -1925,7 +2109,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
   // takes 1,000,000 bytes at most, and a variable may be bigger (research R27).
   // Before the functions, so none of them runs in it (T290).
   const setupOf = (state: ShellState): string[] => {
-    const lines: string[] = ['declare -ar BASH_VERSINFO=(5 3 0 1 release aarch64-unknown-linux-gnu)'];
+    const lines: string[] = ['declare -ar BASH_VERSINFO=(5 3 0 1 release aarch64-unknown-linux-gnu)', 'BASH=/bin/bash TERM=xterm-256color'];
     if (logicalCwd !== null && fs.canonical(logicalCwd) === state.cwd) lines.push(`PWD=${logicalCwd}`);
     const gone = [...state.unset, ...('OLDPWD' in state.variables ? [] : ['OLDPWD'])];
     if (gone.length > 0) lines.push(`unset ${gone.join(' ')}`);
@@ -2047,7 +2231,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     if (request.line.trim() === '') return { ...base, stdout: '', stderr: '', status: state.status, end: 'done' };
     const { line } = request;
     let ast: Script;
-    const source = keepNames(line).replace(/\$\{(\w+)(~~?)\}/g, (_, name: string, kind: string) => `$(${hidden('toggle')} ${kind} "\${${name}}")`);
+    const source = keepNames(line).replace(/\$\{(\w+)(~~?)\}/g, (_, name: string, kind: string) => `$(${hidden('toggle')} ${kind} "\${${name}}")`).replace(/\$\{(\w+\[[@*]\]|[@*])(~~?)\}/g, (_, name: string, kind: string) => `\${${name}^${TOGGLE}${kind}}`);
     const extglob = state.shopts.includes('extglob');
     try {
       try {
@@ -2186,7 +2370,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
       .map((entry) => entry.replace(/^(?:bash: )?(\d+): unbound variable$/, 'bash: $$$1: unbound variable'))
       .map((entry) => (/\bcommand\s+-[a-zA-Z]*V/.test(line) ? entry.replace(/^([^:\s]+: not found)$/, 'bash: command: $1') : entry))
       .map((entry) => entry.replace(/^shopt: /, 'bash: shopt: ').replace(/^\[: /, 'bash: [: ').replace(/^test: /, `bash: ${/(^|[\s;|&(])\[\s/.test(line) ? '[' : 'test'}: `))
-      .map((entry) => entry.replace(/^bash: line \d+: (.*\(error token is ".*"\))$/, 'bash: $1'))
+      .map((entry) => entry.replace(/^bash: line \d+: (.*\(error token is ".*"\))$/, 'bash: $1').replace(/^(\S+: value too great for base \(error token is ".*"\))$/, 'bash: $1').replace(/^compopt: /, 'bash: compopt: '))
       .map((entry) => entry.replace(/^bash: eval: (Parse error at .*)$/, (_, message: string) => `bash: eval: ${parseMessage(message, '')}`))
       // A command only just-bash's Node build has is unknown, as in bash
       // (research G17).
@@ -2249,7 +2433,6 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
         fs,
         home: HOME,
         commands: [...SITE_WORDS, ...STANDARD_COMMANDS, ...SHELL_BUILTINS, ...SHELL_KEYWORDS],
-        keywords: ['then', 'else', 'elif', 'if', 'do', 'while', 'until', '!', 'time', '{'],
         variables: Object.fromEntries([...baseline].filter(([name]) => NAME.test(name) && !isOwn(name))),
       }),
     async reset() {

@@ -437,7 +437,8 @@ function changeEnd(lines: readonly string[], from: Cursor, count: number): Curso
   for (let times = 0; times < count; times += 1) {
     if (times > 0) column += 1;
     while (wordKind(lines[line]?.[column]) === 0) {
-      if (line >= lines.length) return null;
+      // Out of words: to the end of the text (T398).
+      if (line >= lines.length) return lines.length - 1 === from.line ? null : { line: lines.length - 1, column: lines.at(-1)!.length };
       if (column >= lines[line]!.length) {
         line += 1;
         column = 0;
@@ -466,7 +467,8 @@ function crossLines(state: VimState, operator: 'd' | 'c' | 'y', count: number): 
   if (to === null) return null;
   const first = lineText(state, line);
   const last = lineText(state, to.line);
-  const whole = operator !== 'c' && column <= firstNonBlank(first) && to.column >= last.length;
+  // Only a delete turns into whole lines, as vim's `d` alone does (T398).
+  const whole = operator === 'd' && column <= firstNonBlank(first) && to.column >= last.length;
   const between = state.lines.slice(line + 1, to.line);
   const register = whole ? { text: state.lines.slice(line, to.line + 1).join('\n'), lines: true } : { text: [first.slice(column), ...between, last.slice(0, to.column)].join('\n'), lines: false };
   if (operator === 'y') return { ...state, register };

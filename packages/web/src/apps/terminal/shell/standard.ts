@@ -119,4 +119,12 @@ export const MISSING_HELP: Readonly<Record<string, CommandHelp>> = {
   },
 };
 
+// What `help` prints of a builtin that `--help` doesn't answer, as bash's `help`
+// words it (T389). `echo --help` stays as bash has it: it prints `--help`.
+export const BUILTIN_HELP: Readonly<Record<string, string>> = {
+  echo: 'echo: echo [-neE] [arg ...]\n    Write arguments to the standard output.\n    \n    Display the ARGs, separated by a single space character and followed by a\n    newline, on the standard output.\n    \n    Options:\n      -n\tdo not append a newline\n      -e\tenable interpretation of the following backslash escapes\n      -E\texplicitly suppress interpretation of backslash escapes\n    \n    `echo\' interprets the following backslash-escaped characters:\n      \\a\talert (bell)\n      \\b\tbackspace\n      \\c\tsuppress further output\n      \\e\tescape character\n      \\E\tescape character\n      \\f\tform feed\n      \\n\tnew line\n      \\r\tcarriage return\n      \\t\thorizontal tab\n      \\v\tvertical tab\n      \\\\\tbackslash\n      \\0nnn\tthe character whose ASCII code is NNN (octal).  NNN can be\n    \t\t0 to 3 octal digits\n      \\xHH\tthe eight-bit character whose value is HH (hexadecimal).  HH\n    \t\tcan be one or two hex digits\n      \\uHHHH\tthe Unicode character whose value is the hexadecimal value HHHH.\n    \t\tHHHH can be one to four hex digits.\n      \\UHHHHHHHH the Unicode character whose value is the hexadecimal value\n    \t\tHHHHHHHH. HHHHHHHH can be one to eight hex digits.\n    \n    Exit Status:\n    Returns success unless a write error occurs.\n',
+  true: 'true: true\n    Return a successful result.\n    \n    Exit Status:\n    Always succeeds.\n',
+  false: 'false: false\n    Return an unsuccessful result.\n    \n    Exit Status:\n    Always fails.\n',
+};
+
 export const helpText = (name: string, help: CommandHelp): string => `${name} - ${help.summary}\n\nUsage: ${help.usage}\n\nOptions:\n${help.options.map((option) => `  ${option}\n`).join('')}`;

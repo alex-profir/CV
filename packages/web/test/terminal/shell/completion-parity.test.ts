@@ -28,6 +28,15 @@ const LINES: readonly string[] = [
   'experi', // an alias
   'expo', // a builtin
   'whil', // a keyword
+  'if ca', // T393: after a keyword, files
+  'then ca',
+  'while ca',
+  '! ca',
+  'time ca',
+  'ls {a',
+  'if true; then wc',
+  'for x in a; do wc',
+  '{ ca',
   'ca', // several, a keyword and a command, nothing to add
   'myf', // a function
   'not', // a folder in the first word

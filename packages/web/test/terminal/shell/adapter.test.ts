@@ -817,3 +817,43 @@ describe('006-terminal-FR-067: Phase 40, lines that write or close, each as bash
     expect(await run('f();')).toMatchObject({ status: 2, end: 'syntax' });
   });
 });
+
+describe('006-terminal-FR-073: what `rm -r` refuses by the name alone (T377)', () => {
+  test.each([
+    ['rm -r .', "rm: refusing to remove '.' or '..' directory: skipping '.'\n"],
+    ['rm -rf .', "rm: refusing to remove '.' or '..' directory: skipping '.'\n"],
+    ['rm -r ./', "rm: refusing to remove '.' or '..' directory: skipping './'\n"],
+    ['cd work; rm -r ..', "rm: refusing to remove '.' or '..' directory: skipping '..'\n"],
+    ['mkdir d; rm -r d/.', "rm: refusing to remove '.' or '..' directory: skipping 'd/.'\n"],
+    ['mkdir d; rm -r d/..', "rm: refusing to remove '.' or '..' directory: skipping 'd/..'\n"],
+  ])('%s removes nothing', async (line, stderr) => {
+    const shell = shellFor('every-field');
+    await runLine(shell, 'touch v');
+    expect(await runLine(shell, line)).toMatchObject({ stderr, status: 1 });
+    expect((await runLine(shell, 'cd ~; ls v')).status).toBe(0);
+  });
+
+  test('then on to the next operand', async () => {
+    const shell = shellFor('every-field');
+    const result = await runLine(shell, 'touch v w; rm -r . v; ls v; ls w');
+    expect(result.stderr).toContain("rm: refusing to remove '.' or '..' directory: skipping '.'\n");
+    expect(result.stdout).toBe('w\n');
+  });
+});
+
+describe('006-terminal-FR-067: what parity can’t compare on any machine (T392, T397)', () => {
+  test.each([
+    ['compgen -c ca', 'case\ncat\n', 0],
+    ['compgen -k | head -2', 'if\nthen\n', 0],
+    ['compgen -b | head -2', '.\n:\n', 0],
+    ['compgen -u', 'guest\n', 0],
+    ['compgen -c nothing-here', '', 1],
+    ['echo $BASH_VERSION', '5.3.0(1)-release\n', 0],
+    ['echo ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}', '5.3\n', 0],
+    ['echo $BASH', '/bin/bash\n', 0],
+    ['echo $TERM', 'xterm-256color\n', 0],
+    ['env | grep -c -E ^BASH=', '0\n', 1],
+  ])('%s', async (line, stdout, status) => {
+    expect(await runLine(shellFor('every-field'), line)).toMatchObject({ stdout, status });
+  });
+});

@@ -2,6 +2,7 @@
 // of its block and records the block with that text; the wrappers of `cat`,
 // `ls` and `jq` record what the site adds; `vim`, `cv`, `open` and `clear`
 // return their effects.
+import { STANDARD_GROUP } from '../../../src/apps/terminal/shell/site-commands.ts';
 import { pathLine } from '../../../src/apps/terminal/engine/block.ts';
 import { describe, expect, test } from 'vitest';
 import { blockText } from '../../../src/apps/terminal/engine/block.ts';
@@ -293,5 +294,17 @@ describe('006-terminal-FR-057: cv and clear where their output doesn’t reach t
     expect((await runLine(shell, 'tree -f')).stdout).not.toContain('/home/guest');
     for (const line of ['tree -L x', 'tree -L 0']) expect(await runLine(shell, line)).toMatchObject({ stdout: '', stderr: 'tree: Invalid level, must be greater than 0.\n', status: 1 });
     expect(await runLine(shell, 'tree -L')).toMatchObject({ stderr: 'tree: Missing argument to -L option.\n', status: 1 });
+  });
+});
+
+describe('006-terminal-FR-008: every name in help’s standard group has its help (T389)', () => {
+  test.each(STANDARD_GROUP)('help %s', async (name) => {
+    const result = await runLine(shellFor('every-field'), `help ${name}`);
+    expect(result.stdout.trim()).not.toBe('');
+    expect(result.status).toBe(0);
+  });
+
+  test('echo --help stays as bash has it', async () => {
+    expect((await runLine(shellFor('every-field'), 'echo --help')).stdout).toBe('--help\n');
   });
 });

@@ -18,7 +18,7 @@ import { CLEARED, fileText, HOME, MARK } from './fs.ts';
 import { GNU } from './gnu.ts';
 import type { TerminalFs } from './fs.ts';
 import type { Limit, Recorded } from './protocol.ts';
-import { helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
+import { BUILTIN_HELP, helpText, MISSING_HELP, SHELL_BUILTINS, STANDARD_COMMANDS } from './standard.ts';
 
 export type ShellCommand = ReturnType<typeof defineCommand>;
 type Context = Parameters<ShellCommand['execute']>[1];
@@ -136,6 +136,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
   const standardHelp = (args: readonly string[], ctx: Context): Promise<Output> | null => {
     const name = args.length === 1 ? args[0]! : null;
     if (name === null || SITE.has(name.toLowerCase()) || !STANDARD_GROUP.includes(name)) return null;
+    if (BUILTIN_HELP[name] !== undefined) return Promise.resolve(ok(BUILTIN_HELP[name]));
     const run = shell.run();
     const builtin = BUILTINS.has(name) && !STANDARD_COMMANDS.includes(name as never);
     run.builtinHelp = builtin;
@@ -605,6 +606,7 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
     }
     return null;
   };
+  const BYTE_COUNTED = /%[-+ #0]*(?:(?:\d+|\*)(?:\.(?:\d+|\*)?)?|\.(?:\d+|\*)?)[sb]|%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?c/;
   const masked = (arg: string) => arg.replace(/\\x([89a-fA-F][0-9a-fA-F])|\\0?([23][0-7]{2})/g, (_, hex?: string, octal?: string) => String.fromCharCode(0xf700 + Number.parseInt(hex ?? octal!, hex === undefined ? 8 : 16)));
   const byteExact = (name: string, reads: (args: readonly string[]) => boolean) =>
     defineCommand(name, async (args, ctx) => {
@@ -618,7 +620,10 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       }
       // Its length modifiers mean nothing to bash, and just-bash refuses them.
       const typed = formatAt < 0 || args[formatAt] === undefined ? args : args.toSpliced(formatAt, 1, args[formatAt]!.replace(/%%|(%[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*)?)?)[hlLjzt]+/g, (whole, start?: string) => start ?? whole));
-      const mask = reads(typed) ? typed.map(masked) : typed;
+      // A width, a precision and `%c` count bytes in bash, so each byte is a
+      // character for just-bash (T394).
+      const inBytes = name === 'printf' && args[0] !== '-v' && BYTE_COUNTED.test(typed[formatAt] ?? '') && typed.some((arg) => /[^\x00-\x7f]/.test(arg));
+      const mask = inBytes ? typed.map((arg, at) => (at === formatAt ? arg.replace(/%%|%([-+ #0]*(?:\d+|\*)?)c/g, (whole, width?: string) => (width === undefined ? whole : `%${width}.${1}s`)) : arg)).map((arg) => masked(arg).replace(/[^\x00-\x7f\uF700-\uF7FF]/gu, (char) => [...new TextEncoder().encode(char)].map((byte) => String.fromCharCode(0xf700 + byte)).join(''))) : reads(typed) ? typed.map(masked) : typed;
       // bash's builtin names itself as the shell (T305).
       const named = (result: Output) => (name === 'printf' ? { ...result, stderr: result.stderr.replace(/^printf: /gm, 'bash: printf: ') } : result);
       if (mask.every((arg, index) => arg === typed[index])) return named(await ctx.origCommand!(typed));

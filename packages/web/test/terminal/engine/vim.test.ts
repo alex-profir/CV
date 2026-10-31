@@ -474,6 +474,7 @@ describe('006-terminal-FR-079 and 006-terminal-FR-060: as real vim does', () => 
 describe('006-terminal-FR-060 and 006-terminal-FR-079: the column kept, and word and paragraph moves as vim’s', () => {
   const WORDS = 'a\n\n\nb c\n d(e) f.g';
   const LONG = 'one two three\n  four five\n\nsix seven';
+  const SEVEN = 'one two three\nfour five six\n\n  seven eight\nnine ten\neleven\ntwelve thirteen';
   const send = (from: VimState, typed: string) =>
     (typed.match(/<Esc>|./gs) ?? []).reduce((now, key) => (now.mode === 'insert' && key !== '<Esc>' ? state(vimReducer(now, { text: key })) : state(vimReducer(now, { key: key === '<Esc>' ? 'Escape' : key }))), from);
   test.each([
@@ -495,6 +496,12 @@ describe('006-terminal-FR-060 and 006-terminal-FR-079: the column kept, and word
     [LONG, 'd4w', 'five\n\nsix seven', [0, 0]],
     [LONG, 'y4wP', 'one two three\n  four one two three\n  four five\n\nsix seven', [0, 0]],
     [LONG, 'c4wX<Esc>', 'X five\n\nsix seven', [0, 0]],
+    // T398: a count past the words, as vim 9.1.
+    [SEVEN, 'c20wq<Esc>', 'q', [0, 0]],
+    [SEVEN, '20cwq<Esc>', 'q', [0, 0]],
+    [SEVEN, 'jc20wq<Esc>', 'one two three\nq', [1, 0]],
+    [SEVEN, 'y20wP', `${SEVEN}${SEVEN}`, [0, 0]],
+    [SEVEN, 'jd20w', 'one two three', [0, 0]],
     ['a\n\nb', '}', 'a\n\nb', [1, 0]],
     ['a\n\nb', '}}', 'a\n\nb', [2, 0]],
     ['a\n\nb', '2}', 'a\n\nb', [2, 0]],

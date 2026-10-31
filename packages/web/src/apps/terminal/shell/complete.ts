@@ -18,12 +18,10 @@ export type CompleteSources = {
   commands: readonly string[];
   // The shell's own variables (HOME, PWD…), name → value.
   variables: Readonly<Record<string, string>>;
-  // Words after which the next word is a command.
-  keywords: readonly string[];
 };
 
 // readline's word breaks for bash; a quote that opens starts the word after it.
-const BREAKS = new Set([' ', '\t', '\n', '"', "'", '`', '@', '$', '>', '<', '=', ';', '|', '&', '{', '(']);
+const BREAKS = new Set([' ', '\t', '\n', '"', "'", '`', '@', '$', '>', '<', '=', ';', '|', '&', '(']);
 const SEPARATORS = new Set([';', '|', '&', '(', '`', '{']);
 
 const GLOB = /[*?]|\[.*\]/;
@@ -77,8 +75,7 @@ function findWord(before: string): Word {
       quote = char;
       start = at + 1;
     } else if (char === '$') start = at;
-    // `${`, the start of a name, not a group's `{` (T371).
-    else if (BREAKS.has(char) && !(char === '{' && before[at - 1] === '$')) start = at + 1;
+    else if (BREAKS.has(char)) start = at + 1;
   }
   return { start, quote };
 }
@@ -87,7 +84,7 @@ const unescape = (raw: string, quote: Word['quote']) => (quote === "'" ? raw : r
 
 function quoted(name: string, quote: Word['quote']): string {
   if (quote === "'") return name.replace(/'/g, `'\\''`);
-  if (quote === '"') return name.replace(/["$`\\]/g, '\\$&');
+  if (quote === '"') return name.replace(/["`\\]/g, '\\$&');
   return name.replace(QUOTED, '\\$&');
 }
 
@@ -100,7 +97,7 @@ function commonPrefix(names: readonly string[]): string {
 }
 
 // Whether the word starting after `before` is a command's first word.
-function inCommandPosition(before: string, keywords: readonly string[]): boolean {
+function inCommandPosition(before: string): boolean {
   // An assignment's value (T329).
   if (before.endsWith('=')) return false;
   const text = before.trimEnd();
@@ -109,8 +106,10 @@ function inCommandPosition(before: string, keywords: readonly string[]): boolean
   const last = /(?:^|[\s;|&(])([^\s;|&(]+)$/.exec(text)?.[1];
   if (last === undefined) return false;
   // A word after assignments is a command's first word.
-  if (/^[A-Za-z_]\w*\+?=/.test(last)) return inCommandPosition(text.slice(0, -last.length), keywords);
-  return keywords.includes(last);
+  if (/^[A-Za-z_]\w*\+?=/.test(last)) return inCommandPosition(text.slice(0, -last.length));
+  // After `if` or `then` too: readline knows no keywords, only what separates
+  // commands, `{` among them (T393).
+  return false;
 }
 
 // A name in a folder: the entries of the folder a word's path part names.
@@ -166,13 +165,17 @@ export async function complete(request: CompleteRequest, sources: CompleteSource
 
   // A word with a pattern in it: what it matches, if that's one name (T301).
   if (GLOB.test(raw) && quote === null) {
-    const cut = raw.lastIndexOf('/') + 1;
-    const dir = raw.slice(0, cut);
-    const pattern = new RegExp(`^${raw.slice(cut).replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`);
+    // A final slash keeps the pattern's folders (T393).
+    const slashed = raw.endsWith('/');
+    const typedPattern = slashed ? raw.slice(0, -1) : raw;
+    const cut = typedPattern.lastIndexOf('/') + 1;
+    const dir = typedPattern.slice(0, cut);
+    const pattern = new RegExp(`^${typedPattern.slice(cut).replace(/[.+^${}()|\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`);
     const folder = dir === '' ? state.cwd : dir.startsWith('~/') ? `${sources.home}/${dir.slice(2)}` : dir.startsWith('/') ? dir : `${state.cwd}/${dir}`;
     const names = await sources.fs.readdir(folder.replace(/(.)\/+$/, '$1')).catch(() => [] as string[]);
-    const hits = names.filter((name) => pattern.test(name) && (!name.startsWith('.') || raw.slice(cut).startsWith('.')));
-    const matched = await Promise.all(hits.map(async (name) => ((await sources.fs.stat(`${folder.replace(/\/+$/, '')}/${name}`).catch(() => null))?.isDirectory === true ? { name: `${name}/`, folder: true } : { name, folder: false })));
+    const hits = names.filter((name) => pattern.test(name) && (!name.startsWith('.') || typedPattern.slice(cut).startsWith('.')));
+    const statted = await Promise.all(hits.map(async (name) => ((await sources.fs.stat(`${folder.replace(/\/+$/, '')}/${name}`).catch(() => null))?.isDirectory === true ? { name: `${name}/`, folder: true } : { name, folder: false })));
+    const matched = slashed ? statted.filter((match) => match.folder) : statted;
     matched.sort((a, b) => byBytes(bare(a), bare(b)));
     if (matched.length !== 1) return none(matched);
     return { ...none(matched), insert: `${dir}${quoted(bare(matched[0]!), null)}${matched[0]!.folder ? '/' : space}` };
@@ -185,7 +188,7 @@ export async function complete(request: CompleteRequest, sources: CompleteSource
   if (word === '~') return none();
   const slash = raw.lastIndexOf('/');
   const pathWord = slash !== -1;
-  const first = inCommandPosition(position, sources.keywords);
+  const first = inCommandPosition(position);
 
   let matches: CompletionMatch[];
   // A name both a command and a folder: listed once, and neither gets a mark.

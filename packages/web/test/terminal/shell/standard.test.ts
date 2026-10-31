@@ -196,7 +196,7 @@ describe('006-terminal-FR-017: a standard command’s wrong option gives its own
     expect((await runLine(shell, 'mkdir d; diff d d; echo $?')).stdout).toBe('0\n');
     expect((await runLine(shell, 'diff --version')).stdout).toContain('diff (GNU diffutils)');
     expect((await runLine(shell, 'sed')).status).toBe(1);
-    expect((await runLine(shell, 'awk')).status).toBe(2);
+    expect((await runLine(shell, 'awk')).status).toBe(1);
   });
 
   test('ls --badopt, grep alone and head -n x about', async () => {
