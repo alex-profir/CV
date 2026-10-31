@@ -3,15 +3,15 @@
 // entry points, and loads the TypeScript only after the Node version is
 // known to be recent enough. 001's message mentions blocking network access,
 // which isn't this tool's reason, so it has its own, like the site check's.
-import { REQUIRED_NODE_MAJOR } from '../../traceability/src/node-version.js';
+import { nodeVersionProblem } from './node-version.js';
 
 const USAGE = 'usage: npm run verify | npm run signoff (takes no arguments)';
 
-const version = process.versions.node;
 const [command, ...rest] = process.argv.slice(2);
+const versionProblem = nodeVersionProblem(process.versions.node, command);
 
-if (Number(version.split('.')[0]) < REQUIRED_NODE_MAJOR) {
-  process.stderr.write(`local full run needs Node ${REQUIRED_NODE_MAJOR} or later (see .nvmrc), but this is Node ${version}\n`);
+if (versionProblem !== null) {
+  process.stderr.write(`${versionProblem}\n`);
   process.exitCode = 2;
 } else if ((command !== 'verify' && command !== 'signoff') || rest.length > 0) {
   process.stderr.write(`${USAGE}\n`);

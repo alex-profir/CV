@@ -170,6 +170,9 @@ export async function verify(options: VerifyOptions): Promise<number> {
   const paths = resultPaths(dir, sha);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(paths.log, '');
+  // An earlier result goes before the first check, so a run that's stopped
+  // or still going leaves no earlier pass to sign off (FR-033).
+  fs.rmSync(paths.json, { force: true });
   fs.rmSync(paths.vitest, { force: true });
   const toOut = (chunk: string) => {
     stdout.write(chunk);

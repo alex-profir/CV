@@ -1067,3 +1067,22 @@ Task: "ci.yml test job and timeouts; ruleset local-verify entry"
 
 The amendment ships in this one pull request (Constitution XI). The ruleset change is applied
 during it, not after, so it can't merge without the sign-off it introduces (research R19).
+
+---
+
+## Phase 12: Convergence
+
+**Purpose**: Gaps found by `/speckit-converge` on 2026-10-29 in the amendment. The owner tasks
+T081 to T086 still stand and aren't repeated here. PR #28 merged without these tasks, so they ship
+in a follow-up pull request of their own, signed off locally like any other.
+
+- [X] T087 Remove the earlier `<sha>.json` before the first check of a local full run, so an interrupted or still-running run can't leave an earlier pass to sign off, per FR-033 (partial)
+  - Today `verify()` in `tools/local-verify/src/verify.ts` empties `<sha>.log` and removes `<sha>.vitest.json` before the checks, but keeps `<sha>.json` until `writeResult` runs after the last check. If a second run on a commit that already passed shows a failing check and is then stopped (Ctrl-C, an outside SIGTERM), or `npm run signoff` is run while it's still going, `readPassingResult` still finds the old `pass`. data-model.md (States of a commit) says another `verify` on the same commit replaces its result, "so a later failure takes back a pass that wasn't signed off yet", and contracts/local-verify.md says a new run replaces all three files.
+  - Remove `<sha>.json` with `fs.rmSync(…, { force: true })` beside the existing `<sha>.vitest.json` removal, which runs after the clean-tree and prerequisite refusals (a refused run still writes and removes nothing, data-model.md Validation rules).
+  - Add a test to the 001-requirement-traceability-FR-033 group in `tools/local-verify/test/verify.test.ts`. After a passing run, start a second `verify` whose `runCommand` seam checks, while the first check is running, that `readPassingResult(dir, sha)` returns `{ reason: 'none' }`. Keep the group's `{ timeout: 30_000 }`.
+  - **Recorded 2026-10-29**: `verify()` removes `<sha>.json` beside `<sha>.vitest.json`. The new FR-033 test, "a second run on a commit that passed takes the earlier pass back before its first check", sees `{ reason: 'none' }` in the first check and a pass again after the run; without the removal it fails (it read the earlier pass).
+- [X] T088 Make the entry point's Node-version refusal name the command that was run and say how to fix it, per FR-032 (partial)
+  - Today `tools/local-verify/src/main.js` prints `local full run needs Node 26 or later (see .nvmrc), but this is Node <version>` on an old Node. It doesn't say how to fix it, which FR-032 asks for and every other prerequisite message does (`: run nvm use`, `: run npm ci`). It also says "local full run" when the command was `npm run signoff`.
+  - Print `npm run <verify|signoff> needs Node 26 or later (see .nvmrc), but this is Node <version>: run nvm use`. Use the subcommand when it's `verify` or `signoff`, and `local full run` otherwise. Exit 2 as before.
+  - Update quickstart.md scenario 9's Node case, and the T077 and T078 notes' quoted line if you quote it again, word for word. Add a test titled with 001-requirement-traceability-FR-032 in `tools/local-verify/test/verify.test.ts` that runs `main.js` as a subprocess under a stubbed version. For example, use `--import` with a data-URL module that sets `process.versions` through `Object.defineProperty`, or move the comparison and the message into a side-effect-free function, as T049 did, and test that. It must stay in the fast set and start no check.
+  - **Recorded 2026-10-29**: the gate is `nodeVersionProblem(version, command)` in a new `tools/local-verify/src/node-version.js`, apart from `main.js`, because importing `main.js` from a fast test reaches `tools/site-check/src/browser.ts` through its dynamic import, which FR-030's import-graph test refuses. The new FR-032 test checks the three wordings and runs `main.js signoff` under `--import` with `process.versions.node` stubbed to 24.21.0: `npm run signoff needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use`, exit 2, no fake command started. quickstart.md scenario 9 and contracts/local-verify.md quote the new line; the T077 and T078 notes keep the line as it was then. Typecheck, traceability (325 requirements) and the fast set (67 files, 841 tests) pass; the full set wasn't run here, since only local-verify's code and its fast tests changed, and T082 runs it on the new head.
