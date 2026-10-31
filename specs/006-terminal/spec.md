@@ -15,6 +15,10 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
 out, and vim edits files (see Clarifications, Session 2026-10-30 (owner review of the shell)).
 The amendment approved by the owner 2026-10-30.
 
+**Amended**: 2026-10-31, after the converge runs on the built shell: what just-bash can't do in
+`awk`, `sed` and a negated pattern is accepted and listed (see Clarifications, Session 2026-10-31).
+The owner's decision of 2026-10-31 approves this amendment.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -186,6 +190,19 @@ The amendment approved by the owner 2026-10-30.
   vim text; FR-076 lists keywords and the working folder's folders, without aliases the visitor
   defined; a new file shows `[New]` in the message line only (FR-058, FR-065, FR-076, SC-016).
   Approved by the owner 2026-10-30.
+
+### Session 2026-10-31
+
+- Q: `jq`'s language differs from jq's in ways no wrapper around just-bash's can reach (research
+  G39), and FR-056 allows none of them. Accept, report upstream, or give the site its own `jq`?
+  → A: The site's own, as `sort`, `cut` and `tr` already are. FR-056 doesn't change: it is what's
+  now met (research R53).
+- Q: What's left of `awk` and `sed` is inside just-bash's (research G28, G29, G38), and FR-068
+  allows none of it. Accept, report upstream, or replace them? → A: Accept, and report upstream.
+  They are listed in FR-068 as allowed differences, each to go once the shell no longer has it.
+- Q: `!(…)` needs a lookahead just-bash's regular expressions don't have (research G31), and FR-067
+  doesn't allow refusing it. Accept, report upstream, or replace the glob matching? → A: Accept, and
+  report upstream. The line says so and runs nothing (FR-067).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -800,19 +817,27 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   `until`; and functions. Variables and functions last until the Terminal closes (FR-021). The
   commands of FR-008 MUST behave as commands of that shell: they can be piped, redirected,
   chained and run in loops.
+  The `extglob` patterns `@(…)`, `+(…)`, `?(…)` and `*(…)` work; a negated one, `!(…)`, says it
+  isn't supported, with status 1, and runs nothing of its line, until the shell can match it.
+  Amended 2026-10-31: every `extglob` pattern was to have bash's meaning.
 - **FR-068** (added 2026-10-29): Besides the commands of FR-008, the shell MUST offer the standard commands a bash
   user expects, at least `echo`, `printf`, `grep`, `head`, `tail`, `wc`, `sort`, `uniq`, `cut`,
   `tr`, `sed`, `awk`, `find`, `tree`, `cp`, `mv`, `rm`, `mkdir`, `touch`, `tee`, `xargs`, `diff`,
   `seq`, `date`, `env`, `which`, `basename`, `dirname`, `true` and `false`. `ls`, `cd`, `cat`,
   `pwd` and `history` MUST also take bash's common options for them, such as `ls -la` and
   `cat -n`, still naming files as FR-044 and FR-050 set. Each standard command MUST behave as its
-  GNU version does for the options its own `--help` lists, and MUST answer `--help`. Four
+  GNU version does for the options its own `--help` lists, and MUST answer `--help`. Six
   differences from bash and GNU are allowed, and no other: `tee` refused a write to a protected
   file may name a reason other than "Permission denied", with the file still unchanged (FR-049);
   `env` may also list variables that weren't exported, while `export -p` lists only those that
   were; `jq`'s error messages may be worded otherwise than jq 1.7's, still starting `jq:`, with a
-  non-zero status (FR-056); and a command line's error output is shown after its other output,
-  not interleaved with it. Each goes once the shell no longer has it. No command
+  non-zero status (FR-056); a command line's error output is shown after its other output,
+  not interleaved with it; `awk` may lack `BEGIN { getline }`, `printf`'s `0` and `+` flags and
+  two-digit exponents, string comparison of `"10"<"9"`, a reference creating its element, `CONVFMT`,
+  `+inf` and `+nan`, `print > "/dev/stderr"` and `print | "sort"`, and may print a number past 2^53
+  as `9.0072e+15`; and `sed` may lack `H`'s first line break, `s/./&&/2g`, `\U`, `\u`, `\L`, `\l`
+  and `\E`, and may word a bad script otherwise and shorten its usage. Each goes once the shell no
+  longer has it. Amended 2026-10-31: four differences were allowed, without `awk`'s and `sed`'s. No command
   may reach the network, run a real program or run code in another language, so the shell offers
   no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
   is also a command of FR-008, such as `whoami`, FR-008's meaning wins.

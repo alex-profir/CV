@@ -602,20 +602,20 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G24 | `pushd` and PIPESTATUS, `export -f`, `break`, `continue` and `return` out of place, `test`'s integer errors, `~+`, `set -o`'s layout (T305) | The adapter: `rewriteBashBuiltin` and `markOutOfPlace`. `break` and `continue` in a function called outside a loop, and these words in `eval` or `source` text, stay just-bash's, as only the line's own tree is seen |
 
 | G25 | Limits bash doesn't have: `maxBraceExpansionResults` and fixed caps of 10,000 a range and 100,000 in all cut a list in silence; awk's and sed's iterations, awk's records, jq's iterations and elements stop a line in just-bash's words, any of which used to close the window (T314, T315) | Raised (`UNREACHED` in the adapter); the adapter expands a long brace list itself up to FR-069's 1 MB, and past that stops with FR-069's text. A limit's words never show. Upstream report: the silent cut |
-| G26 | jq's generators are eager: `[limit(3;repeat(1))]` and `first(range(10;infinite))` run out of room, and `def f: f; f` overflows the stack as a "parse error" (T315) | Stopped with FR-069's time text. Cannot be fixed around it, where jq prints `[1,1,1]` and `10`. Upstream report |
+| G26 | jq's generators are eager: `[limit(3;repeat(1))]` and `first(range(10;infinite))` run out of room, and `def f: f; f` overflows the stack as a "parse error" (T315) | Stopped with FR-069's time text. Cannot be fixed around it, where jq prints `[1,1,1]` and `10`. Upstream report Gone 2026-10-31: the site's own `jq` is lazy (R53) |
 | G27 | `exec < file; read l` reads nothing, as `exec` keeps no standard input (T323). `$((…))` is a double, so a variable past 2^53 is off (`x=9007199254740993; echo $((x+1))`) | A `$((…))` of numbers alone is worked in 64 bits by the adapter. Neither of these can be fixed around it. Upstream report |
-| G28 | awk's language, where a wrapper can't reach it (T319): `BEGIN { getline }` reads nothing; `printf`'s `0` and `+` flags and two-digit exponents; `"10"<"9"` compares as numbers; `a["x"]` doesn't create the element; `CONVFMT`; `+inf`, `-inf` and `+nan`; `print > "/dev/stderr"`; `print | "sort"` | Upstream report, and open for the owner under FR-068 (T319). `-v`, `NAME=value` operands, bare `length`, `int`, `RS` as one character or paragraphs (a record's inner newlines read as spaces), and GNU's words and statuses are done in `gnu.ts` |
-| G29 | sed, where a wrapper can't reach it (T320): `H`'s first line break, `s/./&&/2g`, `\U`, `\u`, `\L`, `\l` and `\E`, and a bad script's words beyond an unterminated `s` or `y`. `sed` and `awk` alone give their usage's first lines only | Upstream report, and open for the owner under FR-068 (T320). `T`, `a\text`, `i\text`, `c\text`, `q5`, `Q5`, `--in-place=` and `can't read` are done in `gnu.ts` |
+| G28 | awk's language, where a wrapper can't reach it (T319): `BEGIN { getline }` reads nothing; `printf`'s `0` and `+` flags and two-digit exponents; `"10"<"9"` compares as numbers; `a["x"]` doesn't create the element; `CONVFMT`; `+inf`, `-inf` and `+nan`; `print > "/dev/stderr"`; `print | "sort"` | Upstream report, and open for the owner under FR-068 (T319). `-v`, `NAME=value` operands, bare `length`, `int`, `RS` as one character or paragraphs (a record's inner newlines read as spaces), and GNU's words and statuses are done in `gnu.ts` Accepted by the owner 2026-10-31, in FR-068; upstream report drafted |
+| G29 | sed, where a wrapper can't reach it (T320): `H`'s first line break, `s/./&&/2g`, `\U`, `\u`, `\L`, `\l` and `\E`, and a bad script's words beyond an unterminated `s` or `y`. `sed` and `awk` alone give their usage's first lines only | Upstream report, and open for the owner under FR-068 (T320). `T`, `a\text`, `i\text`, `c\text`, `q5`, `Q5`, `--in-place=` and `can't read` are done in `gnu.ts` Accepted by the owner 2026-10-31, in FR-068; upstream report drafted |
 | G30 | `grep` has no back references, lookaround or `-H`, and no name for standard input (T318) | `jsGrep` in `gnu.ts`, on JavaScript's regular expressions; not with `-r`, where a back reference still says it's invalid. Upstream report |
-| G31 | A negated pattern, `!(x)`: its glob becomes a regular expression with a lookahead, which just-bash's RE2 refuses. It matches nothing in a word, leaves a `case` or `${x/…}` unmatched, and in `[[ ]]` prints RE2's error. At a word's start the parser also takes `!` as the operator (T344) | The Terminal says `bash: !(x): negated patterns aren't supported`, status 1, and runs nothing of the line. `@`, `+`, `?` and `*` patterns work. FR-067 doesn't allow this: the owner decides. Upstream report |
+| G31 | A negated pattern, `!(x)`: its glob becomes a regular expression with a lookahead, which just-bash's RE2 refuses. It matches nothing in a word, leaves a `case` or `${x/…}` unmatched, and in `[[ ]]` prints RE2's error. At a word's start the parser also takes `!` as the operator (T344) | The Terminal says `bash: !(x): negated patterns aren't supported`, status 1, and runs nothing of the line. `@`, `+`, `?` and `*` patterns work. FR-067 doesn't allow this: the owner decides. Upstream report Accepted by the owner 2026-10-31, in FR-067; upstream report drafted |
 | G32 | `type`, `command -v` and `command -V` name as builtins and keywords what doesn't run: `trap`, `alias`, `unalias`, `kill`, `jobs`, `fg`, `bg`, `disown`, `times`, `enable`, `caller`, `suspend`, `umask`, `ulimit`, `fc`, `select`, `coproc` (T336) | Each word is looked at once expanded, and these aren't found (`NAMED_NOT_RUN`). Upstream report |
 | G33 | `export d` sets an unset `d` to the empty string; `$BASH_SUBSHELL` and `$SHLVL` are empty; `declare -i` reads a bad expression as 0; `failglob`'s error doesn't stop the line; `find -exec` passes on its command's status and takes `{}` only as a whole word; `grep -c` doesn't stop at `-m`, and `-m0` prints every match; `sort -u` with `-n` or `-f` compares the whole line; `diff` of a file with itself under `-s` says nothing (T333 to T345) | The adapter and `gnu.ts`. `$BASH_SUBSHELL` counts the subshells the text is written in, so a function called from a subshell reads as where it's defined. A `declare -i i` with no value isn't carried to a later line, as just-bash's `declare -p` doesn't list it. Upstream report |
 | G34 | A redirect counts a command's output twice over when it holds bytes and its stderr isn't empty: `{ stdout: bytes, stderr, exitCode }` with a multi-byte letter and any redirect says `bash: redirection: invalid stdout accounting`, status 126, and drops the line (T347) | `fixed` in `site-commands.ts` hands such output on as text. Bytes that aren't valid UTF-8 lose those bytes there, only when the command also wrote to stderr. Report upstream (T129) |
 | G35 | A `$(…)` in arithmetic or an array's subscript runs in a shell of its own, with none of the line's functions or variables, and only its first number counts: `f() { echo 3; }; echo $(( $(f) ))` (T348) | `hoistArithmetic` in `adapter.ts` runs it before the command, in the line's shell. Each costs 3 more of the 10,000 commands. Text only `eval` and `source` read isn't covered, nor a C-style `for`'s condition and step. Report upstream (T129) |
 | G36 | `awk`'s `for (k in x)` finds an array by the name written there, so an array passed to a function lists nothing; `length(array)` is 0, `for (k in ARGV)` finds nothing, `close` gives no status, and `system`, `strftime` and `asort` aren't there (T358) | `awkBuiltins` in `gnu.ts` writes them in `awk`, a function for each array, and `length(ARGV)` as `ARGC`. `length` of a function's array parameter stays 0. Report upstream (T129) |
 | G37 | The parser joins two double-quoted strings before it reads the name: `"$x""y"` is `"$xy"` and `"$""y"` is `"$y"`, in a word, a `case`, a `for` or an argument. The serializer writes `${x}y` as `$xy`, which is another name when the text is read again (T361) | `keepNames` and `closedNames` in `adapter.ts`, which close the name. `eval` and `source` text isn't covered. Report upstream (T129) |
-| G38 | `awk` turns a number past 2^53 into text by `%.6g`: `print 2^53` is `9.0072e+15` and `print 1e16` is `1e+16`, where gawk prints the whole number (T374) | None: no rewrite of the program reaches it, so T374 is BLOCKED for the owner under FR-068. Report upstream (T129) |
-| G39 | `jq`'s language differs from jq 1.7.1 where no wrapper can reach it: assignments and `del` on missing or several paths (`null\|.a=1` is `null`, `del(.a,.b)` changes nothing), `unique`, `sort_by(.a,.b)`, `match`'s `g`, named captures, comparing arrays and objects, `add` and `any` of an object, `walk`, `$a` parameters, `label`, `{$x}`, `INDEX`, `tostream`, every `@` format and a format before a string, type errors that give `null` with status 0, unknown names and wrong argument counts that give `null` with status 0, no `input`, `inputs`, `input_filename`, `halt`, `halt_error`, `stderr`, `debug(msg)` or `$__loc__`, and numbers read as doubles (`1.0` prints `1`, `1e1000` is `null`). A `def` doesn't replace a builtin (`def unique: 5; unique` runs just-bash's) | Options, the filter's place, a filter starting with `-` and `-e`'s status are in `gnu.ts` (T376, T382). The rest is BLOCKED for the owner under FR-056 (T379 to T383): accept, report upstream, or give the site its own `jq`, as `sort`, `cut` and `tr` already are. Upstream report |
+| G38 | `awk` turns a number past 2^53 into text by `%.6g`: `print 2^53` is `9.0072e+15` and `print 1e16` is `1e+16`, where gawk prints the whole number (T374) | None: no rewrite of the program reaches it, so T374 is BLOCKED for the owner under FR-068. Report upstream (T129) Accepted by the owner 2026-10-31, in FR-068; upstream report drafted |
+| G39 | `jq`'s language differs from jq 1.7.1 where no wrapper can reach it: assignments and `del` on missing or several paths (`null\|.a=1` is `null`, `del(.a,.b)` changes nothing), `unique`, `sort_by(.a,.b)`, `match`'s `g`, named captures, comparing arrays and objects, `add` and `any` of an object, `walk`, `$a` parameters, `label`, `{$x}`, `INDEX`, `tostream`, every `@` format and a format before a string, type errors that give `null` with status 0, unknown names and wrong argument counts that give `null` with status 0, no `input`, `inputs`, `input_filename`, `halt`, `halt_error`, `stderr`, `debug(msg)` or `$__loc__`, and numbers read as doubles (`1.0` prints `1`, `1e1000` is `null`). A `def` doesn't replace a builtin (`def unique: 5; unique` runs just-bash's) | Options, the filter's place, a filter starting with `-` and `-e`'s status are in `gnu.ts` (T376, T382). The rest is BLOCKED for the owner under FR-056 (T379 to T383): accept, report upstream, or give the site its own `jq`, as `sort`, `cut` and `tr` already are. Upstream report Gone 2026-10-31: the site's own `jq` (R53) |
 
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
@@ -1647,3 +1647,128 @@ open for its UI tasks. This plan takes:
   `"[No Name]" {n} lines`), and the key names of the design's site text.
 - **`[New]`**: in the message line only, as the approved boards and vim show it (FR-058 as
   amended 2026-10-30 from `/speckit-analyze`); the status line's marks are `[RO]` and `[+]`.
+
+## R53. The site's own `jq` (2026-10-31)
+
+**Decision**: `jq` is `shell/jq.ts`, the site's, in place of just-bash's, and the wrapper `gnu.ts` had
+for it is gone. `--help` alone still reaches just-bash's text.
+
+**Rationale**: every gap in G39 is inside just-bash's parser or evaluator, where no wrapper reaches,
+and FR-056 asks for what jq prints. The owner chose this over accepting them (spec, Session
+2026-10-31). No dependency is added (Constitution X): the file is lazy generators over jq's own
+grammar and definitions. It runs in the shell's worker only, so the site root and `/cv` load none
+of it (SC-013), and its definitions are parsed when the first `jq` runs.
+
+**What it keeps from jq**: laziness, so `[limit(3;repeat(1))]` ends (G26 is gone); path tracking, so
+`del`, `|=`, `paths` and `pick` act on paths; number literals as written until arithmetic touches
+them, in decNumber's form (`1.10`, `1E+1000`); UTF-8 text, with offsets in code points, except
+`indices` on a string, in bytes, as jq; `--stream`, `--seq`, `--raw-output0`, `--tab`, `--indent`,
+`--args`, `--jsonargs`, `--slurpfile`, `--rawfile`, `-f`, `-e` and `-C` with `JQ_COLORS`; each input's
+status, of which the last one's is the command's.
+
+**The reference is `/usr/bin/jq` on the owner's Mac, `jq-1.7.1-apple`**, as for the converge runs. It
+isn't quite upstream's 1.7.1, and where both give a result the site follows it: `repeat(f)` runs `f`
+on its input each time; `//` doesn't catch an error; `"a"*0` is `""`; `@html` writes `&apos;`;
+`input_filename` on standard input is `"<stdin>"`. Compared over about 1,150 filters and option
+lines, each with real `jq`, output and status.
+
+**Differences kept on purpose**:
+
+- What Apple's build lacks and upstream's has stays: `@base32`, `@base32d`, `trim`, `ltrim`, `rtrim`,
+  `ascii`, `date`, `dateadd`, `datesub`, `leaf_paths`, `isvalid`, `have_literal_numbers`,
+  `have_decnum`, `from_entries`' `k`, `v`, `K` and `V`, and `reverse` of a string.
+- `strftime`, `%Z` and `%z` are UTC, and a zone name in `strptime` changes nothing, where Apple's
+  reads the machine's zone.
+- `tan` and the `gamma` family can differ in the last digit, as JavaScript's math isn't libm's.
+- `import`, `include` and `-L` have no modules to find: the first two say `module not found`.
+- Messages follow jq's closely but not always to the letter, as FR-068 allows (G12): some parse errors
+  name another column, and `{(1):2}` fails when it runs, not when it's read.
+- `--stream -s` gives one array of events, and `\u001e` is skipped without `--seq`.
+- A recursion the visitor writes that's deep past JavaScript's stack, about 10,000 calls, stops with
+  FR-069's time text, where jq's tail calls would go on. `repeat`, `until`, `while` and `recurse(f)`
+  don't recurse, so they aren't limited by this. `setpath` copies what it changes, so building a very
+  large object in a `reduce` can reach FR-069's 5 seconds where jq wouldn't.
+
+## R54. What the converge runs decided, kept as built (2026-10-31)
+
+Moved here from the runs' hand-off note, which isn't tracked. The owner has seen this list. FR-067 to
+FR-069 aren't amended for these, so each stays open to amending or fixing. Where it speaks of `jq`'s
+gaps, R53 supersedes it.
+
+- New in Phase 42:
+  - Decided for the run, against T397's words, by what bash does: `break 0` ends every loop with status 1 and the line goes on after them.
+  - Decided for the run: `tree` refuses every option `--help` doesn't list (T388's first way). By T388, `diff -N`, `seq -f`, `xargs -L1` and `xargs --delimiter` are
+    refused, though a real GNU tool runs them. T345's test said `awk` alone has status 2; real gawk has 1, so the test changed.
+  - `$TERM` shows in `env` (G11). `shell-text.ts` didn't change for T389: bash's words are in `standard.ts`.
+  - Seen, not fixed, outside the tasks: `head f/`, `wc f/`, `grep x f/` read a file; `x="${a[@]^}"` changes the first item only and `x="${a[@]~}"` nothing; `printf -v`
+    counts characters; `awk 1 about -` doesn't restart `FNR` or `FILENAME`; `xargs -I` drops an empty item; `break x` has status 128, bash 2;
+    `date -d '2020-01-01 monday'` is `2020-01-06`, this GNU `2020-01-01`; `type f` drops a rewritten `mapfile`'s redirect.
+- New in Phase 41:
+  - Decided for the run, against the tasks' words, by what the real tool does: `ddjddu` then Ctrl+R ends on line 2, column 1 (T375's
+    line 1 came from `vim -s`, which merges changes into one undo step); `history a` has status 2 (T372 says 1).
+  - Decided for the run: `history -w` writes `$HISTFILE` or `~/.bash_history` among the visitor's own files (T372, FR-021).
+    `-a`, `-n`, `-r`, `-p` and `-s` still say invalid option.
+  - `tree`'s line art isn't in the Terminal's font files, so another font draws it, each character in a `1ch` cell (T370).
+  - `"$x""y"` is put right in the line's text only: `eval` and `source` text still read `"$xy"` (G37). `type f` shows `"$xy"` for a body's
+    `"${x}y"`, though the function runs right.
+  - Each `<` target that isn't a file when the line starts costs 1 more of the 10,000 (T365). `SECONDS=5` is read back as assigned for the
+    rest of that line, then counts on from the next. Two slashes (`cd //tmp`) carry across lines but not a reload, and the prompt shows one.
+  - `awk`'s `printf` and `gsub` checks and `sed`'s `l N` go by the program's text; `l N` only as a script of that one command.
+  - Seen, not fixed, outside the tasks: `echo **/` stays as typed under `globstar`; `a[1.5]=1` keeps just-bash's words and doesn't stop the
+    line; `$((0x))` is an error, bash 0; `tail -- x` is refused; `$BASH_VERSION` says 5.1.0 where `${BASH_VERSINFO[1]}` says 3;
+    `awk 1 about -` reads no standard input.
+- New in Phase 40:
+  - Decided for the run, against T357's words, by what an interactive bash 5.3 does: `exit 1 2` ends the line with status 1, so a
+    following `echo $?` on that line doesn't run. `exit nope` has status 2 and the next command runs. The Terminal stays open on both.
+  - `$(…)` in arithmetic runs before its command, 3 more of the 10,000 each; not in `eval` or `source` text, nor a C-style `for`'s
+    condition and step (G35). `$_` after such a command isn't kept.
+  - Output that isn't valid UTF-8 loses those bytes when the same command also wrote to stderr (G34).
+  - `length` of an array passed as a function's parameter stays 0 (G36).
+  - Same-file redirects go by the words as typed. `< folder` gives the command's own error only for a folder holding something when
+    the line starts. NULs in `$(…)` are dropped only where its text shows `\0` or `-print0`.
+  - Seen, not fixed, outside the tasks: `xargs -d, -n1` drops an empty item; `c20w` past the line stays on it, where vim takes the
+    rest of the file; `exit --help | head -1` prints `exit`; `mkdir -p about/x` says `Permission denied`, GNU `Not a directory`;
+    `printf '\251'` shows `©` on the screen.
+- New in Phase 39:
+  - Decided for the run: `exec ls` closes the Terminal, so the visitor's files go, as T343 says. `select` and `coproc` left
+    `type` and Tab's words because just-bash can't parse them (T336).
+  - `type` of a function prints it again from the text typed, on the screen only: `type f | wc -l` and `type f > x` still read
+    the adapter's commands for a body that holds a rewritten one. `i=1` in a body still prints empty (G10).
+  - `${}` runs nothing of its line, where bash runs what comes before it. `$BASH_SUBSHELL` counts where the text is written, so a
+    function called from a subshell reads where it's defined. `declare -i i` with no value isn't carried to a later line.
+  - `find -exec … \;` takes `{}` inside a word only as the last action. `sort -u` keeps its old compare with `-k` or `-o`.
+  - `awk` and `sed` with a missing option value print the first lines of their usage, not all of it.
+  - `tree` still draws ASCII lines and doesn't count the root folder (`tree` 2.3.2 says `1 directory`).
+- New in Phase 38:
+  - A `jq` generator bash would finish (`[limit(3;repeat(1))]`, `first(range(10;infinite))`) stops with FR-069's time text,
+    though it didn't run 5 seconds (G26). So does a jq iteration limit in general.
+  - Other just-bash limits show FR-069's output text even with nothing printed: `x=a; while :; do x=$x$x; done`, and a brace
+    list over 1,048,576 words piped to `wc`.
+  - `yes | wc -l` counts what `yes` printed, 524,288 lines, as `yes` stops at 1 MB (G13). `seq 1000000 | wc -l` takes about
+    0.5 s, over SC-002's 100 ms.
+  - A stopped line's earlier text isn't kept when the line holds the word `exec`.
+  - An `exit` in a function run in a pipe, or in `eval` text that didn't run it, counts as the line's `exit` if an error then
+    ends the line, and closes the window. `set -e` in a function body from an earlier line isn't seen if the same statement
+    then fails on an error other than a command's status.
+  - Two more counts against the 10,000: a glob ending in `/` costs 6 or more plus one for each match; a word reading a
+    variable the command assigns costs 8.
+  - `x=(*/)` isn't covered by T317. `type f` shows a `$((…))` of numbers as its value and a long brace list expanded.
+  - `RS=""` reads a record's inner newlines as spaces, so `$0` differs. `-v NAME=value` and `NAME=value` operands apply from
+    `BEGIN`, where a real operand applies from its place.
+  - `sed q5` has its status only where the script is that command alone. `sed` and `awk` alone print their usage's first
+    lines. `grep -r` with a back reference still says invalid (G30). `exec < x; read l` and `$((x+1))` past 2^53 (G27).
+- Command counts: an output redirect counts as 3 of the 10,000; a `cd`, an `eval`, a `source` or a name from an
+  expansion (`$x`) as 8. A check between statements is outside the 10,000.
+- Decided for the run, reversible by amending: `cv` to a pipe, file or `$(…)` prints the JSON (T303, FR-059);
+  `vim a; vim b` opens each in turn after the line has run (T311, FR-058); `ls nope` keeps FR-048's reply (T306).
+- Stopped lines: state carries from the last finished statement, not within one (`x=1 && while :; do :; done`),
+  and not when the page ended the worker (research R33).
+- Words: `eval help` and `source` text reach just-bash's `help`, since their text isn't seen by the plugins;
+  `c=cd; $c a b` gets just-bash's `cd`; `x=set; $x | wc -l` counts the adapter's lines; `break` in a function
+  called outside a loop says nothing; `sed 's/a/b/w o'` is right only for a script of one `s` command.
+- Carrying: a value of 64 KB or more loses any attribute; an array too big to list stops its line at the output
+  limit. `$_` of 64 KB or more is dropped mid-line.
+- Functions: `e=eval; $e "f() { :; }"` isn't carried; in `eval` or `source` text the last definition counts
+  whether or not it ran. `type f` loses a body's assignments and redirects (G10).
+- From R28, still: a refused redirect inside `eval`, `source` or `bash -c` loses earlier output, and a pipe
+  reading the refusal sees just-bash's words.
