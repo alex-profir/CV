@@ -105,6 +105,10 @@
   budget (005 SC-010).
 - Q (2026-10-31): 006's 660 s and 007's 840 s read the same run as FR-088's 1,020 s. Which holds? → A:
   The chain again: 006's FR-042 and 007's FR-034 follow the latest budget, through dated amendments.
+- Q (2026-10-31): Monaco leaves Go to definition, Peek definition, Every use, Quick fixes and Tab
+  moves focus out of its command palette on every system, while FR-085 asks for every editor command
+  there. Rebuild the palette, or amend FR-085? → A: Amend FR-085 to the reality: the palette lists
+  the commands the editor offers it, and the list of keys holds every key, those five included.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -703,10 +707,11 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   key the current main desktop browsers or screen readers reserve. A command whose VS Code key is
   taken MUST get another key, shown in the command palette and the keyboard list (FR-085). Format
   Document MUST keep VS Code's key, `Shift+Alt+F`, which the amendment of 005 frees (FR-086).
-- **FR-085**: A command palette MUST list every editor command with its key, and run the one the
-  visitor picks. The Playground's menu MUST show each of its commands with its key (005 FR-029),
-  and MUST open a list of every key of the Playground and its editor, saying where one differs from
-  VS Code and why (FR-084).
+- **FR-085**: A command palette MUST list the commands the editor offers it, each with its key,
+  and run the one the visitor picks. The Playground's menu MUST show each of its commands with its
+  key (005 FR-029), and MUST open a list of every key of the Playground and its editor, those of
+  commands the palette leaves out included, saying where one differs from VS Code and why (FR-084).
+  Amended 2026-10-31: the palette had to list every editor command with its key.
 - **FR-086**: Before the shell's shortcuts change, 005's spec MUST be amended in this feature's pull
   request, as Constitution XI records an amendment: 005 FR-063 and FR-065 drop the Minimize and
   Maximize shortcuts, and keep the minimize and maximize controls and the window's menu commands.
