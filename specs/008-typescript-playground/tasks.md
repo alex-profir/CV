@@ -790,6 +790,7 @@ checks and the single PR
   - Done 2026-10-31 by the owner's session: PR #37.
 - [ ] T172 Owner action: run `npm run verify` on the PR's clean head commit (Chromium, and the three-engine tests in Firefox and WebKit) and `npm run signoff`, so the required `local-verify` status passes (Constitution, Merge requirements). Run it again after every new commit, a merge of `main` included.
   - BLOCKED: owner action, after T171.
+  - `47f8fff`, agent run: CI is green (`site` in 11 min 42 s). Local verify failed `test` on `about`'s Back, 103 ms, and `engines` on `stop.test.ts`'s `fetch of data:`: `.playground-scrim` covered Stop for the 30 s of the click, the failure T253 moved away from in `limits.test.ts`. It passed when rerun in Chromium; cause not found. So a full verify may need more than one try until these two are looked at.
   - Agent runs for information, 2026-10-31, with the GNU tools first on `PATH`; `bef2761` passed every check, and `d4ac265` failed only `performance.test.ts`'s `about` Back again, 111 and 105 ms. Back on `about` reads 83 to 88 ms alone and 94 to 120 ms in a full run, so that 100 ms bound fails about as often as not in a full run. `5faa2e8`: typecheck, traceability, content, tokens, engines and site pass; `test` fails 3 of 5,314: `inspector/performance.test.ts`, desktop and mobile `about`, Back at 120 and 113 ms against 100, and `editing.test.ts`'s word highlight, 0 marks within the poll. Both files pass when rerun alone (19 of 19); cause not found. No threshold changed.
 
 ---
