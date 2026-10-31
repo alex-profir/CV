@@ -149,10 +149,11 @@ amended so, as recommended.
 
 ## Awaiting sign-off
 
-Neither row is built. Each needs the owner's signature here.
+No row is built. Each needs the owner's signature here.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
 | Undo on the broken link's message, where the Playground held the visitor's code | The first key after a broken link overwrites kept code, and the message offers no way back (FR-019, FR-056, T238) | `desktop-41-broken-link-undo-1440.png` | Not built |
 | Eighteen more rows in the list of keys, under Monaco's own names, in the groups already signed: Create Folding Range from Selection · Delete All Left · Delete All Right · Find Next · Find Previous · Find with Selection · Fold All Block Comments · Fold All Except Selected · Fold All Regions · Go to Next Problem (Error, Warning, Info) · Go to Previous Problem (Error, Warning, Info) · Insert Line Below · Join Lines · Move Last Selection to Next Find Match · Remove Manual Folding Ranges · Toggle Fold Recursively · Transpose Letters · Unfold All Except Selected | Monaco binds keys to these and the signed table doesn't name them, so the list isn't yet "every key" (FR-085, T223). `keys.test.ts` holds them as `OUTSIDE_THE_TABLE` | Words here; `desktop-39` redrawn once signed | Not built |
 | The list's last line, "Every command is in the command palette, F1, with its key." | Untrue since FR-085's amendment: five commands aren't in the palette. Proposed: "The command palette, F1, lists the commands the editor offers it, with their keys." | Words here | Not built |
+| The Declarations pane's sentence when `noEmitOnError` is off and TypeScript can't write declarations: "No declarations: they can't be written for this code. The Errors pane says why." | The pane now blames `noEmitOnError`, "on and the code has errors", with the option off (FR-023, T245) | `desktop-42-no-declarations-1440.png` | Not built |

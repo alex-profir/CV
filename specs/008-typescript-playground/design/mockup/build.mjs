@@ -790,7 +790,7 @@ add('desktop-39-keys-all', 'The list of keys, every command', desktop({
   }), { geometry: TALL }),
 }));
 
-// The second amendment (T230) and what still waits for a signature (T238).
+// The second amendment (T230) and what still waits for a signature (T238, T245).
 add('desktop-40-code-refused', 'Share: the clipboard refused the code', desktop({
   playground: playgroundWindow(playground({
     ...jobsBase,
@@ -801,6 +801,17 @@ add('desktop-41-broken-link-undo', 'A broken shared link, with Undo (not signed)
   playground: playgroundWindow(playground({
     editorHtml: editor(WELCOME, { cursor: [1, 1] }), pane: 'JavaScript', counts: { errors: 0, logs: 0 }, paneHtml: jsPane(WELCOME_JS), status: { cursor: [1, 1] },
     banner: banner('error', '<b>The shared code couldn\'t be read.</b> The link may have been cut off or changed, so the Playground opened with the starting example. Nothing ran.', textButton('Undo')),
+  })),
+}));
+
+const NO_DTS = 'export const f = () => {\n  class L {\n    private x = 1;\n  }\n  return new L();\n};\n';
+add('desktop-42-no-declarations', 'Declarations that can\'t be written (not signed)', desktop({
+  cv: false, dock: { cv: false },
+  playground: playgroundWindow(playground({
+    editorHtml: editor(NO_DTS, { cursor: [1, 1] }),
+    pane: 'Declarations', counts: { errors: 1, logs: 0 },
+    paneHtml: '<div class="pg-pane"><p class="pg-empty">No declarations: they can\'t be written for this code. The Errors pane says why.</p></div>',
+    status: { cursor: [1, 1], errors: 1 },
   })),
 }));
 

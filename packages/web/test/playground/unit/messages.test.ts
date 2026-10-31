@@ -40,6 +40,12 @@ describe('008-typescript-playground-FR-040: nothing the worker sends is trusted'
     expect(isWorkerEntry(value)).toBe(false);
   });
 
+  test("an entry whose deepest value is one of the browser's own objects passes whole", () => {
+    for (const value of [new ArrayBuffer(8), new DataView(new ArrayBuffer(8)), new URL('http://x.test/')]) {
+      expect(isWorkerEntry(entry(formatEntry([[[[[value]]]], 'tail']).values))).toBe(true);
+    }
+  });
+
   test('a tree deeper than the formatter makes is dropped, however deep', () => {
     let deep: unknown = { t: 'null' };
     for (let level = 0; level < 100_000; level += 1) deep = { t: 'arr', items: [deep], more: 0 };

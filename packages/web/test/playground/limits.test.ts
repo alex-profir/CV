@@ -198,3 +198,93 @@ describe('008-typescript-playground-FR-040: a flood of the worker\'s own message
     expect((await readLogs(page)).filter((row) => row.level === 'error')).toHaveLength(1);
   });
 });
+
+describe('008-typescript-playground-FR-040: requests start by the clock, so a loop of them leaves the page answering', () => {
+  const loops: [string, string][] = [
+    ['fetch of data: without end', 'while (true) fetch("data:text/plain,hi");'],
+    ['2,000 fetches of data: a tick', 'function f() { for (let i = 0; i < 2000; i++) fetch("data:text/plain,hi"); setTimeout(f, 0); }\nf();'],
+    ['fetch of a closed port without end', 'while (true) fetch("http://127.0.0.1:1/x");'],
+    ['XMLHttpRequest of a closed port without end', 'while (true) { const x = new XMLHttpRequest(); x.open("GET", "http://127.0.0.1:1/x"); x.send(); }'],
+  ];
+  for (const [name, code] of loops) {
+    test(`${name}: keys answer within SC-005's 100 ms`, async () => {
+      const page = await openPlaygroundPage();
+      await start(page, code);
+      await watchKeys(page);
+      await run(page, { wait: 'start' });
+      await focusEditor(page);
+      for (let i = 0; i < 6; i += 1) {
+        await page.waitForTimeout(500);
+        await page.keyboard.press('ArrowRight');
+      }
+      const delays = await page.evaluate(() => (window as unknown as { keyDelays: number[] }).keyDelays);
+      expect(delays.length).toBeGreaterThan(0);
+      expect(Math.max(...delays)).toBeLessThan(100);
+    });
+  }
+
+  test('requests past the limit are all made, in order, and pending until they answer', async () => {
+    const page = await openPlaygroundPage();
+    await start(
+      page,
+      [
+        'const all = [];',
+        `for (let i = 0; i < 400; i++) all.push(fetch("${new URL(page.url()).origin}/held-" + i).catch(() => null));`,
+        'const held = new XMLHttpRequest();',
+        'held.open("GET", "data:text/plain,xhr");',
+        'held.onload = () => console.log("xhr", held.responseText);',
+        'held.send();',
+        'try {',
+        '  held.send();',
+        '} catch (error) {',
+        '  console.log((error as Error).name);',
+        '}',
+        'await Promise.all(all);',
+        'console.log(all.length);',
+      ].join('\n'),
+    );
+    const asked: number[] = [];
+    page.context().on('request', (request) => {
+      const found = /\/held-(\d+)$/.exec(request.url());
+      if (found !== null) asked.push(Number(found[1]));
+    });
+    await run(page);
+    const rows = (await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text).sort();
+    expect(rows).toEqual(['400', 'InvalidStateError', 'xhr xhr']);
+    expect(asked).toEqual(Array.from({ length: 400 }, (_, i) => i));
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(/^Finished/);
+  });
+
+  test('a held XMLHttpRequest taken back never goes, says so, and holds nothing', async () => {
+    const page = await openPlaygroundPage();
+    await start(
+      page,
+      [
+        'for (let i = 0; i < 100; i++) fetch("data:text/plain,hi");',
+        'const taken = new XMLHttpRequest();',
+        'taken.open("GET", "data:text/plain,taken");',
+        'taken.onload = () => console.log("loaded");',
+        'taken.onabort = () => console.log("aborted");',
+        'taken.send();',
+        'taken.abort();',
+        'const again = new XMLHttpRequest();',
+        'again.open("GET", "data:text/plain,first");',
+        'again.onload = () => console.log(again.responseText);',
+        'again.send();',
+        'again.open("GET", "data:text/plain,second");',
+        'again.send();',
+      ].join('\n'),
+    );
+    await run(page);
+    const rows = (await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text);
+    expect(rows).toEqual(['aborted', 'second']);
+    expect((await page.locator(RUN_STATE).textContent())?.trim()).toMatch(/^Finished/);
+  });
+
+  test('a request that blocks the code still goes at once', async () => {
+    const page = await openPlaygroundPage();
+    await start(page, 'for (let i = 0; i < 100; i++) fetch("data:text/plain,hi");\nconst x = new XMLHttpRequest();\nx.open("GET", "data:text/plain,now", false);\nx.send();\nconsole.log(x.responseText);');
+    await run(page);
+    expect((await readLogs(page)).filter((row) => row.level === 'log').map((row) => row.text)).toEqual(['now']);
+  });
+});
