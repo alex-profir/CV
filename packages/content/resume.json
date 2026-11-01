@@ -166,130 +166,183 @@
     {
       "name": "Faith-Based Social Network Mobile App",
       "startDate": "2025-12",
-      "description": "Independent freelance work, part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
+      "description": "iOS and Android app for a faith-based social network.",
       "highlights": [
         "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
-        "Maintained Expo and React Native on the latest package versions",
+        "Kept Expo and React Native on the latest package versions",
         "Set up CI/CD for automated builds and releases",
         "Set up crash reporting and error monitoring",
         "Created the spec-driven development setup used to build and maintain the app",
         "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop",
-        "Used AI to cut end-to-end feature delivery from at least a couple of months to 2–3 weeks, with the UI fully matching Figma"
+        "Cut end-to-end feature delivery from at least 2 months to 2–3 weeks using AI, with the UI fully matching Figma"
+      ],
+      "keywords": [
+        "Expo",
+        "React Native (New Architecture)",
+        "TypeScript",
+        "TanStack Query",
+        "Zustand"
       ]
     },
     {
       "name": "Cybersecurity Mobile Platform",
       "startDate": "2022-01",
       "endDate": "2026-10",
-      "description": "Cross-platform cybersecurity solution featuring a React Native mobile app, an Admin UI, and a cloud-based backend infrastructure for secure device management and threat detection.",
+      "description": "Cross-platform cybersecurity product for secure device management and threat detection, with a mobile app, an admin UI and a cloud backend.",
       "highlights": [
-        "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
-        "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
+        "Led end-to-end development of the React Native mobile app and the web admin UI",
+        "Built two JavaScript SDKs connecting the mobile app, web and backend services",
         "Built notification and device management microservices using spec-driven development, to start replacing the monolith that held all the logic",
         "Implemented and maintained the auth microservice with teammates using spec-driven development",
         "Delivered features at least 2x faster with spec-driven, agentic development, per team lead reports",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
         "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
-        "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
+        "Reviewed code and optimized performance across frontend and backend"
+      ],
+      "keywords": [
+        "React Native",
+        "GCP",
+        "AWS",
+        "Docker",
+        "Cloud Run",
+        "Cloud Functions"
       ]
     },
     {
       "name": "Guided Tours System",
       "startDate": "2021-10",
       "endDate": "2022-09",
-      "description": "Mobile application developed with React Native, TypeScript, and Fastify for creating and managing guided city tours.",
+      "description": "Mobile app for creating, searching and managing guided city tours.",
       "highlights": [
-        "Built mobile app enabling users to create and search for city tours",
-        "Implemented CRUD operations and guided workflows on both frontend and backend",
+        "Built the mobile app for creating and searching city tours",
+        "Implemented tour management and guided workflows across frontend and backend",
         "Integrated AI-based image moderation for content safety"
+      ],
+      "keywords": [
+        "React Native",
+        "TypeScript",
+        "Fastify"
       ]
     },
     {
       "name": "Job Management App",
       "startDate": "2021-04",
       "endDate": "2021-07",
-      "description": "Mobile application for job posting and tracking.",
+      "description": "Mobile app for posting and tracking jobs.",
       "highlights": [
-        "Implemented job creation workflow including data entry, media uploads, and job type selection",
-        "Designed intuitive summary and editing screens for better user experience",
-        "Streamlined data handling and form validation on mobile"
+        "Implemented the job creation workflow, including data entry, media uploads and job type selection",
+        "Designed the summary and editing screens",
+        "Implemented data handling and form validation on mobile"
       ]
     },
     {
       "name": "Accessibility Management Platform",
       "startDate": "2020-09",
       "endDate": "2021-12",
-      "description": "Accessibility management web platform built with React, TypeScript, and Tailwind CSS.",
+      "description": "Web platform for accessibility management.",
       "highlights": [
         "Developed responsive layouts and optimized frontend performance",
         "Fixed memory leaks and removed inefficient code to improve system stability",
-        "Built an embeddable data visualization widget displaying accessibility data for hotels"
+        "Built an embeddable data visualization widget showing accessibility data for hotels"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Tailwind CSS"
       ]
     },
     {
       "name": "Video Content Management System",
       "startDate": "2020-08",
       "endDate": "2020-12",
-      "description": "Content management platform for handling video metadata and assets, built with React, TypeScript, and Fastify.",
+      "description": "Content management platform for video metadata and assets.",
       "highlights": [
-        "Implemented content CRUD functionality with RESTful API integration",
-        "Customized table components to match design system standards",
-        "Improved frontend responsiveness and UI consistency"
+        "Implemented content management over a RESTful API",
+        "Customized table components to match the design system",
+        "Improved frontend responsiveness"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Fastify"
       ]
     },
     {
       "name": "Incident Response and Management System",
       "startDate": "2020-01",
       "endDate": "2020-09",
-      "description": "React and TypeScript-based platform for managing incidents and real-time vehicle tracking.",
+      "description": "Platform for managing incidents and tracking vehicles in real time.",
       "highlights": [
-        "Developed user and account management modules",
+        "Developed the user and account management modules",
         "Integrated real-time maps with vehicle location tracking",
-        "Resolved performance bottlenecks and optimized frontend rendering, resolving some memory leaks"
+        "Fixed performance bottlenecks and memory leaks in frontend rendering"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript"
       ]
     },
     {
       "name": "Sales Management Platform",
       "startDate": "2019-06",
       "endDate": "2020-02",
-      "description": "Web platform for managing sales data across organizations using React, TypeScript, and Fastify.",
+      "description": "Web platform for tracking sales data across organizations.",
       "highlights": [
-        "Created Admin module for CRUD operations with organization-level sales tracking",
-        "Implemented custom data tables to highlight key sales metrics",
-        "Enhanced frontend usability and user engagement through responsive UI design"
+        "Built the admin UI for managing sales data by organization",
+        "Implemented custom data tables highlighting key sales metrics",
+        "Built a responsive UI"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Fastify"
       ]
     },
     {
       "name": "Fitness Administration Platform",
       "startDate": "2019-06",
       "endDate": "2021-10",
-      "description": "Web application built with React, TypeScript, Material UI, and Fastify for managing fitness courses.",
+      "description": "Web application for managing fitness courses.",
       "highlights": [
         "Led project initialization and architecture design",
-        "Implemented full-stack CRUD operations on both frontend and backend",
-        "Collaborated with backend engineers for seamless data synchronization"
+        "Implemented course management across frontend and backend",
+        "Collaborated with backend engineers on data synchronization"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Material UI",
+        "Fastify"
       ]
     },
     {
       "name": "Art Gallery Management Platform",
       "startDate": "2018-08",
       "endDate": "2019-08",
-      "description": "Web platform built with React, TypeScript, and Material UI for managing art galleries and artworks.",
+      "description": "Web platform for managing art galleries and artworks.",
       "highlights": [
-        "Developed an Admin Interface enabling complete CRUD operations for gallery items and user management",
+        "Developed the admin UI for managing gallery items and users",
         "Implemented autocomplete fields fetching real-time data from backend APIs",
-        "Optimized inter-gallery item transfer workflows for art placement"
+        "Optimized workflows for transferring items between galleries"
+      ],
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Material UI"
       ]
     },
     {
       "name": "Retail Dashboard",
       "startDate": "2018-07",
       "endDate": "2018-11",
-      "description": "Angular-based web dashboard for real-time retail analytics and performance visualization.",
+      "description": "Web dashboard for real-time retail analytics and performance visualization.",
       "highlights": [
         "Implemented analytics pages with real-time graphs and filters",
-        "Enabled CSV export for data analysis and reporting",
+        "Added CSV export for data analysis and reporting",
         "Optimized dashboard performance for high data throughput"
+      ],
+      "keywords": [
+        "Angular"
       ]
     }
   ]
