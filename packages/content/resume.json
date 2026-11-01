@@ -19,6 +19,12 @@
   },
   "work": [
     {
+      "name": "Freelance",
+      "position": "Senior Software Engineer",
+      "startDate": "2025-04",
+      "summary": "Independent part-time work: iOS and Android app development with Expo and React Native, using spec-driven development and agentic workflows."
+    },
+    {
       "name": "SC MoreDevs SRL",
       "position": "Senior Software Engineer",
       "startDate": "2018-07",
