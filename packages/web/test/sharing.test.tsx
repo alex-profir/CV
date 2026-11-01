@@ -64,8 +64,8 @@ const SUMMARY = FULL.summary!;
 describe("004-cv-page-FR-036: the title holds the name and role, the description is the summary, and previews use the same", () => {
   test('the real /cv: title and og:title are the name and role, description and og:description the summary (US5 scenarios 1 and 3)', async () => {
     const head = await readHead(builtHtml('cv.html'));
-    expect(head.titles).toEqual(['Alex Profir — Software Engineer']);
-    expect(head.ogTitle).toEqual(['Alex Profir — Software Engineer']);
+    expect(head.titles).toEqual(['Alex Profir — Senior Software Engineer']);
+    expect(head.ogTitle).toEqual(['Alex Profir — Senior Software Engineer']);
     expect(head.description).toEqual([resume.basics!.summary]);
     expect(head.ogDescription).toEqual([resume.basics!.summary]);
   });
