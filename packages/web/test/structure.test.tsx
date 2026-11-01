@@ -79,9 +79,9 @@ describe('004-cv-page-FR-024: a heading per section and per entry, one level bel
       { level: 1, name: resume.basics!.name! },
       { level: 2, name: 'Experience' },
       ...resume.work!.map((work) => ({ level: 3, name: work.position! })),
+      { level: 2, name: 'Skills' },
       { level: 2, name: 'Projects' },
       ...resume.projects!.map((project) => ({ level: 3, name: project.name! })),
-      { level: 2, name: 'Skills' },
       { level: 2, name: 'Education' },
       ...resume.education!.map((entry) => ({ level: 3, name: [entry.studyType, entry.area].filter(Boolean).join(', ') })),
       { level: 2, name: 'Languages' },
@@ -125,7 +125,7 @@ describe('004-cv-page-FR-025: one main landmark, a named region per section, and
     expect((await axNodes(page, 'main')).map((node) => node.role)).toEqual(['main']);
     const regions = await axNodes(page, 'main > section');
     expect(regions.map((region) => region.role)).toEqual(Array(6).fill('region'));
-    expect(regions.map((region) => region.name)).toEqual(['Experience', 'Projects', 'Skills', 'Education', 'Languages', 'Interests']);
+    expect(regions.map((region) => region.name)).toEqual(['Experience', 'Skills', 'Projects', 'Education', 'Languages', 'Interests']);
     expect(await page.locator('main footer, main [data-site-element]').count()).toBe(0);
     expect(await page.locator('body > footer[data-site-element]').count()).toBe(1);
     expect((await axNodes(page, 'body > footer'))[0]?.role).toBe('contentinfo');

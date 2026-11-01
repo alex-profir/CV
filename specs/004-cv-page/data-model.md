@@ -57,7 +57,7 @@ document, such as `basics.phone`, `basics.image` or `basics.location.address`, i
 |-----|----------------------------------|
 | `siteHeading` | `CV` (the `h1` and title when the CV has no name, FR-023, FR-037) |
 | `titleSeparator` | ` — ` |
-| `sections` | `Experience`, `Projects`, `Skills`, `Education`, `Languages`, `Interests` |
+| `sections` | `Experience`, `Skills`, `Projects`, `Education`, `Languages`, `Interests` |
 | `basedIn`, `email`, `website` | `Based in`, `Email`, `Website` (the last for `basics.url`, which the real CV doesn't hold, so the design shows no row for it) |
 | `present` | `Present` (visible), `present` (screen reader text) |
 | `to` | `to` (screen reader text between dates) |

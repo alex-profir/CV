@@ -4,7 +4,7 @@
 
 // The sections /cv shows after the basics block, in the design's order
 // (FR-001).
-export const SUPPORTED_SECTIONS = ['work', 'projects', 'skills', 'education', 'languages', 'interests'] as const;
+export const SUPPORTED_SECTIONS = ['work', 'skills', 'projects', 'education', 'languages', 'interests'] as const;
 
 export type SupportedSection = (typeof SUPPORTED_SECTIONS)[number];
 

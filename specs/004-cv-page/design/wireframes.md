@@ -32,17 +32,17 @@ content on the right.
 |                   | | → [highlight]                                              |
 |                   | | → [highlight]                                              |
 |   ================================================================================ |
-|   02              | o [start] – Present                                            |
+|   02              | [skill name]          [LEVEL] | [skill name]          [LEVEL]  |
+|   Skills          | ----------------------------- | -----------------------------  |
+|                   | (kw) (kw) (kw) (kw)           | (kw) (kw) (kw)                 |
+|                   | ... two columns, in CV order                                   |
+|   ================================================================================ |
+|   03              | o [start] – Present                                            |
 |   Projects        | | [project name]                                <- h3        |
 |                   | | [description ...............................]              |
 |                   | | → [highlight]                                              |
 |                   | o [start] – [end]                                              |
 |                   | | [project name]  ... one entry per project, in CV order     |
-|   ================================================================================ |
-|   03              | [skill name]          [LEVEL] | [skill name]          [LEVEL]  |
-|   Skills          | ----------------------------- | -----------------------------  |
-|                   | (kw) (kw) (kw) (kw)           | (kw) (kw) (kw)                 |
-|                   | ... two columns, in CV order                                   |
 |   ================================================================================ |
 |   04              | o [start] – [end]                                              |
 |   Education       | | [study type], [area]                          <- h3        |
@@ -101,15 +101,15 @@ One column, 20 px side margins. Section headings sit above their content.
 | | → [highlight .................] |
 | ================================= |
 | 02                                |
-| Projects                          |
-| o ...  one entry per project      |
-| ================================= |
-| 03                                |
 | Skills                            |
 | [skill name]              [LEVEL] |
 | --------------------------------- |
 | (kw) (kw) (kw)                    |
 | ... one per row                   |
+| ================================= |
+| 03                                |
+| Projects                          |
+| o ...  one entry per project      |
 | ================================= |
 | 04  Education  (timeline, as 01)  |
 | 05  Languages  (rows)             |
@@ -141,12 +141,14 @@ The phone's single column at print sizes, in black on white, with no site elemen
 | | [company]                                |
 | | → [highlight]                            |
 | ========================================== |
+| Skills, as on screen                       |
+| ========================================== |
 | Projects                                   |
 | o [start] – Present                        |
 | | [project name]                           |  <- entry heading never ends a page
 | | ...                                      |
-| ...  Skills, Education, Languages,         |
-|      Interests, as on screen               |
+| ...  Education, Languages, Interests,      |
+|      as on screen                          |
 +--------------------------------------------+
 ```
 

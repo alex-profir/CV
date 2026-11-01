@@ -29,12 +29,12 @@ function strings(value: unknown): string[] {
 }
 
 describe("004-cv-page-FR-001: /cv shows every supported section in the design's order, entries in the document's order", () => {
-  test('the real CV gives the intro block, then Experience, Projects, Skills, Education, Languages and Interests (US1 scenario 1)', async () => {
+  test('the real CV gives the intro block, then Experience, Skills, Projects, Education, Languages and Interests (US1 scenario 1)', async () => {
     const page = await openHtml(realHtml());
     const children = await page.locator('main > *').evaluateAll((elements) => elements.map((element) => element.tagName.toLowerCase() + (element.className ? `.${element.className}` : '')));
     expect(children[0]).toBe('div.intro');
     expect(children.slice(1).every((child) => child.startsWith('section'))).toBe(true);
-    expect(await texts(page, 'main > section h2')).toEqual(['Experience', 'Projects', 'Skills', 'Education', 'Languages', 'Interests']);
+    expect(await texts(page, 'main > section h2')).toEqual(['Experience', 'Skills', 'Projects', 'Education', 'Languages', 'Interests']);
   });
 
   test("entries keep the document's order, even when it isn't chronological", async () => {
