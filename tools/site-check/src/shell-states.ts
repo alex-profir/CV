@@ -794,9 +794,12 @@ export async function playgroundReady(page: Page): Promise<void> {
 export const primaryKey = async (page: Page) => ((await page.evaluate(() => /Macintosh|Mac OS X/.test(navigator.userAgent))) ? 'Meta' : 'Control');
 
 // Waits until the current code's check has come back: the status bar no
-// longer says it is checking, settled for 400 ms.
+// longer says it is checking, settled for 400 ms. The 400 ms are on the page's
+// own timers, which fire in order: the status bar's starts at the change, 300
+// ms long, and on a busy machine this script's clock can run past it first,
+// reading the status from before the change.
 export async function playgroundChecked(page: Page): Promise<void> {
-  await page.waitForTimeout(400);
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 400)));
   await page.waitForFunction((selector) => !(document.querySelector(selector)?.textContent ?? '').includes('…'), PLAYGROUND.check, { timeout: PLAYGROUND_WAIT_MS });
 }
 
