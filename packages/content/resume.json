@@ -168,12 +168,13 @@
       "startDate": "2025-12",
       "description": "iOS and Android app for a faith-based social network.",
       "highlights": [
-        "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
-        "Kept Expo and React Native on the latest package versions",
-        "Set up CI/CD for automated builds and releases",
-        "Set up crash reporting and error monitoring",
-        "Created the spec-driven development setup used to build and maintain the app",
-        "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop",
+        "Led the iOS and Android app from the start, with 296 merged pull requests",
+        "Built feeds, groups and video playback, including offline video caching",
+        "Upgraded the app to Expo SDK 55 and React Native 0.83 on the New Architecture",
+        "Wrote native iOS and Android modules for audio focus, SMS consent and text input",
+        "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect",
+        "Set up crash reporting and monitoring with Sentry and Crashlytics",
+        "Built a spec-driven, agentic workflow that takes a Jira ticket and its Figma design through to an open pull request",
         "Cut end-to-end feature delivery from at least 2 months to 2–3 weeks using AI, with the UI fully matching Figma"
       ],
       "keywords": [
