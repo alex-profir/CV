@@ -122,7 +122,8 @@
       "name": "Cloud Platforms",
       "keywords": [
         "GCP",
-        "AWS"
+        "AWS",
+        "Firebase"
       ]
     }
   ],
