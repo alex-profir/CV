@@ -1,5 +1,6 @@
-// `npm run verify`: every check of a pull request, with the full test set,
-// on the commit checked out (FR-032, FR-033, research R16). It needs no
+// `npm run verify:feature`: the local run a new feature passes once, on the
+// commit checked out: the quick checks, every test but the site check's own,
+// and the Playground's tests in Firefox and WebKit (FR-032, FR-033, FR-039, FR-040, research R16). It needs no
 // network and writes only under the clone's git directory (FR-037). It
 // returns the exit code and never calls process.exit().
 import { spawn } from 'node:child_process';
@@ -7,11 +8,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { listFiles } from '../../traceability/src/files.ts';
-import { compare } from '../../traceability/src/report.ts';
+import { withoutSiteCheckTests } from './affected.ts';
 import { checks, commandLine } from './checks.ts';
 import type { Exec } from './git.ts';
 import { defaultExec, gitIn } from './git.ts';
 import { resultDir, resultPaths, writeResult } from './result.ts';
+import { planPath, readPlan, readReport, remaining, writePlan } from './run-plan.ts';
 import type { Check, LocalRunResult } from './result.ts';
 
 export type Output = { write: (text: string) => unknown };
@@ -34,6 +36,8 @@ export type Prerequisites = {
 export type VerifyOptions = {
   root: string;
   env: NodeJS.ProcessEnv;
+  // Takes only what the last run on this branch left: FR-039.
+  failed?: boolean;
   exec?: Exec;
   prerequisites: Prerequisites;
   runCommand?: RunCommand;
@@ -99,29 +103,6 @@ function dependenciesInstalled(root: string): boolean {
   return true;
 }
 
-type VitestReport = { success?: unknown; numPassedTests?: unknown; numFailedTests?: unknown; numPendingTests?: unknown; numTodoTests?: unknown; testResults?: { name?: unknown }[] };
-
-const count = (value: unknown) => (typeof value === 'number' ? value : 0);
-
-// SC-010: the full set ran only when Vitest's report lists exactly the test
-// files the traceability check lists, and reports success.
-function readTestReport(root: string, file: string): { tests: LocalRunResult['tests']; detail: string | null } {
-  const expected = listFiles(root).testFiles;
-  const report = readJson(file) as VitestReport | undefined;
-  const ran = [...new Set((Array.isArray(report?.testResults) ? report.testResults : []).flatMap((entry) => (typeof entry?.name === 'string' ? [path.relative(root, entry.name).split(path.sep).join('/')] : [])))].sort(compare);
-  const tests = {
-    files: ran.length,
-    expectedFiles: expected.length,
-    passed: count(report?.numPassedTests),
-    failed: count(report?.numFailedTests),
-    skipped: count(report?.numPendingTests) + count(report?.numTodoTests),
-  };
-  const sameFiles = ran.length === expected.length && ran.every((name, index) => name === expected[index]);
-  if (!sameFiles) return { tests, detail: `ran ${ran.length} of ${expected.length} test files` };
-  if (report?.success !== true) return { tests, detail: 'the test report shows a failure' };
-  return { tests, detail: null };
-}
-
 function changedLines(entries: { xy: string; path: string }[]): string {
   return entries.map((entry) => `  ${entry.xy} ${entry.path}\n`).join('');
 }
@@ -171,6 +152,30 @@ export async function verify(options: VerifyOptions): Promise<number> {
     return 2;
   }
   const paths = resultPaths(dir, sha);
+  const branch = git.branch();
+
+  // What this run tests: every test but the site check's own (SC-010), or,
+  // with --failed, only what the last run on this branch left (FR-039).
+  const planFile = planPath(dir, 'feature', branch);
+  const expected = withoutSiteCheckTests(listFiles(root).testFiles);
+  let files = expected;
+  let passed: Record<string, number> = {};
+  if (options.failed === true) {
+    const plan = readPlan(planFile);
+    if (plan === null) {
+      stderr.write(`local full run: no earlier run on ${branch ?? 'this commit'}: run npm run verify:feature\n`);
+      return 2;
+    }
+    const changed = git.changedSince(plan.sha);
+    if ('error' in changed) {
+      stderr.write(`local full run: git diff failed: ${changed.error}\n`);
+      return 2;
+    }
+    files = remaining({ ...plan, planned: expected }, changed.files, expected);
+    passed = Object.fromEntries(Object.entries(plan.passed).filter(([file]) => !files.includes(file)));
+  }
+  writePlan(planFile, { sha, planned: expected, passed });
+
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(paths.log, '');
   // An earlier result goes before the first check, so a run that's stopped
@@ -186,12 +191,20 @@ export async function verify(options: VerifyOptions): Promise<number> {
     fs.appendFileSync(paths.log, chunk);
   };
 
-  // 4. Every check, in order, whatever the ones before returned.
-  const branch = git.branch();
+  // 4. The checks, in order, up to the first that fails (FR-040).
   const startedAt = new Date().toISOString();
   const results: Check[] = [];
   let tests: LocalRunResult['tests'] = { files: 0, expectedFiles: 0, passed: 0, failed: 0, skipped: 0 };
-  for (const check of checks(paths.vitest)) {
+  const countedFiles = () => expected.filter((file) => file in passed);
+  const sum = () => countedFiles().reduce((total, file) => total + passed[file]!, 0);
+  tests = { files: countedFiles().length, expectedFiles: expected.length, passed: sum(), failed: 0, skipped: 0 };
+  // `engines` keeps no list of what passed, so --failed runs it again.
+  for (const check of checks(paths.vitest, files, true)) {
+    // Everything has passed already: there's no test left to run.
+    if (check.name === 'test' && files.length === 0) {
+      results.push({ name: check.name, command: 'none left', status: 'pass', exitCode: 0, durationMs: 0, detail: null });
+      continue;
+    }
     const line = commandLine(check);
     toOut(`== ${check.name}: ${line}\n`);
     const started = performance.now();
@@ -200,11 +213,17 @@ export async function verify(options: VerifyOptions): Promise<number> {
     let detail: string | null = null;
     // 5. The full set really ran.
     if (check.name === 'test') {
-      const report = readTestReport(root, paths.vitest);
-      tests = report.tests;
-      detail = report.detail;
+      const report = readReport(root, paths.vitest);
+      passed = { ...passed, ...report.passed };
+      writePlan(planFile, { sha, planned: expected, passed });
+      tests = { files: countedFiles().length, expectedFiles: expected.length, passed: sum(), failed: report.failed, skipped: report.skipped };
+      const ranAll = files.every((file) => report.ran.includes(file));
+      if (!ranAll) detail = `ran ${countedFiles().length} of ${expected.length} test files`;
+      else if (!report.success) detail = 'the test report shows a failure';
     }
-    results.push({ name: check.name, command: line, status: exitCode === 0 && detail === null ? 'pass' : 'fail', exitCode, durationMs, detail });
+    const status = exitCode === 0 && detail === null ? 'pass' : 'fail';
+    results.push({ name: check.name, command: line, status, exitCode, durationMs, detail });
+    if (status === 'fail') break;
   }
 
   // 6. Still the same commit, and nothing left behind.
@@ -227,7 +246,6 @@ export async function verify(options: VerifyOptions): Promise<number> {
     clean: { atStart: true, atEnd: clean, changed: changed.map((entry) => entry.path) },
     checks: results,
     tests,
-    siteCheck: results.find((check) => check.name === 'site')?.status ?? 'fail',
     node: process.versions.node,
     os: `${os.type()} ${os.release()} ${process.arch}`,
     result: failed.length === 0 && clean ? 'pass' : 'fail',
@@ -240,6 +258,7 @@ export async function verify(options: VerifyOptions): Promise<number> {
   } else {
     const changedNote = clean ? '' : failed.length === 0 ? `the working copy changed during the run on ${sha}.` : ' The working copy changed during the run.';
     const checksNote = failed.length === 0 ? '' : `${failed.length} ${failed.length === 1 ? 'check' : 'checks'} failed on ${sha}: ${failed.join(', ')}.`;
+    summary += `After a fix, take only what's left with: npm run verify:feature -- --failed\n`;
     summary += `FAIL: ${checksNote}${changedNote} Nothing can be signed off for this commit.\n`;
   }
   toOut(summary);

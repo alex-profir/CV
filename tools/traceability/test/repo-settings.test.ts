@@ -7,8 +7,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
+import { FAST_TEST_GLOBS, LEFT_OUT_HERE, OWNER_MAC_TESTS } from '../src/files.ts';
 import { REPO_ROOT } from './helpers/project.ts';
 
+const isFastTest = (file: string) => FAST_TEST_GLOBS.some((glob) => path.posix.matchesGlob(file, glob));
 const WORKFLOW = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/ci.yml'), 'utf8');
 const LINES = WORKFLOW.split('\n');
 const RULESET = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.github/rulesets/main.json'), 'utf8'));
@@ -102,7 +104,7 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
       {
         type: 'required_status_checks',
         parameters: {
-          strict_required_status_checks_policy: true,
+          strict_required_status_checks_policy: false,
           do_not_enforce_on_create: false,
           required_status_checks: [
             { context: 'traceability', integration_id: 15368 },
@@ -110,7 +112,6 @@ describe('001-requirement-traceability-FR-025: every pull request runs the requi
             { context: 'content', integration_id: 15368 },
             { context: 'tokens', integration_id: 15368 },
             { context: 'site', integration_id: 15368 },
-            { context: 'local-verify' },
           ],
         },
       },
@@ -164,21 +165,46 @@ describe("001-requirement-traceability-FR-034: the workflow can't record a sign-
   });
 });
 
-describe("001-requirement-traceability-FR-035: merging needs the owner's sign-off", () => {
+describe('001-requirement-traceability-FR-035: green CI is what merges a pull request', () => {
   const rule = RULESET.rules.find((entry: { type: string }) => entry.type === 'required_status_checks');
 
-  test('local-verify is required last, bound to no app, and is no job', () => {
-    expect(REQUIRED.at(-1)).toEqual({ context: 'local-verify' });
-    expect(Object.keys(REQUIRED.at(-1)!)).toEqual(['context']);
-    expect(REQUIRED.filter((check) => !('integration_id' in check)).map((check) => check.context)).toEqual(['local-verify']);
-    expect(JOB_IDS.map((id) => job(id).name)).not.toContain('local-verify');
-    expect(JOB_IDS).not.toContain('local-verify');
+  test('no sign-off is required, and every required check is a workflow job bound to GitHub Actions', () => {
+    expect(REQUIRED.map((check) => check.context)).not.toContain('local-verify');
+    expect(REQUIRED.filter((check) => check.integration_id !== 15368)).toEqual([]);
   });
 
-  test('the branch must be up to date, nobody can bypass and there is no update rule', () => {
-    expect(rule.parameters.strict_required_status_checks_policy).toBe(true);
+  test('the branch need not be up to date, nobody can bypass and there is no update rule', () => {
+    expect(rule.parameters.strict_required_status_checks_policy).toBe(false);
     expect(RULESET.bypass_actors).toEqual([]);
     expect(RULESET.rules.map((entry: { type: string }) => entry.type)).not.toContain('update');
+  });
+});
+
+describe('001-requirement-traceability-FR-041: every test runs every day on the default branch, but those bound to the owner\'s Mac', () => {
+  const FULL = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/full.yml'), 'utf8');
+  const lines = FULL.split('\n');
+
+  test('it runs on a daily schedule and on demand, not on pull requests', () => {
+    expect(lines).toContain("    - cron: '17 3 * * *'");
+    expect(lines).toContain('  workflow_dispatch:');
+    expect(FULL).not.toMatch(/pull_request|^\s+push:/m);
+  });
+
+  test('it runs the whole test set with no filter, with a read-only token', () => {
+    expect(lines).toContain('      - run: npm test');
+    expect(lines).toContain('      - run: npx playwright install --with-deps chromium');
+    expect(lines).toContain('    runs-on: ubuntu-latest');
+    expect(block(lines, /^permissions:\s*$/).filter((line) => line.trim() !== '')).toEqual(['  contents: read']);
+  });
+
+  test('what it leaves out is a short list of real test files, none of the fast set or the site check, left out on Linux alone', () => {
+    expect(OWNER_MAC_TESTS).toHaveLength(4);
+    for (const file of OWNER_MAC_TESTS) {
+      expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
+      expect(file.startsWith('tools/site-check/'), file).toBe(false);
+      expect(isFastTest(file), file).toBe(false);
+    }
+    expect(LEFT_OUT_HERE).toEqual(process.platform === 'linux' ? OWNER_MAC_TESTS : []);
   });
 });
 

@@ -94,7 +94,7 @@ export type NpmBehavior = {
   leaveFile?: string;
   // For `npm test`: the Vitest JSON report it writes. `files` defaults to
   // every test file of the repository, as the traceability check lists them.
-  report?: { files?: string[]; success?: boolean; passed?: number; failed?: number; skipped?: number };
+  report?: { files?: string[]; failedFiles?: string[]; success?: boolean; failed?: number; skipped?: number };
 };
 
 export type FakeOptions = {
@@ -102,7 +102,7 @@ export type FakeOptions = {
   // `null` leaves `gh` out of `bin/`.
   gh?: { exitCode?: number; stderr?: string } | null;
   // By script name: `typecheck`, `traceability`, `content-check`,
-  // `token-check`, `test` or `site-check`. A script not given exits 0.
+  // `token-check` or `test`. A script not given exits 0.
   npm?: Record<string, NpmBehavior>;
 };
 
@@ -142,16 +142,20 @@ if (command === 'gh') {
   if (output !== undefined) {
     const report = behavior.report ?? {};
     const files = report.files ?? listFiles(cwd).testFiles;
-    const passed = report.passed ?? files.length * 2;
-    const failed = report.failed ?? 0;
+    const failedFiles = report.failedFiles ?? [];
+    const passed = (files.length - failedFiles.length) * 2;
+    const failed = report.failed ?? failedFiles.length * 2;
     const skipped = report.skipped ?? 0;
     fs.writeFileSync(output.slice('--outputFile.json='.length), JSON.stringify({
-      success: report.success ?? true,
+      success: report.success ?? failedFiles.length === 0,
       numTotalTests: passed + failed + skipped,
       numPassedTests: passed,
       numFailedTests: failed,
       numPendingTests: skipped,
-      testResults: files.map((file) => ({ name: path.join(cwd, file), status: 'passed' })),
+      testResults: files.map((file) => {
+        const status = failedFiles.includes(file) ? 'failed' : 'passed';
+        return { name: path.join(cwd, file), status, assertionResults: [{ status }, { status }] };
+      }),
     }));
   }
   process.exitCode = behavior.exitCode ?? 0;

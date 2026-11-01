@@ -1086,3 +1086,17 @@ in a follow-up pull request of their own, signed off locally like any other.
   - Print `npm run <verify|signoff> needs Node 26 or later (see .nvmrc), but this is Node <version>: run nvm use`. Use the subcommand when it's `verify` or `signoff`, and `local full run` otherwise. Exit 2 as before.
   - Update quickstart.md scenario 9's Node case, and the T077 and T078 notes' quoted line if you quote it again, word for word. Add a test titled with 001-requirement-traceability-FR-032 in `tools/local-verify/test/verify.test.ts` that runs `main.js` as a subprocess under a stubbed version. For example, use `--import` with a data-URL module that sets `process.versions` through `Object.defineProperty`, or move the comparison and the message into a side-effect-free function, as T049 did, and test that. It must stay in the fast set and start no check.
   - **Recorded 2026-10-29**: the gate is `nodeVersionProblem(version, command)` in a new `tools/local-verify/src/node-version.js`, apart from `main.js`, because importing `main.js` from a fast test reaches `tools/site-check/src/browser.ts` through its dynamic import, which FR-030's import-graph test refuses. The new FR-032 test checks the three wordings and runs `main.js signoff` under `--import` with `process.versions.node` stubbed to 24.21.0: `npm run signoff needs Node 26 or later (see .nvmrc), but this is Node 24.21.0: run nvm use`, exit 2, no fake command started. quickstart.md scenario 9 and contracts/local-verify.md quote the new line; the T077 and T078 notes keep the line as it was then. Typecheck, traceability (325 requirements) and the fast set (67 files, 841 tests) pass; the full set wasn't run here, since only local-verify's code and its fast tests changed, and T082 runs it on the new head.
+
+---
+
+## Phase 13: Speed First (amendment of 2026-10-31)
+
+**Purpose**: Constitution 2.0.0 and this spec's amendment of 2026-10-31. It ships in one pull request with the constitution, at the owner's request. T081 to T086's sign-off steps are superseded by FR-035 as amended.
+
+- [X] T089 Stop a local run at the first failing check and its test check at the first failing test, per FR-040: `tools/local-verify/src/verify.ts`, `tools/local-verify/src/checks.ts`
+- [X] T090 Leave the site check and its own tests out of a feature's run, per FR-032 and SC-010, and rename the commands: `npm run verify:feature` is that run, `npm run verify` is the quick run
+- [X] T091 Add the quick run and the area rules, per FR-038: `tools/local-verify/src/quick.ts`, `tools/local-verify/src/affected.ts`
+- [X] T092 Add `--failed` to both runs, per FR-039: `tools/local-verify/src/run-plan.ts`
+- [X] T093 Drop `local-verify` and the up-to-date requirement from the committed ruleset, per FR-035: `.github/rulesets/main.json`, and its four `repo-settings.test.ts`
+- [X] T094 Add the daily full run, per FR-041: `.github/workflows/full.yml`, on Linux, without `OWNER_MAC_TESTS` (`tools/traceability/src/files.ts`). Trials on 2026-10-31: Linux 37 minutes and 121 failures, macOS 62 minutes and 1,007 failures, the most from bash 3.2 and from a slow machine and no glass, so Linux it is. A second Linux trial took 48 minutes, and the only failures left were Linux-only pins of the test config, now fixed, the trial's own trigger, and the performance test's time limits, now left out
+- [ ] T095 Owner action: apply `.github/rulesets/main.json` to the live ruleset, which already leaves `local-verify` out but still requires up-to-date branches

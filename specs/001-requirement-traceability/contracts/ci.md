@@ -9,6 +9,10 @@ FR-037). The jobs `content`, `tokens` and `site` were added by 002, 003 and 004 
 contracts, and are listed here because the amendment's "nothing else" rule covers the whole
 workflow.
 
+**Amended 2026-10-31**: green CI is what merges a pull request. The ruleset requires neither
+`local-verify` nor an up-to-date branch, and `full.yml` runs every test daily on `main`, but
+those bound to the owner's Mac (FR-035, FR-041). Anything below that says otherwise is superseded.
+
 This contract fixes what the repository promises to reviewers: which checks run on every pull
 request, under which names, and what blocks a merge. The automated tests assert every point
 marked **[tested]** against the committed files. The points marked **[verified live]** depend on
@@ -95,25 +99,20 @@ Rules, with every parameter written out **[tested]**:
 | `deletion` | none | `main` can't be deleted |
 | `non_fast_forward` | none | No force pushes to `main` |
 | `pull_request` | `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `require_code_owner_review: false`, `require_last_push_approval: false`, `require_extra_approval_for_unattributed_changes: false`, `required_review_thread_resolution: false`, `required_reviewers: []`, `allowed_merge_methods: ["squash"]` | Changes reach `main` only through pull requests, squash-merged. No approval is required: with one owner and no bypass, a required approval could never be given |
-| `required_status_checks` | `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false`, `required_status_checks`: `traceability`, `test`, `content`, `tokens` and `site`, each with `"integration_id": 15368`, then `{ "context": "local-verify" }` with no `integration_id` | The five jobs must pass on a branch that's up to date with `main`, and only GitHub Actions (app 15368) can satisfy them. The head commit must also carry the owner's passing `local-verify` status (FR-035) |
+| `required_status_checks` | `strict_required_status_checks_policy: false`, `do_not_enforce_on_create: false`, `required_status_checks`: `traceability`, `test`, `content`, `tokens` and `site`, each with `"integration_id": 15368` | The five jobs must pass, and only GitHub Actions (app 15368) can satisfy them (FR-035) |
 
 GitHub fills in `require_extra_approval_for_unattributed_changes` (as `true`) and
 `required_reviewers` when a ruleset leaves them out, so both are written out here. The first
 would require an approval for changes GitHub can't attribute to a user.
 
-`local-verify` has no `integration_id` because the owner's `gh` login is no GitHub App, and the
-field is optional in GitHub's API (research R19). Any writer could therefore satisfy it, which is
-why the workflow's token stays read-only.
-
 Consistency rules between the files **[tested]**:
 
 - Every required check with `integration_id: 15368` is the `name` of a job in `ci.yml`.
-- `local-verify` is the only required check without an `integration_id`, and it is not the name
-  of any job.
+- `local-verify` is not a required check, and it is not the name of any job.
 - The `traceability` job runs the same script the owner runs locally, `npm run traceability`
   (FR-026).
-- The local full run's checks are the workflow's `run:` commands, with `npm run test:fast`
-  replaced by `npm test` ([local-verify.md](./local-verify.md#checks)).
+- A local run's checks are the workflow's `run:` commands, without the site check and with
+  `npm run test:fast` replaced by `npm test` on listed files ([local-verify.md](./local-verify.md#checks)).
 - The `update` rule is absent. It would block pull-request merges as well.
 
 ## Live guarantees [verified live]
@@ -127,8 +126,8 @@ checks them on the real repository.
 3. A pull request with a failing `traceability` check shows merging as blocked, and the owner
    has no "bypass rules" option (FR-025, SC-003).
 4. `git push origin main` with a new commit is rejected (FR-025).
-5. A pull request whose head commit has no `local-verify` status shows it as expected and can't
-   merge. After `npm run signoff` it can. After one more commit it can't again (FR-035, SC-009).
+5. A pull request with every required job passing can merge, with no `local-verify` status and on
+   a branch behind `main` (FR-035, SC-009).
 6. Every job of a pull request's run finishes within 6 minutes (SC-008).
 
 ## Known limit

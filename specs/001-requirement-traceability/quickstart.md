@@ -160,6 +160,11 @@ without building the site: its log shows no `site build` and finishes in well un
 The automated test `tools/traceability/test/test-sets.test.ts` checks the same partition against
 the traceability check's own file list, and that no fast file needs a browser or the build.
 
+**Amended 2026-10-31**: in scenarios 9 to 13 below, `npm run verify` means `npm run verify:feature`.
+The run has five checks, stops at the first failure and no longer includes the site check. Merging
+needs no sign-off and no up-to-date branch, so the merge-blocking steps in scenarios 11 and 13 no
+longer apply (FR-035).
+
 ## 9. The local full run refuses what it can't prove (US4 scenario 2, FR-032)
 
 ```sh

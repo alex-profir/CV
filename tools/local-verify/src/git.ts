@@ -84,6 +84,24 @@ export function gitIn(root: string, env: NodeJS.ProcessEnv, exec: Exec = default
       const line = result.stdout.split('\n').find((entry) => entry.endsWith(`\trefs/heads/${branch}`));
       return { sha: line === undefined ? null : line.split('\t')[0]! };
     },
+    // Where this branch left the default branch, or null when neither
+    // origin's nor a local default branch is known.
+    mergeBase(): string | null {
+      for (const ref of ['origin/main', 'main']) {
+        const result = git(['merge-base', 'HEAD', ref]);
+        if (result.status === 0) return result.stdout.trim();
+      }
+      return null;
+    },
+    // Every file that differs from `ref`, working copy and untracked files
+    // included, ignored files left out.
+    changedSince(ref: string): { files: string[] } | { error: string } {
+      const diff = git(['diff', '--name-only', '-z', ref]);
+      if (diff.status !== 0) return { error: failure(diff) };
+      const untracked = git(['ls-files', '--others', '--exclude-standard', '-z']);
+      if (untracked.status !== 0) return { error: failure(untracked) };
+      return { files: [...new Set([...diff.stdout.split('\0'), ...untracked.stdout.split('\0')].filter(Boolean))] };
+    },
     // Pushes HEAD to `branch` on origin, never forced.
     push(branch: string): { ok: true } | { error: string } {
       const result = git(['push', 'origin', `HEAD:refs/heads/${branch}`]);

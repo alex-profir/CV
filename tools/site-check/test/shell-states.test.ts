@@ -4,7 +4,7 @@ import type { Browser, Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, onTestFinished, test, vi } from 'vitest';
 import { launchChromium } from '../src/browser.ts';
 import { SITE_DIR, readManifest, runCheck } from '../src/check.ts';
-import { ENDLESS_LINE, INSPECTOR, INSPECTOR_SHELL_STATES, PLAYGROUND, PLAYGROUND_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, playgroundRunning, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
+import { ENDLESS_LINE, INSPECTOR, INSPECTOR_SHELL_STATES, PLAYGROUND, PLAYGROUND_SHELL_STATES, SHELL, SHELL_STATES, TERMINAL, TERMINAL_STATES, cursorAt, openPlayground, playgroundReady, playgroundRunning, primaryKey, putCode, reachState, shellContext, stateVariant, waitForShell } from '../src/shell-states.ts';
 import type { ShellState } from '../src/shell-states.ts';
 import { renderProblem, renderReport } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
@@ -458,6 +458,42 @@ describe('008-typescript-playground-FR-076: the checks measure the Playground in
       'mobile/playground-best-on-desktop-320/320px 568',
       'mobile/playground-best-on-desktop-landscape/812px 375',
     ]);
+  });
+
+  // On CI the wait returned early, so Ctrl+. came before the error's marker and
+  // Monaco opened no list: `playground / desktop/playground-editing` on `0b0b517`.
+  test('putCode waits for the check when the page is busy right after the paste', async () => {
+    const root = realSiteProject();
+    const server = await startServer({ siteDir: `${root}/${SITE_DIR}`, manifest: readManifest(root) });
+    onTestFinished(() => server.close());
+    const context = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 900 } });
+    onTestFinished(() => context.close());
+    const page = await context.newPage();
+    await page.goto(`${server.url}/`, { waitUntil: 'load' });
+    await waitForShell(page);
+    await openPlayground(page);
+    await playgroundReady(page);
+    const key = await primaryKey(page);
+    for (let round = 0; round < 6; round += 1) {
+      await putCode(page, `const ok = ${round};`);
+      await page.evaluate(() => {
+        document.addEventListener(
+          'paste',
+          () => {
+            setTimeout(() => {
+              const end = performance.now() + 700;
+              while (performance.now() < end);
+            }, 0);
+          },
+          { capture: true, once: true },
+        );
+      });
+      await putCode(page, 'interface Job { title: string; years: number }\nconst job: Job = {};');
+      await cursorAt(page, 2, 7);
+      await page.keyboard.press(`${key}+Period`);
+      await page.waitForSelector('.action-widget:visible', { timeout: 5_000 });
+      await page.keyboard.press('Escape');
+    }
   });
 
   test('the summary lists / under accessibility in every Playground state, with no problem', { timeout: 1_800_000 }, async () => {

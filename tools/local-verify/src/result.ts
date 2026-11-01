@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { Exec } from './git.ts';
 import { commonDir } from './git.ts';
 
-export const CHECK_NAMES = ['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines', 'site'] as const;
+export const CHECK_NAMES = ['typecheck', 'traceability', 'content', 'tokens', 'test', 'engines'] as const;
 
 export type CheckName = (typeof CHECK_NAMES)[number];
 
@@ -28,7 +28,6 @@ export type LocalRunResult = {
   clean: { atStart: true; atEnd: boolean; changed: string[] };
   checks: Check[];
   tests: { files: number; expectedFiles: number; passed: number; failed: number; skipped: number };
-  siteCheck: 'pass' | 'fail';
   node: string;
   os: string;
   result: 'pass' | 'fail';
@@ -71,10 +70,9 @@ export function readPassingResult(dir: string, sha: string): { result: LocalRunR
   return { reason: 'failed', checks };
 }
 
-// `<passed> tests in <files> files passed; site check passed; Node <node>;
-// <os>`, at most 140 characters: only the OS part is shortened, ending in `…`.
+// `<passed> tests in <files> files passed; Node <node>; <os>`, at most 140 characters: only the OS part is shortened, ending in `…`.
 export function describeSignOff(result: Pick<LocalRunResult, 'tests' | 'node' | 'os'>): string {
-  const fixed = `${result.tests.passed} tests in ${result.tests.files} files passed; site check passed; Node ${result.node}; `;
+  const fixed = `${result.tests.passed} tests in ${result.tests.files} files passed; Node ${result.node}; `;
   const room = DESCRIPTION_LIMIT - fixed.length;
   const os = result.os.length <= room ? result.os : `${result.os.slice(0, Math.max(0, room - 1)).trimEnd()}…`;
   return `${fixed}${os}`;

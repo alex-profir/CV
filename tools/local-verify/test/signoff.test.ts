@@ -37,7 +37,7 @@ const resultDir = (repo: Repo) => path.join(repo.root, '.git/local-verify');
 
 // A result as verify writes it, passing unless changed.
 function result(sha: string, changes: Partial<LocalRunResult> = {}): LocalRunResult {
-  const names = ['typecheck', 'traceability', 'content', 'tokens', 'test', 'site'] as const;
+  const names = ['typecheck', 'traceability', 'content', 'tokens', 'test'] as const;
   return {
     version: 1,
     sha,
@@ -47,7 +47,6 @@ function result(sha: string, changes: Partial<LocalRunResult> = {}): LocalRunRes
     clean: { atStart: true, atEnd: true, changed: [] },
     checks: names.map((name) => ({ name, command: `npm run ${name}`, status: 'pass', exitCode: 0, durationMs: 1000, detail: null })),
     tests: { files: 152, expectedFiles: 152, passed: 3124, failed: 0, skipped: 0 },
-    siteCheck: 'pass',
     node: '26.1.0',
     os: 'Darwin 25.1.0 arm64',
     result: 'pass',
@@ -81,7 +80,7 @@ describe('001-requirement-traceability-FR-033: a sign-off is the passing local-v
     const fake = fakes(repo);
     const verified = await verify({ root: repo.root, env: fake.env, prerequisites: { hasChromium: () => true }, stdout: { write: () => true }, stderr: { write: () => true } });
     expect(verified).toBe(0);
-    const description = `2 tests in 1 files passed; site check passed; Node ${process.versions.node}; ${OS}`;
+    const description = `2 tests in 1 files passed; Node ${process.versions.node}; ${OS}`;
     const { code, stdout, stderr } = await run(repo, fake.env);
     expect({ code, stderr }).toEqual({ code: 0, stderr: '' });
     expect(stdout).toBe(`signed off ${repo.sha} on alex-profir/CV: local-verify success: ${description}\n`);
@@ -93,10 +92,10 @@ describe('001-requirement-traceability-FR-033: a sign-off is the passing local-v
 
   test('the description fits GitHub limit of 140 characters, shortening only the OS part', () => {
     const short = describeSignOff(result('a'.repeat(40)));
-    expect(short).toBe('3124 tests in 152 files passed; site check passed; Node 26.1.0; Darwin 25.1.0 arm64');
+    expect(short).toBe('3124 tests in 152 files passed; Node 26.1.0; Darwin 25.1.0 arm64');
     const longest = describeSignOff({ tests: { files: 999999, expectedFiles: 999999, passed: 999999, failed: 0, skipped: 0 }, node: '26.999.999', os: `Darwin ${'9'.repeat(93)}` });
     expect(longest.length).toBeLessThanOrEqual(140);
-    expect(longest.startsWith('999999 tests in 999999 files passed; site check passed; Node 26.999.999; Darwin 9')).toBe(true);
+    expect(longest.startsWith('999999 tests in 999999 files passed; Node 26.999.999; Darwin 9')).toBe(true);
     expect(longest.endsWith('…')).toBe(true);
   });
 
@@ -104,10 +103,10 @@ describe('001-requirement-traceability-FR-033: a sign-off is the passing local-v
     const repo = makeRepo(SAMPLE);
     withOrigin(repo);
     const fake = fakes(repo);
-    const failing = result(repo.sha, { result: 'fail', siteCheck: 'fail' });
-    failing.checks = failing.checks.map((check) => (check.name === 'test' || check.name === 'site' ? { ...check, status: 'fail', exitCode: 1 } : check));
+    const failing = result(repo.sha, { result: 'fail' });
+    failing.checks = failing.checks.map((check) => (check.name === 'test' || check.name === 'tokens' ? { ...check, status: 'fail', exitCode: 1 } : check));
     writeResult(resultDir(repo), failing);
-    expect(await run(repo, fake.env)).toEqual({ code: 1, stdout: '', stderr: `sign-off refused: the last local full run on ${repo.sha} failed (test, site)\n` });
+    expect(await run(repo, fake.env)).toEqual({ code: 1, stdout: '', stderr: `sign-off refused: the last local full run on ${repo.sha} failed (tokens, test)\n` });
     expect(ghCalls(fake)).toEqual([]);
   });
 });
@@ -202,7 +201,7 @@ describe('001-requirement-traceability-FR-034: only the owner signs off, and onl
     const repo = makeRepo(SAMPLE);
     const fake = fakes(repo);
     const main = (args: string[], env: NodeJS.ProcessEnv) => spawnSync(process.execPath, [MAIN, ...args], { cwd: repo.root, env, encoding: 'utf8' });
-    expect(main(['signoff', 'extra'], fake.env)).toMatchObject({ status: 2, stderr: 'usage: npm run verify | npm run signoff (takes no arguments)\n' });
+    expect(main(['signoff', 'extra'], fake.env)).toMatchObject({ status: 2, stderr: 'usage: npm run verify [-- --failed] | npm run verify:feature [-- --failed] | npm run signoff\n' });
     expect(main(['signoff'], { ...fake.env, CI: 'true' })).toMatchObject({ status: 1, stderr: "sign-off refused: it runs only on the owner's machine, never in CI\n" });
     expect(fake.log()).toEqual([]);
   });

@@ -90,14 +90,13 @@ describe('004-cv-page-FR-048: every pull request checks the built site, and merg
     for (const line of uses) expect(line).toMatch(/uses: [\w-]+\/[\w-]+@[0-9a-f]{40} # v\d+(\.\d+)*$/);
   });
 
-  test('the ruleset requires traceability, test, content, tokens, site and local-verify', () => {
+  test('the ruleset requires traceability, test, content, tokens and site', () => {
     expect(REQUIRED).toEqual([
       { context: 'traceability', integration_id: 15368 },
       { context: 'test', integration_id: 15368 },
       { context: 'content', integration_id: 15368 },
       { context: 'tokens', integration_id: 15368 },
       { context: 'site', integration_id: 15368 },
-      { context: 'local-verify' },
     ]);
     for (const check of REQUIRED.filter((entry: { integration_id?: number }) => entry.integration_id === 15368)) expect(JOB_IDS).toContain(check.context);
   });

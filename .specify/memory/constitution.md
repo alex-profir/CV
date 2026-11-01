@@ -1,5 +1,25 @@
 # CV Constitution
 
+## Speed First
+
+Speed is the first priority of this project's process. Everything below is read in that light.
+
+- **Cost matches risk**: a gate's cost MUST match the risk of the change it guards. Where two
+  gates would catch the same problem, the cheaper one is the gate and the other runs later.
+- **Budget**: a bug fix, small change or amendment MUST be able to go from push to mergeable in
+  10 minutes. A check that breaks the budget is a defect, fixed by making it faster or moving it
+  later, never by waiting for it.
+- **No restarts**: a failure never restarts work from zero. Runs stop at the first failure, and
+  the next run takes only what failed or never ran.
+- **Cheap checks stay**: a check that takes seconds, such as traceability, content, tokens and
+  type checking, stays on every pull request.
+- **Process, not product**: this section relaxes how changes reach `main`, not what visitors get.
+  What Principles IV to IX ask of the site still holds.
+
+**Rationale**: the full run grew from 11 to as much as 75 minutes in three days, and every commit
+restarted it. The site is one person's CV: most regressions are cheap to revert, and a process
+that slows every change costs more than the bugs it catches late.
+
 ## Core Principles
 
 ### I. Spec First
@@ -10,8 +30,10 @@
   file layouts, or APIs.
 - Plans (`plan.md`) state **how**. Implementation choices are made and justified there, never
   in the spec.
-- A change in behavior means updating the spec first. Code that does something its spec does not
-  describe is a defect.
+- A change in behavior updates the spec, before the code or in the same pull request. Code that
+  does something its spec does not describe is a defect.
+- A **bug fix**, which makes the code do what its spec already says, changes no spec and passes
+  no gate of the workflow below. It needs a `fix:` commit and green CI.
 
 **Rationale**: the spec-driven process is part of what this site shows. A visitor reading
 `specs/` should see the reasoning before the code, and see that the code followed it.
@@ -161,7 +183,14 @@ to trust.
 
 - A new feature ships in one pull request. Its description links the feature's `spec.md` and
   `tasks.md`.
-- A shipped feature can be amended. The amendment starts in its spec (Principle I) and is
+- A **small change** to a shipped feature's behavior takes the light route. It adds no screen or
+  app and no more than two requirements, and it does not change what a principle asks. The pull
+  request makes the change, marks each changed requirement `Amended <date>`, adds each new one
+  under a new ID marked `(added <date>)`, and adds one dated line to the top of the spec saying
+  what changed and why. The owner's merge is the approval. No clarification session, plan or
+  tasks phase is needed. If it is unclear whether a change is small, it is, unless the owner says
+  otherwise.
+- Any larger change to a shipped feature is an amendment. The amendment starts in its spec (Principle I) and is
   recorded there: a dated clarification session that says what changes and why, the owner's
   approval of the amendment beside the spec's `Status`, each changed requirement marked
   `Amended <date>` with what it said before, and each new requirement added under a new ID
@@ -217,7 +246,8 @@ the older spec still records what changed, when, why and for which feature.
 
 Every feature moves through these gates in order. A gate that has not passed blocks the
 next one. An amendment of a shipped feature moves through the same gates, from Specify, for the
-part it changes (Principle XI).
+part it changes (Principle XI). A bug fix (Principle I) and a small change (Principle XI) skip
+these gates.
 
 1. **Specify**: `/speckit-specify` produces `spec.md`, with `FR-###` IDs, per-shell scope and
    offline behavior. Open questions are resolved with `/speckit-clarify`. The owner then sets
@@ -233,8 +263,8 @@ part it changes (Principle XI).
 5. **Implement**: tests reference the `<feature>-FR-###` IDs they cover, and UI elements carry
    `data-req` attributes (Principle III).
 6. **Pull request**: one PR per new feature, carrying any amendment of an older spec it makes,
-   and one or more per amendment of its own, each linking its spec and tasks (Principle XI). It merges once CI passes and the owner's local run has signed
-   off its head commit (Merge requirements).
+   and one or more per amendment of its own, each linking its spec and tasks (Principle XI). It merges once CI passes, and a new feature's first full run has
+   passed (Merge requirements).
 
 Merge requirements:
 
@@ -242,14 +272,18 @@ Merge requirements:
 - Accessibility (WCAG 2.2 AA, keyboard operation, reduced motion), Lighthouse 90+, offline
   behavior and the one-click/one-tap CV path MUST be verified before merge. They are
   automated wherever tooling allows, in CI or in the owner's local run below.
-- **Cloud and local runs**: CI on every pull request runs the fast checks: type checking, the
-  tests that need no browser, the traceability, content and token checks, and the site's checks
-  on the built site. The full test suite, every browser test included, runs on the owner's
-  machine before merge, on a clean checkout of the pull request's head commit.
-- **Local sign-off**: a pull request merges only with a passing `local-verify` status on its head
-  commit. The owner's local run posts it, and only after every check of the full run passes on
-  that commit. CI never posts it. A new commit, a merge of the default branch included, needs a
-  new run. The status names what ran, so the pull request records it.
+- **CI decides**: CI on every pull request runs type checking, the tests that need no browser,
+  the traceability, content and token checks, and the site's checks on the built site. Green CI is
+  what merges a pull request, on a branch that need not be up to date with the default branch.
+- **Local run**: before pushing, `npm run verify` runs the quick checks and the tests of the areas
+  a change touches. It is a convenience: it stops at the first failure, and nothing requires it.
+- **New features**: a new feature's pull request passes `npm run verify:feature` once, on any of
+  its commits, and its description names the commit and the result. It leaves out the site check's
+  own tests. A failure is fixed and picked up with `--failed`, which reruns only what failed, what
+  never ran and the test files that changed. Later commits don't need another run.
+- **Daily full run**: every test runs on the default branch every day, in CI, except the few that
+  only hold on the owner's machine, which a new feature's run covers. When it fails, fixing or
+  reverting comes before merging anything else.
 - Until the interim provision on deferred manual checks ends, checks that only a person can do
   may be done after merge (see that section).
 - Hardcoded CV data or literal design-token values block merge (Principle IV).
@@ -303,9 +337,8 @@ While it applies:
   reader, shortcuts tried by hand in each browser and screen reader, forced colors and text-only
   zoom in a given browser, printing, and comparing the built pages with the approved design
   exports and the feature's `docs/backlog.md` entries. These may be done after merge, in a final testing phase that covers several features.
-- **What may not wait**: every automated check still runs and passes before merge, in CI or in
-  the owner's signed-off local run, as do the requirement-to-test traceability check
-  (Principle III) and the checks in CI. A deferred manual
+- **What may not wait**: every check the merge requirements ask for still passes when they ask for it, as
+  does the requirement-to-test traceability check (Principle III). A deferred manual
   check doesn't excuse a missing automated check where tooling allows one.
 - **Recording**: a deferred check stays an open task in the feature's `tasks.md`, with a note
   that it is deferred to the final testing phase. The feature's pull request lists every
@@ -326,9 +359,10 @@ Ending the provision:
 
 - This constitution overrides every other practice, template or guide in the repository. When
   it conflicts with any of them, it wins, and the other document is updated to match.
-- **Amendments** are made in a dedicated PR with a `docs:` commit. The PR updates the version
+- **Amendments** are made in a PR of their own with a `docs:` commit. The PR updates the version
   and `Last Amended` date, explains what changed and why, and lists any dependent templates or
-  specs that need updating.
+  specs that need updating. It can also carry the spec, tooling and repository settings that put
+  the amendment into effect, so that the rules and what enforces them change together.
 - **Versioning** follows semantic versioning:
   - MAJOR: a principle is removed or redefined in a way that breaks compatibility.
   - MINOR: a principle or section is added, or guidance is materially expanded.
@@ -340,4 +374,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 1.6.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-30
+**Version**: 2.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-31
