@@ -11,7 +11,9 @@
 //   5. `<out>/site-manifest.json`: the routes and every served file.
 //
 // Before step 1, the fonts are checked against the font tokens
-// (contracts/fonts.md).
+// (contracts/fonts.md), and the Playground's engine is built into a
+// temporary directory (008 contracts/site.md step 2), then moved to
+// `<out>/site/playground/<engine-hash>/` after the client build.
 //
 // `--out <dir>` (default `packages/web/dist`) lets tests build into a
 // temporary directory. Any failure prints `site build failed: <message>` to
@@ -27,12 +29,15 @@ import zlib from 'node:zlib';
 import { parseSync } from 'oxc-parser';
 import { build, mergeConfig } from 'vite';
 import type { Manifest, Plugin, UserConfig } from 'vite';
+import { typescriptVersion } from 'monaco-editor/languages/features/typescript/lib/typescriptServicesMetadata';
 import { resume, siteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
+import { bundleRunner, runnerPlugin } from './runner-scripts.ts';
+import type { RunnerScripts } from './runner-scripts.ts';
 import { buildRequirementData } from './requirements/index.ts';
 import { checkSpecList } from './spec-list.ts';
 import type { SiteManifest } from '../src/routes.ts';
@@ -59,10 +64,11 @@ const SHELL_ENTRY = 'src/client/os.tsx';
 const SSR_ENTRY = 'src/render.tsx';
 
 // The os script's gzipped size may grow by at most 5% with the shell (006
-// SC-013): 113,581 bytes at `gzip -9` before the amendment, measured on
-// `main` at a3f9532 (with 007's inspector) when it was merged, plus 5%.
-// T127 measured 108,962 on the `main` it branched from.
-export const OS_BUDGET = 119_260;
+// SC-013): 142,646 bytes at `gzip -9` before the amendment, measured with
+// 008's Playground interface (008 at afe2bc2, before it was rebased on the
+// amendment), plus 5%. Before 008 the base was 113,581, on `main` at a3f9532
+// with 007's inspector; T127 measured 108,962 on the `main` it branched from.
+export const OS_BUDGET = 149_778;
 
 // The shell worker's file, and the words only the worker's code holds
 // (no-network.ts, no-zlib.ts): the os script holding them has the shell
@@ -85,9 +91,21 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
   '.txt': 'text/plain',
+  // The Playground editor's icon font, loaded only with the engine (008 R22).
+  '.ttf': 'font/ttf',
 };
 
-type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string };
+// The Playground's engine (008 research R3, contracts/engine.md): its entry,
+// the contract version it implements, and the bundled TypeScript's version.
+const ENGINE_ENTRY = path.join(WEB_ROOT, 'src/apps/playground/engine/engine.ts');
+export const ENGINE_API = 1;
+
+// Where the engine's files are served, under the site root.
+export const ENGINE_DIR = 'playground';
+
+export type EngineAssets = { manifest: string; bytes: number };
+
+type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: EngineAssets };
 
 type RenderModule = {
   renderShell(input: { resume: Resume; siteData: SiteData; assets: PageAssets }): string;
@@ -114,6 +132,115 @@ function clientConfig(siteDir: string): UserConfig {
     configFile: false,
     build: { outDir: siteDir, emptyOutDir: true },
   });
+}
+
+// Every file the engine build writes is named by its hash, at the top of its
+// folder, so the folder can be served from anywhere (`base: './'`).
+const HASHED_NAMES = { entryFileNames: '[name]-[hash].js', chunkFileNames: '[name]-[hash].js', assetFileNames: '[name]-[hash][extname]' };
+
+// Monaco's TypeScript language features make their worker themselves when
+// no `MonacoEnvironment.getWorker` is set. The engine sets one, which returns
+// our worker (research R6), so that fallback never runs; it is removed so
+// the build doesn't bundle a second TypeScript worker the engine never uses.
+const MONACO_WORKER_MANAGER = /monaco-editor\/esm\/vs\/languages\/features\/typescript\/workerManager\.js$/;
+const MONACO_OWN_WORKER = /createWorker: \(\) => new Worker\(new URL\('ts\.worker\.js', import\.meta\.url\), \{ type: "module" \}\),/;
+
+function withoutMonacoOwnWorker(): Plugin {
+  return {
+    name: 'cv:without-monaco-own-worker',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!MONACO_WORKER_MANAGER.test(id)) return null;
+      if (!MONACO_OWN_WORKER.test(code)) throw new Error("Monaco's TypeScript worker manager no longer makes its worker as the build expects");
+      return { code: code.replace(MONACO_OWN_WORKER, 'createWorker: undefined,'), map: null };
+    },
+  };
+}
+
+// The engine's own build (research R3): an ES module entry whose exports are
+// kept, in one script with one style sheet, its workers through `?worker` as
+// classic scripts, its styles through Lightning CSS as the site's are.
+function engineConfig(outDir: string, runner: RunnerScripts): UserConfig & { configFile: false } {
+  return {
+    root: WEB_ROOT,
+    configFile: false,
+    base: './',
+    publicDir: false,
+    logLevel: 'warn',
+    plugins: [withoutMonacoOwnWorker(), runnerPlugin(runner)],
+    oxc: viteConfig.oxc,
+    css: viteConfig.css,
+    worker: { format: 'iife', rolldownOptions: { output: HASHED_NAMES, checks: { pluginTimings: false } } },
+    build: {
+      outDir,
+      emptyOutDir: true,
+      assetsDir: '',
+      manifest: true,
+      assetsInlineLimit: 0,
+      cssMinify: 'lightningcss',
+      // The engine is megabytes by nature: nothing to warn about.
+      chunkSizeWarningLimit: Number.POSITIVE_INFINITY,
+      reportCompressedSize: false,
+      rolldownOptions: { input: { engine: ENGINE_ENTRY }, preserveEntrySignatures: 'strict', output: { ...HASHED_NAMES, codeSplitting: false }, checks: { pluginTimings: false } },
+    },
+  };
+}
+
+type BuiltEngine = { dir: string; files: string[]; entry: string; style: string };
+
+// Step 2: the engine, built into a temporary directory, with the runner's
+// scripts bundled first (008 contracts/runner.md The frame).
+async function buildEngine(): Promise<BuiltEngine> {
+  const runner = await bundleRunner();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cv-engine-'));
+  await build(engineConfig(dir, runner));
+  const viteDir = path.join(dir, '.vite');
+  const manifest: Manifest = JSON.parse(fs.readFileSync(path.join(viteDir, 'manifest.json'), 'utf8'));
+  fs.rmSync(viteDir, { recursive: true, force: true });
+  const entry = Object.values(manifest).find((chunk) => chunk.isEntry === true);
+  if (entry === undefined) throw new Error("the engine build has no entry in Vite's manifest");
+  const style = entry.css?.[0];
+  if (style === undefined || entry.css!.length !== 1) throw new Error('the engine build gives no single style sheet');
+  const stylePath = path.join(dir, style);
+  fs.writeFileSync(stylePath, withSiteStyleRules(fs.readFileSync(stylePath, 'utf8')));
+  return { dir, files: listFiles(dir), entry: entry.file, style };
+}
+
+// Monaco's style sheet under the rules every built style sheet keeps (004
+// FR-012, 005's layout rules): no `order` and no reversed flex direction,
+// which would show boxes out of their reading order (they place the fixes
+// menu's details and toggles and a hover's actions, which then follow the
+// DOM), and the icon font shown with `swap`.
+export function withSiteStyleRules(css: string): string {
+  return css
+    .replace(/(?<=[;{])order:[^;}]*;?/g, '')
+    .replace(/(?<=[;{])flex-(?:direction|wrap|flow):[^;}]*-reverse[^;}]*;?/g, '')
+    .replace(/font-display:\s*block/g, 'font-display:swap');
+}
+
+// The style sheet's `url(./file)` as a path on the site, as every built
+// address is (004 FR-010).
+function withSitePaths(css: string, folder: string): string {
+  return css.replace(/url\(\s*(["']?)\.\/([^)"']+)\1\s*\)/g, (_, quote: string, file: string) => `url(${quote}${folder}/${file}${quote})`);
+}
+
+// Moves the built engine to `<siteDir>/playground/<engine-hash>/` with its
+// `files.json` (data-model.md EngineManifest). The hash is over every
+// file's name and content, so a new engine is a new folder.
+function placeEngine(engine: BuiltEngine, siteDir: string): EngineAssets {
+  for (const file of engine.files) if (CONTENT_TYPES[path.extname(file)] === undefined) throw new Error(`no content type for the engine's ${file}`);
+  const hash = sha256(engine.files.map((file) => `${file} ${sha256(fs.readFileSync(path.join(engine.dir, file)))}\n`).join('')).slice(0, 16);
+  const folder = `/${ENGINE_DIR}/${hash}`;
+  const target = path.join(siteDir, ENGINE_DIR, hash);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.cpSync(engine.dir, target, { recursive: true });
+  const stylePath = path.join(target, engine.style);
+  fs.writeFileSync(stylePath, withSitePaths(fs.readFileSync(stylePath, 'utf8'), folder));
+  const files = engine.files.map((file) => ({ path: `${folder}/${file}`, bytes: fs.statSync(path.join(target, file)).size }));
+  const total = files.reduce((sum, file) => sum + file.bytes, 0);
+  const manifest = { api: ENGINE_API, version: hash, typescript: typescriptVersion, entry: `${folder}/${engine.entry}`, style: `${folder}/${engine.style}`, files, total };
+  fs.writeFileSync(path.join(target, 'files.json'), JSON.stringify(manifest));
+  return { manifest: `${folder}/files.json`, bytes: total };
 }
 
 function ssrConfig(ssrDir: string): UserConfig {
@@ -249,13 +376,14 @@ function stripTypes(source: string): string {
 
 // Writes `<siteDir>/sw.js` (research R4): the worker's code with its types
 // stripped, after the constants it reads. The precache list is every other
-// served file. The version is a hash over those files and the worker's
+// served file but the Playground's engine. The version is a hash over those files and the worker's
 // code, so a change to either gives the worker a new cache. Call it after
 // every other file is written, and before `siteManifest`, which lists
 // `sw.js` too.
 export function writeServiceWorker(siteDir: string): void {
   const workerPath = `/${WORKER_FILE}`;
-  const files = servedFiles(siteDir).filter((file) => file.path !== workerPath);
+  // The Playground's engine is never precached (008 FR-009, research R4).
+  const files = servedFiles(siteDir).filter((file) => file.path !== workerPath && !file.path.startsWith(`/${ENGINE_DIR}/`));
   const code = stripTypes(fs.readFileSync(WORKER_SOURCE, 'utf8'));
   const version = sha256(`${filesDigest(files)}${code}`).slice(0, 16);
   const header = [
@@ -289,8 +417,17 @@ export async function buildSite(out: string): Promise<SiteManifest> {
   // with its own message (006 contracts/site.md).
   checkSpecList();
 
+  // The Playground's engine, before the client build empties the site.
+  const engine = await buildEngine();
+
   // 1. Client build.
-  await build(clientConfig(siteDir));
+  let playground: EngineAssets;
+  try {
+    await build(clientConfig(siteDir));
+    playground = placeEngine(engine, siteDir);
+  } finally {
+    fs.rmSync(engine.dir, { recursive: true, force: true });
+  }
   const viteDir = path.join(siteDir, '.vite');
   const viteManifest: Manifest = JSON.parse(fs.readFileSync(path.join(viteDir, 'manifest.json'), 'utf8'));
   fs.rmSync(viteDir, { recursive: true, force: true });
@@ -308,7 +445,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     // 3. Every route's page, each by its own render function. A route with
     // none fails the build, rather than getting a copy of another page.
     const renderers: Record<string, () => string> = {
-      '/': () => render.renderShell({ resume, siteData, assets: { ...shellAssets(viteManifest, assets), requirements } }),
+      '/': () => render.renderShell({ resume, siteData, assets: { ...shellAssets(viteManifest, assets), requirements, playground } }),
       '/cv': () => render.renderCv({ resume, siteData, assets }),
     };
     const pages: Record<string, string> = {};

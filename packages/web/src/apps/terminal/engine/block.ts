@@ -69,7 +69,7 @@ export type Announcement = { full: string } | { command: string; count: number; 
 export type Effect =
   | { kind: 'clear' }
   | { kind: 'vim'; file: VimFile; pipe: string | null; text: string; type: 'json' | 'text' }
-  | { kind: 'open'; view: 'cv' | 'about' }
+  | { kind: 'open'; view: 'cv' | 'playground' | 'about' }
   | { kind: 'clear-history' }
   // `history -d`, by its place in the history (T372).
   | { kind: 'delete-history'; index: number };

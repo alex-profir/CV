@@ -50,7 +50,7 @@ take, or missing one it needs, replies `{command} takes {what}. Usage: {usage}` 
 | `jq` | | `[filter] [path]` or input | jq, with its filter language. Output that reaches the screen unchanged is colored (FR-056, research R31) |
 | `vim` | | `<path>` or `-` with input | Opens the vim view to read or edit (FR-058, FR-079): a file, piped text as `[No Name]`, or, for a path that doesn't exist, an empty new file. A protected file opens read only (FR-081). `help`: `Edit a file in vim. - reads what is piped in` (amended 2026-10-30) |
 | `pwd` | | bash's `pwd` | The working folder's path, such as `/home/guest/work`. The prompt shows it as `~/work` (FR-046) |
-| `open` | | `<name>` | `cv` or `about`: opens it in the shell (FR-014) |
+| `open` | | `<name>` | `cv`, `playground` or `about`: opens it in the shell (FR-014, amended 2026-10-30 for 008 FR-087) |
 | `history` | | `[n]`, `-c` | The commands run since the Terminal opened, oldest first, numbered from 1, or the last `n`. `-c` empties the history (FR-020) |
 | `clear` | | none | Clears the output (FR-019) |
 | `exit` | | `[n]` | bash's builtin: the shell exits, so the Terminal closes the window on desktop and goes home on mobile (FR-008, research R27) |
@@ -89,7 +89,7 @@ table already lists, each a control that runs `help {name}` (FR-015). `help {nam
 | `cd` on a file | `bash: cd: {path}: Not a directory`, then `{path} is a file. Try ` control `cat {path}` `.` (FR-048) |
 | `cat` on a folder | `cat: {path}: Is a directory`, then `{path} is a folder. Try ` control `ls {path}` `.` (FR-048) |
 | `vim` on a folder | `{path} is a folder. Try ` control `ls {path}` `.` (FR-048, FR-058) |
-| `open` with another name | `open takes cv or about.`, with both as controls (FR-014) |
+| `open` with another name | `open takes cv, playground or about.`, with the three as controls (FR-014; amended 2026-10-30 for 008 FR-087, it read `open takes cv or about.`) |
 | `jq` on text that isn't JSON, or a filter that doesn't parse | jq's own error (FR-056) |
 | `vim -` with nothing piped, `vim` alone | The usage reply (FR-058) |
 | A change to a protected file or folder (`rm about`, `mv work jobs`, `echo hi > cv.json`, `touch work/new`) | The command's message ending `Permission denied`, naming the path as typed, once per path (FR-049) |

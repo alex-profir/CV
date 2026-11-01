@@ -9,7 +9,7 @@ const shellText = deepFreeze({
     ...siteText.terminal.replies,
     helpUnknown: 'help: no command is named {name}. Run {help} to see them all.',
     usage: '{command} takes {what}. Usage: {usage}',
-    open: 'open takes {cv} or {about}.',
+    open: 'open takes {cv}, {playground} or {about}.',
     emptySection: 'The CV lists no {section}.',
   },
   // By command name, in `help`'s order: the arguments `help` shows after
@@ -33,7 +33,7 @@ const shellText = deepFreeze({
     jq: { args: '[path]', description: 'Pretty-print JSON', help: 'Pretty-prints JSON, from a path or from what is piped in, such as cat cv.json | jq.' },
     vim: { args: '[path | -]', description: 'Edit a file in vim. - reads what is piped in', help: 'Opens a file in a vim view to read or edit. vim - reads what is piped in. Type :help there for its keys, and :q to leave.' },
     pwd: { args: '', description: 'Show the current folder', help: 'Shows the path of the folder you are in.' },
-    open: { args: '<name>', description: 'Open cv or about in the shell', help: 'Opens the CV app with open cv, or About this site with open about.' },
+    open: { args: '<name>', description: 'Open cv, playground or about in the shell', help: 'Opens the CV app with open cv, the Playground with open playground, or About this site with open about.' },
     history: { args: '', description: 'Commands run so far', help: 'Lists the commands run since the Terminal opened, oldest first. The Up and Down arrows step through them.' },
     clear: { args: '', description: 'Clear the screen', help: 'Clears the output. The commands stay in the history.' },
     exit: { args: '', description: 'Close the Terminal', help: 'Closes the Terminal on a computer, or goes back to the home screen on a phone.' },

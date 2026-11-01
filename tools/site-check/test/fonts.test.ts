@@ -1,7 +1,9 @@
 // The fonts part on a fixture site (research R16).
 import { describe, expect, test, vi } from 'vitest';
 import { runCheck } from '../src/check.ts';
+import { fontsIfThere } from '../src/parts/fonts.ts';
 import { renderProblem } from '../src/report.ts';
+import { realSiteProject } from './helpers/root.ts';
 import { fixture } from './helpers/sites.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -18,5 +20,33 @@ describe("004-cv-page-FR-007: the site's fonts draw every character of the CV do
   test('minimal/ passes', async () => {
     const report = await runCheck(fixture('minimal'), { parts: ['fonts'] });
     expect(report.problems).toEqual([]);
+  });
+});
+
+describe('008-typescript-playground-FR-079: the checks measure the Playground in the fonts, layout and modes parts, and name each state', () => {
+  test('text the page took away since it was found has no fonts to check, and any other failure still stops the part', async () => {
+    const answering = (error: Error) => ({ send: async () => Promise.reject(error) }) as unknown as Parameters<typeof fontsIfThere>[0];
+    await expect(fontsIfThere(answering(new Error('cdpSession.send: Protocol error (CSS.getPlatformFontsForNode): Could not find node with given id')), 1)).resolves.toEqual([]);
+    await expect(fontsIfThere(answering(new Error('Target closed')), 1)).rejects.toThrow('Target closed');
+  });
+
+  test('the real build passes fonts, layout and modes, listing its states', { timeout: 900_000 }, async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['fonts', 'layout', 'modes'] });
+    expect(report.problems.map(renderProblem)).toEqual([]);
+    const variants = (part: string) => report.results.filter((result) => result.part === part && result.page === '/').map((result) => result.variant);
+    expect(variants('fonts')).toEqual(expect.arrayContaining(['desktop/playground-ready/1440px', 'mobile/playground-best-on-desktop/375px']));
+    expect(variants('layout')).toEqual(
+      expect.arrayContaining([
+        'desktop/playground-narrow/1440px',
+        'desktop/playground-errors-200%-zoom/1280px',
+        'desktop/playground-errors-text-spacing/1440px',
+        'mobile/playground-best-on-desktop-320/320px',
+        'mobile/playground-best-on-desktop-landscape/812px',
+        'mobile/playground-best-on-desktop-200%-zoom/640px',
+        'mobile/playground-best-on-desktop-400%-zoom/320px',
+        'mobile/playground-best-on-desktop-text-spacing/375px',
+      ]),
+    );
+    expect(variants('modes')).toEqual(expect.arrayContaining(['desktop/playground-reduced-motion/1440px', ...['ready', 'errors', 'running', 'stuck'].map((state) => `desktop/playground-${state}/1440px`)]));
   });
 });

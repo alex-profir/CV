@@ -1,7 +1,8 @@
 // The build with the Terminal's shell (006 research R34, R40,
 // contracts/site.md, contracts/shell-worker.md Build): the `os` script and
 // one worker script, each one file, the worker's license file, and the `os`
-// script's gzip budget.
+// script's gzip budget. The `os` script's one `import()` is 008's loader,
+// which opens the engine from an address it computes (008 contracts/engine.md).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,7 +26,7 @@ function failure(build: { status: number | null; stderr: string }): string {
 }
 
 // The build's last line: an os entry holding the shell also gets Vite's own
-// warnings about just-bash's size and its `node:zlib` before it.
+// warning about just-bash's `node:zlib` before it.
 function lastLine(build: { status: number | null; stderr: string }): string {
   expect(build.status).toBe(2);
   return build.stderr.trimEnd().split('\n').at(-1)!;
@@ -34,19 +35,26 @@ function lastLine(build: { status: number | null; stderr: string }): string {
 const append = (root: string, file: string, code: string) => fs.appendFileSync(path.join(root, file), `\n${code}\n`);
 
 describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded only by the Terminal', () => {
-  test('assets holds one os script and one shell worker, each one file with no import', () => {
+  test("assets holds one os script and one shell worker, each one file, with no import but the engine's computed one", () => {
     const { dir } = builtSite();
     const scripts = fs.readdirSync(path.join(dir, 'assets')).filter((name) => name.endsWith('.js'));
-    expect(scripts.filter((name) => /^os-[\w-]+\.js$/.test(name))).toHaveLength(1);
+    const os = scripts.filter((name) => /^os-[\w-]+\.js$/.test(name));
+    expect(os).toHaveLength(1);
     const workers = scripts.filter((name) => /^shell-[\w-]+\.js$/.test(name));
     expect(workers).toHaveLength(1);
-    for (const name of [...workers, ...scripts.filter((each) => each.startsWith('os-'))]) {
+    const read = (name: string) => {
       const code = fs.readFileSync(path.join(dir, 'assets', name), 'utf8');
       const { module: record } = parseSync(name, code, { sourceType: 'module' });
       expect(record.staticImports, name).toEqual([]);
-      expect(record.dynamicImports, name).toEqual([]);
       expect(code, name).not.toMatch(/\bimportScripts\s*\(/);
-    }
+      return { code, dynamicImports: record.dynamicImports };
+    };
+    expect(read(workers[0]!).dynamicImports).toEqual([]);
+    const { code, dynamicImports } = read(os[0]!);
+    expect(dynamicImports).toHaveLength(1);
+    const { start, end } = dynamicImports[0]!.moduleRequest;
+    expect(code.slice(start - 7, start)).toBe('import(');
+    expect(code.slice(start, end)).not.toMatch(/^[`'"]|shell-/);
   });
 
   test('the worker starts with a comment naming its license file, which names every bundled package with its version and license', () => {

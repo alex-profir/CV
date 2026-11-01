@@ -35,6 +35,7 @@ checked out, on the owner's machine. It needs no network.
 | Node's major version isn't `.nvmrc`'s | `local full run needs Node <nvmrc> (see .nvmrc), but this is Node <version>: run nvm use` | 2 |
 | `node_modules/` missing or not matching `package-lock.json` | `local full run needs the locked dependencies installed: run npm ci` | 2 |
 | Playwright's Chromium missing | `site check needs Chromium: run npx playwright install chromium` (the site check's own message) | 2 |
+| Playwright's Firefox or WebKit missing (added by 008, research R25) | `browser tests in other engines need Firefox and WebKit: run npx playwright install firefox webkit` | 2 |
 
 The working-copy check comes first, and a refusal there stops the run. Otherwise every missing
 prerequisite is listed together. Either way, no check runs.
@@ -50,6 +51,7 @@ Run in this order. Every check runs, whatever the ones before it returned (FR-03
 | `content` | `npm run content-check` | `content` |
 | `tokens` | `npm run token-check` | `tokens` |
 | `test` | `npm test -- --reporter=default --reporter=json --outputFile.json=<result dir>/<sha>.vitest.json` | `test`, which runs `npm run test:fast` |
+| `engines` | `npm run test:engines` | none: the Playground's sandbox, memory and key tests in Firefox and WebKit, local only (added by 008, research R25) |
 | `site` | `npm run --silent site-check` | `site` |
 
 - Each check's own output goes to the terminal as it runs, after a header line
@@ -70,6 +72,7 @@ Local full run on 3f2a…c9e1 (001-local-verify)
   content       pass     1 s
   tokens        pass     2 s
   test          pass   612 s   3124 tests in 152 files passed
+  engines       pass    95 s
   site          pass   201 s
 
 PASS: every check passed on 3f2a…c9e1. Sign off with: npm run signoff

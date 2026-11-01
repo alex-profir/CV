@@ -156,3 +156,42 @@ describe('007-requirement-inspector-FR-009, 007-requirement-inspector-FR-021 and
     }
   });
 });
+
+describe('008-typescript-playground-FR-068: the token check passes over the Playground and its editor with no exception for them', () => {
+  test("npm run token-check exits 0, reads every style sheet and component of the Playground, engine/editor.css included, names none of them, and none holds a skip marker", () => {
+    const tokens = runTokenCheck(REPO_ROOT);
+    expect(tokens.stdout).toContain('PASS: both token sources are valid and no literal design values were found.');
+    expect(tokens.status).toBe(0);
+    const playground = siteSource('packages/web/src/apps/playground');
+    const styled = playground.filter((file) => /\.(?:css|tsx?)$/.test(file));
+    expect(styled).toContain('packages/web/src/apps/playground/engine/editor.css');
+    expect(styled).toContain('packages/web/src/apps/playground/playground.css');
+    const read = new Set(siteFiles(REPO_ROOT).files.map((file) => file.file));
+    expect(styled.filter((file) => !read.has(file))).toEqual([]);
+    const tokenSources = fs.readdirSync(path.join(REPO_ROOT, 'tools/token-check/src')).map((name) => fs.readFileSync(path.join(REPO_ROOT, 'tools/token-check/src', name), 'utf8'));
+    for (const text of tokenSources) expect(text).not.toMatch(/apps\/playground|editor\.css|008-typescript-playground/);
+    for (const file of playground) {
+      const text = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8');
+      for (const marker of TERMINAL_SKIP_MARKERS) expect(text, file).not.toMatch(marker);
+    }
+  });
+});
+
+describe('008-typescript-playground-FR-031 and 008-typescript-playground-FR-074: the checks pass over the Playground with no exception for it', () => {
+  test('npm run content-check exits 0, reads the examples and the engine, and none of its exclusions names the Playground', () => {
+    const content = runContentCheck(REPO_ROOT);
+    expect(content.stderr).toBe('');
+    expect(content.status).toBe(0);
+    const searched = new Set(searchFiles(REPO_ROOT, [RESUME_FILE]).files.map((file) => file.file));
+    const source = siteSource('packages/web/src/apps/playground').filter((file) => /\.(?:css|tsx?)$/.test(file));
+    expect(source).toContain('packages/web/src/apps/playground/examples/skills-at-a-glance.ts');
+    expect(source.filter((file) => !searched.has(file))).toEqual([]);
+    for (const text of CHECK_SOURCES) expect(text).not.toMatch(/apps\/playground|008-typescript-playground/);
+  });
+
+  test('npm run traceability exits 0, its sources naming no exception for the Playground', () => {
+    const result = runTraceability(REPO_ROOT);
+    expect(result.status).toBe(0);
+    for (const name of fs.readdirSync(path.join(REPO_ROOT, 'tools/traceability/src'))) expect(fs.readFileSync(path.join(REPO_ROOT, 'tools/traceability/src', name), 'utf8'), name).not.toMatch(/apps\/playground|008-typescript-playground/);
+  });
+});

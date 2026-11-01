@@ -5,6 +5,7 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import { containerBreakpoints } from './scripts/container-breakpoints.ts';
+import { cvTypesPlugin } from './scripts/cv-types.ts';
 import { cvFonts, fontAssetName } from './scripts/fonts-plugin.ts';
 import { shellLicenses } from './scripts/shell-licenses.ts';
 import { specListPlugin } from './scripts/spec-list.ts';
@@ -28,7 +29,8 @@ export default defineConfig({
   // A successful build prints nothing on stdout: the site check's report
   // owns it.
   logLevel: 'warn',
-  plugins: [cvFonts(), specListPlugin()],
+  // `virtual:cv-types`: the CV's type for the Playground (008 research R10).
+  plugins: [cvFonts(), specListPlugin(), cvTypesPlugin()],
   oxc: {
     jsx: { runtime: 'automatic', importSource: 'react' },
   },
@@ -62,11 +64,15 @@ export default defineConfig({
     manifest: true,
     assetsInlineLimit: 0,
     cssMinify: 'lightningcss',
+    // The `os` script's limit is its gzip budget, which build-site.ts checks
+    // (006 SC-013). Vite's own warning advises splitting a script that must
+    // stay one file.
+    chunkSizeWarningLimit: Number.POSITIVE_INFINITY,
     rolldownOptions: {
       // `os` is the shell's one script and its style sheet (005 research
-      // R14). It shares no module with the other entries and imports nothing
-      // dynamically, so Rolldown emits it as one file; build-site.ts fails
-      // if it ever doesn't.
+      // R14). It shares no module with the other entries and Rolldown sees no
+      // dynamic import, as the Playground's engine is opened by a computed
+      // address, so it emits one file; build-site.ts fails if it ever doesn't.
       input: { cv: 'src/styles/global.css', 'register-sw': 'src/client/register-sw.ts', os: 'src/client/os.tsx' },
       output: {
         // Font files keep their family directory in the name

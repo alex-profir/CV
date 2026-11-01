@@ -12,7 +12,9 @@ vi.setConfig({ testTimeout: 180_000 });
 // the Terminal open, then each spec view shown, in each shell.
 const SPEC_VARIANTS = ['desktop', 'mobile'].flatMap((shell) => ['cv', 'terminal', 'about'].map((view) => `${shell}/${view}-specs/${shell === 'desktop' ? 1440 : 375}px`));
 
-const ROOT_VARIANTS = ['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px', ...SPEC_VARIANTS];
+const PLAYGROUND_VARIANTS = ['desktop/playground-downloading/1440px', 'desktop/playground-running/1440px', 'desktop/playground-shared/1440px', 'mobile/playground-best-on-desktop/375px'];
+
+const ROOT_VARIANTS = ['desktop/cv-app/1440px', 'mobile/cv-app/375px', 'desktop/terminal-open/1440px', 'mobile/pocket/375px', ...SPEC_VARIANTS, ...PLAYGROUND_VARIANTS];
 
 describe('004-cv-page-FR-055: no request from /cv or the not-found page goes to another site, and any is named', () => {
   test('other-sites/ fails naming both full addresses on both pages, and the service worker request', async () => {
@@ -110,5 +112,19 @@ describe('007-requirement-inspector-FR-028: nothing goes to another site while a
     const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/inspector/data.ts', 'export function retry(): void {\n', `export function retry(): void {\n  void fetch('${address}').catch(() => undefined);\n`));
     const report = await runCheck(root, { parts: ['other-sites'] });
     expect(report.problems.map(renderProblem)).toEqual(SPEC_VARIANTS.map((variant) => `other-sites / ${variant} other-site-request ${address}: requested by the page`));
+  });
+});
+
+describe("008-typescript-playground-FR-076: nothing of the Playground's own goes to another site", () => {
+  test('on the real build the download, a run, sharing and the phone screen are recorded and pass', async () => {
+    const report = await runCheck(realSiteProject(), { parts: ['other-sites'] });
+    expect(report.results.filter((result) => PLAYGROUND_VARIANTS.includes(result.variant)).map(({ variant, status }) => `${variant} ${status}`)).toEqual(PLAYGROUND_VARIANTS.map((variant) => `${variant} pass`));
+  });
+
+  test('a copy whose Run fetches an outside address fails, naming the state', async () => {
+    const address = 'https://example.com/run';
+    const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/apps/playground/controller.ts', 'export function runCode(): void {\n', `export function runCode(): void {\n  void fetch('${address}').catch(() => undefined);\n`));
+    const report = await runCheck(root, { parts: ['other-sites'] });
+    expect(report.problems.map(renderProblem)).toEqual([`other-sites / desktop/playground-running/1440px other-site-request ${address}: requested by the page`]);
   });
 });

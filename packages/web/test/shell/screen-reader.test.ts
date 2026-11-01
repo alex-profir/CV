@@ -96,8 +96,10 @@ describe('005-os-shell-FR-041: the status region announces moves, resizes, maxim
     const size = await page.locator(CV).boundingBox();
     await expect.poll(() => status(page).textContent()).toBe(`CV resized to ${size!.width} by ${size!.height}.`);
     await announced(['Alt+Shift+S', 'ArrowLeft', 'Escape'], 'Resize cancelled.');
-    await announced(['Alt+Shift+F'], 'CV maximized.');
-    await announced(['Alt+Shift+F'], 'CV restored.');
+    await page.getByRole('button', { name: 'Maximize CV' }).click();
+    await expect.poll(() => status(page).textContent()).toBe('CV maximized.');
+    await page.getByRole('button', { name: 'Restore CV' }).click();
+    await expect.poll(() => status(page).textContent()).toBe('CV restored.');
   });
 });
 

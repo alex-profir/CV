@@ -25,7 +25,8 @@ if (versionProblem !== null) {
       // playwright, which the fast set's tests must not reach (research R14,
       // rule 3). It's loaded when the probe runs, after the clean-tree check.
       const hasChromium = async () => (await import('../../site-check/src/browser.ts')).hasChromium();
-      process.exitCode = await verify({ ...options, prerequisites: { hasChromium } });
+      const hasOtherEngines = async () => (await import('../../site-check/src/browser.ts')).hasOtherEngines();
+      process.exitCode = await verify({ ...options, prerequisites: { hasChromium, hasOtherEngines } });
     } else {
       const { signoff } = await import('./signoff.ts');
       process.exitCode = await signoff(options);

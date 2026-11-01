@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { clampMove, clampResize, fitToArea, placeWindow, revealMove } from '../src/index.ts';
 import type { Edge, Geometry, WindowState } from '../src/index.ts';
 import { APPS, AREA, METRICS, THREE_CONTEXT, desktop, run } from './helpers.ts';
+import { FOUR_CONTEXT } from './__fixtures__/four-apps.ts';
 
 describe('005-os-shell-FR-005 005-os-shell-FR-018: the CV window opens where the design puts it', () => {
   test('1000 × 716 at 220, 24 in the 1440 × 764 area', () => {
@@ -35,7 +36,7 @@ describe('005-os-shell-FR-005 005-os-shell-FR-018: the CV window opens where the
 const titleBarsMeet = (a: Geometry, b: Geometry) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + METRICS.titleBar && b.y < a.y + METRICS.titleBar;
 const boxMeetsTitleBar = (box: Geometry, other: Geometry) =>
   box.x < other.x + other.width && other.x < box.x + box.width && box.y < other.y + METRICS.titleBar && other.y < box.y + box.height;
-const shown = (view: 'cv' | 'terminal' | 'about', geometry: Geometry): WindowState => ({ view, geometry, minimized: false, maximized: null, placement: 'set' });
+const shown = (view: 'cv' | 'terminal' | 'playground' | 'about', geometry: Geometry): WindowState => ({ view, geometry, minimized: false, maximized: null, placement: 'set' });
 
 describe("005-os-shell-FR-018: the CV opens off About's title bar", () => {
   test("1000 × 668 at 220, 72 in the 1440 × 764 area, with About centered", () => {
@@ -319,5 +320,77 @@ describe('005-os-shell-FR-065: a maximized window fills the area, and follows it
     const restored = run(state, [{ type: 'toggleMaximize', view: 'cv' }]);
     expect(restored.windows[0]!.geometry.width).toBeLessThanOrEqual(1100);
     expect(restored.windows[0]!.geometry.height).toBeLessThanOrEqual(600);
+  });
+});
+
+describe('008-typescript-playground-FR-003: the Playground opens where the design puts it', () => {
+  const cv = shown('cv', { x: 220, y: 24, width: 1000, height: 716 });
+  const whole = (box: Geometry) => Object.values(box).every(Number.isInteger);
+
+  test('1040 × 648 at 360, 88 in the 1440 × 764 area, in front of the CV at its first-load place', () => {
+    const box = placeWindow('playground', [cv], AREA, METRICS);
+    // 360, 120 in the page, below the 32 px menu bar.
+    expect(box).toEqual({ x: 360, y: 88, width: 1040, height: 648 });
+    expect(boxMeetsTitleBar(box, cv.geometry)).toBe(false);
+  });
+
+  test('centered in the area when no window is shown', () => {
+    expect(placeWindow('playground', [], AREA, METRICS)).toEqual({ x: 200, y: 58, width: 1040, height: 648 });
+    expect(placeWindow('playground', [{ ...cv, minimized: true }], AREA, METRICS)).toEqual({ x: 200, y: 58, width: 1040, height: 648 });
+  });
+
+  test('fitted to the 1024 × 504 area with at least 24 px below it, never below the minimum', () => {
+    const area = { width: 1024, height: 504 };
+    const small = shown('cv', placeWindow('cv', [], area, METRICS));
+    const box = placeWindow('playground', [small], area, METRICS);
+    expect(box).toEqual({ x: 0, y: 88, width: 1024, height: 392 });
+    expect(box.y + box.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+    const alone = placeWindow('playground', [], area, METRICS);
+    expect(alone.y + alone.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+    const low = placeWindow('playground', [shown('cv', { x: 32, y: 300, width: 960, height: 204 })], area, METRICS);
+    expect(low.height).toBe(METRICS.minHeight);
+    expect(low.y + low.height).toBeLessThanOrEqual(area.height - METRICS.firstTop);
+  });
+
+  test('beside an open Terminal, 64 px below it, so its title bar stays in view', () => {
+    const terminal = shown('terminal', placeWindow('terminal', [cv], AREA, METRICS));
+    expect(terminal.geometry).toEqual({ x: 640, y: 144, width: 760, height: 536 });
+    const box = placeWindow('playground', [terminal, cv], AREA, METRICS);
+    expect(box).toEqual({ x: 360, y: 208, width: 1040, height: 532 });
+    expect(titleBarsMeet(box, terminal.geometry)).toBe(false);
+    // And the Terminal opened with the Playground in front follows its own rule.
+    const playground = shown('playground', placeWindow('playground', [cv], AREA, METRICS));
+    expect(placeWindow('terminal', [playground, cv], AREA, METRICS)).toEqual({ x: 640, y: 208, width: 760, height: 532 });
+  });
+
+  test('after About has cascaded, offset from About and clamped to the room left', () => {
+    const about = shown('about', placeWindow('about', [cv], AREA, METRICS));
+    const box = placeWindow('playground', [about, cv], AREA, METRICS);
+    expect(box).toEqual({ x: 360, y: 136, width: 1040, height: 604 });
+    expect(box.y + box.height).toBeLessThanOrEqual(AREA.height - METRICS.firstTop);
+  });
+
+  test("006's Terminal boxes are unchanged by the shared rule", () => {
+    expect(placeWindow('terminal', [cv], AREA, METRICS)).toEqual({ x: 640, y: 144, width: 760, height: 536 });
+    expect(placeWindow('terminal', [], AREA, METRICS)).toEqual({ x: 340, y: 114, width: 760, height: 536 });
+  });
+
+  test('always whole pixels, inside the area, at least the minimum size', () => {
+    for (const area of [AREA, { width: 1025, height: 505 }, { width: 1333, height: 777 }, { width: 2560, height: 1304 }, { width: 401, height: 301 }]) {
+      for (const windows of [[], [shown('cv', placeWindow('cv', [], area, METRICS))]]) {
+        const box = placeWindow('playground', windows, area, METRICS);
+        expect(whole(box), JSON.stringify({ area, box })).toBe(true);
+        expect(box.x >= 0 && box.x + box.width <= area.width && box.y >= 0 && box.y + METRICS.titleBar <= area.height, JSON.stringify({ area, box })).toBe(true);
+        expect(box.width).toBeGreaterThanOrEqual(Math.min(METRICS.minWidth, area.width));
+        expect(box.height).toBeGreaterThanOrEqual(Math.min(METRICS.minHeight, area.height));
+      }
+    }
+  });
+
+  test('the reducer opens it there, focused, in front', () => {
+    const state = run(desktop(AREA, FOUR_CONTEXT), [{ type: 'open', view: 'playground' }], FOUR_CONTEXT);
+    expect(state.windows.map((window) => window.view)).toEqual(['playground', 'cv']);
+    expect(state.windows[0]!.geometry).toEqual({ x: 360, y: 88, width: 1040, height: 648 });
+    expect(state.focused).toBe('playground');
   });
 });

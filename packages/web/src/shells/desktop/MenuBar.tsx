@@ -138,7 +138,11 @@ export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName
   const maximized = focusedWindow?.maximized != null;
   // The focused app's own items come first, then a separator (006 contracts/shell.md).
   const appItems = focused === null ? [] : (apps.find((app) => app.id === focused)?.menuItems ?? []);
-  const itemEntries: MenuEntry[] = appItems.map((item): MenuEntry => ({ kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, 'data-req': item['data-req'] }));
+  const itemEntries: MenuEntry[] = appItems.flatMap((item): MenuEntry[] => [
+    ...(item.separatorBefore === true ? [{ kind: 'separator' as const, key: `before-${item.key}` }] : []),
+    { kind: 'action', key: `app-${item.key}`, label: item.label, onChoose: item.run, keys: typeof item.shortcut === 'function' ? item.shortcut() : item.shortcut, disabled: item.disabled?.() === true, 'data-req': item['data-req'] },
+    ...(item.separatorAfter === true ? [{ kind: 'separator' as const, key: `after-${item.key}` }] : []),
+  ]);
   // "Show specs", or "Back to [view]" while it shows them, after the app's
   // own commands and in their group (007 research R4).
   const specsEntry = (view: ViewId): MenuEntry =>
@@ -168,8 +172,8 @@ export function MenuBar({ state, dispatch, apps, resume, siteData, mac, viewName
           { kind: 'action', key: 'move', label: own.move, shortcut: shortcut('move'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'move' }) },
           { kind: 'action', key: 'resize', label: own.resize, shortcut: shortcut('resize'), disabled: maximized, onChoose: () => dispatch({ type: 'sessionStart', kind: 'resize' }) },
           { kind: 'separator', key: 'after-resize' },
-          { kind: 'action', key: 'minimize', label: own.minimize, shortcut: shortcut('minimize'), onChoose: () => dispatch({ type: 'minimize', view: focused }) },
-          { kind: 'action', key: 'maximize', label: maximized ? own.restore : own.maximize, shortcut: shortcut('maximize'), onChoose: () => dispatch({ type: 'toggleMaximize', view: focused }) },
+          { kind: 'action', key: 'minimize', label: own.minimize, onChoose: () => dispatch({ type: 'minimize', view: focused }) },
+          { kind: 'action', key: 'maximize', label: maximized ? own.restore : own.maximize, onChoose: () => dispatch({ type: 'toggleMaximize', view: focused }) },
           { kind: 'separator', key: 'after-maximize' },
           { kind: 'action', key: 'close', label: own.close, shortcut: shortcut('close'), onChoose: () => dispatch({ type: 'close', view: focused }) },
         ];

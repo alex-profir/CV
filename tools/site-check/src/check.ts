@@ -23,13 +23,15 @@ import { cvAppProblems } from './parts/cv-app.ts';
 import { shellLineProblems, terminalProblems, terminalVariants } from './parts/terminal.ts';
 import { INSPECTOR_VIEWS, elementProblems, inspectorVariants, inspectorViewProblems, readInspectorExpected, sweepProblems } from './parts/inspector.ts';
 import type { InspectorExpected } from './parts/inspector.ts';
+import { PLAYGROUND_CHECKS, PLAYGROUND_FORCED_STATES, PLAYGROUND_OTHER_SITE_RUNS, firstLoadProblems, playgroundForcedProblems, playgroundMotionProblems, playgroundOfflineProblems, playgroundSideways, playgroundVariant, readEngineManifest } from './parts/playground.ts';
+import type { PlaygroundExpected } from './parts/playground.ts';
 import { fontProblems } from './parts/fonts.ts';
-import { asLinux, desktopKeyboardProblems, inspectorKeyboardProblems, keyboardProblems, mobileKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
+import { asLinux, desktopKeyboardProblems, inspectorKeyboardProblems, keyboardProblems, mobileKeyboardProblems, playgroundKeyboardProblems, terminalKeyboardProblems } from './parts/keyboard.ts';
 import { LAYOUT_VARIANTS, TEXT_SPACING_CSS, boxScroll, clippedLabels, clippedOrOverlapping, horizontalScroll, isOneColumn, narrowWindow, rootLayoutVariant, zoomText } from './parts/layout.ts';
 import { PROFILES, lighthouseProblems } from './parts/lighthouse.ts';
 import { cursorBlinkProblems, forcedColorsProblems, inspectorForcedColorsProblems, motionProblems, shellForcedColorsProblems, shellMotionProblems } from './parts/modes.ts';
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
-import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows } from './parts/offline.ts';
+import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows, waitForWorker } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
 import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
@@ -98,10 +100,25 @@ const INSPECTOR_SPEC_STATES = ['cv-specs', 'terminal-app-specs', 'about-specs'] 
 
 const INSPECTOR_LAYOUTS = TERMINAL_LAYOUTS.filter(({ condition }) => condition === '200%-zoom' || condition === '400%-zoom' || condition === 'text-spacing');
 
+// The Playground's layout runs (008 contracts/cli.md `layout`): its window at
+// 600 px and 200% zoom, its phone screen at 320 × 568, on its side and at 200%
+// and 400% zoom, and text spacing on each.
+const PLAYGROUND_LAYOUTS: readonly { state: string; condition: string; width: number; height: number; deviceScaleFactor: number; textSpacing: boolean }[] = [
+  { state: 'playground-narrow', condition: '', width: 1440, height: 900, deviceScaleFactor: 1, textSpacing: false },
+  { state: 'playground-errors', condition: '200%-zoom', width: 1280, height: 720, deviceScaleFactor: 2, textSpacing: false },
+  { state: 'playground-errors', condition: 'text-spacing', width: 1440, height: 900, deviceScaleFactor: 1, textSpacing: true },
+  { state: 'playground-best-on-desktop-320', condition: '', width: 320, height: 568, deviceScaleFactor: 1, textSpacing: false },
+  { state: 'playground-best-on-desktop-landscape', condition: '', width: 812, height: 375, deviceScaleFactor: 1, textSpacing: false },
+  { state: 'playground-best-on-desktop', condition: '200%-zoom', width: 640, height: 450, deviceScaleFactor: 2, textSpacing: false },
+  { state: 'playground-best-on-desktop', condition: '400%-zoom', width: 320, height: 225, deviceScaleFactor: 4, textSpacing: false },
+  { state: 'playground-best-on-desktop', condition: 'text-spacing', width: 375, height: 812, deviceScaleFactor: 1, textSpacing: true },
+];
+
 // `repository` is where the inspector part reads the requirement data and
 // the site's repository address: the root itself, unless a test checks a
-// built site laid out apart from its repository.
-export type CheckOptions = { parts?: readonly Part[]; repository?: string };
+// built site laid out apart from its repository. `playgroundChecks` runs only
+// those of the Playground part's checks, for a test on a copy with one fault.
+export type CheckOptions = { parts?: readonly Part[]; repository?: string; playgroundChecks?: readonly string[] };
 
 export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
@@ -179,7 +196,7 @@ const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' &&
 
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
-export async function runCheck(root: string, { parts = PARTS, repository = root }: CheckOptions = {}): Promise<Report> {
+export async function runCheck(root: string, { parts = PARTS, repository = root, playgroundChecks }: CheckOptions = {}): Promise<Report> {
   const manifest = readManifest(root);
   const siteDir = path.join(root, SITE_DIR);
   // Read when a part needs it, so an unreadable CV document fails only
@@ -283,6 +300,30 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
           );
         }
       },
+      playground: async () => {
+        // As `cv-app`: with no shell at the root, there's no Playground.
+        if (!shellRoot) {
+          results.push(result('playground', '-', '-', []));
+          return;
+        }
+        for (const check of PLAYGROUND_CHECKS) {
+          if (playgroundChecks !== undefined && !playgroundChecks.includes(check.check)) continue;
+          const target = shellAt(check.shell);
+          const reported = new Set<string>();
+          const add = (name: string, found: readonly Omit<Problem, 'part' | 'page' | 'variant'>[]) => {
+            reported.add(name);
+            const variant = playgroundVariant(check.shell, name, target.width);
+            results.push(result('playground', ROOT, variant, found.map((problem) => ({ part: 'playground', page: ROOT, variant, ...problem }))));
+          };
+          try {
+            const expected: PlaygroundExpected = { engine: readEngineManifest(siteDir, manifest), resume: readResume() };
+            const profile = <T>(body: (page: Page) => Promise<T>) => withShell(chromium, rootUrl, target, {}, body);
+            await withShell(chromium, rootUrl, target, {}, (page) => check.run(page, { expected, add, profile }));
+          } catch (error) {
+            for (const name of check.names) if (!reported.has(name)) results.push(crashed('playground', ROOT, playgroundVariant(check.shell, name, target.width), error));
+          }
+        }
+      },
       accessibility: async () => {
         for (const pagePath of allPaths) {
           for (const width of ACCESSIBILITY_WIDTHS) {
@@ -314,6 +355,9 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
             );
           }
         }
+        // The root's first load leaves TypeScript alone (008 SC-009).
+        if (!shellRoot) return;
+        results.push(await run('lighthouse', ROOT, 'first-load', () => withShell(chromium, rootUrl, shellAt('mobile'), {}, (page) => firstLoadProblems(page, 'first-load'))));
       },
       'no-script': async () => {
         for (const width of NO_SCRIPT_WIDTHS) {
@@ -344,6 +388,11 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
             for (const variant of shellRoot && target === rootPath ? rootOfflineVariants() : [OFFLINE_VARIANT]) results.push(crashed('offline', target, variant, error));
           }
         }
+        if (!shellRoot) return;
+        // The Playground offline (008 FR-078), with the service worker it needs.
+        const desktop = shellAt('desktop');
+        const variant = stateVariant('desktop', 'playground-offline', desktop.width);
+        results.push(await run('offline', ROOT, variant, () => withShell(chromium, rootUrl, desktop, { serviceWorkers: 'allow' }, (page) => playgroundOfflineProblems(page, variant, waitForWorker))));
       },
       keyboard: async () => {
         for (const pagePath of allPaths) {
@@ -367,6 +416,9 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
         // The inspector's flow (007 FR-032), on the desktop.
         const inspectorVariant = stateVariant('desktop', 'inspector-keyboard', desktop.width);
         results.push(await run('keyboard', ROOT, inspectorVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => inspectorKeyboardProblems(page, ROOT, inspectorVariant))));
+        // The Playground's flow (008 FR-077), on the desktop.
+        const playgroundVariant = stateVariant('desktop', 'playground-keyboard', desktop.width);
+        results.push(await run('keyboard', ROOT, playgroundVariant, () => withShell(chromium, rootUrl, desktop, {}, (page) => playgroundKeyboardProblems(page, ROOT, playgroundVariant))));
       },
       'other-sites': async () => {
         for (const pagePath of allPaths) {
@@ -451,6 +503,26 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
             );
           }
         }
+        // The Playground's download, a run, sharing and the phone's screen
+        // (008 FR-076).
+        for (const { state, shell, act } of PLAYGROUND_OTHER_SITE_RUNS) {
+          const target = shellAt(shell);
+          const variant = stateVariant(shell, state, target.width);
+          results.push(
+            await run('other-sites', ROOT, variant, async () => {
+              const context = await chromium.newContext(shellContext(target));
+              try {
+                const foreign = await recordRequests(context, server.url);
+                return await otherSiteProblems(context, foreign, rootUrl, ROOT, variant, async (page) => {
+                  await waitForShell(page);
+                  await act(page);
+                });
+              } finally {
+                await context.close();
+              }
+            }),
+          );
+        }
       },
       fonts: async () => {
         for (const pagePath of allPaths) {
@@ -460,7 +532,7 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
           }
         }
         if (!shellRoot) return;
-        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app'), findState('desktop', 'terminal-help'), findState('mobile', 'pocket-vim'), findState('desktop', 'cv-specs'), findState('mobile', 'about-specs')]) {
+        for (const state of [findState('desktop', 'two-windows'), findState('mobile', 'cv-app'), findState('desktop', 'terminal-help'), findState('mobile', 'pocket-vim'), findState('desktop', 'cv-specs'), findState('mobile', 'about-specs'), findState('desktop', 'playground-ready'), findState('mobile', 'playground-best-on-desktop')]) {
           const variant = stateVariant(state.shell, state.state, state.width);
           results.push(
             await run('fonts', ROOT, variant, () =>
@@ -567,6 +639,21 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
             );
           }
         }
+        // The Playground (008 FR-071, FR-072): nothing but code scrolls sideways.
+        for (const { state, condition, width, height, deviceScaleFactor, textSpacing } of PLAYGROUND_LAYOUTS) {
+          const found = findState(state.startsWith('playground-best') ? 'mobile' : 'desktop', state);
+          const variant = stateVariant(found.shell, condition === '' ? state : `${state}-${condition}`, width);
+          results.push(
+            await run('layout', ROOT, variant, () =>
+              withShell(chromium, rootUrl, { shell: found.shell, width, height }, { deviceScaleFactor }, async (page) => {
+                await reachState(page, { ...found, width, height } as ShellState);
+                if (textSpacing) await page.addStyleTag({ content: TEXT_SPACING_CSS });
+                if (found.shell === 'mobile') return [...(await horizontalScroll(page, ROOT, variant)), ...(await boxScroll(page, '#os .full-screen[data-view="playground"]', ROOT, variant))];
+                return [...(await horizontalScroll(page, ROOT, variant)), ...(await playgroundSideways(page, variant))];
+              }),
+            ),
+          );
+        }
         const zoomVariant = stateVariant('desktop', 'text-zoom', desktop.width);
         results.push(
           await run('layout', ROOT, zoomVariant, () =>
@@ -619,6 +706,21 @@ export async function runCheck(root: string, { parts = PARTS, repository = root 
               withShell(chromium, rootUrl, state, { forcedColors: 'active' }, async (page) => {
                 await reachState(page, state);
                 return inspectorForcedColorsProblems(page, stateView(state.state), ROOT, variant);
+              }),
+            ),
+          );
+        }
+        // The Playground (008 FR-069, FR-070, SC-013).
+        const desktop = shellAt('desktop');
+        const motionVariant = stateVariant('desktop', 'playground-reduced-motion', desktop.width);
+        results.push(await run('modes', ROOT, motionVariant, () => withShell(chromium, rootUrl, desktop, { reducedMotion: 'reduce' }, (page) => playgroundMotionProblems(page, motionVariant))));
+        for (const state of PLAYGROUND_FORCED_STATES) {
+          const variant = stateVariant('desktop', state, desktop.width);
+          results.push(
+            await run('modes', ROOT, variant, () =>
+              withShell(chromium, rootUrl, desktop, { forcedColors: 'active' }, async (page) => {
+                await reachState(page, findState('desktop', state));
+                return playgroundForcedProblems(page, state, variant);
               }),
             ),
           );

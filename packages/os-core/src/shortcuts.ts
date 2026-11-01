@@ -9,8 +9,6 @@ export const SHORTCUTS: readonly Shortcut[] = Object.freeze([
   { id: 'dock', letter: 'D', needs: 'none' },
   { id: 'next-window', letter: 'N', needs: 'none' },
   { id: 'close', letter: 'W', needs: 'window' },
-  { id: 'minimize', letter: 'H', needs: 'window' },
-  { id: 'maximize', letter: 'F', needs: 'window' },
   { id: 'move', letter: 'P', needs: 'restored-window' },
   { id: 'resize', letter: 'S', needs: 'restored-window' },
 ] as const satisfies Shortcut[]);

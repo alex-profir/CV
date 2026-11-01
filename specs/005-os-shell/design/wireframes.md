@@ -270,8 +270,8 @@ Titled with the focused window's name. It holds the window's commands with their
 |     | Move…             Alt+Shift+P    |                    CV                    #              |
 |     | Resize…           Alt+Shift+S    |==========================================#              |
 |     +----------------------------------+r share ->                              ^ #              |
-|     | Minimize          Alt+Shift+H    |--------------------------------------  | #              |
-|     | Maximize          Alt+Shift+F    |                                        | #              |
+|     | Minimize                         |--------------------------------------  | #              |
+|     | Maximize                         |                                        | #              |
 |     +----------------------------------+                                        | #              |
 |     | Close             Alt+Shift+W    |                                        | #              |
 |     +----------------------------------+     Based in      [city], [country]    | #              |
@@ -303,6 +303,8 @@ Titled with the focused window's name. It holds the window's commands with their
 - While the window is maximized, Maximize reads `Restore` and Move and Resize are unavailable,
   shown dimmed and announced as unavailable (FR-065).
 - Shortcuts read `Option+Shift+…` on a Mac and `Alt+Shift+…` elsewhere.
+- Minimize and Maximize (or Restore) show no shortcut: amended 2026-10-29 by
+  008-typescript-playground FR-086 (FR-063, FR-065; see [Shortcuts](#shortcuts)).
 
 ### The Window menu, with one window minimized (FR-014, FR-026)
 
@@ -715,8 +717,6 @@ Alt+Shift+M   Go to the menu bar
 Alt+Shift+D   Go to the dock
 Alt+Shift+N   Next window
 Alt+Shift+W   Close window
-Alt+Shift+H   Minimize window
-Alt+Shift+F   Maximize or restore window
 Alt+Shift+P   Move window
 Alt+Shift+S   Resize window
 -----------------------------------------------------------
@@ -962,14 +962,19 @@ and its review change first (Constitution II).
 | Alt+Shift+D | Go to the dock (its first item) | Anywhere |
 | Alt+Shift+N | Next window: focus and bring to front the next window that isn't minimized | Anywhere |
 | Alt+Shift+W | Close the focused window | A window is focused |
-| Alt+Shift+H | Minimize the focused window | A window is focused |
-| Alt+Shift+F | Maximize or restore the focused window | A window is focused |
 | Alt+Shift+P | Start a keyboard move | A window is focused and not maximized |
 | Alt+Shift+S | Start a keyboard resize | A window is focused and not maximized |
 | Arrow keys, Shift+arrow keys | Move or resize by 16 px or 64 px | During a move or resize |
 | Enter, Escape | Finish or cancel the move or resize | During a move or resize |
 
 Escape never closes a window (spec: edge cases).
+
+**Amended 2026-10-29 by 008-typescript-playground FR-086** (005 FR-063, FR-065): the shell keeps
+six shortcuts. `Alt+Shift+H` (Minimize) and `Alt+Shift+F` (Maximize or restore) are gone, so the
+Playground's editor can use `Shift+Alt+F` for Format Document as VS Code does. Minimizing and
+maximizing stay on the window's controls and in the window's menu, which shows no key for them.
+About this site lists the six shortcuts above. The shell listens for its shortcuts in the capture
+phase, so they work from inside the editor too.
 
 ### Where focus goes
 

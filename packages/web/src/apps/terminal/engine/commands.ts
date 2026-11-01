@@ -149,8 +149,8 @@ export const CV_PRINT = 'cat cv.json | jq';
 function open(args: readonly string[], context: RunContext, word: string): SiteRun {
   if (args.length !== 1) return usage(word, context, 'open');
   const name = args[0]!.toLowerCase();
-  if (name === 'cv' || name === 'about') return nothing({ kind: 'open', view: name });
-  const block = pattern(context.text.terminal.replies.open, { cv: command('open cv', 'inline', { label: 'cv' }), about: command('open about', 'inline', { label: 'about' }) });
+  if (name === 'cv' || name === 'playground' || name === 'about') return nothing({ kind: 'open', view: name });
+  const block = pattern(context.text.terminal.replies.open, { cv: command('open cv', 'inline', { label: 'cv' }), playground: command('open playground', 'inline', { label: 'playground' }), about: command('open about', 'inline', { label: 'about' }) });
   return { ...printed(block), status: 1 };
 }
 

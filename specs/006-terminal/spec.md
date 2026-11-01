@@ -11,6 +11,11 @@ and a terminal's cursor, focus and keys, and, from the design review that day, n
 `help <name>` for the standard commands (see Clarifications, Session 2026-10-29). Approved
 2026-10-27; the amendment approved by the owner 2026-10-29.
 
+**Amended**: 2026-10-29: `open` accepts `playground`, for the TypeScript playground (008) (see
+Clarifications, Session 2026-10-29, and 008-typescript-playground FR-087). Approved 2026-10-27;
+the amendment approved by the owner 2026-10-29. Amended 2026-10-31 by 008-typescript-playground:
+FR-042's time follows the latest feature's budget (see Clarifications, Session 2026-10-31).
+
 **Amended**: 2026-10-30, after the owner tried the shell: Tab completes as in bash, with a way
 out, and vim edits files (see Clarifications, Session 2026-10-30 (owner review of the shell)).
 The amendment approved by the owner 2026-10-30.
@@ -146,6 +151,13 @@ The owner's decision of 2026-10-31 approves this amendment.
   itself? → A: No. A line runs 10,000 of its own commands before it is stopped (FR-069). Approved
   by the owner 2026-10-29.
 
+### Session 2026-10-29 (amended by 008-typescript-playground)
+
+- Q: The TypeScript playground (008) is a new app. Should `open` accept it? → A: Yes. `open
+  playground` opens the Playground, or brings it to the front, as its dock item or home-screen icon
+  does; on mobile that is its "best on desktop" screen. Running code from the Terminal is not part
+  of it (FR-008, FR-014).
+
 ### Session 2026-10-30
 
 - Q: With the Terminal's lines in both shells, the site check takes about 5.5 minutes on the
@@ -190,6 +202,12 @@ The owner's decision of 2026-10-31 approves this amendment.
   vim text; FR-076 lists keywords and the working folder's folders, without aliases the visitor
   defined; a new file shows `[New]` in the message line only (FR-058, FR-065, FR-076, SC-016).
   Approved by the owner 2026-10-30.
+
+### Session 2026-10-31 (amended by 008-typescript-playground)
+
+- Q: 006's 720 s for the site check reads the same run as 008's 1,020 s, and can fail on a run 008
+  allows. Which holds? → A: The chain, as 005's SC-010 does. The whole check stays within the latest
+  feature's budget, now 008's 1,020 s (FR-042).
 
 ### Session 2026-10-31
 
@@ -766,7 +784,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `jq [path]` | Pretty-prints JSON from the path or from piped input (FR-056). |
   | `vim <path>`, `vim -` | Opens the file, the piped input, or a new file, in the vim view, to read or edit (FR-058, FR-079). |
   | `pwd` | The working folder's path. |
-  | `open <name>` | Opens the CV app (`open cv`) or About this site (`open about`) in the shell. |
+  | `open <name>` | Opens the CV app (`open cv`), the Playground (`open playground`) or About this site (`open about`) in the shell. |
   | `history` | The commands run since the Terminal opened, oldest first. |
   | `clear` | Clears the output. |
   | `exit` | Closes the Terminal on desktop, or returns to the home screen on mobile. |
@@ -778,7 +796,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   control that runs `help <name>` (FR-015), and there MUST be no command `help` doesn't list. `help <command>` MUST show any command's own help, standard
   commands included.
   Amended 2026-10-29: commands could only be joined with `|`, the Terminal offered no standard
-  commands, and `help` listed only the commands above and their aliases.
+  commands, and `help` listed only the commands above and their aliases. Amended 2026-10-29
+  (008-typescript-playground): the `open <name>` row said "Opens the CV app (`open cv`) or About
+  this site (`open about`) in the shell."
 - **FR-009**: The output of every CV command other than `cv`, which shows the CV document's JSON
   (FR-055, FR-059), MUST show the same fields `/cv` shows for that section
   (004 Key Entities), in the CV document's order, and MUST follow 004's rules for them: an absent
@@ -804,9 +824,12 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   requirement isn't counted, and MUST link to the spec in the repository. Nothing in the list may
   be typed by hand: a spec added, approved or changed MUST show at the next build with no edit to
   the Terminal.
-- **FR-014**: `open cv` and `open about` MUST open, or bring to the front, the CV app or About this
-  site exactly as the dock or the site menu does on desktop (005 FR-012, FR-064) and as the home
-  screen does on mobile. `open` with any other name MUST list the names it accepts.
+- **FR-014**: `open cv`, `open playground` and `open about` MUST open, or bring to the front, the
+  CV app, the Playground (008) or About this site exactly as the dock or the site menu does on
+  desktop (005 FR-012, FR-064) and as the home screen does on mobile, where the Playground shows
+  its "best on desktop" screen (008 FR-058). `open` with any other name MUST list the names it
+  accepts. Amended 2026-10-29 (008-typescript-playground): it said "`open cv` and `open about`
+  MUST open, or bring to the front, the CV app or About this site".
 
 **The shell** (added 2026-10-29)
 
@@ -1263,7 +1286,10 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   online one.
 - **FR-042**: The checks of this spec MUST run in the same one command and on the same pull
   requests as 004's and 005's, give the same result locally and on the pull request, and name the
-  shell, the state, the width and the command in every failure.
+  shell, the state, the width and the command in every failure. The whole check, with every later
+  feature's parts, stays within the latest feature's budget on the owner's machine. Amended
+  2026-10-31 by 008-typescript-playground: the plan held the whole check to 720 s, 005's 8 minutes
+  plus 4.
 
 ### Key Entities
 

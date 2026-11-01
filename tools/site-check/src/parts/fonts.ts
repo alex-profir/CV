@@ -18,9 +18,21 @@ export function servedBy(font: PlatformFont, families: readonly string[]): boole
   return font.isCustomFont && families.some((family) => font.familyName === family || font.familyName.startsWith(`${family} `));
 }
 
-async function fontsFor(cdp: CDPSession, nodeId: number): Promise<PlatformFont[]> {
+async function fontsFor(cdp: Pick<CDPSession, 'send'>, nodeId: number): Promise<PlatformFont[]> {
   const { fonts } = (await cdp.send('CSS.getPlatformFontsForNode', { nodeId })) as { fonts: PlatformFont[] };
   return fonts;
+}
+
+// The fonts of an element the page may have taken away since it was found, as
+// the Playground's editor redraws its lines at any time: text that's gone has
+// no fonts to check.
+export async function fontsIfThere(cdp: Pick<CDPSession, 'send'>, nodeId: number): Promise<PlatformFont[]> {
+  try {
+    return await fontsFor(cdp, nodeId);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Could not find node with given id')) return [];
+    throw error;
+  }
 }
 
 async function nodeIds(cdp: CDPSession, selector: string): Promise<number[]> {
@@ -60,7 +72,7 @@ export async function fontProblems(page: Page, families: readonly string[], page
     const failing: number[] = [];
     const ids = await nodeIds(cdp, `[${PROBE}]`);
     for (const [index, nodeId] of ids.entries()) {
-      const fonts = await fontsFor(cdp, nodeId);
+      const fonts = await fontsIfThere(cdp, nodeId);
       if (fonts.some((font) => !servedBy(font, families))) failing.push(index);
     }
     for (const index of failing) {
@@ -154,7 +166,7 @@ export async function unservedFonts(page: Page, families: readonly string[]): Pr
     await cdp.send('CSS.enable');
     const ids = await nodeIds(cdp, `[${PROBE}]`);
     for (const [index, nodeId] of ids.entries()) {
-      const other = (await fontsFor(cdp, nodeId)).find((font) => !servedBy(font, families));
+      const other = (await fontsIfThere(cdp, nodeId)).find((font) => !servedBy(font, families));
       if (other !== undefined) found.push({ ...elements[index]!, drawnIn: other.familyName });
     }
   } finally {

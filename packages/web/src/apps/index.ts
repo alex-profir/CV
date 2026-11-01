@@ -5,25 +5,42 @@ import type { ReactNode } from 'react';
 import type { AppDeclaration, ShellName } from '@cv/os-core';
 import type { Resume, SiteData } from '@cv/content';
 import { cvApp } from './cv/app.tsx';
+import { playgroundApp } from './playground/app.tsx';
 import { terminalApp } from './terminal/app.tsx';
 
 // What an app's content may ask of the shell (006 contracts/shell.md): the
-// shell it is rendered in, to open the CV or About this site as the dock or
+// shell it is rendered in, to open the CV, the Playground or About this site as the dock or
 // home screen does, and to leave as its window's close control or Home does.
-export type AppOs = { shell: ShellName; open: (view: 'cv' | 'about') => void; exit: () => void };
+export type AppOs = { shell: ShellName; open: (view: 'cv' | 'playground' | 'about') => void; exit: () => void };
 
 // What every app's content is given.
 export type AppProps = { resume: Resume; siteData: SiteData; os: AppOs };
 
 // An item an app adds to its window's own menu, before the window commands.
-// `data-req` is written literally where the item is declared.
-export type AppMenuItem = { key: string; label: string; run: () => void; 'data-req'?: string };
+// `data-req` is written literally where the item is declared. `shortcut` is
+// the key shown beside it, as `aria-keyshortcuts` writes it (such as `F1`);
+// `disabled`, and `shortcut` when a function, are asked each time the menu
+// shows; `separatorBefore` and
+// `separatorAfter` draw a separator above or below it (008 contracts/shell.md).
+export type AppMenuItem = {
+  key: string;
+  label: string;
+  run: () => void;
+  'data-req'?: string;
+  shortcut?: string | (() => string);
+  disabled?: () => boolean;
+  separatorBefore?: boolean;
+  separatorAfter?: boolean;
+};
 
 // os-core's declaration, with React components for the icon and content,
 // and the optional fields any app may give (006 contracts/shell.md):
 // `focusOnOpen`, a selector inside its content that takes focus in place of
 // its title; `WindowTitle`, its title bar's text in place of its name;
-// `menuItems`; and `onClose`, called once its window has closed.
+// `menuItems`; `onClose`, called once its window has closed; and, for an app
+// an address can open, `opensFromAddress`, which says whether this address is
+// one of its own, and `onOpenFromAddress`, called just before it opens so
+// (008 contracts/shell.md Opening from a link).
 export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   Icon: () => ReactNode;
   Content: (props: AppProps) => ReactNode;
@@ -31,6 +48,8 @@ export type App = Omit<AppDeclaration<AppProps>, 'Icon' | 'Content'> & {
   WindowTitle?: () => ReactNode;
   menuItems?: readonly AppMenuItem[];
   onClose?: () => void;
+  opensFromAddress?: (href: string) => boolean;
+  onOpenFromAddress?: (shell: 'desktop' | 'mobile') => void;
 };
 
-export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp]);
+export const APPS: readonly App[] = Object.freeze([cvApp, terminalApp, playgroundApp]);

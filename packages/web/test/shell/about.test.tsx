@@ -3,6 +3,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { resume, siteData } from '@cv/content';
+import { SHORTCUTS, shortcutLabel } from '@cv/os-core';
 import { fixture } from '../helpers/fixtures.ts';
 import { openShell, serveShellFixture } from '../helpers/shell.ts';
 
@@ -35,7 +36,7 @@ describe('005-os-shell-FR-038: About this site says what the site is and links t
     const page = await openShell({ width: 1440, height: 900 });
     await openAboutWindow(page);
     expect(await page.locator(ABOUT).getAttribute('aria-current')).toBe('true');
-    expect(await page.locator('#os .dock-item').evaluateAll((items) => items.map((item) => item.getAttribute('data-app')))).toEqual(['cv', 'terminal']);
+    expect(await page.locator('#os .dock-item').evaluateAll((items) => items.map((item) => item.getAttribute('data-app')))).toEqual(['cv', 'terminal', 'playground']);
     await page.click('#menu-title-window');
     expect(await page.getByRole('menuitemradio', { name: 'About this site' }).count()).toBe(1);
     await page.keyboard.press('Escape');
@@ -78,7 +79,7 @@ describe('005-os-shell-FR-038: on a phone, About this site opens full screen', (
   });
 });
 
-describe('005-os-shell-FR-029: About this site on the desktop lists the eight shortcuts', () => {
+describe('005-os-shell-FR-029: About this site on the desktop lists the six shortcuts', () => {
   const shortcuts = (page: Page) =>
     page.locator(`${ABOUT} .about-shortcuts`).evaluate((section) => ({
       heading: section.querySelector('h2')?.textContent?.trim(),
@@ -101,8 +102,6 @@ describe('005-os-shell-FR-029: About this site on the desktop lists the eight sh
           [`${modifier}+Shift+D`, 'Go to the dock'],
           [`${modifier}+Shift+N`, 'Next window'],
           [`${modifier}+Shift+W`, 'Close window'],
-          [`${modifier}+Shift+H`, 'Minimize window'],
-          [`${modifier}+Shift+F`, 'Maximize or restore window'],
           [`${modifier}+Shift+P`, 'Move window'],
           [`${modifier}+Shift+S`, 'Resize window'],
         ],
@@ -111,5 +110,15 @@ describe('005-os-shell-FR-029: About this site on the desktop lists the eight sh
       });
       await page.context().close();
     }
+  });
+});
+
+describe('005-os-shell-FR-063 005-os-shell-FR-065 008-typescript-playground-FR-086: About this site lists no Minimize or Maximize shortcut', () => {
+  test('six entries, in SHORTCUTS order', async () => {
+    const page = await openShell({ width: 1440, height: 900, platform: 'Windows' });
+    await openAboutWindow(page);
+    const keys = await page.locator(`${ABOUT} .about-shortcuts dt`).evaluateAll((list) => list.map((entry) => entry.textContent?.trim()));
+    expect(keys).toEqual(SHORTCUTS.map((shortcut) => shortcutLabel(shortcut, false)));
+    expect(keys).toHaveLength(6);
   });
 });
