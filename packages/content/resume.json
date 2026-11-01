@@ -31,13 +31,13 @@
       "endDate": "2026-10",
       "summary": "Building web and mobile applications and backend microservices on scalable cloud infrastructure, using spec-driven development and agentic coding.",
       "highlights": [
-        "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality.",
-        "Built notification and device management microservices to start replacing a monolith, and maintained the auth microservice with teammates.",
-        "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
-        "Built and maintained responsive web applications using modern frameworks.",
-        "Designed and implemented RESTful APIs powering multiple services.",
-        "Optimized and maintained website infrastructure for reliability and performance.",
-        "Engineered scalable cloud solutions using GCP, AWS, and proprietary cloud platforms."
+        "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality",
+        "Built notification and device management microservices to start replacing a monolith, and maintained the auth microservice with teammates",
+        "Developed cross-platform mobile applications for iOS and Android, improving user engagement",
+        "Built and maintained responsive web applications using modern frameworks",
+        "Designed and implemented RESTful APIs powering multiple services",
+        "Optimized and maintained website infrastructure for reliability and performance",
+        "Engineered scalable cloud solutions using GCP, AWS, and proprietary cloud platforms"
       ]
     }
   ],
