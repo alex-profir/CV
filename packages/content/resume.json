@@ -61,8 +61,8 @@
     {
       "name": "Agentic Engineering",
       "keywords": [
-        "Agentic Coding · 1.5 yrs",
-        "Spec-Driven Development · 1.5 yrs",
+        "Agentic Coding",
+        "Spec-Driven Development",
         "Claude Code",
         "Agent Orchestration",
         "Agent Guardrails",
@@ -73,56 +73,56 @@
     {
       "name": "Web Frameworks & Libraries",
       "keywords": [
-        "React · 8 yrs",
-        "Angular · 3 yrs",
-        "Vue.js · 3 yrs",
-        "Next.js · 2 yrs",
-        "Nuxt.js · 2 yrs"
+        "React",
+        "Angular",
+        "Vue.js",
+        "Next.js",
+        "Nuxt.js"
       ]
     },
     {
       "name": "Mobile Development",
       "keywords": [
-        "React Native · 5 yrs",
-        "Native Android/iOS · 5 yrs"
+        "React Native",
+        "Native Android/iOS"
       ]
     },
     {
       "name": "Backend Development",
       "keywords": [
-        "Node.js · 7 yrs",
-        "Docker · 5 yrs",
-        "Microservices · 1 yr"
+        "Node.js",
+        "Docker",
+        "Microservices"
       ]
     },
     {
       "name": "Databases",
       "keywords": [
-        "PostgreSQL · 7 yrs",
-        "MariaDB · 7 yrs",
-        "MySQL · 7 yrs",
-        "MongoDB · 6 yrs",
-        "Firestore · 6 yrs"
+        "PostgreSQL",
+        "MariaDB",
+        "MySQL",
+        "MongoDB",
+        "Firestore"
       ]
     },
     {
       "name": "Programming Languages",
       "keywords": [
-        "JavaScript · 8 yrs",
-        "TypeScript · 8 yrs"
+        "JavaScript",
+        "TypeScript"
       ]
     },
     {
       "name": "Version Control",
       "keywords": [
-        "Git · 8 yrs"
+        "Git"
       ]
     },
     {
       "name": "Cloud Platforms",
       "keywords": [
-        "GCP · 5 yrs",
-        "AWS · 5 yrs"
+        "GCP",
+        "AWS"
       ]
     }
   ],
