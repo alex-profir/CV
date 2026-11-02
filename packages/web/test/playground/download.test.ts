@@ -300,6 +300,8 @@ describe('008-typescript-playground-FR-011: an engine that won\'t open says so, 
         { path: entry, name: `playground-${version}`, script },
       );
     await swap('export const api = 1; export async function createEngine() { throw new Error("broken engine"); }');
+    // The reload is answered by the service worker, which must be in charge of the page by now.
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await page.context().setOffline(true);
     await page.reload();
     await page.waitForSelector('#os[data-ready]', { state: 'attached' });
