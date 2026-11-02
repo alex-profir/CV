@@ -822,6 +822,8 @@ export async function cursorAt(page: Page, line: number, column: number): Promis
   await page.keyboard.press('Control+KeyG');
   await page.keyboard.type(`${line}:${column}`);
   await page.keyboard.press('Enter');
+  // The box gives focus back after the key: one pressed before that is lost.
+  await page.waitForFunction((selector) => document.activeElement === document.querySelector(selector), `${PLAYGROUND.editor} textarea`, { timeout: WAIT_MS });
 }
 
 const stopDisabled = (page: Page) => page.evaluate((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${PLAYGROUND.toolbar} button.stop`);
