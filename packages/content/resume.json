@@ -169,9 +169,9 @@
       "startDate": "2025-12",
       "description": "iOS and Android app for a faith-based social network.",
       "highlights": [
-        "Led the iOS and Android app from the start, with 296 merged pull requests",
+        "Led the app's development",
         "Built feeds, groups and video playback, including offline video caching",
-        "Upgraded the app to Expo SDK 55 and React Native 0.83 on the New Architecture",
+        "Kept upgrading the app to the latest Expo SDK versions",
         "Wrote native iOS and Android modules for audio focus, SMS consent and text input",
         "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect, so every update is checked and shipped the same way",
         "Set up crash reporting and monitoring with Sentry and Crashlytics, so problems are found and fixed before users have to report them",
