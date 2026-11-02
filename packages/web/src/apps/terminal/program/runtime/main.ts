@@ -149,6 +149,7 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
   let entryFile: string | null = null;
   let loadingFile: string | null = null;
   const errors = createErrors(sources, () => entryFile, () => loadingFile);
+  errors.install();
 
   const log = createConsole(output, { now, clean: errors.clean, stack: errors.stack });
 

@@ -21,8 +21,9 @@ export const problem = (type: string, subject: string, detail: string): Found =>
 
 // A file, written as a visitor could with the shell's `printf`.
 export async function writeFile(page: Page, name: string, text: string): Promise<void> {
-  const quoted = `'${text.replace(/'/g, "'\\''")}'`;
-  await typeLine(page, `printf '%s' ${quoted} > ${name}`);
+  // `%b`, as a typed newline would end the line.
+  const quoted = text.replace(/\\/g, '\\\\').replace(/'/g, "'\\''").replace(/\n/g, '\\n');
+  await typeLine(page, `printf '%b' '${quoted}' > ${name}`);
 }
 
 // Runs a line and gives back its run, once the line and any program have ended.
@@ -95,6 +96,27 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
         if (n < 3 && first.text.includes(`tick ${n + 1} `)) found.push(problem('streaming', 'node tick.js', `tick ${n} and ${n + 1} arrived together`));
       }
       await statusIs(page, found, 'node tick.js', 0);
+      return found;
+    },
+  },
+  {
+    name: 'errors',
+    shells: BOTH,
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      await writeFile(page, 'bad.js', "console.log('a');\nthrow new Error('x');\n");
+      const thrown = await runLine(page, 'node bad.js');
+      const output = await outputOf(thrown);
+      expectIn(found, 'node bad.js', output, "/home/guest/bad.js:2\nthrow new Error('x');\n^\n\nError: x", 'error form');
+      expectIn(found, 'node bad.js', output, 'node v26.0.0 (browser runtime, not Node.js)', 'error form');
+      if ((await thrown.locator('.tone-error').count()) === 0) found.push(problem('error tone', 'node bad.js', 'the error is not in the error tone'));
+      await statusIs(page, found, 'node bad.js', 1);
+      await writeFile(page, 'syn.js', "console.log('ran');\nlet x = ;\n");
+      const syntax = await outputOf(await runLine(page, 'node syn.js'));
+      expectIn(found, 'node syn.js', syntax, '/home/guest/syn.js:2\nlet x = ;', 'error form');
+      if (syntax.includes('ran')) found.push(problem('syntax', 'node syn.js', 'the program ran in spite of its syntax error'));
+      await statusIs(page, found, 'node syn.js', 1);
       return found;
     },
   },

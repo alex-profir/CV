@@ -33,7 +33,11 @@ With or without `node:`.
 ## Known differences from Node
 
 - Engine error wording and stack detail vary by browser. WebKit's stacks have no places (research R5).
+- In WebKit, a program that reads `error.stack` itself sees the runtime's frames, with no places for its own. Errors
+  printed by `console` or left uncaught show none of them.
 - `import` bindings aren't live (R4).
+- A thrown value that is no error, such as `throw 5`, prints without its file and line, as the engine gives no place
+  for it.
 - There's no `stream`, so no `createReadStream`, and `process.stdout` is only what's listed.
 - A JavaScript program can't require a `.ts` file (R12).
 - `exit` handlers don't run after a stop (FR-035), and a `SIGINT` handler can't stop the second Ctrl+C (FR-033).
