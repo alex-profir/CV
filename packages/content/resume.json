@@ -2,9 +2,9 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@jsonresume/schema@1.3.1/schema.json",
   "basics": {
     "name": "Alex Profir",
-    "label": "Software Engineer",
+    "label": "Senior Full-Stack Engineer",
     "email": "alexprofir512@gmail.com",
-    "summary": "Full stack engineer. Web, mobile and backend, built with agents and specs.",
+    "summary": "I build applications from the ground up with a strong emphasis on reliability and product quality. I work closely with stakeholders to turn early ideas into clear requirements, then deliver them with the testing and monitoring that keep the product working once it's live. I am open to remote or hybrid roles.",
     "location": {
       "city": "Timișoara",
       "countryCode": "RO"
@@ -14,25 +14,27 @@
         "network": "GitHub",
         "username": "alex-profir",
         "url": "https://github.com/alex-profir"
+      },
+      {
+        "network": "LinkedIn",
+        "username": "Alex Profir",
+        "url": "https://ro.linkedin.com/in/alex-profir-410a6a221"
       }
     ]
   },
   "work": [
     {
-      "name": "SC MoreDevs SRL",
+      "name": "Independent Contractor",
+      "position": "Senior Full-Stack Engineer",
+      "startDate": "2025-04",
+      "summary": "Contracting through my own company. Clients include a faith-based social network, where I am technical lead, and MoreDevs, where I continued work on its cybersecurity platform until Oct 2026."
+    },
+    {
+      "name": "MoreDevs",
       "position": "Software Developer",
       "startDate": "2018-07",
-      "endDate": "2026-10",
-      "summary": "Software developer building web and mobile applications and backend microservices on scalable cloud infrastructure, using spec-driven development and agentic coding.",
-      "highlights": [
-        "Adopted spec-driven development and agentic coding, delivering features with higher velocity and better quality.",
-        "Built notification and device management microservices to start replacing a monolith, and maintained the auth microservice with teammates.",
-        "Developed cross-platform mobile applications for iOS and Android, improving user engagement.",
-        "Built and maintained responsive web applications using modern frameworks.",
-        "Designed and implemented RESTful APIs powering multiple services.",
-        "Optimized and maintained website infrastructure for reliability and performance.",
-        "Engineered scalable cloud solutions using GCP, AWS, and proprietary cloud platforms."
-      ]
+      "endDate": "2025-04",
+      "summary": "Built web, mobile and backend products for clients, working mainly on a cybersecurity platform from 2022."
     }
   ],
   "education": [
@@ -41,82 +43,88 @@
       "area": "Computer and Software Engineering",
       "studyType": "Bachelor's Degree",
       "startDate": "2018-09",
-      "endDate": "2022-09",
-      "courses": [
-        "Computer Networks",
-        "Operating Systems",
-        "Object-oriented programming",
-        "Algorithms and Data Structures",
-        "Hardware design and circuit analysis"
-      ]
+      "endDate": "2022-09"
     }
   ],
   "skills": [
     {
-      "name": "Agentic Engineering",
+      "name": "Languages",
       "keywords": [
-        "Agentic Coding · 1.5 yrs",
-        "Spec-Driven Development · 1.5 yrs",
-        "Claude Code",
-        "Agent Orchestration",
-        "Agent Guardrails",
-        "Context Engineering",
-        "MCP"
+        "TypeScript",
+        "JavaScript",
+        "Swift",
+        "Kotlin",
+        "Objective-C",
+        "Java"
       ]
     },
     {
-      "name": "Web Frameworks & Libraries",
+      "name": "Frontend",
       "keywords": [
-        "React · 8 yrs",
-        "Angular · 3 yrs",
-        "Vue.js · 3 yrs",
-        "Next.js · 2 yrs",
-        "Nuxt.js · 2 yrs"
+        "React",
+        "Material UI",
+        "TanStack Query",
+        "Zustand"
       ]
     },
     {
-      "name": "Mobile Development",
+      "name": "Mobile",
       "keywords": [
-        "React Native · 7 yrs",
-        "Native Android/iOS · 5 yrs"
+        "React Native",
+        "Expo",
+        "Native iOS and Android modules",
+        "Fastlane"
       ]
     },
     {
-      "name": "Backend Development",
+      "name": "Backend",
       "keywords": [
-        "Node.js · 7 yrs",
-        "Docker · 5 yrs",
-        "Microservices · 1 yr"
+        "Node.js",
+        "Express",
+        "Fastify",
+        "Microservices",
+        "REST APIs",
+        "Webhooks"
       ]
     },
     {
       "name": "Databases",
       "keywords": [
-        "PostgreSQL · 7 yrs",
-        "MariaDB · 7 yrs",
-        "MySQL · 7 yrs",
-        "MongoDB · 6 yrs",
-        "Firestore · 6 yrs"
+        "PostgreSQL",
+        "MongoDB",
+        "Firestore"
       ]
     },
     {
-      "name": "Programming Languages",
+      "name": "Cloud",
       "keywords": [
-        "JavaScript · 8 yrs",
-        "TypeScript · 8 yrs"
+        "GCP (Cloud Run, Cloud Functions)",
+        "AWS",
+        "Firebase",
+        "Docker"
       ]
     },
     {
-      "name": "Version Control",
+      "name": "Quality and Delivery",
       "keywords": [
-        "Git · 8 yrs"
+        "Jest",
+        "Vitest",
+        "Testing Library",
+        "Maestro",
+        "Playwright",
+        "CI",
+        "Sentry",
+        "Crashlytics",
+        "Git"
       ]
     },
     {
-      "name": "Cloud Platforms",
+      "name": "AI-Assisted Delivery",
       "keywords": [
-        "GCP · 5 yrs",
-        "AWS · 5 yrs"
+        "Spec-Driven Development",
+        "Agentic Coding",
+        "Claude Code",
+        "MCP"
       ]
     }
   ],
@@ -136,154 +144,139 @@
   ],
   "interests": [
     {
-      "name": "R&D / Innovation",
-      "keywords": [
-        "Exploring emerging technologies",
-        "Tech Meetups",
-        "Curious about AI-driven design"
-      ]
-    },
-    {
       "name": "Music",
       "keywords": [
-        "Playing piano and enjoying folk music with techno harmonies"
+        "Piano"
       ]
     },
     {
       "name": "Sports",
       "keywords": [
-        "Running and strength training"
+        "Running",
+        "Strength training"
+      ]
+    },
+    {
+      "name": "Technology",
+      "keywords": [
+        "Tech meetups"
       ]
     }
   ],
   "projects": [
     {
-      "name": "Faith-Based Social Network Mobile App",
+      "name": "Faith-Based Social Network App",
+      "entity": "Own company",
       "startDate": "2025-12",
-      "description": "Independent freelance work, part-time, ongoing. iOS and Android app for a faith-based social network, built with Expo, React Native on the New Architecture, TypeScript, TanStack Query and Zustand.",
+      "description": "iOS and Android app with feeds, groups and video.",
       "highlights": [
-        "Developed and maintained the iOS and Android app, including feeds, groups and video playback with offline support",
-        "Maintained Expo and React Native on the latest package versions",
-        "Set up CI/CD for automated builds and releases",
-        "Set up crash reporting and error monitoring",
-        "Created the spec-driven development setup used to build and maintain the app",
-        "Built agentic orchestration flows that take a ticket through Figma to implementation in an automated loop",
-        "Used AI to cut end-to-end feature delivery from at least a couple of months to 2–3 weeks, with the UI fully matching Figma"
+        "Technical lead for a team of 4–6 engineers, responsible for architecture, planning, code review and mentoring",
+        "Delivered features in 2–3 weeks, against an estimated 2 months or more without AI, using a workflow I built that takes a Jira ticket and its Figma design through to an open pull request",
+        "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect, so every update is checked and shipped the same way",
+        "Set up crash reporting and monitoring with Sentry and Crashlytics, so problems can be found before users report them",
+        "Built feeds, groups and video playback with offline caching, and wrote native iOS and Android modules for audio focus, SMS consent and text input"
+      ],
+      "keywords": [
+        "Expo",
+        "React Native (New Architecture)",
+        "TypeScript",
+        "TanStack Query",
+        "Zustand"
       ]
     },
     {
-      "name": "Cybersecurity Mobile Platform",
+      "name": "Cybersecurity Platform",
+      "entity": "MoreDevs",
       "startDate": "2022-01",
       "endDate": "2026-10",
-      "description": "Cross-platform cybersecurity solution featuring a React Native mobile app, an Admin UI, and a cloud-based backend infrastructure for secure device management and threat detection.",
+      "description": "Device security product with a mobile app, web admin UI and cloud backend. Team of 4–6 engineers.",
       "highlights": [
-        "Led end-to-end development of the React Native mobile application and the web-based Admin UI",
-        "Built two JavaScript SDKs to enable seamless communication between mobile, web, and backend services",
-        "Built notification and device management microservices using spec-driven development, to start replacing the monolith that held all the logic",
-        "Implemented and maintained the auth microservice with teammates using spec-driven development",
-        "Delivered features at least 2x faster with spec-driven, agentic development, per team lead reports",
-        "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
-        "Migrated infrastructure from Cloud Functions to Cloud Run, reducing operational costs and improving scalability",
-        "Contributed to system-wide code reviews and performance optimization across frontend and backend components"
+        "Built threat detection features, including man-in-the-middle detection on the device",
+        "Built notification and device management microservices to start replacing the monolith, and worked with teammates on the auth microservice",
+        "Migrated infrastructure from Cloud Functions to Cloud Run, cutting costs by at least 25% according to billing and improving scalability",
+        "Built the React Native app, the web admin UI, and two JavaScript SDKs connecting them to backend services",
+        "Built third-party integrations using webhooks and Cloud Run tasks for reliable asynchronous processing",
+        "Delivered features at least 2x faster with spec-driven, agentic development, as reported by the team lead"
+      ],
+      "keywords": [
+        "React Native",
+        "Expo",
+        "React",
+        "GCP",
+        "Firestore",
+        "Docker",
+        "Cloud Run",
+        "Cloud Functions"
       ]
     },
     {
       "name": "Guided Tours System",
+      "entity": "MoreDevs",
       "startDate": "2021-10",
       "endDate": "2022-09",
-      "description": "Mobile application developed with React Native, TypeScript, and Fastify for creating and managing guided city tours.",
-      "highlights": [
-        "Built mobile app enabling users to create and search for city tours",
-        "Implemented CRUD operations and guided workflows on both frontend and backend",
-        "Integrated AI-based image moderation for content safety"
+      "description": "Mobile app for creating and managing city tours, with AI-based image moderation.",
+      "keywords": [
+        "React Native",
+        "Node.js",
+        "PostgreSQL",
+        "AWS"
       ]
     },
     {
       "name": "Job Management App",
+      "entity": "MoreDevs",
       "startDate": "2021-04",
       "endDate": "2021-07",
-      "description": "Mobile application for job posting and tracking.",
-      "highlights": [
-        "Implemented job creation workflow including data entry, media uploads, and job type selection",
-        "Designed intuitive summary and editing screens for better user experience",
-        "Streamlined data handling and form validation on mobile"
+      "description": "Native app for posting and tracking jobs, including media uploads and form validation.",
+      "keywords": [
+        "Native iOS and Android"
       ]
     },
     {
       "name": "Accessibility Management Platform",
+      "entity": "MoreDevs",
       "startDate": "2020-09",
       "endDate": "2021-12",
-      "description": "Accessibility management web platform built with React, TypeScript, and Tailwind CSS.",
-      "highlights": [
-        "Developed responsive layouts and optimized frontend performance",
-        "Fixed memory leaks and removed inefficient code to improve system stability",
-        "Built an embeddable data visualization widget displaying accessibility data for hotels"
+      "description": "Fixed memory leaks and built an embeddable widget showing accessibility data for hotels.",
+      "keywords": [
+        "React",
+        "TypeScript"
       ]
     },
     {
       "name": "Video Content Management System",
+      "entity": "MoreDevs",
       "startDate": "2020-08",
       "endDate": "2020-12",
-      "description": "Content management platform for handling video metadata and assets, built with React, TypeScript, and Fastify.",
-      "highlights": [
-        "Implemented content CRUD functionality with RESTful API integration",
-        "Customized table components to match design system standards",
-        "Improved frontend responsiveness and UI consistency"
+      "description": "Content management for video metadata and assets over a REST API.",
+      "keywords": [
+        "React",
+        "Node.js",
+        "PostgreSQL",
+        "AWS"
       ]
     },
     {
-      "name": "Incident Response and Management System",
+      "name": "Incident Response System",
+      "entity": "MoreDevs",
       "startDate": "2020-01",
       "endDate": "2020-09",
-      "description": "React and TypeScript-based platform for managing incidents and real-time vehicle tracking.",
-      "highlights": [
-        "Developed user and account management modules",
-        "Integrated real-time maps with vehicle location tracking",
-        "Resolved performance bottlenecks and optimized frontend rendering, resolving some memory leaks"
+      "description": "Real-time maps with vehicle tracking, plus fixes for rendering performance.",
+      "keywords": [
+        "React",
+        "TypeScript"
       ]
     },
     {
-      "name": "Sales Management Platform",
-      "startDate": "2019-06",
-      "endDate": "2020-02",
-      "description": "Web platform for managing sales data across organizations using React, TypeScript, and Fastify.",
-      "highlights": [
-        "Created Admin module for CRUD operations with organization-level sales tracking",
-        "Implemented custom data tables to highlight key sales metrics",
-        "Enhanced frontend usability and user engagement through responsive UI design"
-      ]
-    },
-    {
-      "name": "Fitness Administration Platform",
-      "startDate": "2019-06",
-      "endDate": "2021-10",
-      "description": "Web application built with React, TypeScript, Material UI, and Fastify for managing fitness courses.",
-      "highlights": [
-        "Led project initialization and architecture design",
-        "Implemented full-stack CRUD operations on both frontend and backend",
-        "Collaborated with backend engineers for seamless data synchronization"
-      ]
-    },
-    {
-      "name": "Art Gallery Management Platform",
-      "startDate": "2018-08",
-      "endDate": "2019-08",
-      "description": "Web platform built with React, TypeScript, and Material UI for managing art galleries and artworks.",
-      "highlights": [
-        "Developed an Admin Interface enabling complete CRUD operations for gallery items and user management",
-        "Implemented autocomplete fields fetching real-time data from backend APIs",
-        "Optimized inter-gallery item transfer workflows for art placement"
-      ]
-    },
-    {
-      "name": "Retail Dashboard",
+      "name": "Earlier Client Projects",
+      "entity": "MoreDevs",
       "startDate": "2018-07",
-      "endDate": "2018-11",
-      "description": "Angular-based web dashboard for real-time retail analytics and performance visualization.",
-      "highlights": [
-        "Implemented analytics pages with real-time graphs and filters",
-        "Enabled CSV export for data analysis and reporting",
-        "Optimized dashboard performance for high data throughput"
+      "endDate": "2021-10",
+      "description": "Retail analytics dashboard, art gallery management, sales management and fitness course platforms.",
+      "keywords": [
+        "React",
+        "TypeScript",
+        "Node.js"
       ]
     }
   ]

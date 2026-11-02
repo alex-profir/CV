@@ -59,6 +59,8 @@ main
 │       ├── p.org               name (link when url), location
 │       ├── p                   summary, then description
 │       └── ul.highlights       li per highlight                    FR-026
+├── section → h2 "Skills"
+│   └── ul → li per skill: name, level, ul.chips of keywords
 ├── section → h2 "Projects"
 │   └── ol.timeline → li per project
 │       ├── p.date
@@ -67,8 +69,6 @@ main
 │       ├── p                   description
 │       ├── ul.highlights
 │       └── ul.chips            li per keyword
-├── section → h2 "Skills"
-│   └── ul → li per skill: name, level, ul.chips of keywords
 ├── section → h2 "Education"
 │   └── ol.timeline → li per entry
 │       ├── p.date

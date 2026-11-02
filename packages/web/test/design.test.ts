@@ -22,7 +22,7 @@ describe('004-cv-page-FR-042: the page matches the approved design', () => {
   test('the sections come in the order design/review.md lists', async () => {
     const page = await realPage(1440);
     const headings = await page.locator('main > section h2').allTextContents();
-    expect(headings).toEqual(['Experience', 'Projects', 'Skills', 'Education', 'Languages', 'Interests']);
+    expect(headings).toEqual(['Experience', 'Skills', 'Projects', 'Education', 'Languages', 'Interests']);
   });
 
   test('each element uses the font token the design gives it', async () => {

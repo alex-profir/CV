@@ -12,8 +12,8 @@ export const siteText = deepFreeze({
   // Section headings, by the CV document's section names.
   sections: {
     work: 'Experience',
-    projects: 'Projects',
     skills: 'Skills',
+    projects: 'Projects',
     education: 'Education',
     languages: 'Languages',
     interests: 'Interests',

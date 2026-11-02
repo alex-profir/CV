@@ -51,7 +51,7 @@ describe('004-cv-page-FR-006: site text is English, set by the design, and holds
 
   test('the strings the design sets', () => {
     expect(siteText.siteHeading).toBe('CV');
-    expect(Object.values(siteText.sections)).toEqual(['Experience', 'Projects', 'Skills', 'Education', 'Languages', 'Interests']);
+    expect(Object.values(siteText.sections)).toEqual(['Experience', 'Skills', 'Projects', 'Education', 'Languages', 'Interests']);
     expect(siteText.present).toEqual({ visible: 'Present', spoken: 'present' });
     expect(siteText.builtWith).toBe('How this page was built');
     expect(siteText.notFound).toEqual({

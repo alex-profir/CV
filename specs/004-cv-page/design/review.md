@@ -25,7 +25,9 @@
   rules `#D6D6CE`, accent `#3730A3`. Contrast against the background: text 17:1, secondary
   text 6.8:1, accent 9:1, all above WCAG 2.2 AA. The light rules, timeline line and chip
   outlines (1.3:1) are decoration only: no information depends on them.
-- **Section order**: Experience, Projects, Skills, Education, Languages, Interests (FR-001).
+- **Section order**: Experience, Skills, Projects, Education, Languages, Interests (FR-001).
+  Changed by the owner on 2026-11-01: Skills moved ahead of Projects, so that they aren't left
+  to the printed CV's later pages. It was signed with Projects first.
 - **Dates**: abbreviated month and year, such as `Jul 2018 – Oct 2026`, and `Present` for an
   ongoing entry (FR-009, FR-010).
 - **Links**: underlined in the accent color, so they're never shown by color alone.
