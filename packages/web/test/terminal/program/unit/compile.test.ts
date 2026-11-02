@@ -95,7 +95,6 @@ describe('009-terminal-node-FR-038: strict options, and types for what is offere
   test.each([
     ['a module not offered', "import http from 'http';\nconsole.log(http);\n", 2307],
     ['a page global', 'console.log(document.title);\n', 2584],
-    ['fetch', "fetch('x');\n", 2304],
     ['a name of fs not offered', "import fs from 'fs';\nfs.createReadStream('a');\n", 2339],
     ['Worker', "new Worker('x');\n", 2304],
     ['a process name not offered', 'process.kill(1);\n', 2339],

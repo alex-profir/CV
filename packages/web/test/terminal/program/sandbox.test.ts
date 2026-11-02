@@ -26,7 +26,7 @@ beforeAll(async () => {
 
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
-const NAMES = ['document', 'window', 'parent', 'top', 'localStorage', 'sessionStorage', 'indexedDB', 'caches', 'BroadcastChannel', 'fetch', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', 'EventSource', 'WebTransport', 'importScripts', 'Worker', 'SharedWorker'];
+const NAMES = ['document', 'window', 'parent', 'top', 'localStorage', 'sessionStorage', 'indexedDB', 'caches', 'BroadcastChannel', 'XMLHttpRequest', 'WebSocket', 'WebSocketStream', 'EventSource', 'WebTransport', 'importScripts', 'Worker', 'SharedWorker'];
 
 const NATIVE_IMPORTS = ["eval's import()", "Function's import()", 'blob import()'];
 

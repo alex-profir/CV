@@ -101,3 +101,18 @@ describe.each([[375, 812], [320, 568]])('009-terminal-node-FR-039, 006-terminal-
     expect(await page.locator(KEYS).nth(clearAt).evaluate((key) => key === document.activeElement)).toBe(true);
   });
 });
+
+describe('009-terminal-node-FR-039: with the keyboard open', () => {
+  test("Stop takes Tab's place in the keyboard's row while a program runs, and Tab comes back", async () => {
+    const page = await openProgramTerminal('mobile', { width: 375, height: 812 });
+    await startLine(page, 'node -e "while (true) {}"');
+    await until(async () => (await page.locator(STOP).count()) === 1);
+    await page.setViewportSize({ width: 375, height: 512 });
+    await until(async () => (await page.locator('.pocket').getAttribute('data-keyboard')) === '');
+    const inStrip = page.locator('.pocket-strip button.pocket-key');
+    await until(async () => (await inStrip.count()) === 1 && (await inStrip.getAttribute('aria-label')) === siteText.terminal.program.stop);
+    await inStrip.click();
+    await until(async () => (await framesHeld(page)) === 0);
+    await until(async () => (await inStrip.getAttribute('aria-label')) === 'Tab, complete');
+  });
+});

@@ -94,3 +94,15 @@ describe('009-terminal-node-FR-003: -p prints the value of the code', () => {
     expect((await runProgram(printing('void 0'))).stdout).toBe('undefined\n');
   });
 });
+
+describe('009-terminal-node-FR-023: fetch fails as a request does', () => {
+  test("a program's .catch and try around await both get a readable error", async () => {
+    const run = await runProgram(evaluate(`
+      fetch('https://example.com').catch((error) => console.log(error.name, error.message));
+      (async () => { try { await fetch('https://example.com'); } catch (error) { console.log('caught', error.message); } })();
+    `));
+    expect(run.stderr).toBe('');
+    expect(run.stdout).toContain('TypeError fetch failed: a program has no network in this Terminal');
+    expect(run.stdout).toContain('caught fetch failed: a program has no network in this Terminal');
+  });
+});

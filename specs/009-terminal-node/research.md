@@ -22,6 +22,7 @@ R2, making a classic worker from a `Blob`.
   Before any program code runs, the runtime removes `fetch`, `XMLHttpRequest`, `WebSocket`,
   `EventSource`, `Worker`, `SharedWorker`, `BroadcastChannel`, `indexedDB`, `caches` and `importScripts`,
   and takes its port into a closure as 008's runtime does.
+  `fetch` is then put back as a function that always rejects, so a program's `.catch` gets the failure.
 - **Rationale**: `connect-src 'none'` is what enforces FR-023, and removing the names gives a readable
   error and FR-025. `'unsafe-eval'` applies only inside the opaque-origin frame, which holds nothing, and
   is needed by R3. Probe: `fetch` and `importScripts` were blocked in all three engines. `WebSocket`

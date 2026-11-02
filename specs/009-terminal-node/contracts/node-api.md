@@ -11,6 +11,7 @@ The list in FR-012, plus the engine's own standard JavaScript. `process`: `argv`
 `once`, `off`, `emit`, `emitWarning`. `stdout` and `stderr`: `write`, `isTTY` (false), `columns`. `stdin`: reads
 as ended at once. `console`: `log`, `info`, `debug`, `error`, `warn`, `trace`, `dir`, `table`, `group`,
 `groupEnd`, `time`, `timeEnd`, `timeLog`, `count`, `countReset`, `assert`.
+`fetch` exists and always rejects with a `TypeError` that says there is no network (FR-023).
 
 ## Modules
 

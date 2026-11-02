@@ -59,9 +59,9 @@ const FAULTS: readonly { what: string; check: string; file: string; from: string
     what: 'a program that reaches the network',
     check: 'sandbox',
     file: `${TERMINAL}/program/runtime/sandbox.ts`,
-    from: "const REMOVED = ['fetch', ",
-    to: 'const REMOVED = [',
-    line: /^program \/ desktop\/program-sandbox\/1440px network fetch: expected "fetch is not defined"/,
+    from: "Promise.reject(new TypeError('fetch failed: a program has no network in this Terminal'))",
+    to: 'Promise.resolve() as Promise<never>',
+    line: /^program \/ desktop\/program-sandbox\/1440px network fetch: expected "fetch failed"/,
   },
   {
     what: 'a program that reaches for the page',

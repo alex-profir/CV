@@ -509,3 +509,6 @@ declare module 'url' {
 declare module 'node:url' {
   export * from 'url';
 }
+
+// Always rejects: a program has no network (FR-023).
+declare function fetch(input: string | URL, init?: object): Promise<never>;

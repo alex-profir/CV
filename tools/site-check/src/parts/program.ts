@@ -234,8 +234,8 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
       const found: Found[] = [];
       const foreign = await recordRequests(page.context(), new URL(page.url()).origin);
       await openTerminal(page, shell);
-      const fetched = await outputOf(await runLine(page, `node -e "fetch('https://example.com').catch((e) => console.log(e.message)); try { fetch('https://example.com') } catch (e) { console.log(e.message) }"`));
-      expectIn(found, 'fetch', fetched, 'fetch is not defined', 'network');
+      const fetched = await outputOf(await runLine(page, `node -e "fetch('https://example.com').catch((e) => console.log(e.message))"`));
+      expectIn(found, 'fetch', fetched, 'fetch failed', 'network');
       expectIn(found, 'names', await outputOf(await runLine(page, `node -e "console.log(typeof document, typeof localStorage, typeof Worker)"`)), 'undefined undefined undefined', 'reach');
       expectIn(found, 'the page', await outputOf(await runLine(page, `node -e "try { document.title } catch (e) { console.log(e.name) }"`)), 'ReferenceError', 'reach');
       if (foreign.size > 0) found.push(problem('network', 'request', `a program reached ${[...foreign.keys()].join(', ')}`));

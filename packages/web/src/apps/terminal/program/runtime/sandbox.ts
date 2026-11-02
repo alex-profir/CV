@@ -15,4 +15,8 @@ export function removeReaches(scope: object): void {
     }
     if ((scope as Record<string, unknown>)[name] !== undefined) Object.defineProperty(scope, name, { value: undefined, writable: false, configurable: false, enumerable: false });
   }
+  // `fetch` exists in Node, so a program's `.catch` has to get the failure: without
+  // this, the call itself would throw before the program's handler (FR-023).
+  const refuse = (): Promise<never> => Promise.reject(new TypeError('fetch failed: a program has no network in this Terminal'));
+  Object.defineProperty(scope, 'fetch', { value: refuse, writable: true, configurable: true, enumerable: true });
 }
