@@ -292,7 +292,9 @@ the client build. The hash is the first 8 hex characters of its SHA-256, as Vite
   offline (FR-026).
 - If the fetch fails (no network and no stored copy, such as storage blocked and the network gone
   since load), the spec view shows its top bar, heading, lede and the offline note, and "Show
-  specs" tries again next time. No new site text.
+  specs" tries again next time. If it fails while the browser is online (such as an error from
+  the server), the offline note would be wrong, so a note says the requirements couldn't be
+  loaded, with a "Try again" button.
 
 **Why after hydration and not on the first "Show specs"**: 005 R14 keeps every file the shell
 uses loaded up front because a new version can activate mid-visit and delete the old cache, so a

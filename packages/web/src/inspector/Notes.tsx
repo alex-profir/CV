@@ -2,7 +2,9 @@
 // counts and the commit the site was built from, linked to it, then, in a
 // build from a copy with uncommitted changes, a note that the links lead to
 // the last commit, and, offline, a note that the links to GitHub need a
-// connection (research R12). Notes are never live regions.
+// connection (research R12). If the requirement data didn't load while
+// online, a note says so, with a way to try again. Notes are never live
+// regions.
 import { useSyncExternalStore } from 'react';
 import type { SiteData } from '@cv/content';
 import { Arrow } from '../cv/Arrow.tsx';
@@ -56,6 +58,17 @@ const subscribeOnline = (listener: () => void) => {
 // Whether the browser says it is offline, following its events.
 export function useOffline(): boolean {
   return useSyncExternalStore(subscribeOnline, () => !navigator.onLine, () => false);
+}
+
+export function FailedNote({ onRetry }: { onRetry: () => void }) {
+  return (
+    <p className="spec-note note-failed">
+      <span>{siteText.inspector.loadFailed}</span>
+      <button type="button" className="spec-retry" onClick={onRetry}>
+        {siteText.inspector.retry}
+      </button>
+    </p>
+  );
 }
 
 export function OfflineNote() {

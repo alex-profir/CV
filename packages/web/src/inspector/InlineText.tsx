@@ -5,13 +5,10 @@
 // text when the site names no repository.
 import type { ReactNode } from 'react';
 import type { Inline } from '../../scripts/requirements/index.ts';
-import { fileUrl } from '../format/repository.ts';
+import { fileUrl, specFile } from '../format/repository.ts';
 import { fill, siteText } from '../site-text.ts';
 
 export type InlineLinks = { repository: string | undefined; commit: string };
-
-// A spec's file, from its feature.
-export const specFile = (feature: string) => `specs/${feature}/spec.md`;
 
 function render(nodes: readonly Inline[], links: InlineLinks): ReactNode[] {
   const { repository, commit } = links;

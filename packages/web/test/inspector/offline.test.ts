@@ -155,4 +155,32 @@ describe('007-requirement-inspector-FR-027: offline, the view says its links nee
     expect(await page.locator(`${view} p.note-offline`).count()).toBe(0);
     expect(errors).toEqual([]);
   });
+
+  test("online, when the data doesn't load, the view says so rather than that it's offline, and Try again shows the groups", async () => {
+    let failing = true;
+    const page = await openShell({
+      ...SHELL_PAGE.desktop,
+      serviceWorkers: 'block',
+      beforeGoto: async (target) => {
+        await target.route(DATA_FILE, async (route) => {
+          if (failing) await route.fulfill({ status: 404, body: '' });
+          else await route.continue();
+        });
+      },
+    });
+    await page.locator(`${viewSelector('cv', 'desktop')} button.show-specs`).click();
+    const view = specViewSelector('cv');
+    const note = page.locator(`${view} p.note-failed`);
+    await note.waitFor({ state: 'visible' });
+    expect(await note.locator('span').innerText()).toBe(text.loadFailed);
+    expect(await note.getAttribute('aria-live')).toBeNull();
+    expect(await page.locator(`${view} p.note-offline`).count()).toBe(0);
+    expect(await page.locator(`${view} section.spec-group`).count()).toBe(0);
+
+    failing = false;
+    await note.getByRole('button', { name: text.retry }).click();
+    await page.locator(`${view} section.spec-group`).first().waitFor({ state: 'visible' });
+    expect(await note.count()).toBe(0);
+    expect(await page.evaluate((selector) => document.activeElement === document.querySelector(`${selector} h1.spec-heading`), view)).toBe(true);
+  });
 });

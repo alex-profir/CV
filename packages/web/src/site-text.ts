@@ -324,6 +324,9 @@ export const siteText = deepFreeze({
       repository: "The site's repository on GitHub",
     },
     offline: "You're offline. Everything here is saved on this device, but the links to GitHub need a connection.",
+    // The requirement data didn't load while the browser is online.
+    loadFailed: "The requirements couldn't be loaded.",
+    retry: 'Try again',
     uncommitted: 'This build includes uncommitted changes. Its links lead to the last commit, {commit}, so they may not match what you see here.',
   },
   // The Playground (008 design/wireframes.md, states and Site text). The
