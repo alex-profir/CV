@@ -12,6 +12,8 @@ export type FileNode = { kind: 'file' | 'folder'; owner: 'root' | 'guest'; prote
 export const fsError = (code: 'ENOENT' | 'EACCES' | 'EISDIR' | 'ENOTDIR' | 'EEXIST' | 'ENOTEMPTY' | 'ENOSPC' | 'EINVAL', syscall: string, path: string, dest?: string): Error => {
   const facts = { ENOENT: [-2, 'no such file or directory'], EACCES: [-13, 'permission denied'], EISDIR: [-21, 'illegal operation on a directory'], ENOTDIR: [-20, 'not a directory'], EEXIST: [-17, 'file already exists'], ENOTEMPTY: [-39, 'directory not empty'], ENOSPC: [-28, 'no space left on device'], EINVAL: [-22, 'invalid argument'] } as const;
   const [errno, words] = facts[code];
+  // Reading a folder: Node's error names no path.
+  if (path === '') return Object.assign(new Error(`${code}: ${words}, ${syscall}`), { errno, code, syscall });
   const places = dest === undefined ? `'${path}'` : `'${path}' -> '${dest}'`;
   return Object.assign(new Error(`${code}: ${words}, ${syscall} ${places}`), { errno, code, syscall, path, ...(dest === undefined ? {} : { dest }) });
 };
@@ -102,7 +104,15 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
     deps.send({ folder: path, made: false });
   }
 
-  return { get: (path: string) => nodes.get(path), children, put, removeFile, makeFolder, removeFolder, parentOf, sizeOf: (node: FileNode) => bytesOf(node, encode) };
+  // Whether a rename could go through, before anything of it is done.
+  function checkMove(from: string, to: string, syscall: string): void {
+    writable(from, syscall);
+    if (nodes.get(to)?.kind === 'folder') throw fsError('EISDIR', syscall, to);
+    parentChecked(to, syscall);
+    writable(to, syscall);
+  }
+
+  return { get: (path: string) => nodes.get(path), children, checkMove, put, removeFile, makeFolder, removeFolder, parentOf, sizeOf: (node: FileNode) => bytesOf(node, encode) };
 }
 
 export type Files = ReturnType<typeof createFiles>;

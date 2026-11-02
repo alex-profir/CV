@@ -269,6 +269,40 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
     },
   },
   {
+    name: 'files',
+    shells: BOTH,
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      await writeFile(page, 'lib.js', "exports.name = (data) => data.basics.name;\n");
+      await writeFile(page, 'use.js', "const fs = require('fs');\nconst { name } = require('./lib');\nfs.writeFileSync('out.txt', name(JSON.parse(fs.readFileSync('cv.json', 'utf8'))));\n");
+      await runLine(page, 'node use.js');
+      await statusIs(page, found, 'node use.js', 0);
+      const written = await outputOf(await runLine(page, 'cat out.txt'));
+      if (written === '') found.push(problem('files', 'cat out.txt', 'what the program wrote is not there'));
+      const before = await outputOf(await runLine(page, 'cat cv.json'));
+      expectIn(found, 'writing cv.json', await outputOf(await runLine(page, `node -e "require('fs').writeFileSync('/home/guest/cv.json', '')"`)), 'EACCES', 'rules');
+      if ((await outputOf(await runLine(page, 'cat cv.json'))) !== before) found.push(problem('rules', 'cv.json', 'a program changed a protected file'));
+      return found;
+    },
+  },
+  {
+    name: 'files-after-stop',
+    shells: ['desktop'],
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      await writeFile(page, 'w.js', "require('fs').writeFileSync('kept.txt', 'kept');\nconsole.log('wrote');\nwhile (true) {}\n");
+      await startLine(page, 'node w.js');
+      await printed(page, 'wrote');
+      await page.keyboard.press('Control+C');
+      await ended(page);
+      const kept = await outputOf(await runLine(page, 'cat kept.txt'));
+      if (kept !== 'kept') found.push(problem('files', 'a write before Ctrl+C', `cat gives ${JSON.stringify(kept)}`));
+      return found;
+    },
+  },
+  {
     name: 'closed',
     shells: ['desktop'],
     async run(page, shell) {

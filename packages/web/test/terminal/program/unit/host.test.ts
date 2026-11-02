@@ -227,3 +227,116 @@ describe('009-terminal-node-FR-028: a worker that dies', () => {
     expect(host.ended[0]!.reason).toBe('died');
   });
 });
+
+describe('009-terminal-node-FR-030: what a program changed', () => {
+  test('the latest per path, removals and folders, carried by onEnded', () => {
+    const host = fakeHost();
+    host.fromWorker({ file: '/home/guest/a', text: 'one', nonce: 'n' });
+    host.fromWorker({ file: '/home/guest/a', text: 'two', nonce: 'n' });
+    host.fromWorker({ file: '/home/guest/b', text: '\u00ff', binary: true, nonce: 'n' });
+    host.fromWorker({ file: '/home/guest/c', removed: true, nonce: 'n' });
+    host.fromWorker({ folder: '/home/guest/d', made: true, nonce: 'n' });
+    host.fromWorker({ folder: '/home/guest/e', made: true, nonce: 'n' });
+    host.fromWorker({ folder: '/home/guest/d', made: false, nonce: 'n' });
+    host.handle.interrupt();
+    expect(host.ended[0]).toEqual({
+      status: 130,
+      reason: 'interrupted',
+      changes: {
+        files: { '/home/guest/a': { text: 'two' }, '/home/guest/b': { text: '\u00ff', binary: true }, '/home/guest/c': { removed: true } },
+        folders: [{ path: '/home/guest/e', made: true }, { path: '/home/guest/d', made: false }],
+      },
+    });
+  });
+
+  test('a bad change is dropped', () => {
+    const host = fakeHost();
+    host.fromWorker({ file: 5, text: 'x', nonce: 'n' });
+    host.fromWorker({ file: '/a', text: 5, nonce: 'n' });
+    host.fromWorker({ folder: '/a', made: 'yes', nonce: 'n' });
+    host.handle.interrupt();
+    expect(host.ended[0]!.changes).toEqual({ files: {}, folders: [] });
+  });
+
+  test('what is held stays bounded: writing one file many times counts once', () => {
+    const host = fakeHost();
+    for (let at = 0; at < 20; at += 1) host.fromWorker({ file: '/a', text: 'x'.repeat(100_000), nonce: 'n' });
+    expect(host.ended).toEqual([]);
+  });
+
+  test('changes past the limit end the program, status 1, with what it had', () => {
+    const host = fakeHost();
+    host.fromWorker({ file: '/a', text: 'x'.repeat(600_000), nonce: 'n' });
+    host.fromWorker({ file: '/b', text: 'x'.repeat(600_000), nonce: 'n' });
+    expect(host.ended.map(({ status, reason }) => [status, reason])).toEqual([[1, 'died']]);
+    expect(Object.keys(host.ended[0]!.changes.files)).toEqual(['/a', '/b']);
+  });
+
+  test('a flood of forged removals ends it too', () => {
+    const host = fakeHost();
+    for (let at = 0; at < 200_000 && host.ended.length === 0; at += 1) host.fromWorker({ file: `/home/guest/forged-${at}`, removed: true, nonce: 'n' });
+    expect(host.ended[0]!.reason).toBe('died');
+  });
+});
+
+describe('009-terminal-node-FR-021 and 009-terminal-node-FR-037: a TypeScript program', () => {
+  const TS: ProgramRequest = { ...REQUEST, command: 'ts-node', script: '/home/guest/a.ts' };
+  const made = (compile: HostEnv['compile']) => {
+    const frames: unknown[] = [];
+    const ended: ProgramEnd[] = [];
+    const out: (readonly OutputChunk[])[] = [];
+    const host = createHost({
+      runtime: 'r',
+      nonce: () => 'n',
+      listen: () => () => {},
+      makeChannel: () => ({ port1: { postMessage: () => {}, onmessage: null, close: () => {} }, port2: 'p' }),
+      makeFrame() {
+        const frame: FrameLike = { contentWindow: null, addEventListener: () => {}, remove: () => {} };
+        frames.push(frame);
+        return frame;
+      },
+      compile,
+    });
+    const handle = host.start(TS, { onOutput: (chunks) => void out.push(chunks), onProgress: () => {}, onEnded: (end) => void ended.push(end) });
+    return { handle, frames, ended, out };
+  };
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  test('a type error prints its form, status 1, and no frame is made', async () => {
+    const { frames, ended, out } = made(async () => ({ kind: 'done', result: { diagnostics: [{ file: '/home/guest/a.ts', line: 1, column: 7, code: 2322, message: 'bad' }], outputs: {} } }));
+    await tick();
+    expect(ended.map(({ status, reason }) => [status, reason])).toEqual([[1, 'type-error']]);
+    expect(out.flat()).toEqual([{ stream: 'stderr', text: 'TSError: Unable to compile TypeScript:\na.ts(1,7): error TS2322: bad\n' }]);
+    expect(frames).toEqual([]);
+  });
+
+  test('offline says so; a failure is a died program', async () => {
+    const offline = made(async () => ({ kind: 'offline' }));
+    await tick();
+    expect(offline.ended.map(({ status, reason }) => [status, reason])).toEqual([[1, 'offline']]);
+    const failed = made(async () => ({ kind: 'failed' }));
+    await tick();
+    expect(failed.ended.map(({ status, reason }) => [status, reason])).toEqual([[1, 'died']]);
+  });
+
+  test('Ctrl+C during the wait aborts it, with 130, and nothing starts when it answers', async () => {
+    let signal: AbortSignal | null = null;
+    let answer = (_: Awaited<ReturnType<HostEnv['compile']>>) => {};
+    const { handle, frames, ended } = made((_, __, given) => {
+      signal = given;
+      return new Promise((resolve) => (answer = resolve));
+    });
+    handle.interrupt();
+    expect(signal!.aborted).toBe(true);
+    expect(ended.map(({ status, reason }) => [status, reason])).toEqual([[130, 'interrupted']]);
+    answer({ kind: 'done', result: { diagnostics: [], outputs: {} } });
+    await tick();
+    expect(frames).toEqual([]);
+  });
+
+  test('no error starts the frame', async () => {
+    const { frames } = made(async () => ({ kind: 'done', result: { diagnostics: [], outputs: {} } }));
+    await tick();
+    expect(frames).toHaveLength(1);
+  });
+});

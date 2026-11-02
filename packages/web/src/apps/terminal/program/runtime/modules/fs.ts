@@ -14,7 +14,7 @@ type Encoding = string | null | undefined | { encoding?: string | null; flag?: s
 
 const encodingOf = (options: Encoding) => (typeof options === 'string' ? options : (options?.encoding ?? null));
 
-const invalidPath = (value: unknown) => Object.assign(new TypeError(`The "path" argument must be of type string or an instance of Buffer or URL. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+const invalidPath = (value: unknown) => Object.assign(new TypeError(`The "path" argument must be of type string or an instance of Buffer or URL. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value} (${String(value)})`}`), { code: 'ERR_INVALID_ARG_TYPE' });
 
 export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferClass) {
   const at = (given: unknown): string => {
@@ -147,7 +147,7 @@ export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferCla
       const target = at(given);
       const node = files.get(target);
       if (node === undefined) throw fsError('ENOENT', 'open', String(given));
-      if (node.kind === 'folder') throw fsError('EISDIR', 'read', String(given));
+      if (node.kind === 'folder') throw fsError('EISDIR', 'read', '');
       const encoding = encodingOf(options);
       if (encoding === null) return contentsOf(node);
       if ((encoding === 'utf8' || encoding === 'utf-8') && !node.binary) return node.text;
@@ -245,7 +245,7 @@ export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferCla
         throw fsError('ENOENT', 'rm', String(given));
       }
       if (node.kind === 'folder') {
-        if (options?.recursive !== true) throw Object.assign(new Error(`Path is a directory: rm returned EISDIR (is a directory) ${given}`), { name: 'SystemError', code: 'ERR_FS_EISDIR' });
+        if (options?.recursive !== true) throw Object.assign(new Error(`Path is a directory: rm returned EISDIR (is a directory) ${given}`), { name: 'SystemError', code: 'ERR_FS_EISDIR', syscall: 'rm', errno: 21 });
         for (const child of files.children(target)) sync.rmSync(child, { recursive: true, force: true });
         files.removeFolder(target, 'rm');
       } else files.removeFile(target, 'rm');
@@ -274,9 +274,11 @@ export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferCla
       if (node === undefined) throw fsError('ENOENT', 'rename', String(from), String(to));
       if (source === target) return;
       try {
+        files.checkMove(source, target, 'rename');
         if (node.kind === 'file') {
-          files.put(target, node.text, node.binary, 'rename');
+          // In this order, so a large file doesn't count twice toward the limit.
           files.removeFile(source, 'rename');
+          files.put(target, node.text, node.binary, 'rename');
         } else {
           files.makeFolder(target, 'rename');
           for (const child of files.children(source)) sync.renameSync(child, `${target}/${child.slice(child.lastIndexOf('/') + 1)}`);
