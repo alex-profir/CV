@@ -646,7 +646,10 @@ span.menu-title {
 }
 
 .dock-name {
-  max-inline-size: calc(var(--token-size-dock-icon) + 2 * var(--token-space-2));
+  /* Room for the longest name on one line wherever text measures wider: on
+     Linux Playground wrapped at 64 px, and the taller dock met a maximized
+     window (FR-010). */
+  max-inline-size: calc(var(--token-size-dock-icon) + 2 * var(--token-space-3));
   overflow-wrap: anywhere;
   text-align: center;
 }

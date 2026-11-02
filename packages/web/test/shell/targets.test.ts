@@ -57,6 +57,8 @@ describe('005-os-shell-FR-037: every control is at least 24 × 24 px, and Home 4
     await expect.poll(() => page.locator(CV).getAttribute('data-maximized')).toBe('');
     await expectNoSmall(page, 'maximized');
     await page.getByRole('button', { name: 'Restore CV' }).click();
+    // Pressing a moving window ends its motion, which moves the button from under the press.
+    await settle(page);
     await page.getByRole('button', { name: 'Minimize CV' }).click();
     await expect.poll(() => page.locator(CV).isHidden()).toBe(true);
     await expectNoSmall(page, 'minimized');
