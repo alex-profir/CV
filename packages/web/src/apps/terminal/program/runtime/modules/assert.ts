@@ -112,11 +112,9 @@ function missing(expected: unknown, message: unknown, what: string, operator: st
 }
 
 const equal = (actual: unknown, expected: unknown, message?: string | Error) => {
-
   if (!(actual == expected || (actual !== actual && expected !== expected))) fail(actual, expected, message, '==');
 };
 const notEqual = (actual: unknown, expected: unknown, message?: string | Error) => {
-
   if (actual == expected || (actual !== actual && expected !== expected)) fail(actual, expected, message, '!=');
 };
 const strictEqual = (actual: unknown, expected: unknown, message?: string | Error) => {

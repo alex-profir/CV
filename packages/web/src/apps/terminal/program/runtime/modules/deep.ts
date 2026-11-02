@@ -6,7 +6,6 @@ const ownKeys = (value: object) => Reflect.ownKeys(value).filter((key) => Object
 export function isDeepEqual(a: unknown, b: unknown, strict: boolean, seen: Map<object, object> = new Map()): boolean {
   if (strict ? Object.is(a, b) : a === b || (a !== a && b !== b)) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) {
-    // eslint-disable-next-line eqeqeq
     return !strict && (a === null || typeof a !== 'object') && (b === null || typeof b !== 'object') && a == b;
   }
   if (strict && Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
