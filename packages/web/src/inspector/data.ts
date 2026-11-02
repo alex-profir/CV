@@ -1,8 +1,8 @@
 // The visit's requirement data (007 data-model.md The loader, research R9):
 // one low-priority fetch of the file `#os` names, started once the shell is
 // ready, kept in memory for the visit and never written to storage. A
-// failed fetch is tried again on the next "Show specs". Components read it
-// with useSyncExternalStore.
+// failed fetch is tried again on the next "Show specs", or by the spec
+// view's "Try again". Components read it with useSyncExternalStore.
 import { useSyncExternalStore } from 'react';
 import type { RequirementData } from '../../scripts/requirements/index.ts';
 
@@ -53,8 +53,8 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 const get = () => state;
-const getServer = (): RequirementsState => ({ status: 'idle' });
-const SERVER: RequirementsState = getServer();
+// The server render has no data yet.
+const SERVER: RequirementsState = { status: 'idle' };
 
 export function useRequirements(): RequirementsState {
   return useSyncExternalStore(subscribe, get, () => SERVER);
