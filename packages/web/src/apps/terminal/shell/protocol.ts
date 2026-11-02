@@ -4,6 +4,7 @@
 // both sides import them, and the worker sends back data, never markup
 // (research R39).
 import type { Block, Effect } from '../engine/block.ts';
+import type { FileChanges } from '../program/messages.ts';
 
 // `set -o` options the adapter carries from line to line (research R27).
 export type ShellOption = 'errexit' | 'nounset' | 'pipefail' | 'noglob' | 'noclobber' | 'xtrace' | 'allexport' | 'verbose';
@@ -120,6 +121,8 @@ export type ToWorker =
   | { type: 'restore'; state: ShellState; files: VisitorFiles }
   | { type: 'reset' }
   | { type: 'complete'; request: CompleteRequest }
-  | { type: 'write'; request: WriteRequest };
+  | { type: 'write'; request: WriteRequest }
+  // What a program changed, when it ended (009 contracts/program.md).
+  | { type: 'apply'; id: number; changes: FileChanges };
 
-export type FromWorker = { type: 'ready' } | { type: 'failed'; reason: string } | { type: 'result'; result: RunResult } | { type: 'completion'; completion: Completion } | { type: 'wrote'; outcome: WriteOutcome };
+export type FromWorker = { type: 'ready' } | { type: 'failed'; reason: string } | { type: 'result'; result: RunResult } | { type: 'completion'; completion: Completion } | { type: 'wrote'; outcome: WriteOutcome } | { type: 'applied'; id: number; files: VisitorFiles };

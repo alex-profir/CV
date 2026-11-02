@@ -159,7 +159,7 @@ describe("007-requirement-inspector-FR-034: the inspector's checks run in the sa
   test("the local command is the CI step, and the parts run in contracts/cli.md's order, inspector after terminal", () => {
     expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
     expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
-    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
+    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'program', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
   });
 
   test('every inspector problem line names the view, the shell, the width and the requirement or its spec, and an untracked file changes no result', { timeout: 600_000 }, async () => {

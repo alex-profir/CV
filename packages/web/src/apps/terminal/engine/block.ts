@@ -2,6 +2,7 @@
 // block): data, never markup. One renderer draws every block, and every
 // string in it reaches the page as a text child, so typed text can never
 // become markup or a link (FR-018).
+import type { ProgramRequest } from '../program/messages.ts';
 
 // A folder's place: [] is the home folder, ['work'] its work folder
 // (data-model.md File system).
@@ -72,7 +73,9 @@ export type Effect =
   | { kind: 'open'; view: 'cv' | 'playground' | 'about' }
   | { kind: 'clear-history' }
   // `history -d`, by its place in the history (T372).
-  | { kind: 'delete-history'; index: number };
+  | { kind: 'delete-history'; index: number }
+  // A program to run once the line ends (009 research R6).
+  | { kind: 'program'; request: ProgramRequest };
 
 export const text = (value: string, tone?: Tone): Node => (tone === undefined ? { kind: 'text', text: value } : { kind: 'text', text: value, tone });
 

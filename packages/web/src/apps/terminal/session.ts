@@ -200,7 +200,7 @@ export function createSession(client: ShellClient = createShellClient()) {
         next = { ...next, entries: next.entries.filter((each) => each !== done) };
         if (next.vim === null) next = { ...next, vim: openVim(source), vimEntry: owner, announcement: say(openedText(source)) };
         else next = { ...next, vimQueue: [...next.vimQueue, { source, entry: owner }] };
-      } else if (waiting.actions !== null) {
+      } else if (effect.kind === 'open' && waiting.actions !== null) {
         const { actions } = waiting;
         acts.push(() => actions.open(effect.view));
       }

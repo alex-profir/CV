@@ -51,6 +51,9 @@ export function licensesText(dirs: Iterable<string>): string {
   return `${packages.map((entry) => `${entry.name} ${entry.version}\nLicense: ${entry.license}\n\n${entry.text}\n`).join('\n---\n\n')}`;
 }
 
+// The packages among a bundle's modules.
+export const packageDirs = (modules: Iterable<string>): string[] => [...modules].flatMap((id) => packageDir(id.replace(/^\0/, '').split('?')[0]!) ?? []);
+
 export const LICENSE_ASSET = 'shell-licenses.txt';
 
 // The worker build's plugin: emits the license file beside the worker and

@@ -44,6 +44,7 @@ export const FAST_TEST_GLOBS = [
   'packages/tokens/test',
   'packages/web/test/terminal/engine',
   'packages/web/test/playground/unit',
+  'packages/web/test/terminal/program/unit',
 ].map((dir) => `${dir}/**/*.{test,spec}.?(c|m)[jt]s?(x)`);
 
 // Whether a file, given by its path relative to the root, is a test file.

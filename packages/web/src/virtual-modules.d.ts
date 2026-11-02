@@ -17,3 +17,10 @@ declare module 'virtual:playground-runner' {
   export const runtime: string;
   export const policy: string;
 }
+
+// The program bundle's scripts (009 research R13).
+declare module 'virtual:terminal-program' {
+  export const bootstrap: string;
+  export const runtime: string;
+  export const policy: string;
+}

@@ -37,6 +37,25 @@ const shellText = deepFreeze({
     history: { args: '', description: 'Commands run so far', help: 'Lists the commands run since the Terminal opened, oldest first. The Up and Down arrows step through them.' },
     clear: { args: '', description: 'Clear the screen', help: 'Clears the output. The commands stay in the history.' },
     exit: { args: '', description: 'Close the Terminal', help: 'Closes the Terminal on a computer, or goes back to the home screen on a phone.' },
+    node: { args: '<file> [args]', description: 'Run a JavaScript or TypeScript file', help: 'Runs a file on a line of its own, in a sandbox, with no connection. node -e runs code, and node -p prints its result. A TypeScript file runs without its types being checked. Ctrl+C stops it.' },
+    'ts-node': { args: '<file> [args]', description: 'Check a TypeScript file, then run it', help: 'Checks the types of a file, and runs it if they hold no error, on a line of its own, in a sandbox, with no connection. Ctrl+C stops it.' },
+  },
+  // `node` and `ts-node` (009 contracts/commands.md).
+  nodeCommand: {
+    noScript: 'node: there is no interactive mode here. Run a file: node hello.js',
+    ownLine: 'node: runs only on a line of its own here.',
+    version: 'v26.0.0 (browser runtime, not Node.js)',
+    badOption: '{command}: bad option: {option}',
+    usage: [
+      'Usage: node <file> [args]',
+      '       node -e <code>',
+      '       node -p <code>',
+      '       ts-node <file> [args]',
+      '',
+      'A browser runtime that behaves like Node.js, in a sandbox, with no connection.',
+      'Modules: fs, fs/promises, path, events, util, assert, os, timers, timers/promises, buffer, url.',
+      'What each offers: specs/009-terminal-node/contracts/node-api.md',
+    ],
   },
   // `help`'s lead, before the table.
   helpLead: { desktop: 'Click a command to run it, or type it and press Enter.', phone: 'Tap a command to run it.' },

@@ -23,6 +23,7 @@ import { cvAppProblems } from './parts/cv-app.ts';
 import { shellLineProblems, terminalProblems, terminalVariants } from './parts/terminal.ts';
 import { INSPECTOR_VIEWS, elementProblems, inspectorVariants, inspectorViewProblems, readInspectorExpected, sweepProblems } from './parts/inspector.ts';
 import type { InspectorExpected } from './parts/inspector.ts';
+import { PROGRAM_CHECKS, programVariant } from './parts/program.ts';
 import { PLAYGROUND_CHECKS, PLAYGROUND_FORCED_STATES, PLAYGROUND_OTHER_SITE_RUNS, firstLoadProblems, playgroundForcedProblems, playgroundMotionProblems, playgroundOfflineProblems, playgroundSideways, playgroundVariant, readEngineManifest } from './parts/playground.ts';
 import type { PlaygroundExpected } from './parts/playground.ts';
 import { fontProblems } from './parts/fonts.ts';
@@ -321,6 +322,20 @@ export async function runCheck(root: string, { parts = PARTS, repository = root,
             await withShell(chromium, rootUrl, target, {}, (page) => check.run(page, { expected, add, profile }));
           } catch (error) {
             for (const name of check.names) if (!reported.has(name)) results.push(crashed('playground', ROOT, playgroundVariant(check.shell, name, target.width), error));
+          }
+        }
+      },
+      program: async () => {
+        // As `cv-app`: with no shell at the root, there's no Terminal.
+        if (!shellRoot || PROGRAM_CHECKS.length === 0) {
+          results.push(result('program', '-', '-', []));
+          return;
+        }
+        for (const check of PROGRAM_CHECKS) {
+          for (const shell of check.shells) {
+            const target = shellAt(shell);
+            const variant = programVariant(shell, check.name, target.width);
+            results.push(await run('program', ROOT, variant, () => withShell(chromium, rootUrl, target, check.options ?? {}, async (page) => (await check.run(page, shell)).map((found) => ({ part: 'program' as const, page: ROOT, variant, ...found })))));
           }
         }
       },

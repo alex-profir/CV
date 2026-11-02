@@ -97,6 +97,16 @@ export const siteText = deepFreeze({
       // After a line cancelled with Ctrl+C.
       cancelMark: '^C',
     },
+    // A program's own lines (009 design/wireframes.md Site text).
+    program: {
+      stillRunning: { desktop: 'Still running. Ctrl+C stops it.', phone: 'Still running. The Stop key stops it.' },
+      stop: 'Stop the program',
+      download: 'Downloading TypeScript, once: {n}% of {size} MB',
+      offline: 'ts-node: TypeScript has to be downloaded once with a connection: {size} MB.',
+      memory: 'node: the browser ended this program: it ran out of memory.',
+      died: 'node: the browser ended this program.',
+      ended: 'Program ended, status {n}.',
+    },
     // The shell, loaded when the Terminal first opens (FR-070).
     shellLoading: 'loading the shell · type away, commands run once it is ready',
     shellFailed: "The shell couldn't load. Check the connection, then try again.",

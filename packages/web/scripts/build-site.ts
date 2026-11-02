@@ -36,9 +36,10 @@ import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
-import { bundleRunner, runnerPlugin } from './runner-scripts.ts';
+import { bundleProgram, bundleRunner, programPlugin, runnerPlugin } from './runner-scripts.ts';
 import type { RunnerScripts } from './runner-scripts.ts';
 import { buildRequirementData } from './requirements/index.ts';
+import { licensesText, packageDirs } from './shell-licenses.ts';
 import { checkSpecList } from './spec-list.ts';
 import type { SiteManifest } from '../src/routes.ts';
 import viteConfig from '../vite.config.ts';
@@ -76,6 +77,11 @@ export const OS_BUDGET = 149_778;
 const WORKER_SCRIPT = /^shell-[\w-]+\.js$/;
 const SHELL_MARK = "is not available in the Terminal's shell";
 
+// The program bundle (009 research R13): the page's host, the bootstrap, the
+// policy and the runtime's text, opened by the `os` script at a first program.
+const PROGRAM_ENTRY = path.join(WEB_ROOT, 'src/apps/terminal/program/entry.ts');
+const PROGRAM_SCRIPT = /^program-[\w-]+\.js$/;
+
 // The service worker's source, and where its built copy is served.
 const WORKER_SOURCE = path.join(WEB_ROOT, 'src/sw/service-worker.ts');
 
@@ -105,7 +111,7 @@ export const ENGINE_DIR = 'playground';
 
 export type EngineAssets = { manifest: string; bytes: number };
 
-type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: EngineAssets };
+type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: EngineAssets; program?: string };
 
 type RenderModule = {
   renderShell(input: { resume: Resume; siteData: SiteData; assets: PageAssets }): string;
@@ -243,6 +249,44 @@ function placeEngine(engine: BuiltEngine, siteDir: string): EngineAssets {
   return { manifest: `${folder}/files.json`, bytes: total };
 }
 
+type BuiltProgram = { code: string; licenses: string };
+
+// The program bundle, before the client build empties the site: one ES module
+// file, its runtime and bootstrap as text, with the licenses of what the runtime
+// bundles (009 research R13). Written by `placeProgram` after the client build.
+async function buildProgram(): Promise<BuiltProgram> {
+  const { scripts, modules } = await bundleProgram();
+  const result = await build({
+    root: WEB_ROOT,
+    configFile: false,
+    publicDir: false,
+    logLevel: 'warn',
+    plugins: [programPlugin(scripts)],
+    oxc: viteConfig.oxc,
+    build: {
+      write: false,
+      emptyOutDir: false,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: Number.POSITIVE_INFINITY,
+      rolldownOptions: { input: { program: PROGRAM_ENTRY }, preserveEntrySignatures: 'strict', output: { format: 'es', codeSplitting: false }, checks: { pluginTimings: false } },
+    },
+  });
+  const outputs = (Array.isArray(result) ? result : [result]) as { output: { type: string; code?: string }[] }[];
+  const chunks = outputs.flatMap((output) => output.output).filter((item) => item.type === 'chunk');
+  if (chunks.length !== 1) throw new Error('the program bundle is not one file');
+  return { code: chunks[0]!.code!, licenses: licensesText(packageDirs(modules)) };
+}
+
+// `assets/program-<hash>.js` and its license file, named in its first line (T011).
+function placeProgram(program: BuiltProgram, siteDir: string): string {
+  const licenses = `assets/program-licenses-${sha256(program.licenses).slice(0, 8)}.txt`;
+  const code = `/*! A program's host and runtime. The licenses of what it bundles: /${licenses} */\n${program.code}`;
+  const file = `assets/program-${sha256(code).slice(0, 8)}.js`;
+  fs.writeFileSync(path.join(siteDir, licenses), program.licenses);
+  fs.writeFileSync(path.join(siteDir, file), code);
+  return `/${file}`;
+}
+
 function ssrConfig(ssrDir: string): UserConfig {
   return mergeConfig(viteConfig, {
     configFile: false,
@@ -295,6 +339,9 @@ function importsOf(file: string, code: string): number {
   return record.staticImports.length + record.dynamicImports.length;
 }
 
+// The import declarations of a script in `assets`.
+const staticImports = (file: string, assets: string): number => parseSync(file, fs.readFileSync(path.join(assets, file), 'utf8'), { sourceType: 'module' }).module.staticImports.length;
+
 // The scripts the client build wrote (006 research R34, contracts/site.md):
 // the `os` script, one file with no import, that holds no part of the shell
 // and is within its gzip budget; and exactly one worker script, one file
@@ -303,7 +350,9 @@ function checkScripts(siteDir: string, manifest: Manifest): void {
   const assets = path.join(siteDir, 'assets');
   const scripts = fs.readdirSync(assets).filter((name) => name.endsWith('.js'));
   const known = new Set(Object.values(manifest).map((entry) => path.basename(entry.file)));
-  const workers = scripts.filter((name) => !known.has(name));
+  const programs = scripts.filter((name) => PROGRAM_SCRIPT.test(name));
+  if (programs.length !== 1 || staticImports(programs[0]!, assets) > 0) throw new Error('the program bundle is not one file');
+  const workers = scripts.filter((name) => !known.has(name) && !PROGRAM_SCRIPT.test(name));
   if (workers.length !== 1 || !WORKER_SCRIPT.test(workers[0]!)) throw new Error('the shell worker is not one file');
   const worker = fs.readFileSync(path.join(assets, workers[0]!), 'utf8');
   if (importsOf(workers[0]!, worker) > 0 || /\bimportScripts\s*\(/.test(worker)) throw new Error('the shell worker is not one file');
@@ -422,9 +471,12 @@ export async function buildSite(out: string): Promise<SiteManifest> {
 
   // 1. Client build.
   let playground: EngineAssets;
+  let program: string;
   try {
+    const builtProgram = await buildProgram();
     await build(clientConfig(siteDir));
     playground = placeEngine(engine, siteDir);
+    program = placeProgram(builtProgram, siteDir);
   } finally {
     fs.rmSync(engine.dir, { recursive: true, force: true });
   }
@@ -445,7 +497,7 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     // 3. Every route's page, each by its own render function. A route with
     // none fails the build, rather than getting a copy of another page.
     const renderers: Record<string, () => string> = {
-      '/': () => render.renderShell({ resume, siteData, assets: { ...shellAssets(viteManifest, assets), requirements, playground } }),
+      '/': () => render.renderShell({ resume, siteData, assets: { ...shellAssets(viteManifest, assets), requirements, playground, program } }),
       '/cv': () => render.renderCv({ resume, siteData, assets }),
     };
     const pages: Record<string, string> = {};
