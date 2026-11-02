@@ -227,7 +227,12 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
     loop.call(() => uncaught(event.error ?? new Error(String(event.message))));
   });
 
-  signal = () => loop.call(() => proc.process.emit('SIGINT', 'SIGINT'));
+  signal = () =>
+    loop.call(() => {
+      proc.process.emit('SIGINT', 'SIGINT');
+      // A `once` handler has just gone.
+      proc.told();
+    });
 
   // Top-level code, in a callback of the loop.
   function runMain(work: () => Promise<void> | undefined): void {

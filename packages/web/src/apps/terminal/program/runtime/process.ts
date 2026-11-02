@@ -237,7 +237,7 @@ export function createProcess(deps: ProcessDeps) {
     });
   }
 
-  return { process, cwd: () => cwd, code: codeOf };
+  return { process, cwd: () => cwd, code: codeOf, told };
 }
 
 export type RuntimeProcess = ReturnType<typeof createProcess>;

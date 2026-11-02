@@ -27,11 +27,14 @@ export const lastOutput = async (page: Page): Promise<string> => {
   return (await output.count()) === 0 ? '' : output.innerText();
 };
 
-// A file, as a visitor could write it, with the shell's `printf`.
+// A file, as a visitor could write it, with the shell's `printf`: in pieces, as the
+// command line holds a limited length.
 export async function writeFile(page: Page, name: string, text: string): Promise<void> {
-  const quoted = text.replace(/\\/g, '\\\\').replace(/'/g, "'\\''").replace(/\n/g, '\\n');
-  await startLine(page, `printf '%b' '${quoted}' > ${name}`);
-  await linesRun(page);
+  for (let at = 0; at < Math.max(text.length, 1); at += 200) {
+    const quoted = text.slice(at, at + 200).replace(/\\/g, '\\\\').replace(/'/g, "'\\''").replace(/\n/g, '\\n');
+    await startLine(page, `printf '%b' '${quoted}' ${at === 0 ? '>' : '>>'} ${name}`);
+    await linesRun(page);
+  }
 }
 
 // Runs a line to its end, and gives what it printed.

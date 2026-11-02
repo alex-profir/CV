@@ -83,3 +83,34 @@ describe('009-terminal-node-FR-035: exit handlers run on a natural end and on pr
     expect(here.exit).toBe(there.status);
   });
 });
+
+describe('009-terminal-node-FR-032: a SIGINT handler runs when the program yields', () => {
+  test('the page is told a handler exists, and the signal becomes the event', async () => {
+    const run = await runProgram(script("process.on('SIGINT', (name) => { console.log('got', name); process.exit(4); });\nconsole.log('ready');\nsetInterval(() => {}, 1000);\n"), { signals: [{ afterOutput: 'ready' }] });
+    expect(run.stdout).toBe('ready\ngot SIGINT\n');
+    expect(run.exit).toBe(4);
+    expect(run.messages).toContainEqual({ sigint: true });
+  });
+
+  test('the page is told when it goes: by `off`, and after a `once` has run', async () => {
+    const off = await runProgram(script("const f = () => {};\nprocess.on('SIGINT', f);\nprocess.off('SIGINT', f);\n"));
+    expect(off.messages.filter((each) => 'sigint' in each)).toEqual([{ sigint: true }, { sigint: false }]);
+    const once = await runProgram(script("process.once('SIGINT', () => console.log('once'));\nconsole.log('ready');\nsetTimeout(() => {}, 100);\n"), { signals: [{ afterOutput: 'ready' }] });
+    expect(once.stdout).toBe('ready\nonce\n');
+    expect(once.messages.filter((each) => 'sigint' in each)).toEqual([{ sigint: true }, { sigint: false }]);
+  });
+
+  test('other events on process say nothing', async () => {
+    const run = await runProgram(script("process.on('exit', () => {});\nprocess.on('uncaughtException', () => {});\n"));
+    expect(run.messages.filter((each) => 'sigint' in each)).toEqual([]);
+  });
+});
+
+describe('009-terminal-node-FR-017: an error thrown in a SIGINT handler', () => {
+  test('ends the program as any uncaught error does', async () => {
+    const run = await runProgram(script("process.on('SIGINT', () => { throw new Error('from the handler'); });\nconsole.log('ready');\nsetInterval(() => {}, 1000);\n"), { signals: [{ afterOutput: 'ready' }] });
+    expect(run.exit).toBe(1);
+    expect(run.stderr).toContain('Error: from the handler');
+    expect(run.messages.at(-1)).toEqual({ exit: 1, uncaught: true });
+  });
+});

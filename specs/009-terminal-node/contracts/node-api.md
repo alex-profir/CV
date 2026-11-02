@@ -36,6 +36,8 @@ With or without `node:`.
 - In WebKit, a program that reads `error.stack` itself sees the runtime's frames, with no places for its own. Errors
   printed by `console` or left uncaught show none of them.
 - `import` bindings aren't live (R4).
+- An `import()` run through `eval` or `new Function` is the engine's own and not the loader's. The browser refuses it,
+  and some browsers never settle its promise rather than reject it.
 - A thrown value that is no error, such as `throw 5`, prints without its file and line, as the engine gives no place
   for it.
 - There's no `stream`, so no `createReadStream`, and `process.stdout` is only what's listed.
