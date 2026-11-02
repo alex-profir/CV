@@ -54,13 +54,14 @@ needs the network shows its own offline state; the shell has no offline indicato
 
 ### Planned order
 
-1. TypeScript playground
-2. Files, with the Terminal moved onto the shared files
-3. Spotlight
-4. The CV as a PDF
-5. Settings
-6. React Native showcase
-7. Contact
+The TypeScript playground has shipped.
+
+1. Files, with the Terminal moved onto the shared files
+2. Spotlight
+3. The CV as a PDF
+4. Settings
+5. React Native showcase
+6. Contact
 
 ### What the site remembers
 
@@ -71,8 +72,8 @@ add files and settings amend their specs.
 
 ### Showing the process
 
-- **Requirement inspector**: a toggle that reveals which requirement each UI element
-  implements, using its `data-req` attribute. Each requirement links to its spec in the repo.
+- **Requirement inspector**: each app's "Show specs" control turns it into a text view of the
+  requirements it implements. Each requirement links to its spec in the repo.
 - **Link to the repo**: the GitHub repository holds the full record: specs, plans, tasks,
   pull requests and CI runs.
 
@@ -103,8 +104,8 @@ These need the site to be published at a public address, and Handoff needs a ser
 - The CV, and every app that does not need the network, works offline.
 - Both shells and `/cv` meet WCAG 2.2 AA and score 90+ in every Lighthouse category on mobile
   and desktop.
-- Any visible UI element can be traced to its requirement with the inspector, and from there to
-  its tests in the repo.
+- Every app's requirements can be read in its inspector view, and followed from there to their
+  specs and tests in the repo. In the code, UI elements name their requirements by `data-req`.
 
 There are no analytics (see non-goals), so success is judged by these checks and by the
 conversations the site starts, not by traffic.

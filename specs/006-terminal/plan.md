@@ -54,7 +54,7 @@ Technical approach (details in [research.md](./research.md)):
   gaps found while researching and building (G1 to G20) are each handled, and six are reported
   upstream.
 - **In a worker, loaded on first open** (R26, R34): a module worker, `assets/shell-<hash>.js`
-  (295 KB Brotli as built), so a runaway line never freezes the page and `/` and `/cv` load none of it.
+  (295 KB Brotli as built; 361 KB on 2026-11-02, with the site's own `jq`), so a runaway line never freezes the page and `/` and `/cv` load none of it.
   Ctrl+C and the watchdog stop a line by restarting the worker from the last line's snapshot. The
   service worker keeps the version an open page came from, so the shell still loads after an
   update (R35).
@@ -160,7 +160,8 @@ request. A version published while a page is open doesn't strand that page's she
   insert mode draws each key in the next frame for the CV's JSON (about 300 lines): only changed
   lines re-render (R47). **Verify** there too.
 - Lighthouse 90+ in every category for `/` on both profiles (SC-005). The `os` script stays
-  within 5% of its gzipped size before the amendment, as T127 measures it (T104 measured 107 KB)
+  within 5% of its gzipped size before the amendment, as T127 measures it (T104 measured 107 KB;
+  re-based by 008 to 142,646 bytes, contracts/site.md)
   (SC-013), as the commands move into the worker.
 
 **Constraints**:
@@ -372,7 +373,7 @@ amendment's, which adds no dependency.
 | Network lock (`shell/no-network.ts`) | abstraction | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` before just-bash's module body runs (R39, FR-022) | Doing it in `worker.ts`'s body: ES imports are hoisted, so just-bash would already be evaluated | N/A |
 | Shell adapter (`shell/adapter.ts`) | abstraction | Carries variables, functions, options, `$?` and the working folder between lines, which just-bash resets, and checks syntax first (R27) | One endless `exec`: loses per-line limits. just-bash's private state: not an interface | N/A |
 | TerminalFs (`shell/fs.ts`) | abstraction | Protected files with bash's "Permission denied", the visitor's files with a 1 MB limit, names without regard to capitals, owners for `ls -l` (R28) | `MountableFs` read-only: answers "Read-only file system", and can't mix both kinds in one folder | N/A |
-| Site commands and wrappers (`shell/site-commands.ts`) | abstraction | The FR-008 commands as shell commands that print text and record their blocks, except where the adapter marks them piped (`__CV_PIPED`); `cat`, `ls`, `rm` and `jq` wrapped for blocks, owners and protected `rm -r` (R29); `sed`, `tee`, `cp` and `mv` wrapped so a refused write gives GNU's wording, naming the path as typed (G5, G19, G20) | Telling commands whether output is a terminal, with no output match: decided at parse time, wrong for functions. Escape sequences: forgeable with `printf` | N/A |
+| Site commands and wrappers (`shell/site-commands.ts`) | abstraction | The FR-008 commands as shell commands that print text and record their blocks, except where the adapter marks them piped (`__CV_PIPED`); `cat`, `ls` and `rm` wrapped for blocks, owners and protected `rm -r` (R29), `jq` the site's own since R53; `sed`, `tee`, `cp` and `mv` wrapped so a refused write gives GNU's wording, naming the path as typed (G5, G19, G20) | Telling commands whether output is a terminal, with no output match: decided at parse time, wrong for functions. Escape sequences: forgeable with `printf` | N/A |
 | Output mapping (`engine/output-map.ts`) | abstraction | A run's result to the shown block: recordings, text, bash's messages with the site's replies, limits, announcements (R30) | Mapping inside the renderer: untestable in Node | N/A |
 | `STANDARD_COMMANDS` and `SHELL_BUILTINS` (`shell/standard.ts`) | abstraction | The one list just-bash registers and `help` lists, so no command is missing from `help`, and each left-out name has a reason (R32) | All of just-bash's commands: the network, other languages and scripts | N/A |
 | Redirect check plugin (in `shell/adapter.ts`, with its part in `shell/fs.ts`) | abstraction (temporary) | Checks each output redirect's target as its command runs, and fails only that command on a refusal or a write past 1 MB, until just-bash's G1 fix is released (R28) | Nothing: a refused redirect rejects the whole line and loses its output. Deleted once the fix ships | N/A |

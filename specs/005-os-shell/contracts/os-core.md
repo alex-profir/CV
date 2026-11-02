@@ -20,7 +20,7 @@ as declarations. Types are in [data-model.md](../data-model.md).
 | `revealMove(geometry, box, area, metrics)` | function | The geometry moved by the least distance that brings `box` inside `area`, clamped as a move (FR-067) |
 | `clampResize(geometry, edge, area, metrics, from?)` | function | Within the minimum size and `area`'s size, keeping the opposite edge fixed; a dragged edge stops at the area's top and sides, the screen's bottom, or where it was in `from` when already past (FR-061) |
 | `fitToArea(window, area, metrics)` | function | After `area` changes: moved inside, fitted if larger, filling if maximized (FR-021, FR-065) |
-| `SHORTCUTS` | constant | The eight shortcuts, in About this site's order (FR-029) |
+| `SHORTCUTS` | constant | The six shortcuts (eight until 008-typescript-playground FR-086), in About this site's order (FR-029) |
 | `matchShortcut(event, mac)` | function | The shortcut a key event means, or `null` (research R9) |
 | `shortcutLabel(shortcut, mac)` | function | `'Alt+Shift+W'`, or `'Option+Shift+W'` when `mac` |
 

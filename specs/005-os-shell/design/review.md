@@ -13,7 +13,7 @@ around the CV app, which keeps `/cv`'s light look. The shells use `/cv`'s three 
 |----------|------|
 | Wireframes: every desktop and mobile state, the page shown without scripts, the design values the spec leaves to the design, keyboard and focus, screen readers and site text | [wireframes.md](wireframes.md) |
 | Local mockup: one static page per state, with its styles and proposed tokens | [mockup/](mockup/README.md) |
-| Exports: desktop at 1440 × 900, 11 states | `mockup/desktop-*-1440.png` |
+| Exports: desktop at 1440 × 900, 11 states at this sign-off, 13 with the later entries below | `mockup/desktop-*-1440.png` |
 | Exports: phone at 375 × 812 (home, CV app, About this site), 320 × 568 (home) and 812 × 375 (home, landscape) | `mockup/phone-*.png` |
 | Exports: the page shown without scripts, at 1440 and 375 | `mockup/noscript-*.png` |
 | Penpot file | Not needed for an interim local mockup. It is added in the provision's follow-up pull request |

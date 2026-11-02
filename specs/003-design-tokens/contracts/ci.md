@@ -26,6 +26,10 @@ The `test` job is unchanged. Its `npm run typecheck` step now also covers
 `packages/tokens/src/`, which is where a misspelled token name in TypeScript fails (FR-026). Its
 `npm test` step runs the code fixture's `tsc` test.
 
+**Amended 2026-11-02, noting 001's amendments**: the `test` job now runs `npm run test:fast`, and
+the full set runs daily (001 FR-030, FR-041). The ruleset's status checks are no longer strict
+(001 FR-035).
+
 ## Ruleset: `.github/rulesets/main.json`
 
 `required_status_checks` gains one entry, so it reads **[tested]**:

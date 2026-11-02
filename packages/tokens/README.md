@@ -4,7 +4,7 @@ The site's design tokens, and the only place code reads design values from.
 
 | File | What it is |
 |------|------------|
-| `penpot/tokens.json` | The token export: Penpot's Single file export, byte for byte. Never edited by hand |
+| `penpot/tokens.json` | The token export: Penpot's Single file export, byte for byte. Never edited by hand, except as the constitution's interim provision on local mockups allows |
 | `motion/tokens.json` | The motion token source: durations and easing curves, which Penpot can't hold yet. Edited by hand |
 | `src/tokens.generated.css` | Generated: the active themes' values as `--token-…` custom properties, and breakpoints as `@custom-media` |
 | `src/tokens.generated.ts` | Generated: every token name, its type, the theme groups and every theme combination's values |

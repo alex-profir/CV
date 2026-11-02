@@ -23,7 +23,7 @@ npm run serve                          # http://127.0.0.1:4173
 
 Expected:
 
-- `http://127.0.0.1:4173/` lands on `/cv`, and the address bar shows `/cv` (FR-018).
+- `http://127.0.0.1:4173/` lands on `/cv`, and the address bar shows `/cv` (FR-018). *Amended by 005-os-shell (FR-051): `/` now shows the OS shell.*
 - `/cv/` and `/cv?utm_source=x` show the same page (FR-017).
 - `/nope` shows the not-found page, and the browser's network panel shows status 404, with a
   link to `/cv` (FR-019).
@@ -37,7 +37,7 @@ npm run site-check
 ```
 
 Expected: `Site check: PASSED`, every part listed, every Lighthouse category at 90 or more on both
-profiles, and the run under 5 minutes (SC-002, SC-009).
+profiles, and the run within the latest feature's budget, now 1,020 s (SC-002, SC-009, amended 2026-11-02).
 
 ## 3. With no internet connection
 

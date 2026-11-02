@@ -986,7 +986,8 @@ references `008-typescript-playground-FR-###`. UI implementing a requirement car
   width and, for examples, the example in every failure.
 - **FR-088**: With the Playground's checks in it, `npm run site-check` MUST exit 0 within 1,020 s on
   the owner's machine, as 006 and 007 set budgets of their own. Amended 2026-10-31: it said "007's
-  budget plus 3 minutes", which 007's 900 s on `main` no longer gives.
+  budget plus 3 minutes", which 007's 900 s on `main` no longer gives. To hold it, this feature amends 001 SC-008 (the `site` job has 20 minutes), 005 SC-010, 006 FR-042
+  and 007 FR-034, each of which records it.
 
 ### Key Entities
 
@@ -1174,5 +1175,6 @@ server-rendered page, unchanged by this feature.
   (002); the design tokens source and token check (003); `/cv`, its offline rules and its checks
   (004); the OS shell, its windows, menus, full-screen apps and checks (005), amended by this
   feature to drop its Minimize and Maximize shortcuts (FR-086); the requirement inspector's "Show
-  specs" (007); the Terminal (006), amended by this feature for `open playground` (FR-087); and an
+  specs" (007); the Terminal (006), amended by this feature for `open playground` (FR-087); the
+  time limits of 001, 005, 006 and 007, amended by this feature (FR-088); and an
   approved mockup of the Playground in both shells with its review sign-off.

@@ -26,7 +26,7 @@ file lists what 006 adds.
 | File | Change |
 |------|--------|
 | `assets/os-<hash>.js` | Holds the Terminal's interface, still one file with no import and no dynamic import but the Playground's (below). It creates the shell worker with `new Worker(new URL(…), { type: 'module' })` and loads nothing else. Gzipped, within 5% of its size before the amendment (SC-013) |
-| `assets/shell-<hash>.js` | New: the shell worker, one file with no import, about 1.34 MB, 368 KB gzip, 295 KB Brotli as built (just-bash alone: 1.26 MB, 343 KB, 274 KB). Loaded only when the Terminal first opens. Starts with a comment naming the license file |
+| `assets/shell-<hash>.js` | New: the shell worker, one file with no import, about 1.34 MB, 368 KB gzip, 295 KB Brotli as built (just-bash alone: 1.26 MB, 343 KB, 274 KB); 1.58 MB, 448 KB, 361 KB on 2026-11-02, with the site's own `jq`. Loaded only when the Terminal first opens. Starts with a comment naming the license file |
 | `assets/shell-licenses-<hash>.txt` | New: the name, version and license text of every package the worker bundles (research R40) |
 | `assets/os-<hash>.css` | Holds the Terminal's and the pocket terminal's styles |
 | `index.html` | Unchanged in structure. The dock and the home screen gain the Terminal's item, after the CV's. The Terminal isn't pre-rendered open. No preload of the shell |

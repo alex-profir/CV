@@ -10,7 +10,7 @@ values literally in TSX (Constitution III, FR-074).
 ```text
 section.playground                                   aria-label "Playground"
 ├── div.playground-loading            (download states only)
-│   ├── h2                              "Downloading TypeScript" | "TypeScript needs one download" | "The download stopped"
+│   ├── h2                              "Downloading TypeScript" | "TypeScript needs one download" | "The download stopped" | "TypeScript won't open"
 │   ├── progress.playground-progress    aria-label "TypeScript download", aria-valuetext "2.4 MB of 6.3 MB"
 │   ├── p                               sizes and the explanation
 │   └── button.playground-retry         (offline only)

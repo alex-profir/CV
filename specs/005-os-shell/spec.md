@@ -15,6 +15,10 @@ the owner 2026-10-29.
 the latest feature's budget (see Clarifications, Session 2026-10-30). Approved by the owner
 2026-10-30.
 
+**Amended**: 2026-11-02, recording 008-typescript-playground: a shared link opens the Playground in
+front of the CV window on first load (FR-005; see Clarifications, Session 2026-11-02). Approved with
+008's spec (Constitution XI).
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -91,6 +95,12 @@ the latest feature's budget (see Clarifications, Session 2026-10-30). Approved b
 - Q: The site check, with every later feature's parts, takes longer than SC-010's 8 minutes, while
   006, 007 and 008 each have a budget of their own. Which holds? → A: The chain. The whole check
   stays within the latest feature's budget, now 008's 1,020 s (SC-010).
+
+### Session 2026-11-02 (recording 008-typescript-playground's amendment)
+
+- Q: 008's shared link (its FR-002 and FR-053) puts the Playground in front, focused, on first load,
+  while FR-005 keeps the CV in front with focus unmoved. Which holds? → A: 008's, for a shared link
+  only, as the visitor followed that link to reach the Playground. Approving 008's spec approved it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -476,7 +486,8 @@ references `005-os-shell-FR-###`. UI implementing a requirement carries
   window in front, with the menu bar, the desktop area and the dock visible around it, so the CV
   is zero clicks away. Keyboard focus MUST stay at the start of the page and MUST NOT be moved
   into the window on first load. The mobile shell MUST open on the home screen, as a full-screen
-  app would hide the shell.
+  app would hide the shell. Amended 2026-11-02 from 008-typescript-playground: a shared link (008
+  FR-053) is the one exception, with the Playground in front of the CV window and focused.
 - **FR-006**: The CV app MUST show the same CV as `/cv`: it MUST meet 004 FR-001 to FR-013
   (sections, fields, order, wording, dates and links) inside its window and its full-screen
   view. Every word of CV text in it MUST come from the CV document, and the content check (002)

@@ -3,7 +3,7 @@
 004's to 007's contracts/cli.md still hold: the command (`npm run site-check`), exit codes,
 streams, problem lines, determinism and variant naming. The command and the CI job don't change,
 so the Playground's checks run in the same command and on the same pull requests, and give the
-same result locally (FR-079). `npm run verify` (the owner's local run) runs the browser tests of
+same result locally (FR-079). `npm run verify:feature` (the owner's local run) runs the browser tests of
 research R25 in Chromium, Firefox and WebKit as well.
 
 ## Parts

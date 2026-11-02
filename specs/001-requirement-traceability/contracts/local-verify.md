@@ -70,7 +70,8 @@ Run in this order, up to the first that fails (FR-040).
 - Each check's own output goes to the terminal as it runs, after a header line
   `== <name>: <command>`, and to `<sha>.log`.
 - `test` also fails, with the detail `ran <n> of <m> test files`, when Vitest's report doesn't
-  list exactly the test files the traceability check lists (SC-010).
+  hold every file it was asked to run: the test files the traceability check lists, without the
+  site check's own, or with `--failed` only what's left (SC-010, amended 2026-11-02).
 - After the last check, the run fails when HEAD moved or the working copy is no longer clean,
   naming the paths.
 
@@ -119,7 +120,7 @@ Records the passing `local-verify` status on the head commit. Runs no test (FR-0
 |-----------|------------------------------|------|----------|
 | `CI` or `GITHUB_ACTIONS` is set | `sign-off refused: it runs only on the owner's machine, never in CI` | 1 | nothing |
 | HEAD is detached | `sign-off refused: check out the pull request's branch first` | 1 | nothing |
-| No result for HEAD | `sign-off refused: no local full run on <sha>: run npm run verify` | 1 | nothing |
+| No result for HEAD | `sign-off refused: no local full run on <sha>: run npm run verify:feature` | 1 | nothing |
 | The last result for HEAD failed | `sign-off refused: the last local full run on <sha> failed (<checks>)` | 1 | nothing |
 | `gh` isn't installed | `signing off needs the GitHub CLI: install it from https://cli.github.com and run gh auth login` | 1 | nothing |
 | `origin` isn't a GitHub repository URL | `sign-off refused: origin is not a github.com repository: <url>` | 1 | nothing |

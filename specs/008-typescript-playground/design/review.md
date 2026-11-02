@@ -98,19 +98,19 @@ covers it.
 |--------|-----|--------|------|
 | The Playground stopped showing, with Try again | A failure while drawing stays in the window (FR-039, FR-040, T182) | `desktop-25-contained-1440.png` | Built |
 | The `closed` note | `close()` ends the run and says why (FR-045, FR-048, T188) | `desktop-29-worker-closed-1440.png` | Built |
-| The note for JavaScript that can't be read, and the parser's message | "Stopped unexpectedly" gave no reason (FR-033, FR-035, T195) | `desktop-28-cant-parse-1440.png` | Not built |
-| The download stopped: the size is added | FR-011 requires it (T204) | `desktop-26-download-stopped-1440.png` | Not built |
-| TypeScript won't open: a state of its own | "Arrived only in part" is untrue there (FR-011, T184, T204) | `desktop-27-wont-open-1440.png` | Not built |
-| Share with… beside the desktop's link field | FR-052 offers the device's sharing (T201) | `desktop-30-link-field-1440.png` | Not built |
-| The phone's link field | FR-052's field, missing on the phone (T201) | `phone-4-link-field-375.png`, `-320.png` | Not built |
+| The note for JavaScript that can't be read, and the parser's message | "Stopped unexpectedly" gave no reason (FR-033, FR-035, T195) | `desktop-28-cant-parse-1440.png` | Built (T195), noted 2026-11-02 |
+| The download stopped: the size is added | FR-011 requires it (T204) | `desktop-26-download-stopped-1440.png` | Built (T204), noted 2026-11-02 |
+| TypeScript won't open: a state of its own | "Arrived only in part" is untrue there (FR-011, T184, T204) | `desktop-27-wont-open-1440.png` | Built (T204), noted 2026-11-02 |
+| Share with… beside the desktop's link field | FR-052 offers the device's sharing (T201) | `desktop-30-link-field-1440.png` | Built (T201), noted 2026-11-02 |
+| The phone's link field | FR-052's field, missing on the phone (T201) | `phone-4-link-field-375.png`, `-320.png` | Built (T201), noted 2026-11-02 |
 | A run the browser ends: "Stopped unexpectedly", "Ran out of memory" | Built since the sign-off, drawn nowhere (FR-045, T205) | `desktop-31-crashed-1440.png`, `desktop-32-out-of-memory-1440.png` | Built |
 | The empty Logs pane | The same (T205) | `desktop-33-no-logs-1440.png` | Built |
 | `[circular]`, `(anonymous)`, `confirm`'s note | The same (FR-034, FR-043, T205) | `desktop-34-log-values-1440.png` | Built |
 | "The Playground was reset…", "Code copied.", kept code's unknown option | The same (FR-080, FR-055, FR-019, T205) | `desktop-35-reset-done-1440.png`, `desktop-36-code-copied-1440.png`, `desktop-37-kept-options-1440.png` | Built |
 | "Every option is at its default." | The same (FR-025, T205) | `desktop-38-options-default-1440.png` | Built |
 | The whole list of keys, with the names as built, the second paragraph and the notes | `desktop-11` draws fewer commands under earlier names (FR-085, T205) | `desktop-39-keys-all-1440.png` | Built |
-| The phone says the code is too long for a link | "Code copied." alone can be taken for the link (FR-055, FR-059, T216) | `phone-5-too-long-375.png`, `-320.png` | Not built |
-| JavaScript only the browser refuses: the same note as `desktop-28`, with the browser's message | It ended as "Stopped unexpectedly" (FR-032, FR-035, T207) | Words in `wireframes.md` | Not built |
+| The phone says the code is too long for a link | "Code copied." alone can be taken for the link (FR-055, FR-059, T216) | `phone-5-too-long-375.png`, `-320.png` | Built (T216), noted 2026-11-02 |
+| JavaScript only the browser refuses: the same note as `desktop-28`, with the browser's message | It ended as "Stopped unexpectedly" (FR-032, FR-035, T207) | Words in `wireframes.md` | Built (T207), noted 2026-11-02 |
 | Several messages due at once show in turn; what a reload brings after a failed write | One notice replaced another; the code stopped being kept (FR-019, T213, T214) | Words in `wireframes.md` | Built, no new words |
 | Names and announcements: toolbar, log's line, panel's close, status bar, editor on Windows and Linux, the download's and the run's announcements | Site text heard, not seen, and nowhere in the design (FR-063 to FR-066, T205) | Listed under Site text in `wireframes.md` | Built |
 
@@ -126,7 +126,7 @@ The accessibility check gains the contained state when it can be reached by real
 
 ## Second amendment of 2026-10-31: approved
 
-Signed below. Nothing here is built except where it says so.
+Signed below. Nothing here is built except where it says so. Noted 2026-11-02: it has all been built since, except as tasks.md says.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|

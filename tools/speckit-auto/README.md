@@ -108,8 +108,8 @@ takes part once it has this commit from `main`.
    The loop ends when nothing is left, or when two sessions in a row tick no task.
    Tasks a session marks `BLOCKED:` are left for the owner and listed when the run ends.
    If the loop ends with tasks still open, the run fails rather than reporting success.
-4. `checks.sh` runs CI's required checks: content, tokens, traceability, typecheck and
-   tests. `site-check` needs a browser, so run it yourself for UI features.
+4. `checks.sh` runs CI's required checks but the site check: content, tokens, traceability,
+   typecheck and every test, where CI runs the fast set. CI runs `site` on the pull request.
 
 ## Files
 

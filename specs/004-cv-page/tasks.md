@@ -205,6 +205,7 @@ until it's done.
   - `npm test` passes for `packages/tokens/` and `tools/token-check/`, and `npm run token-check` passes.
 - [X] T009 [P] Create the route table and manifest types in `packages/web/src/routes.ts` (research R3, data-model.md Route table, contracts/site.md Site manifest):
   - `ROUTES = { pages: [{ path: '/cv', aliases: ['/cv/'], file: 'cv.html' }], redirects: [{ from: '/', to: '/cv', status: 307 }], notFound: { file: '404.html', status: 404 } }`, frozen, with its type `Routes`.
+  - **Superseded in part 2026-11-02, naming 005-os-shell (its T007)**: the root is a page, and `redirects` is empty.
   - `type SiteManifest = { version: string; routes: Routes; files: { path: string; hash: string; type: string }[] }`.
   - `resolveRoute(routes, pathname)`: returns `{ kind: 'page', file }`, `{ kind: 'redirect', to, status }` or `{ kind: 'not-found', file, status }`. Query strings are ignored by the caller. Matching is exact: `/cv.html` and `/cv/x` are not-found.
   - Pure, with no Node or DOM import, so the server, the build, the service worker's generated code and the checks can all use it.
@@ -221,6 +222,7 @@ until it's done.
 - [X] T012 [P] Write `packages/web/test/routes.test.ts`, covering 004-cv-page-FR-017, 004-cv-page-FR-018 and 004-cv-page-FR-019, against the built site served by `startServer` (T013, T015). It fails until T013 and T014.
   - FR-017: `/cv`, `/cv/`, `/cv?x=1` and `/cv#a` answer 200 with the same body. The head has no `<link rel="canonical">` and no `og:url`.
   - FR-018: `/` answers 307 with `Location: /cv`, and `/?x=1` with `Location: /cv?x=1`. Neither has a `Cache-Control` that allows storing. A Playwright page opening `/` ends at `/cv` (Constitution VII).
+  - **Superseded in part 2026-11-02, naming 005-os-shell (its T007)**: FR-018 is removed, replaced by 005-os-shell-FR-001.
   - FR-019: `/nope`, `/cv.html` and `/cv/x` answer 404 with the body of `404.html`, which holds an `a[href="/cv"]`.
   - In a group with no FR ID ("HTTP behavior (contracts/site.md)"): `HEAD /cv` answers as `GET` with no body; `POST /cv` answers 405 with `Allow: GET, HEAD`; a listed asset has `Cache-Control: public, max-age=31536000, immutable`; HTML has `Cache-Control: no-cache`; with `Accept-Encoding: br`, HTML comes back with `Content-Encoding: br`.
 - [X] T013 Create the local server in `tools/site-check/src/server.ts`, after T009 (research R3, contracts/site.md HTTP behavior):
@@ -545,6 +547,7 @@ shown field is present, styled, and drawn in the design's fonts (spec US4, quick
 
 - [X] T084 [US4] Write `packages/web/test/offline.test.ts`, covering 004-cv-page-FR-038, 004-cv-page-FR-039, 004-cv-page-FR-040 and 004-cv-page-FR-041 (research R4, R21). Builds of version B (one text changed) and C (a font answering 500) are temporary copies made by the test, served by one server whose files are switched between visits.
   - FR-038: after one visit to `/cv`, and separately to `/` only, with the server stopped and the context offline, `/cv`, `/cv/`, `/cv?utm_source=x`, `/` and `/nope` show their full pages, styled and in served fonts (US4 scenarios 1, 2 and 7).
+  - **Superseded in part 2026-11-02, naming 005-os-shell (its T007)**: FR-038 is removed, replaced by FR-059.
   - FR-039: A stored, B published: the next online visit shows B, and offline afterwards shows B (scenario 3). Then C: offline still shows B whole (scenario 4).
   - FR-040: with a stored copy, a server that drops the connection, and one that doesn't answer for 5 s, both show the stored copy (scenario 5).
   - FR-041: no dialog, banner or console error during install and update; with `serviceWorkers: 'block'`, the page loads with no console error.
@@ -697,6 +700,7 @@ not here (see "Not in this feature").
     the summary, and there's no canonical link, `og:url` or image.
 - [ ] T105 Owner action, by hand, after T103. Record each result here and in the PR:
   - **FR-042, quickstart 1**: `/cv` and the not-found page side by side with the four revision 10 exports at 1440 and 375 px. List any difference, and either fix it or record the owner's acceptance.
+    Noted 2026-11-02: the `/cv` exports are now at Penpot revision 165 (`design/review.md`); the not-found exports stay at revision 10.
   - **SC-004, quickstart 6**: VoiceOver on macOS with Safari, and VoiceOver on iOS or TalkBack on Android: the heading list, moving by heading, dates read as words, and the GitHub link announced with network and username.
   - **SC-005, quickstart 7**: print to PDF on A4 and US Letter, in Chrome and in Firefox or Safari, with headers and footers on and background graphics off.
   - **Off-scale values**: the places data-model.md's Token roles lists as snapped to the scale or derived with `calc()` (the phone timeline indent, chip padding, the dot's offset), checked against the exports.
@@ -729,6 +733,7 @@ not here (see "Not in this feature").
   fields (`id`, `node_id`, `source`, `source_type`, `created_at`, `updated_at`, `_links`,
   `current_user_can_bypass: never`) are the server's.
 - [X] T108 Owner action, after T107: demonstrate enforcement (quickstart 12, FR-048). Push a scratch branch from `004-cv-page` that removes the focus outline from links, and open a draft PR. Confirm `site` fails, naming every link in the `keyboard` part, and that merging is blocked with no bypass option. Close the PR unmerged, delete the branch, and record the result here.
+- [ ] T109 Owner action: the follow-up the constitution's interim provision on local mockups asks once Penpot can be reached (it has been, since at least 2026-10-30, `design/review.md`), in its "Ending the provision" steps 1 to 3: import the hand-written token export into Penpot and export it again, reviewing any difference and regenerating the token output, and add the Penpot link to `design/review.md` and spec.md's Design checklist. Later features' `review.md` that name an interim local mockup follow in pull requests of their own. Added 2026-11-02: no task tracked it.
 
   **Done on 2026-10-23**: draft pull request #17, from `scratch/t108-no-focus-outline`, set
   `a:focus-visible` to `outline: none`. `site` failed: `keyboard` reported

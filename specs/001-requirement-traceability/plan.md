@@ -9,6 +9,11 @@ SC-008 to SC-010), approved by the owner on 2026-10-29
 
 **Design**: No UI (spec.md, Design section)
 
+**Amended 2026-10-31** (noted 2026-11-02): green CI merges, a local run stops at its first failure
+and leaves out the site check, and the ruleset requires neither `local-verify` nor an up-to-date
+branch (spec FR-032, FR-035, FR-038 to FR-041, contracts/ci.md). Anything below that says otherwise
+is superseded.
+
 **Amendment of 2026-10-29**: this plan was written for FR-001 to FR-029 and shipped with them.
 The amendment's decisions are added in place: the Summary's last part, Technical Context, the
 Constitution Check, rows FR-030 to FR-037 of the Requirement Traceability table, the
@@ -193,7 +198,7 @@ only well-formed, existing full IDs. Sample IDs such as `FR-1`, `002-example-FR-
 | 001-requirement-traceability-FR-032 | `verify.test.ts`, integration on sample repositories: a modified, a staged, a deleted and an untracked file each refuse the run with exit 2, naming every path, and the fake `npm` log is empty; a wrong Node major, a lockfile mismatch and a missing Chromium (prerequisites probe) are each named with their fix, with nothing run; the checks run are those of ci.yml's `run:` commands with `test:fast` replaced by `npm test`, in contract order, and `site` runs `npm run --silent site-check` (the same command as 004 FR-049); `npm run verify` is `node tools/local-verify/src/main.js verify` | Non-UI |
 | 001-requirement-traceability-FR-033 | `verify.test.ts`: with every fake check passing, the result reads `pass` with the test counts, `siteCheck: pass`, Node and OS, and the summary ends `PASS`; with two checks failing, both still run, both are named in `FAIL: 2 checks failed`, exit 1, result `fail`. `signoff.test.ts`: the posted status is `state=success`, `context=local-verify` and a description naming tests passed, files, the site check, Node and OS; descriptions built from the longest plausible values stay within 140 characters; a failed result is refused, naming the failing checks, and `gh` isn't called | Non-UI |
 | 001-requirement-traceability-FR-034 | `signoff.test.ts`: after a passing run, a new commit, an amended commit and a merge commit each have no result, so signing off refuses naming the new SHA; with `CI` or `GITHUB_ACTIONS` set it refuses before reading anything, and `gh` isn't called. `repo-settings.test.ts`: the workflow's permissions are exactly `contents: read`, and no step names `local-verify`, `signoff`, `verify` or `gh` | Non-UI |
-| 001-requirement-traceability-FR-035 | `repo-settings.test.ts`, static: the ruleset's required checks end with `{ context: 'local-verify' }` and no `integration_id`, it is no job's name, the strict up-to-date policy and the empty bypass list stay. Live: quickstart scenarios 11 and 13 | Non-UI |
+| 001-requirement-traceability-FR-035 | `repo-settings.test.ts`, static: the ruleset requires the five jobs, not `local-verify`, with no up-to-date policy, and the empty bypass list stays (amended 2026-11-02) | Non-UI |
 | 001-requirement-traceability-FR-036 | `signoff.test.ts`, sample repositories: signing off a passing run starts no `npm` or `vitest` (fake `npm` log empty); a commit not yet on `origin` is pushed first, and the fake `gh` saw the bare remote's branch at that SHA when called; an unreachable `origin` and a rejected push each print their message, exit 1, and leave the `gh` log empty; a `gh` failure is reported with its message; a missing `gh` names how to install it | Non-UI |
 | 001-requirement-traceability-FR-037 | `verify.test.ts`: after a run, the result, log and Vitest report are under `git rev-parse --git-common-dir`/`local-verify/`, `git status --porcelain` is empty and `git ls-files` is unchanged; a check that leaves an untracked file fails the run, naming it | Non-UI |
 

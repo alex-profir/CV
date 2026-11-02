@@ -6,6 +6,13 @@
 
 **Status**: Approved
 
+**Amended**: 2026-10-28 by 005-os-shell, recorded here 2026-11-02: the site root is the OS shell, not
+a redirect to `/cv` (FR-018, FR-038, FR-051, FR-059; see Clarifications, Session 2026-11-02).
+Approved with 005's spec.
+
+**Amended**: 2026-11-02, following 008-typescript-playground's chain: SC-009's time for the whole
+site check follows the latest feature's budget, as 005 SC-010 does. Approved with 008's spec.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -100,6 +107,14 @@
   footers left to the visitor's print dialog? → A: Only the CV is printed. The browser's own
   headers and footers are the visitor's choice in the print dialog, and the page doesn't
   change them.
+
+### Session 2026-11-02 (recording the amendments of 005-os-shell and 008-typescript-playground)
+
+- Q: 005 made the site root a page. What does that change here? → A: FR-018 and FR-038 are removed,
+  FR-059 is added and FR-051 scores the root too. Approving 005's spec approved it (Constitution XI).
+- Q: The whole site check takes longer than SC-009's 5 minutes. Which holds? → A: The chain of 008's
+  clarification: it stays within the latest feature's budget, now 1,020 s (SC-009). Approving 008's
+  spec approved it.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -585,8 +600,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   `/cv` or the not-found page, at a phone width and a desktop width.
 - **FR-051**: The Lighthouse check MUST find a score of 90 or more in every Lighthouse category,
   on both the mobile and the desktop profile, for every page that loads with a success status,
-  which today is `/cv`. The not-found page, which answers with a not-found status, and
-  redirects such as the site root are not scored by Lighthouse.
+  which today is `/cv` and the site root. The not-found page, which answers with a not-found status,
+  is not scored by Lighthouse. Amended 2026-10-28 by 005-os-shell: it said today is `/cv`, and that
+  redirects such as the site root are not scored.
 - **FR-052**: The no-JavaScript check MUST load `/cv` with scripting turned off and confirm that
   every shown field the CV document holds is present, in order. It MUST read the expected fields
   from the CV document, not from a hand-written list.
@@ -607,7 +623,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   page, the width or profile, and what failed: the rule and element, the category and score, the
   missing field, the link, the font or the address requested. Every run MUST end with a summary
   of every check's result and every Lighthouse score.
-- **FR-059**: After one complete online visit to `/cv` or the site root, opening `/cv` or an
+- **FR-059** *(added 2026-10-28 by 005-os-shell)*: After one complete online visit to `/cv` or the site root, opening `/cv` or an
   unknown path with no network MUST show the same page as online, with all its content, styles
   and fonts. 005-os-shell-FR-052 covers the site root.
 
@@ -710,8 +726,8 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   token value takes one export from Penpot. In both cases the page follows after a rebuild, and
   every check passes with no other edit.
 - **SC-009**: For the same files, the local run and the pull-request run give the same result
-  every time. The local run completes in under 5 minutes on the owner's machine, with no internet
-  connection.
+  every time. The local run completes within the latest feature's budget on the owner's machine,
+  now 1,020 s, with no internet connection. Amended 2026-11-02: it said under 5 minutes.
 - **SC-010**: When this feature is merged, the content check (002) and the token check (003)
   pass with no exception added for the page, other than an amendment made under FR-046, and every
   requirement in this spec is covered by at least one test.

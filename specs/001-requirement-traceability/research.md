@@ -5,6 +5,11 @@
 **Date**: 2026-10-21. **Amended**: 2026-10-29 (R14 to R21: the fast and full test sets, the
 pull-request workflow, the local full run and its sign-off; notes added to R3, R11 and R12).
 
+**Amended 2026-10-31** (noted 2026-11-02): green CI merges, a local run stops at its first failure
+and leaves out the site check, and the ruleset requires neither `local-verify` nor an up-to-date
+branch (spec FR-032, FR-035, FR-038 to FR-041, contracts/ci.md). Anything below that says otherwise
+is superseded.
+
 This is the first feature with code, so it also sets the repository's base toolchain: runtime,
 package manager, test runner and CI. Each decision below lists what was chosen, why, and what
 was rejected. Facts about tool versions were checked against official docs and release notes on

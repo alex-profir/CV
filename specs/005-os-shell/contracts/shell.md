@@ -143,8 +143,8 @@ div[role=status].visually-hidden     announcements                              
   ("This is {name}'s CV, presented as a small operating system that runs in the browser. It was
   built spec first: every feature has a public spec, a reviewed design and tests that trace back
   to its requirements."), "Open the CV as a page" → `/cv`, "Source code, specs and history on
-  GitHub" → `{siteData.repository}`, and on desktop only, "Keyboard shortcuts": a `dl` of the eight
-  shortcuts, then the two notes (`data-req="005-os-shell-FR-029"`).
+  GitHub" → `{siteData.repository}`, and on desktop only, "Keyboard shortcuts": a `dl` of the six
+  shortcuts (eight until 008-typescript-playground FR-086), then the two notes (`data-req="005-os-shell-FR-029"`).
 - Icons (the site mark, the CV icon, the control glyphs, the Home chevron) are inline SVG with
   `aria-hidden="true"`, drawn in `currentColor`, carrying `data-req="005-os-shell-FR-044"`.
 
@@ -153,7 +153,7 @@ div[role=status].visually-hidden     announcements                              
 | Where | Keys | Does |
 |-------|------|------|
 | Anywhere | `Alt+Shift+M` / `D` / `N` | Menu bar's first title / dock's first item / next shown window (FR-025, FR-026) |
-| A window focused | `Alt+Shift+W` / `H` / `F` | Close / minimize / maximize or restore (FR-028, FR-063, FR-065) |
+| A window focused | `Alt+Shift+W` | Close (FR-028). `H` and `F` were removed 2026-10-29 (008-typescript-playground FR-086) |
 | A window focused, not maximized | `Alt+Shift+P` / `S` | Start a keyboard move / resize (FR-027, FR-062) |
 | Menu bar | `←` `→`, `Enter` `Space` `↓`, `Home` `End` | Move between titles, open a menu |
 | Menu | `↑` `↓`, `Enter` `Space`, `Escape`, `Tab` | Move, choose, close to its title (FR-015), close and move on |

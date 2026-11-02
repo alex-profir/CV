@@ -27,7 +27,7 @@ npm run build && node tools/site-check/src/main.js
 - Starts the local server on `127.0.0.1` at a free port, and stops it at exit.
 - Every browser it starts can reach only `127.0.0.1` (research R17). It needs no network beyond
   the machine (FR-057).
-- Takes under 5 minutes on the owner's machine (SC-009). An estimate: build 10 s, Lighthouse
+- Takes under 5 minutes on the owner's machine (SC-009; amended 2026-11-02: within the latest feature's budget, now 1,020 s). An estimate: build 10 s, Lighthouse
   6 runs at about 15 s, every other part under 60 s together.
 
 ## Exit codes

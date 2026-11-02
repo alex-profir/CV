@@ -85,6 +85,8 @@ and hash and the worker's code, first 16 hex characters. It can't be the site ma
 
 ## For the publishing feature
 
-The host must reproduce the HTTP behavior table from `site-manifest.json`. In particular: the
-root is a 307, never a 301 or 308; `/cv/` answers 200 with the same page, without a redirect;
+The host must reproduce the HTTP behavior table from `site-manifest.json`. *Amended by 005-os-shell
+(FR-051): the root is now a page, and the manifest above has it under `pages` with no redirects; see
+[005's site contract](../../005-os-shell/contracts/site.md).* In particular: the root is a 307, never
+a 301 or 308; `/cv/` answers 200 with the same page, without a redirect;
 unknown paths answer 404 with `404.html`; `sw.js` is never cached long-term.

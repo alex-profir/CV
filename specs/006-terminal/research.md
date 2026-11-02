@@ -617,6 +617,8 @@ reported upstream with a failing test before the Terminal relies on them (tasks)
 | G38 | `awk` turns a number past 2^53 into text by `%.6g`: `print 2^53` is `9.0072e+15` and `print 1e16` is `1e+16`, where gawk prints the whole number (T374) | None: no rewrite of the program reaches it, so T374 is BLOCKED for the owner under FR-068. Report upstream (T129) Accepted by the owner 2026-10-31, in FR-068; upstream report drafted |
 | G39 | `jq`'s language differs from jq 1.7.1 where no wrapper can reach it: assignments and `del` on missing or several paths (`null\|.a=1` is `null`, `del(.a,.b)` changes nothing), `unique`, `sort_by(.a,.b)`, `match`'s `g`, named captures, comparing arrays and objects, `add` and `any` of an object, `walk`, `$a` parameters, `label`, `{$x}`, `INDEX`, `tostream`, every `@` format and a format before a string, type errors that give `null` with status 0, unknown names and wrong argument counts that give `null` with status 0, no `input`, `inputs`, `input_filename`, `halt`, `halt_error`, `stderr`, `debug(msg)` or `$__loc__`, and numbers read as doubles (`1.0` prints `1`, `1e1000` is `null`). A `def` doesn't replace a builtin (`def unique: 5; unique` runs just-bash's) | Options, the filter's place, a filter starting with `-` and `-e`'s status are in `gnu.ts` (T376, T382). The rest is BLOCKED for the owner under FR-056 (T379 to T383): accept, report upstream, or give the site its own `jq`, as `sort`, `cut` and `tr` already are. Upstream report Gone 2026-10-31: the site's own `jq` (R53) |
 
+Noted 2026-11-02, as built since these rows: G5, the wrappers in `site-commands.ts` give `sed` and `tee` bash's "Permission denied" on a refused write. G9, just-bash's own default is `/home/user` (T129). G12, the site's own `jq` has replaced just-bash's (R53), so its messages are no longer just-bash's. G13, the adapter's own `yes` stops at the output limit (T325).
+
 **Rationale**: FR-067 and FR-068 ask for bash's language and about thirty GNU commands with their
 options and messages. That is far beyond what the Terminal's own parser could grow into (R7).
 just-bash covers it, runs only in the page, and keeps everything the Terminal needs in its hands:
@@ -910,6 +912,8 @@ in Node.
 
 ## R31. `jq` with filters, and its colors
 
+**Noted 2026-11-02**: R53 replaced just-bash's `jq` with the site's own (`shell/jq.ts`). The filter language, the blocks and the colors below stand.
+
 **Decision**: `jq` is just-bash's, with jq's filter language: `jq '.work[0].name' cv.json` and
 `jq '.skills[].name' cv.json` print what jq prints, and a filter that doesn't parse, or input that
 isn't JSON, gives jq's own error (FR-056). The wrapper records what `jq` printed as a `json` block,
@@ -963,7 +967,7 @@ command exists that `help` doesn't list.
 ## R33. Limits and stopping
 
 **Decision**: just-bash's limits, set to FR-069's: `maxExecutionTimeMs: 5000`, `maxCommandCount:
-10000` (plus the prelude's own lines, built) and `maxOutputSize: 1048576` (4 MB as built, below),
+10000` (plus the prelude's own lines, built) and `maxOutputSize: 1048576` (4 MB as built, below; 32 MB since T325),
 and `maxLoopIterations: 1000000000` so its own iteration limit
 never stops a line first (G15), with the `normal` profile for the rest. Measured: `while true; do :;
 done` ends at 10,000 commands in about 200 ms, and with a higher count at the 5 s deadline; `seq
@@ -977,8 +981,8 @@ after the deadline (R26).
 
 **Built 2026-10-29**: just-bash's `maxOutputSize` applies to every command's output, a pipe's
 inside included, so with 1 MB `seq 200000 | tail -1` stopped, though the line prints 7 bytes.
-FR-069 limits what the line prints. So just-bash gets 4 MB (`LIMITS.pipe`), what any one command
-may pass on, and the adapter stops a line whose own stdout and stderr reach 1,048,576 bytes
+FR-069 limits what the line prints. So just-bash gets 4 MB (`LIMITS.pipe`, 32 MB since T325, so
+`seq 1000000 | wc -l` runs as in bash), what any one command may pass on, and the adapter stops a line whose own stdout and stderr reach 1,048,576 bytes
 (`LIMITS.output`). `yes | head -1` then takes about 175 ms (650 ms with 16 MB). A line stopped by
 the output limit shows none of what it printed, only the stopped line, as G14 already had for
 `seq 1000000`: a megabyte of text would freeze the screen, against FR-069's second sentence.
@@ -1148,7 +1152,9 @@ shell with `bash: `; the test compares them with that prefix removed. The compar
 shell's own output, before R30 maps it for the screen. Lines whose output depends on interleaving stdout and stderr aren't in the list (G3).
 `ls` piped is compared as GNU prints it to a pipe, one name per line.
 
-It runs in `npm test`, so in CI on `ubuntu-latest`, which has bash 5 and the GNU tools. The test
+It runs in `npm test`, so in CI on `ubuntu-latest`, which has bash 5 and the GNU tools. Noted
+2026-11-02: since 001's amendments of 2026-10-29 and 2026-10-31 it runs in a feature's local run on
+the owner's Mac, not in CI (`OWNER_MAC_TESTS`). The test
 first checks `bash --version` and `grep --version` name GNU, and fails with a message naming the
 tools to install when they don't (macOS: `brew install bash coreutils grep gnu-sed gawk findutils
 diffutils`, then those first on `PATH`), so the result is the same locally and in CI (FR-042).
@@ -1278,7 +1284,7 @@ What bash 5's readline does with no completion scripts, measured (the rules the 
 | `cat "cv` | `cat "cv.json" ` | Inside a quote: one match closes the quote, then a space |
 | `cat my` (a file `my file`) | `cat my\ file ` | Outside quotes, a space and the other characters bash quotes get a backslash |
 | `echo hi > ab` | `echo hi > about ` | After a redirect: a path |
-| `ab`, `gr`, `hist`, `ls \| wc` | `about `, `grep `, `history `, `ls \| wc ` | A command's first word, also after `\|`, `;`, `&&`, `\|\|`, `(` and keywords such as `then` and `do`: commands, aliases, builtins, keywords, the visitor's functions and **folders** of the working folder |
+| `ab`, `gr`, `hist`, `ls \| wc` | `about `, `grep `, `history `, `ls \| wc ` | A command's first word, also after `\|`, `;`, `&&`, `\|\|`, `(` and `{` (noted 2026-11-02: not after keywords such as `then` and `do`, as readline knows none, T393): commands, aliases, builtins, keywords, the visitor's functions and **folders** of the working folder |
 | `wo`, from the home folder | `work`, no space; a second Tab lists `work` | The `work` command and the `work/` folder both match; readline adds nothing past the shared `work`, and lists the one name left once the two are merged. From any folder without `work/`, `work ` (spec Clarifications, the owner chose bash's behavior 2026-10-30) |
 | `c`, `ca`, `i` | nothing; a second Tab lists `caller case cat`, `if in` | Keywords and builtins match too |
 | `cat c` | nothing; a second Tab lists `contact  cv.json` | The list holds the names only, not the folder part typed before them |
@@ -1400,7 +1406,8 @@ the real CV, plus a few visitor files (`notes/`, `todo`, `my file`). For a fixed
   without a common part, no match, and the 100-match question (a visitor folder of 100 files).
 - **Tools**: the test checks `python3` and bash 5 as `bash-parity.test.ts` checks GNU tools, and
   fails naming what to install. It runs in `npm test`, so in CI (FR-042), and only locally with
-  GNU tools on `PATH` on macOS, as T158 does.
+  GNU tools on `PATH` on macOS, as T158 does. Noted 2026-11-02: CI's `test` job now runs the fast
+  set, and this is in the slow set, so CI runs it only in the daily full run.
 
 **Alternatives considered**: hand-written expected lines (the test author's idea of readline);
 `node-pty` (a native dependency for one test, Constitution X); `expect` (on macOS, but not on the
@@ -1720,6 +1727,7 @@ gaps, R53 supersedes it.
   - Seen, not fixed, outside the tasks: `echo **/` stays as typed under `globstar`; `a[1.5]=1` keeps just-bash's words and doesn't stop the
     line; `$((0x))` is an error, bash 0; `tail -- x` is refused; `$BASH_VERSION` says 5.1.0 where `${BASH_VERSINFO[1]}` says 3;
     `awk 1 about -` reads no standard input.
+    Noted 2026-11-02: `$((0x))` and `$BASH_VERSION` were fixed by T397, and `awk 1 about -` by T396.
 - New in Phase 40:
   - Decided for the run, against T357's words, by what an interactive bash 5.3 does: `exit 1 2` ends the line with status 1, so a
     following `echo $?` on that line doesn't run. `exit nope` has status 2 and the next command runs. The Terminal stays open on both.
@@ -1732,6 +1740,7 @@ gaps, R53 supersedes it.
   - Seen, not fixed, outside the tasks: `xargs -d, -n1` drops an empty item; `c20w` past the line stays on it, where vim takes the
     rest of the file; `exit --help | head -1` prints `exit`; `mkdir -p about/x` says `Permission denied`, GNU `Not a directory`;
     `printf '\251'` shows `©` on the screen.
+    Noted 2026-11-02: `c20w` was fixed by T398, and `mkdir` onto a protected name by T396.
 - New in Phase 39:
   - Decided for the run: `exec ls` closes the Terminal, so the visitor's files go, as T343 says. `select` and `coproc` left
     `type` and Tab's words because just-bash can't parse them (T336).
@@ -1742,6 +1751,7 @@ gaps, R53 supersedes it.
   - `find -exec … \;` takes `{}` inside a word only as the last action. `sort -u` keeps its old compare with `-k` or `-o`.
   - `awk` and `sed` with a missing option value print the first lines of their usage, not all of it.
   - `tree` still draws ASCII lines and doesn't count the root folder (`tree` 2.3.2 says `1 directory`).
+    Noted 2026-11-02: T370 fixed this.
 - New in Phase 38:
   - A `jq` generator bash would finish (`[limit(3;repeat(1))]`, `first(range(10;infinite))`) stops with FR-069's time text,
     though it didn't run 5 seconds (G26). So does a jq iteration limit in general.
