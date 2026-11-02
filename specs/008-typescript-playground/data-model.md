@@ -309,7 +309,7 @@ type KeyCommand = {
   group: KeyGroup;         // its heading in the list of keys
   keys: { mac: string[]; other: string[]; linux?: string[] };   // what the Playground binds; none: no row on that system
   vsCode: { mac: string[]; other: string[]; linux?: string[] }; // VS Code's defaults, for the list's notes
-  differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code';  // why `keys` differs (FR-084)
+  differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code' | 'run';  // why `keys` differs (FR-084)
   kept?: { mac: string; other: string };   // the key others keep, for the note
   shown?: { mac: string; other: string };  // what the list shows for a run of keys
 };

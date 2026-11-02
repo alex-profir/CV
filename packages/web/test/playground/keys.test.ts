@@ -5,7 +5,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { SHORTCUTS, shortcutLabel } from '@cv/os-core';
 import { KEY_COMMANDS, KEY_GROUPS, RESERVED_KEYS, keyLabel, keysFor, keysShown } from '../../src/apps/playground/keys.ts';
-import { siteText } from '../../src/site-text.ts';
+import { fill, siteText } from '../../src/site-text.ts';
 import { zoomText } from '../../../../tools/site-check/src/parts/layout.ts';
 import { frontWindow, settle } from '../helpers/shell.ts';
 import { EDITOR, POPUP, editorText, engine, focusEditor, menu, openPlaygroundPage, primary, readLogs, setCode, waitChecked, waitForCode } from '../helpers/playground.ts';
@@ -134,8 +134,21 @@ describe('008-typescript-playground-FR-083: the editor uses VS Code\'s keys for 
     await focusEditor(page);
     await page.keyboard.press(`${await primary(page)}+Enter`);
     await expect.poll(async () => (await readLogs(page)).map((row) => row.text)).toContain('ran');
-    // Monaco's palette gives Insert Line Below the same key; Run has it.
+    // Monaco gives Insert Line Below the same key; Run has it.
     expect(await editorText(page)).toBe('console.log("ran");');
+  });
+
+  test('Insert Line Below has its own key, as Run has Monaco\'s, and says why', async () => {
+    const page = await openPlaygroundPage();
+    const key = await primary(page);
+    await setCode(page, 'const one = 1;');
+    await focusEditor(page);
+    await page.keyboard.press(`${key}+KeyK`);
+    await page.keyboard.press('Enter');
+    await expect.poll(() => editorText(page)).toMatch(/^const one = 1;\n\s*$/);
+    expect(await readLogs(page)).toEqual([]);
+    const command = KEY_COMMANDS.find((entry) => entry.id === 'editor.action.insertLineAfter')!;
+    expect(fill(words.popups.keys.differs[command.differs!], { key: command.kept!.other })).toBe('Not VS Code\'s key: Run takes Ctrl+Enter.');
   });
 
   test('the keys do nothing with focus outside the editor', async () => {

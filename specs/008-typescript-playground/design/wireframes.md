@@ -357,8 +357,8 @@ Info). Editing: on a Mac, Delete All Left · Delete All Right · Join Lines · T
 Selecting: Move Last Selection to Next Find Match. Find: Find Next · Find Previous · on a Mac, Find
 with Selection. Folding: Create Folding Range from Selection · Remove Manual Folding Ranges · Fold
 All Block Comments · Fold All Except Selected · Unfold All Except Selected · Fold All Regions ·
-Toggle Fold Recursively. Insert Line Below, the eighteenth, waits: see "Awaiting sign-off" in
-`review.md`.
+Toggle Fold Recursively. Insert Line Below, the eighteenth, was built after the merge as a small
+adjustment: `Cmd+K Enter`, with the note "Not VS Code's key: Run takes {key}." (`docs/backlog.md`).
 
 Also signed: the Copy the code message on the desktop when the clipboard refuses, in the phone's
 signed words: "This code is too long to share as a link, and it couldn't be copied." Built (T225).

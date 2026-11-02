@@ -165,10 +165,10 @@ No row was built before the signature below.
 - Approved by: Alex Profir (project owner)
 - Notes: Approved as proposed, including the list's new last line: "The command palette, F1, lists the commands the editor offers it, with their keys."
 
-## Awaiting sign-off
+## Built without a signature
 
-Found while building the third amendment's rows; nothing here is built.
+Found while building the third amendment's rows. Built on 2026-11-02, after 008 shipped, as a small adjustment under Principle II, since it adds a row to the list and changes no layout. `desktop-39` stays as signed; `docs/backlog.md` records the difference.
 
 | Change | Why | Export | Code |
 |--------|-----|--------|------|
-| Insert Line Below gets its own key, `Cmd+K Enter` (`Ctrl+K Enter` on Windows and Linux), with the note "Not VS Code's key: Run takes {key}." | The signed row can't be built true as it stands. Monaco's key for it, `Cmd+Enter`, is Run's (FR-083), so pressing it never inserts a line, while the palette still shows it there. FR-084 wants a taken key replaced, and none of the four signed notes says why this one differs. Recommended. The other way: leave the command out of the list and take the key off it, so the palette shows it with none, against FR-084's "MUST get another key" | Words here; `desktop-39` redrawn once signed | Not built (T254) |
+| Insert Line Below gets its own key, `Cmd+K Enter` (`Ctrl+K Enter` on Windows and Linux), with the note "Not VS Code's key: Run takes {key}." | The signed row can't be built true as it stands. Monaco's key for it, `Cmd+Enter`, is Run's (FR-083), so pressing it never inserts a line, while the palette still shows it there. FR-084 wants a taken key replaced, and none of the four signed notes says why this one differs. Recommended. The other way: leave the command out of the list and take the key off it, so the palette shows it with none, against FR-084's "MUST get another key" | Words here; `desktop-39` not redrawn | Built (T254) |
