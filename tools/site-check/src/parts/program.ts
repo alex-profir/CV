@@ -3,8 +3,10 @@
 // variant, so a failure says what failed.
 import type { BrowserContextOptions, Locator, Page } from 'playwright';
 import type { Problem } from '../report.ts';
-import { SHELL, TERMINAL, newRun, openTerminal, stateVariant, typeLine } from '../shell-states.ts';
+import { ENDLESS_PROGRAM, SHELL, TERMINAL, newRun, openTerminal, startLine, stateVariant, typeLine, waitForShell } from '../shell-states.ts';
 import type { Shell } from '../shell-states.ts';
+import { siteText } from '../../../../packages/web/src/site-text.ts';
+import { waitForWorker } from './offline.ts';
 import { recordRequests } from './other-sites.ts';
 
 export type Found = Omit<Problem, 'part' | 'page' | 'variant'>;
@@ -33,7 +35,11 @@ export async function writeFile(page: Page, name: string, text: string): Promise
 export const runLine = (page: Page, line: string): Promise<Locator> => newRun(page, () => typeLine(page, line));
 
 // The output of a run, as text.
-export const outputOf = async (run: Locator): Promise<string> => (await run.locator(TERMINAL.output).innerText()).trim();
+export const outputOf = async (run: Locator): Promise<string> => {
+  const output = run.locator(TERMINAL.output);
+  // A line that printed nothing has no output to read.
+  return (await output.count()) === 0 ? '' : (await output.innerText()).trim();
+};
 
 export { openTerminal };
 
@@ -49,19 +55,10 @@ async function statusIs(page: Page, found: Found[], subject: string, wanted: num
   if (shown !== String(wanted)) found.push(problem('status', subject, `$? is ${shown}, expected ${wanted}`));
 }
 
-// Types a line and doesn't wait: for a program that keeps running.
-async function startLine(page: Page, line: string): Promise<void> {
-  const input = page.locator(TERMINAL.commandLine);
-  await input.focus();
-  await input.fill('');
-  await page.keyboard.type(line);
-  await page.keyboard.press('Enter');
-}
-
 const framesHeld = (page: Page) => page.evaluate(() => document.getElementById('terminal-runners')?.childElementCount ?? 0);
 
 // Until the program's frame is there, so a key reaches a program and not a line.
-const programStarted = (page: Page) => page.waitForFunction(() => document.querySelector('#terminal-runners iframe') !== null, null, { timeout: 15_000 });
+const programStarted = (page: Page) => page.waitForSelector(TERMINAL.programFrame, { state: 'attached', timeout: 15_000 });
 
 const busy = (page: Page) => page.evaluate((selector) => document.querySelector(selector) !== null, TERMINAL.busyRun);
 
@@ -69,10 +66,25 @@ const busy = (page: Page) => page.evaluate((selector) => document.querySelector(
 const printed = (page: Page, text: string) => page.waitForFunction(([selector, wanted]) => document.querySelector(selector!)?.textContent?.includes(wanted!) === true, [TERMINAL.busyRun, text] as const, { timeout: 15_000 });
 
 // Until no line runs, and how long that took.
-async function ended(page: Page): Promise<number> {
+async function ended(page: Page, timeout = 30_000): Promise<number> {
   const from = Date.now();
-  await page.waitForFunction((selector) => document.querySelector(selector) === null, TERMINAL.busyRun, { timeout: 30_000 });
+  await page.waitForFunction((selector) => document.querySelector(selector) === null, TERMINAL.busyRun, { timeout });
   return Date.now() - from;
+}
+
+// How long a stop may be given before the check says it failed: past the 1 s it
+// must take, and short of the page's own waits, so a stop that never comes is named.
+const STOP_WAIT_MS = 5_000;
+
+// Whether a stop ended the program, within the 1 s (FR-031, FR-033) or late.
+async function stopEnded(page: Page, found: Found[], subject: string): Promise<boolean> {
+  const took = await ended(page, STOP_WAIT_MS).catch(() => null);
+  if (took === null) {
+    found.push(problem('stop', subject, `the program was still running ${STOP_WAIT_MS} ms later`));
+    return false;
+  }
+  if (took > 1000) found.push(problem('stop', subject, `it took ${took} ms to end the program, over 1 s`));
+  return true;
 }
 
 const TICK = "let n = 0; const t = setInterval(() => { console.log('tick', ++n, Date.now()); if (n === 3) clearInterval(t); }, 400);";
@@ -87,6 +99,19 @@ const watchTicks = () => {
   }).observe(screen, { childList: true, subtree: true, characterData: true });
   (globalThis as unknown as { __ticks: typeof seen }).__ticks = seen;
 };
+
+// What the page itself asked for of a program's code or the engine, from its own
+// resource timing: the service worker's install fetches the precached bundle on the
+// same load (T009), which the context's requests would count.
+const programRequests = (page: Page) => page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname).filter((pathname) => /^\/assets\/program-/.test(pathname) || pathname.startsWith('/playground/')));
+
+// The page again, with the network off, and the Terminal open.
+async function reopenOffline(page: Page, shell: Shell): Promise<void> {
+  await page.context().setOffline(true);
+  await page.reload({ waitUntil: 'load' });
+  await waitForShell(page);
+  await openTerminal(page, shell);
+}
 
 // The checks, in order; each story adds its own.
 export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
@@ -155,7 +180,7 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
     async run(page, shell) {
       const found: Found[] = [];
       await openTerminal(page, shell);
-      await startLine(page, 'node -e "while (true) {}"');
+      await startLine(page, ENDLESS_PROGRAM);
       await programStarted(page);
       // The site stays live: another window opens, and the line takes typing.
       await page.click(SHELL.cvDockItem);
@@ -166,8 +191,7 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
       await page.locator(TERMINAL.commandLine).fill('');
       if (!(await busy(page))) found.push(problem('live', 'while (true) {}', 'the program ended by itself'));
       await page.keyboard.press('Control+C');
-      const took = await ended(page);
-      if (took > 1000) found.push(problem('stop', 'Ctrl+C', `it took ${took} ms to end the program, over 1 s`));
+      if (!(await stopEnded(page, found, 'Ctrl+C'))) return found;
       if ((await framesHeld(page)) !== 0) found.push(problem('stop', 'Ctrl+C', 'its frame is still there'));
       await statusIs(page, found, 'Ctrl+C', 130);
       return found;
@@ -186,8 +210,7 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
       await printed(page, 'no');
       if (!(await busy(page))) found.push(problem('handler', 'first Ctrl+C', 'the program ended with a handler to run'));
       await page.keyboard.press('Control+C');
-      const took = await ended(page);
-      if (took > 1000) found.push(problem('stop', 'second Ctrl+C', `it took ${took} ms to end the program, over 1 s`));
+      if (!(await stopEnded(page, found, 'second Ctrl+C'))) return found;
       await statusIs(page, found, 'second Ctrl+C', 130);
       return found;
     },
@@ -303,12 +326,77 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
     },
   },
   {
+    name: 'stop-key',
+    shells: ['mobile'],
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      const stop = page.locator(`${TERMINAL.pocketKey}[aria-label="${siteText.terminal.program.stop}"]`);
+      if ((await stop.count()) !== 0) found.push(problem('stop key', 'nothing running', 'the Stop key shows with nothing running'));
+      await startLine(page, ENDLESS_PROGRAM);
+      await programStarted(page);
+      await stop.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => found.push(problem('stop key', 'a program running', 'the Stop key does not show')));
+      if (found.length > 0) return found;
+      await stop.tap();
+      if (!(await stopEnded(page, found, 'the Stop key'))) return found;
+      if ((await framesHeld(page)) !== 0) found.push(problem('stop', 'the Stop key', 'its frame is still there'));
+      if ((await stop.count()) !== 0) found.push(problem('stop key', 'after the end', 'the Stop key is still there'));
+      await statusIs(page, found, 'the Stop key', 130);
+      return found;
+    },
+  },
+  {
+    name: 'first-load',
+    shells: BOTH,
+    options: { serviceWorkers: 'allow' },
+    async run(page, shell) {
+      const found: Found[] = [];
+      const noneAt = async (where: string) => {
+        for (const requested of await programRequests(page)) found.push(problem('first load', where, `the page requested ${requested} before a first program`));
+      };
+      if (!(await waitForWorker(page))) found.push(problem('no-service-worker', 'first load', 'no service worker took control after the first visit'));
+      await noneAt('/');
+      await openTerminal(page, shell);
+      await noneAt("the Terminal's first open");
+      await page.goto(new URL('/cv', page.url()).href, { waitUntil: 'load' });
+      await noneAt('/cv');
+      return found;
+    },
+  },
+  {
+    name: 'offline',
+    shells: BOTH,
+    options: { serviceWorkers: 'allow' },
+    async run(page, shell) {
+      const found: Found[] = [];
+      // One complete online visit, with no program run.
+      if (!(await waitForWorker(page))) return [problem('no-service-worker', 'offline', 'no service worker took control after the first visit')];
+      await reopenOffline(page, shell);
+      await writeFile(page, 'hello.js', "console.log('from the stored copy');\n");
+      expectIn(found, 'node hello.js offline', await outputOf(await runLine(page, 'node hello.js')), 'from the stored copy', 'output');
+      await statusIs(page, found, 'node hello.js offline', 0);
+      await writeFile(page, 'app.ts', "const n: number = 1;\nconsole.log('typed', n);\n");
+      const refused = await outputOf(await runLine(page, 'ts-node app.ts'));
+      if (!/TypeScript/.test(refused) || !/\d+(\.\d+)? MB/.test(refused)) found.push(problem('no copy', 'ts-node app.ts offline', `expected the words with the size, got ${JSON.stringify(refused.slice(0, 400))}`));
+      await statusIs(page, found, 'ts-node app.ts offline', 1);
+      if (shell === 'mobile') return found;
+      // With a copy, downloaded online, it runs offline too.
+      await page.context().setOffline(false);
+      expectIn(found, 'ts-node app.ts online', await outputOf(await runLine(page, 'ts-node app.ts')), 'typed 1', 'output');
+      await reopenOffline(page, shell);
+      await writeFile(page, 'app.ts', "const n: number = 2;\nconsole.log('typed', n);\n");
+      expectIn(found, 'ts-node app.ts with a copy offline', await outputOf(await runLine(page, 'ts-node app.ts')), 'typed 2', 'output');
+      await statusIs(page, found, 'ts-node app.ts with a copy offline', 0);
+      return found;
+    },
+  },
+  {
     name: 'closed',
     shells: ['desktop'],
     async run(page, shell) {
       const found: Found[] = [];
       await openTerminal(page, shell);
-      await startLine(page, 'node -e "while (true) {}"');
+      await startLine(page, ENDLESS_PROGRAM);
       await programStarted(page);
       await page.click('#os .window[data-view="terminal"] .control-close');
       await page.waitForFunction(() => (document.getElementById('terminal-runners')?.childElementCount ?? 0) === 0, null, { timeout: 5_000 }).catch(() => found.push(problem('close', 'the Terminal closed', 'its frame is still there')));

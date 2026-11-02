@@ -18,8 +18,8 @@ describe('009-terminal-node-FR-029: changes go through the same rules', () => {
     const files = await shell.apply({ files: { [`${HOME}/cv.json`]: { text: 'forged' }, [`${HOME}/ok.txt`]: { text: 'kept' } }, folders: [] });
     expect(await lines(shell, 'cat cv.json')).toBe(before);
     expect(await lines(shell, 'cat ok.txt')).toBe('kept');
-    expect(files.files['ok.txt']).toBe('kept');
-    expect(files.files['cv.json']).toBeUndefined();
+    expect(files.files[`${HOME}/ok.txt`]).toBe('kept');
+    expect(files.files[`${HOME}/cv.json`]).toBeUndefined();
   });
 
   test('a forged removal of a protected file changes nothing', async () => {
@@ -38,8 +38,8 @@ describe('009-terminal-node-FR-029: changes go through the same rules', () => {
   test('past the limit a change is refused, and those that fit are kept', async () => {
     const shell = shellFor('every-field');
     const files = await shell.apply({ files: { [`${HOME}/fits.txt`]: { text: 'x' }, [`${HOME}/big.txt`]: { text: 'y'.repeat(QUOTA + 1) } }, folders: [] });
-    expect(files.files['fits.txt']).toBe('x');
-    expect(files.files['big.txt']).toBeUndefined();
+    expect(files.files[`${HOME}/fits.txt`]).toBe('x');
+    expect(files.files[`${HOME}/big.txt`]).toBeUndefined();
     expect(files.bytes).toBeLessThanOrEqual(QUOTA);
   });
 });
@@ -54,11 +54,11 @@ describe('009-terminal-node-FR-030: what a program wrote is there once it ends',
     });
     expect(await lines(shell, 'cat d/new.txt')).toBe('new');
     expect(await lines(shell, 'ls old.txt olddir 2>/dev/null')).toBe('');
-    expect(files.files['d/new.txt']).toBe('new');
-    expect(files.folders).toContain('d');
-    expect(files.folders).not.toContain('olddir');
-    expect(files.files['old.txt']).toBeUndefined();
-    expect(files.binary).toContain('b.bin');
+    expect(files.files[`${HOME}/d/new.txt`]).toBe('new');
+    expect(files.folders).toContain(`${HOME}/d`);
+    expect(files.folders).not.toContain(`${HOME}/olddir`);
+    expect(files.files[`${HOME}/old.txt`]).toBeUndefined();
+    expect(files.binary).toContain(`${HOME}/b.bin`);
   });
 
   test('the client sends `apply` and gives back the files, and keeps them and the status for a restart', async () => {

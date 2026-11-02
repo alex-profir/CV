@@ -62,7 +62,7 @@ describe('009-terminal-node-FR-038: strict options, and types for what is offere
     expect(check('const s: string = null;\nconsole.log(s);\n').diagnostics.map(({ code }) => code)).toEqual([2322]);
   });
 
-  test('every global of FR-012 and every process name of contracts/node-api.md checks clean', () => {
+  test('every global of 009-terminal-node-FR-012 and every process name of contracts/node-api.md checks clean', () => {
     clean(`
       console.log(1); console.info(1); console.debug(1); console.error(1); console.warn(1); console.trace(1); console.dir({}, { depth: 1 }); console.table([]);
       console.group(); console.groupEnd(); console.time(); console.timeEnd(); console.timeLog(); console.count(); console.countReset(); console.assert(true);

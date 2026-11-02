@@ -16,9 +16,6 @@ export type RunControl = (line: string, touch: boolean) => void;
 
 type Props = { block: Block; run: RunControl };
 
-// A program's own lines (009 FR-027, FR-037, FR-031).
-const PROGRAM_LINES = { still: '009-terminal-node-FR-027', download: '009-terminal-node-FR-037', stop: '009-terminal-node-FR-031' };
-
 const INLINE = new Set<Node['kind']>(['text', 'command', 'link', 'time']);
 
 // The line art `tree` prints, which the Terminal's font files don't hold: each
@@ -178,9 +175,23 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
             <Nodes block={node.children} run={run} level={level} />
           </p>
         );
-      if (node.req !== undefined)
+      // A program's own lines. Each `data-req` is written out, as the inspector and
+      // the traceability check read them from the source.
+      if (node.req === 'still')
         return (
-          <p className="out-line" data-req={PROGRAM_LINES[node.req]}>
+          <p className="out-line" data-req="009-terminal-node-FR-027">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'download')
+        return (
+          <p className="out-line" data-req="009-terminal-node-FR-037">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'stop')
+        return (
+          <p className="out-line" data-req="009-terminal-node-FR-031">
             <Nodes block={node.children} run={run} level={level} />
           </p>
         );

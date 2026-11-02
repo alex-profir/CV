@@ -38,7 +38,8 @@ function textPoints(page: Page): Promise<{ onText: Point; pastText: Point }> {
       range.setEnd(node, start + 3);
       const rect = range.getBoundingClientRect();
       if (rect.top < view.top + 4 || rect.bottom > view.bottom - 4) continue;
-      const block = parent.closest('p, li')!;
+      const block = parent.closest('p, li');
+      if (block === null) continue;
       const whole = document.createRange();
       whole.selectNodeContents(block);
       const sameLine = [...whole.getClientRects()].filter((part) => part.top <= rect.top + 1 && part.bottom >= rect.bottom - 1);

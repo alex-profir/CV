@@ -52,9 +52,17 @@ function Run({ entry, desktop, run, pending = false }: { entry: Entry; desktop: 
         {entry.cancelled === true && <span className="run-cancel">{words.replies.cancelMark}</span>}
       </h2>
       {entry.block !== null && entry.block.length > 0 && (
-        <div className="run-output" data-req={`006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018${pending ? ' 009-terminal-node-FR-009' : ''}`}>
-          <Output block={entry.block} run={run} />
-        </div>
+        // Each `data-req` is written out, as the inspector and the traceability check
+        // read them from the source.
+        pending ? (
+          <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018 009-terminal-node-FR-009">
+            <Output block={entry.block} run={run} />
+          </div>
+        ) : (
+          <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
+            <Output block={entry.block} run={run} />
+          </div>
+        )
       )}
     </section>
   );

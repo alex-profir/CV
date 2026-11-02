@@ -116,7 +116,7 @@ describe('009-terminal-node-FR-022, 009-terminal-node-FR-023 and 009-terminal-no
     expect(await statusOf(page)).toBe('0');
   });
 
-  test("a program's globals are those of FR-012, and quickstart's three names are undefined", async () => {
+  test("a program's globals are those of 009-terminal-node-FR-012, and quickstart's three names are undefined", async () => {
     const page = await openProgramTerminal();
     const output = await runToEnd(page, 'node -e "console.log(typeof document, typeof localStorage, typeof Worker, typeof process, typeof Buffer, typeof require)"');
     expect(output.trim()).toBe('undefined undefined undefined object function function');

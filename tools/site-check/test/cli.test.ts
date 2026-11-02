@@ -93,7 +93,10 @@ const INSPECTOR_VARIANT = new RegExp(
 // its states, with their conditions.
 const PLAYGROUND_VARIANT = /^(?:desktop|mobile)\/playground-[a-z0-9%/-]+\/\d+px$/;
 
-const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant) || PLAYGROUND_VARIANT.test(variant);
+// The program part's variants (009): its checks.
+const PROGRAM_VARIANT = /^(?:desktop|mobile)\/program-[a-z-]+\/\d+px$/;
+
+const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant) || PLAYGROUND_VARIANT.test(variant) || PROGRAM_VARIANT.test(variant);
 
 const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
 

@@ -117,9 +117,10 @@ const PLAYGROUND_LAYOUTS: readonly { state: string; condition: string; width: nu
 
 // `repository` is where the inspector part reads the requirement data and
 // the site's repository address: the root itself, unless a test checks a
-// built site laid out apart from its repository. `playgroundChecks` runs only
-// those of the Playground part's checks, for a test on a copy with one fault.
-export type CheckOptions = { parts?: readonly Part[]; repository?: string; playgroundChecks?: readonly string[] };
+// built site laid out apart from its repository. `playgroundChecks` and
+// `programChecks` run only those of the two parts' checks, for a test on a copy
+// with one fault.
+export type CheckOptions = { parts?: readonly Part[]; repository?: string; playgroundChecks?: readonly string[]; programChecks?: readonly string[] };
 
 export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
@@ -197,7 +198,7 @@ const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' &&
 
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
-export async function runCheck(root: string, { parts = PARTS, repository = root, playgroundChecks }: CheckOptions = {}): Promise<Report> {
+export async function runCheck(root: string, { parts = PARTS, repository = root, playgroundChecks, programChecks }: CheckOptions = {}): Promise<Report> {
   const manifest = readManifest(root);
   const siteDir = path.join(root, SITE_DIR);
   // Read when a part needs it, so an unreadable CV document fails only
@@ -332,6 +333,7 @@ export async function runCheck(root: string, { parts = PARTS, repository = root,
           return;
         }
         for (const check of PROGRAM_CHECKS) {
+          if (programChecks !== undefined && !programChecks.includes(check.name)) continue;
           for (const shell of check.shells) {
             const target = shellAt(shell);
             const variant = programVariant(shell, check.name, target.width);
