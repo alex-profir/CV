@@ -37,8 +37,9 @@ export type Node =
   // printed as text (research R30).
   | { kind: 'text'; text: string; tone?: Tone; stream?: 'stdout' | 'stderr' }
   // `stopped`: the line a stopped run ends with (FR-069); `standard`, the
-  // heading of `help`'s standard group (FR-008).
-  | { kind: 'line'; children: Block; req?: 'stopped' | 'standard' }
+  // heading of `help`'s standard group (FR-008); `still`, `download` and `stop`,
+  // a program's own lines (009 FR-027, FR-037, FR-031).
+  | { kind: 'line'; children: Block; req?: 'stopped' | 'standard' | 'still' | 'download' | 'stop' }
   // Depth 1 is a section, 2 an entry, relative to the command's heading
   // (FR-029); a command showing one section uses 1 for its entries.
   | { kind: 'heading'; depth: 1 | 2; children: Block }

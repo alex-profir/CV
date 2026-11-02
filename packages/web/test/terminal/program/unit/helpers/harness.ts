@@ -38,7 +38,7 @@ const { parentPort, workerData } = require('node:worker_threads');
 const vm = require('node:vm');
 const context = vm.createContext({});
 const give = (name, value) => { context[name] = value; };
-for (const name of ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask', 'URL', 'URLSearchParams', 'structuredClone', 'performance']) give(name, globalThis[name]);
+for (const name of ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'queueMicrotask', 'URL', 'URLSearchParams', 'structuredClone', 'performance', 'AbortController', 'AbortSignal', 'Event', 'EventTarget', 'atob', 'btoa']) give(name, globalThis[name]);
 give('__send', (text) => parentPort.postMessage(JSON.parse(text)));
 give('__encode', (text) => [...new TextEncoder().encode(text)]);
 give('__decode', (bytes, label, fatal) => new TextDecoder(label, { fatal }).decode(Uint8Array.from(bytes)));
@@ -55,6 +55,8 @@ parentPort.postMessage({ harness: 'ready' });
 // `instanceof` and `Array.isArray` see what they would see there.
 const SHIM = String.raw`(() => {
   globalThis.self = globalThis;
+  const later = setTimeout;
+  const clone = structuredClone;
   const listeners = new Map();
   class MessageEvent {
     #data;
@@ -69,8 +71,8 @@ const SHIM = String.raw`(() => {
     onmessage = null;
     other = null;
     postMessage(message) {
-      const copy = structuredClone(message);
-      setTimeout(() => this.other.onmessage?.(new MessageEvent(copy)), 0);
+      const copy = clone(message);
+      later(() => this.other.onmessage?.(new MessageEvent(copy)), 0);
     }
     close() {}
   }

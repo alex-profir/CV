@@ -38,3 +38,30 @@ export function announce(command: string, block: Block, columns: number): Announ
   if (rows(block, columns) <= FULL_ROWS) return { full: plainText(block) };
   return { command, ...counted(block) };
 }
+
+// A program's output reaches screen readers in batches (009 FR-040): at most one a
+// second, of the text since the last one, cut to what can be listened to.
+const BATCH_MS = 1000;
+const BATCH_CHARS = 1000;
+
+export function batched(say: (text: string) => void) {
+  let text = '';
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const flush = () => {
+    timer = null;
+    if (text !== '') say(text.slice(-BATCH_CHARS));
+    text = '';
+  };
+  return {
+    add(more: string) {
+      text += more;
+      if (text.length > BATCH_CHARS) text = text.slice(-BATCH_CHARS);
+      timer ??= setTimeout(flush, BATCH_MS);
+    },
+    // At the end: nothing more is said of the output.
+    stop() {
+      if (timer !== null) clearTimeout(timer);
+      flush();
+    },
+  };
+}

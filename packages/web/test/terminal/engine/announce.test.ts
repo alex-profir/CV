@@ -160,6 +160,8 @@ describe('006-terminal-FR-028: opening the vim view says what it opened', () => 
       reset: () => undefined,
       write: (request: Parameters<typeof shell.write>[0]) => shell.write(request),
       complete: async () => null,
+      setStatus: () => undefined,
+      apply: async () => null,
     };
     const session = createSession(client);
     if (first !== '') session.run(first, 'desktop');

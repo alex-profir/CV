@@ -318,7 +318,7 @@ describe('006-terminal-FR-057: any command can be piped into', () => {
 });
 
 describe('006-terminal-FR-022: no command reaches the network', () => {
-  test.each(['curl x', 'wget x', 'python', 'node', 'ssh h'])('%s is command not found', async (line) => {
+  test.each(['curl x', 'wget x', 'python', 'ssh h'])('009-terminal-node-FR-042: %s stays command not found, and node leaves this list', async (line) => {
     const result = await runLine(shellFor('every-field'), line);
     expect(result.stderr).toBe(`bash: ${line.split(' ')[0]}: command not found\n`);
     expect(result.status).toBe(127);

@@ -16,6 +16,9 @@ export type RunControl = (line: string, touch: boolean) => void;
 
 type Props = { block: Block; run: RunControl };
 
+// A program's own lines (009 FR-027, FR-037, FR-031).
+const PROGRAM_LINES = { still: '009-terminal-node-FR-027', download: '009-terminal-node-FR-037', stop: '009-terminal-node-FR-031' };
+
 const INLINE = new Set<Node['kind']>(['text', 'command', 'link', 'time']);
 
 // The line art `tree` prints, which the Terminal's font files don't hold: each
@@ -120,7 +123,7 @@ function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run
   ));
   if (node.req === 'help')
     return (
-      <ul className="out-rows out-help" data-req="006-terminal-FR-008">
+      <ul className="out-rows out-help" data-req="006-terminal-FR-008 009-terminal-node-FR-007">
         {rows}
       </ul>
     );
@@ -171,7 +174,13 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
         );
       if (node.req === 'stopped')
         return (
-          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075">
+          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075 009-terminal-node-FR-026">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req !== undefined)
+        return (
+          <p className="out-line" data-req={PROGRAM_LINES[node.req]}>
             <Nodes block={node.children} run={run} level={level} />
           </p>
         );

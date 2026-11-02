@@ -53,6 +53,8 @@ export type SiteShell = {
   fs: TerminalFs;
   run: () => RunRecord;
   limits: { output: number; pipe: number };
+  // A line's syntax tree, for the sole-command check (009 research R14).
+  parse: (line: string) => unknown;
 };
 
 // Set by the adapter on a command whose output goes into a pipe: what it
@@ -101,6 +103,73 @@ const ok = (stdout = '', stderr = '', exitCode = 0): Output => ({ stdout, stderr
 const SITE = new Set<string>(SITE_WORDS);
 const BUILTINS = new Set<string>(SHELL_BUILTINS);
 export const STANDARD_GROUP: readonly string[] = [...new Set<string>([...STANDARD_COMMANDS, ...SHELL_BUILTINS])].filter((name) => !SITE.has(name)).sort();
+
+type LineNode = { type?: string; parts?: LineNode[]; [key: string]: unknown };
+
+const holdsSubstitution = (node: unknown): boolean => {
+  if (Array.isArray(node)) return node.some(holdsSubstitution);
+  if (node === null || typeof node !== 'object') return false;
+  const { type } = node as LineNode;
+  if (type === 'CommandSubstitution' || type === 'ProcessSubstitution') return true;
+  return Object.values(node).some(holdsSubstitution);
+};
+
+// A name written out, not given by an expansion.
+const literalName = (word: LineNode | undefined): string | null => {
+  if (word?.parts === undefined) return null;
+  let name = '';
+  for (const part of word.parts) {
+    if (part.type !== 'Literal' && part.type !== 'SingleQuoted' && part.type !== 'Escaped') return null;
+    name += String(part['value']);
+  }
+  return name;
+};
+
+const PROGRAM_WORDS: ReadonlySet<string> = new Set(['node', 'ts-node', 'tsnode']);
+
+// The sole-command check (009 contracts/commands.md, research R14): one
+// statement, one pipeline, one simple command named literally `node`, `ts-node`
+// or `tsnode`, with no redirection, no background and no substitution in its
+// words. Assignments before it are allowed. A later feature replaces this one
+// function to let a program wait on its host.
+export function isSoleCommand(script: unknown): boolean {
+  const statements = (script as { statements?: LineNode[] }).statements ?? [];
+  if (statements.length !== 1 || statements[0]!['background'] === true) return false;
+  const pipelines = statements[0]!['pipelines'] as LineNode[];
+  if (pipelines.length !== 1 || pipelines[0]!['negated'] === true || pipelines[0]!['timed'] === true) return false;
+  const commands = pipelines[0]!['commands'] as LineNode[];
+  if (commands.length !== 1) return false;
+  const [command] = commands;
+  if (command!.type !== 'SimpleCommand' || ((command!['redirections'] as unknown[] | undefined)?.length ?? 0) > 0) return false;
+  const name = literalName(command!['name'] as LineNode | undefined);
+  return name !== null && PROGRAM_WORDS.has(name.toLowerCase()) && !holdsSubstitution([command!['args'], command!['assignments']]);
+}
+
+type ProgramLine = { answer: Output } | { script: string | null; code: string | null; print: boolean; args: string[] };
+
+// `node`'s and `ts-node`'s words (009 contracts/commands.md). Only `node` takes
+// `-e` and `-p` (FR-003), and an option after the script is the program's.
+function readProgramLine(args: readonly string[], command: 'node' | 'ts-node', text: RunContext['text']): ProgramLine {
+  const words = text.terminal.nodeCommand;
+  const bad = (option: string): ProgramLine => ({ answer: ok('', `${fill(words.badOption, { option })}\n`, 9) });
+  for (let at = 0; at < args.length; at += 1) {
+    const arg = args[at]!;
+    if (arg === '--') {
+      const script = args[at + 1];
+      return script === undefined ? { answer: ok('', `${words.noScript}\n`, 1) } : { script, code: null, print: false, args: args.slice(at + 2) };
+    }
+    if (arg === '-' || !arg.startsWith('-')) return { script: arg, code: null, print: false, args: args.slice(at + 1) };
+    if (arg === '-v' || arg === '--version') return { answer: ok(`${words.version}\n`) };
+    if (arg === '-h' || arg === '--help') return { answer: ok(`${words.usage.join('\n')}\n`) };
+    if (command === 'node' && (arg === '-e' || arg === '-p' || arg === '--eval' || arg === '--print')) {
+      const code = args[at + 1];
+      if (code === undefined) return { answer: ok('', `node: ${arg} requires an argument\n`, 9) };
+      return { script: null, code, print: arg === '-p' || arg === '--print', args: args.slice(at + 2) };
+    }
+    return bad(arg);
+  }
+  return { answer: ok('', `${words.noScript}\n`, 1) };
+}
 
 export function siteCommands(shell: SiteShell): ShellCommand[] {
   const files = filesOf(shell.context);
@@ -655,12 +724,46 @@ export function siteCommands(shell: SiteShell): ShellCommand[] {
       }
     });
 
+  // `node`, `ts-node` and `tsnode` (009 research R6): a line that passes the check
+  // ends at once, with a `program` effect, so the shell's limits never touch it.
+  const programs = (['node', 'ts-node', 'tsnode'] as const).map((word) =>
+    defineCommand(word, async (args, ctx) => {
+      const words = shell.context.text.terminal.nodeCommand;
+      let sole = false;
+      try {
+        sole = isSoleCommand(shell.parse(shell.run().line));
+      } catch {
+        // A line the shell's own parser read another way: not one of these.
+      }
+      if (!sole) return ok('', `${words.ownLine}\n`, 1);
+      const command = word === 'node' ? 'node' : 'ts-node';
+      const line = readProgramLine(args, command, shell.context.text);
+      if ('answer' in line) return line.answer;
+      const env = Object.fromEntries(Object.entries(ctx.exportedEnv ?? {}).filter(([name]) => !name.startsWith(MARK)));
+      const run = shell.run();
+      run.effects.push({
+        kind: 'program',
+        request: {
+          command,
+          script: line.script === null ? null : ctx.fs.resolvePath(ctx.cwd, line.script),
+          code: line.code,
+          print: line.print,
+          args: line.args,
+          cwd: ctx.cwd,
+          env,
+          files: await shell.fs.programFiles(),
+        },
+      });
+      return ok();
+    }),
+  );
+
   // `--help` for the standard commands just-bash gives none (research G18).
   const helped = Object.entries(MISSING_HELP).filter(([name]) => name !== 'rm').map(([name, help]) =>
     defineCommand(name, async (args, ctx) => (args.includes('--help') ? ok(helpText(name, help)) : ctx.origCommand!(args))),
   );
 
-  const own = [...rows, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
+  const own = [...rows, ...programs, vim, cv, cat, ls, jq, rm, deniedMessage('sed'), deniedMessage('tee'), destinationMessage('cp'), destinationMessage('mv'), byteExact('printf', () => true), byteExact('echo', (args) => args.some((arg) => /^-[neE]*e[neE]*$/.test(arg))), ...helped];
   // GNU's fixes (gnu.ts), in front of the wrapper or just-bash's command.
   // A command run again on other input (`Next`): `origCommand` keeps the input
   // it was given, so through the shell, this once past its fix.

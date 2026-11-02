@@ -13,6 +13,7 @@ import { CASE_MARK, CHECK_FILE, CLEARED, FATAL, GONE, HOME, MARK, OPENING, Termi
 import { INPUT_FILE, OUTPUT_FILE } from './gnu.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
+import type { FileChanges } from '../program/messages.ts';
 import { PIPED, RENAMED, SCREEN_COMMANDS, siteCommands, TYPED } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
 import { NAMED_NOT_RUN, SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
@@ -1484,6 +1485,9 @@ export type Shell = {
   write(request: WriteRequest): Promise<WriteOutcome>;
   // Tab (research R43): over TerminalFs and the tables the shell is built from.
   complete(request: CompleteRequest): Promise<Completion>;
+  // What a program changed, when it ended (009 research R10): through TerminalFs,
+  // which checks the rules again; a change it refuses is skipped.
+  apply(changes: FileChanges): Promise<VisitorFiles>;
 };
 
 // `limits` only in tests, to reach one limit before another.
@@ -1975,7 +1979,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { stdout: '', stderr: full.map((target) => `bash: ${target}: No space left on device\n`).join(''), exitCode: full.length > 0 ? 1 : Number(args[0] ?? 0) };
   });
 
-  const commands = siteCommands({ context, fs, run: () => record, limits });
+  const commands = siteCommands({ context, fs, run: () => record, limits, parse: (line) => parseOwn(line) });
 
   // The visitor's functions, which win over a site command in another case.
   let functions: ReadonlySet<string> = new Set();
@@ -2427,10 +2431,24 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files, ...(own ? { own } : {}) };
   }
 
+  async function apply(changes: FileChanges): Promise<VisitorFiles> {
+    const refused = async (work: () => Promise<unknown>) => void (await work().catch(() => undefined));
+    for (const { path, made } of changes.folders) if (made) await refused(() => fs.mkdir(path, { recursive: true }));
+    for (const [path, change] of Object.entries(changes.files)) {
+      if ('removed' in change) await refused(() => fs.rm(path, { force: true }));
+      else await refused(() => fs.writeFile(path, change.binary === true ? Uint8Array.from(change.text, (character) => character.charCodeAt(0)) : change.text));
+    }
+    for (const { path, made } of [...changes.folders].reverse()) if (!made) await refused(() => fs.rm(path, { recursive: true, force: true }));
+    const files = await fs.snapshot();
+    lastFiles = JSON.stringify(files);
+    return files;
+  }
+
   return {
     warm,
     run,
     write,
+    apply,
     complete: (request) =>
       complete(request, {
         fs,

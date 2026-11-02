@@ -45,7 +45,7 @@ const shellText = deepFreeze({
     noScript: 'node: there is no interactive mode here. Run a file: node hello.js',
     ownLine: 'node: runs only on a line of its own here.',
     version: 'v26.0.0 (browser runtime, not Node.js)',
-    badOption: '{command}: bad option: {option}',
+    badOption: 'node: bad option: {option}',
     usage: [
       'Usage: node <file> [args]',
       '       node -e <code>',

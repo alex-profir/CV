@@ -52,7 +52,7 @@ function Run({ entry, desktop, run, pending = false }: { entry: Entry; desktop: 
         {entry.cancelled === true && <span className="run-cancel">{words.replies.cancelMark}</span>}
       </h2>
       {entry.block !== null && entry.block.length > 0 && (
-        <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
+        <div className="run-output" data-req={`006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018${pending ? ' 009-terminal-node-FR-009' : ''}`}>
           <Output block={entry.block} run={run} />
         </div>
       )}

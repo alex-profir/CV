@@ -11,6 +11,7 @@ import { folded } from '../engine/files.ts';
 import type { Folder, FsNode } from '../engine/files.ts';
 import { QUOTA } from './protocol.ts';
 import type { FsEntryInfo, VisitorFiles } from './protocol.ts';
+import type { FileSnapshot, SnapshotEntry } from '../program/messages.ts';
 
 export const HOME = '/home/guest';
 export const TMP = '/tmp';
@@ -558,6 +559,27 @@ export class TerminalFs extends InMemoryFs {
       }
     }
     return { folders, files, bytes, ...(binary.length === 0 ? {} : { binary }) };
+  }
+
+  // What a program can read, the protected tree too, with owners (009 research R10).
+  async programFiles(): Promise<FileSnapshot> {
+    const entries: SnapshotEntry[] = [];
+    for (const path of [...this.getAllPaths()].sort()) {
+      if (path !== HOME && path !== TMP && !path.startsWith(`${HOME}/`) && !path.startsWith(`${TMP}/`)) continue;
+      const stat = await super.stat(path).catch(() => null);
+      if (stat === null) continue;
+      const { owner, protected: locked } = this.info(path, stat.isDirectory ? 'folder' : 'file');
+      if (stat.isDirectory) entries.push({ path, kind: 'folder', owner, protected: locked });
+      else if (stat.isFile) {
+        const buffer = await super.readFileBuffer(path);
+        try {
+          entries.push({ path, kind: 'file', owner, protected: locked, text: new TextDecoder('utf-8', { fatal: true }).decode(buffer) });
+        } catch {
+          entries.push({ path, kind: 'file', owner, protected: locked, text: Array.from(buffer, (byte) => String.fromCharCode(byte)).join(''), binary: true });
+        }
+      }
+    }
+    return { entries, bytes: await this.visitorBytes() };
   }
 
   // No visitor file left; the protected tree as it was built (FR-021).

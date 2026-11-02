@@ -6,6 +6,7 @@
 // presses Ctrl+C (FR-069, FR-075).
 import { INITIAL_STATE, NO_FILES } from './shell/protocol.ts';
 import type { Completion, FromWorker, Limit, RunRequest, RunResult, ShellState, ToWorker, VisitorFiles, WriteOutcome, WriteRequest } from './shell/protocol.ts';
+import type { FileChanges } from './program/messages.ts';
 
 // The contract's numbers, not design values.
 export const TIMING = {
@@ -42,6 +43,10 @@ export type ShellClient = {
   // Tab: null while a line runs or the shell isn't ready, when a later Tab
   // replaced this one, or with no answer in time.
   complete(line: string, cursor: number): Promise<Completion | null>;
+  // A program's end (009 contracts/program.md): what a restarted worker is given.
+  setStatus(state: ShellState): void;
+  // What it changed; the files after, or null with no shell to answer.
+  apply(id: number, changes: FileChanges): Promise<VisitorFiles | null>;
 };
 
 type Pending = { request: RunRequest; resolve: (result: RunResult) => void; timer: ReturnType<typeof setTimeout> };
@@ -69,6 +74,7 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
   let completing: { id: number; resolve: (completion: Completion | null) => void; timer: ReturnType<typeof setTimeout> } | null = null;
   let completeIds = 0;
   const writes = new Map<number, { path: string; resolve: (outcome: WriteOutcome) => void; timer: ReturnType<typeof setTimeout> }>();
+  const applies = new Map<number, (files: VisitorFiles | null) => void>();
   // What a restarted worker is given back (research R26).
   let state: ShellState | null = null;
   let files: VisitorFiles = NO_FILES;
@@ -110,6 +116,8 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
       resolve({ id, ok: false, error: 'cant-open', path });
     }
     writes.clear();
+    for (const answer of applies.values()) answer(null);
+    applies.clear();
   };
 
   const onMessage = (message: FromWorker) => {
@@ -137,6 +145,12 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
       writes.delete(message.outcome.id);
       if (message.outcome.ok) files = message.outcome.files;
       waiting.resolve(message.outcome);
+      return;
+    }
+    if (message.type === 'applied') {
+      files = message.files;
+      applies.get(message.id)?.(message.files);
+      applies.delete(message.id);
       return;
     }
     if (message.type !== 'result' || pending === null || message.result.id !== pending.request.id) return;
@@ -239,6 +253,26 @@ export function createShellClient(makeWorker: () => WorkerLike = newWorker): She
         }, TIMING.answer);
         writes.set(request.id, { path: request.path, resolve, timer });
         worker.postMessage({ type: 'write', request });
+      });
+    },
+    setStatus(next) {
+      state = next;
+    },
+    apply(id, changes) {
+      return new Promise((resolve) => {
+        if (worker === null || status !== 'ready' || pending !== null) {
+          resolve(null);
+          return;
+        }
+        const timer = setTimeout(() => {
+          applies.delete(id);
+          resolve(null);
+        }, TIMING.answer);
+        applies.set(id, (answer) => {
+          clearTimeout(timer);
+          resolve(answer);
+        });
+        worker.postMessage({ type: 'apply', id, changes });
       });
     },
     reset() {

@@ -39,3 +39,8 @@ With or without `node:`.
 - `exit` handlers don't run after a stop (FR-035), and a `SIGINT` handler can't stop the second Ctrl+C (FR-033).
 - Timers are throttled when the page is hidden, as for any page.
 - `Date`, `performance` and other standards come from the browser, as do its limits.
+- A settled promise prints as `Promise { <pending> }`, as a page can't read its state, and an `EventEmitter`
+  prints without Node's private fields.
+- `assert`'s message for a deep difference lists both values rather than Node's line-by-line difference, and
+  `assert.ok`'s doesn't quote the source line.
+- `util.types` holds the common checks, written here, as the inspect package has none.

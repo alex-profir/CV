@@ -24,3 +24,11 @@ declare module 'virtual:terminal-program' {
   export const runtime: string;
   export const policy: string;
 }
+
+// The `buffer` package, named so that it isn't Node's built-in (009 research R11).
+declare module 'buffer/' {
+  export const Buffer: typeof import('node:buffer').Buffer;
+  export const SlowBuffer: unknown;
+  export const kMaxLength: number;
+  export const INSPECT_MAX_BYTES: number;
+}
