@@ -1,8 +1,9 @@
 // The timer functions (009 FR-012), `timers` and `timers/promises`.
+import { invalidArgument } from '../coded.ts';
 import type { Immediate, Loop, Timer } from '../loop.ts';
 
 const callbackOf = (value: unknown): ((...values: unknown[]) => void) => {
-  if (typeof value !== 'function') throw Object.assign(new TypeError(`The "callback" argument must be of type function. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+  if (typeof value !== 'function') throw invalidArgument('callback', 'of type function', value);
   return value as (...values: unknown[]) => void;
 };
 

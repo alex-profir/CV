@@ -59,7 +59,7 @@ describe('009-terminal-node-FR-018: node stops on a TypeScript syntax error', ()
   test.each([
     ['a missing type', "console.log('ran');\nlet y: = 1;\n", 'let y: = 1;', '       ^', 'Type expected.'],
     ['a function with no name', "console.log('ran');\nfunction (a: number { return a }\n", 'function (a: number { return a }', '         ^', 'Identifier expected.'],
-  ])('%s: none of it runs, in FR-017\'s form at the place', async (_, source, code, marker, words) => {
+  ])('%s: none of it runs, with the file, line and marker', async (_, source, code, marker, words) => {
     const result = await run(source);
     expect(result.stdout).toBe('');
     expect(result.exit).toBe(1);
@@ -77,6 +77,40 @@ describe('009-terminal-node-FR-018: node stops on a TypeScript syntax error', ()
     expect(result.stdout).toBe('');
     expect(result.exit).toBe(1);
     expect(result.stderr).toContain(`${HOME}/b.ts:1\n`);
+  });
+});
+
+describe('009-terminal-node-FR-038 and 009-terminal-node-FR-012: what ts-node checks is what runs', () => {
+  const SOURCE = "import { join } from 'path';\nexport const here: string = join(__dirname, __filename);\nconsole.log(typeof require('path').join, typeof module, typeof exports, require.main === module);\nconsole.log(here);\n";
+  const made = (source: string, command: 'node' | 'ts-node') => {
+    const { outputs, diagnostics } = compile(ts, libFileMap, { root: `${HOME}/app.ts`, mode: command === 'node' ? 'strip' : 'check', files: files({ 'app.ts': source }) });
+    return { outputs, diagnostics, request: { ...script(source, 'app.ts'), command } };
+  };
+
+  test('a file that uses import has the names of a CommonJS file under ts-node, as checked', async () => {
+    const { outputs, diagnostics, request } = made(SOURCE, 'ts-node');
+    expect(diagnostics).toEqual([]);
+    const run = await runProgram(request, { compiled: outputs });
+    expect(run.stderr).toBe('');
+    expect(run.stdout).toBe(`function object object true\n${HOME}${HOME}/app.ts\n`);
+  });
+
+  test('a file may still declare one of those names itself', async () => {
+    const { outputs, request } = made("import { sep } from 'path';\nconst require = sep;\nconsole.log(require);\n", 'ts-node');
+    const run = await runProgram(request, { compiled: outputs });
+    expect(run.stdout).toBe('/\n');
+  });
+
+  test('its lines and columns are still those of the file', async () => {
+    const { outputs, request } = made("import { sep } from 'path';\nconsole.log(sep);\nthrow new Error('x');\n", 'ts-node');
+    const run = await runProgram(request, { compiled: outputs });
+    expect(run.stderr).toContain(`${HOME}/app.ts:3\nthrow new Error('x');\n^\n\nError: x`);
+  });
+
+  test('under node they are missing, as under the real Node', async () => {
+    const { outputs, request } = made(SOURCE, 'node');
+    const run = await runProgram(request, { compiled: outputs });
+    expect(run.stderr).toContain('ReferenceError: __dirname is not defined');
   });
 });
 
@@ -131,6 +165,10 @@ describe('009-terminal-node-FR-038: strict options, and types for what is offere
     ['a process name not offered', 'process.kill(1);\n', 2339],
   ])('%s is an error', (_, source, code) => {
     expect(check(source).diagnostics.map((each) => each.code)).toEqual([code]);
+  });
+
+  test('the NodeJS namespace holds what valid code names', () => {
+    clean("const t: NodeJS.Timeout = setTimeout(() => {}, 1);\nclearTimeout(t);\nconst i: NodeJS.Immediate = setImmediate(() => {});\nclearImmediate(i);\nconst env: NodeJS.ProcessEnv = process.env;\nconst signal: NodeJS.Signals = 'SIGINT';\nconst p: NodeJS.Process = process;\ntry { throw new Error('x'); } catch (e) { console.log((e as NodeJS.ErrnoException).code, env, signal, p); }\n");
   });
 
   test('its diagnostics never name node.d.ts', () => {

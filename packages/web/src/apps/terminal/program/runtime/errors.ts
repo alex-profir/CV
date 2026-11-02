@@ -2,8 +2,14 @@
 // engine into frames; the runtime's frames go; a frame in a known file prints as
 // `at name (path:line:col)`, its place in the visitor's source.
 import { inspect } from 'node-inspect-extracted';
+import { headerLine } from './coded.ts';
 
 export const VERSION_LINE = 'node v26.0.0 (browser runtime, not Node.js)';
+
+// A file's name as a `sourceURL` can hold it: engines ignore one with a space or a
+// quote (FR-017, FR-020). Frames give it back through `fileOf`.
+export const sourceName = (path: string) => path.replace(/[%\s"']/g, (character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`);
+const fileOf = (name: string) => name.replace(/%([0-9a-f]{2})/g, (_, code: string) => String.fromCharCode(Number.parseInt(code, 16)));
 
 export type Source = {
   // The text the visitor wrote.
@@ -21,7 +27,9 @@ const FIREFOX_FRAME = /^(.*?)@(.*?):(\d+):(\d+)$/;
 
 const isV8 = (stack: string) => /^\s+at /m.test(stack);
 
-export function createErrors(sources: Map<string, Source>, entry: () => string | null, loading: () => string | null) {
+// `classes`: the runtime's classes by the names they have once bundled, and those
+// that Node's own frames would show (FR-020).
+export function createErrors(sources: Map<string, Source>, entry: () => string | null, loading: () => string | null, classes: () => Readonly<Record<string, string>> = () => ({})) {
   const place = (frame: Frame): Frame | null => {
     const source = sources.get(frame.file);
     if (source === undefined) return null;
@@ -38,21 +46,24 @@ export function createErrors(sources: Map<string, Source>, entry: () => string |
     for (const line of stack.split('\n')) {
       const match = pattern.exec(line);
       if (match === null) continue;
-      const placed = place({ name: match[1] ?? '', file: match[2]!, line: Number(match[3]), column: Number(match[4]) });
+      const placed = place({ name: match[1] ?? '', file: fileOf(match[2]!), line: Number(match[3]), column: Number(match[4]) });
       if (placed !== null) found.push(placed);
     }
     return found;
   }
 
   const headerOf = (error: Error, stack: string) => {
-    if (!isV8(stack)) return `${error.name}: ${error.message}`.replace(/: $/, '');
-    const at = stack.search(/^\s+at /m);
-    return at < 0 ? stack.trimEnd() : stack.slice(0, at).trimEnd();
+    if (!isV8(stack)) return headerLine(error).replace(/: $/, '');
+    const at = stack.search(/^[ \t]+at /m);
+    // Only the line's own end goes: a message may end in a newline, as an assertion's does.
+    return at < 0 ? stack.trimEnd() : stack.slice(0, at).replace(/\n$/, '');
   };
 
   // A file's top-level code runs in its wrapper, which Node calls this.
   const frameLine = ({ name, file, line, column }: Frame) => {
-    const shown = name === 'eval' || name === 'Object.eval' ? 'Object.<anonymous>' : name;
+    const owner = /^([^.\s]+)\.(.+)$/.exec(name);
+    const named = owner === null ? name : `${Object.hasOwn(classes(), owner[1]!) ? classes()[owner[1]!]! : owner[1]!}.${owner[2]! === 'eval' ? '<anonymous>' : owner[2]!}`;
+    const shown = name === 'eval' ? 'Object.<anonymous>' : named;
     return shown === '' ? `    at ${file}:${line}:${column}` : `    at ${shown} (${file}:${line}:${column})`;
   };
 
@@ -75,7 +86,7 @@ export function createErrors(sources: Map<string, Source>, entry: () => string |
       made.prepareStackTrace = (error: Error, sites: readonly unknown[]) => {
         let header = 'Error';
         try {
-          header = Error.prototype.toString.call(error);
+          header = headerLine(error);
         } catch {
           // A program's strange error keeps the plain word.
         }

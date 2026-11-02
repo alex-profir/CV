@@ -2,6 +2,7 @@
 // program's own copy of the files, in Node's error form. Its sync forms are the
 // code; the callback and promise forms call them.
 import type { Buffer as BufferType } from 'node:buffer';
+import { invalidArgument } from '../coded.ts';
 import { fsError, type Files, type FileNode } from '../files.ts';
 import type { Loop } from '../loop.ts';
 
@@ -14,7 +15,7 @@ type Encoding = string | null | undefined | { encoding?: string | null; flag?: s
 
 const encodingOf = (options: Encoding) => (typeof options === 'string' ? options : (options?.encoding ?? null));
 
-const invalidPath = (value: unknown) => Object.assign(new TypeError(`The "path" argument must be of type string or an instance of Buffer or URL. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value} (${String(value)})`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+const invalidPath = (value: unknown) => invalidArgument('path', 'of type string or an instance of Buffer or URL', value);
 
 export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferClass) {
   const at = (given: unknown): string => {
@@ -34,7 +35,7 @@ export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferCla
       return fromBytes(Buffer.from(data, encoding as BufferEncoding));
     }
     if (ArrayBuffer.isView(data)) return fromBytes(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
-    throw Object.assign(new TypeError(`The "data" argument must be of type string or an instance of Buffer, TypedArray, or DataView. Received ${data === null ? 'null' : data === undefined ? 'undefined' : `type ${typeof data}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+    throw invalidArgument('data', 'of type string or an instance of Buffer, TypedArray, or DataView', data);
   }
   function fromBytes(bytes: Uint8Array): { text: string; binary: boolean } {
     try {
@@ -318,7 +319,7 @@ export function createFs(files: Files, loop: Loop, path: Path, Buffer: BufferCla
       name,
       (...values: unknown[]) => {
         const done = values.pop();
-        if (typeof done !== 'function') throw Object.assign(new TypeError(`The "cb" argument must be of type function. Received ${done === null ? 'null' : done === undefined ? 'undefined' : `type ${typeof done}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+        if (typeof done !== 'function') throw invalidArgument('cb', 'of type function', done);
         let result: unknown;
         let failure: unknown = null;
         try {

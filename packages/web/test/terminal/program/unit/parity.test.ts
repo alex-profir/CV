@@ -1,13 +1,13 @@
 // SC-006: scripts print the same text here as under the real Node, and end with
 // the same code, leaving out stack lines and the version line.
 import { describe, expect, test } from 'vitest';
-import { comparable, runProgram, script, underNode, evaluate, printing } from './helpers/harness.ts';
+import { comparable, HOME, runProgram, script, underNode, evaluate, printing } from './helpers/harness.ts';
 
 const same = async (source: string, args: readonly string[] = []) => {
   const here = await runProgram(script(source, 'main.js', args));
   const there = underNode({ 'main.js': source }, ['main.js', ...args]);
   expect(comparable(here.stdout)).toBe(comparable(there.stdout));
-  expect(comparable(here.stderr)).toBe(comparable(there.stderr));
+  expect(comparable(here.stderr)).toBe(comparable(there.stderr.replace(/\S*cv-parity-[^/\s]+/g, HOME)));
   expect(here.exit).toBe(there.status);
 };
 
@@ -61,6 +61,50 @@ describe('009-terminal-node-FR-003: -e and -p', () => {
     expect(here.stdout).toBe(there.stdout);
     expect(here.exit).toBe(there.status);
   });
+});
+
+describe('009-terminal-node-FR-011 and 009-terminal-node-FR-013: the runtime\'s own coded errors', () => {
+  test.each([
+    ['assert.strictEqual, caught', "try { require('assert').strictEqual(1, 2); } catch (e) { console.log(e); console.log(e.stack.split('\\n')[0], String(e)); }"],
+    ['generatedMessage', "const a = require('assert'); for (const f of [() => a(false), () => a.ok(null), () => a.match('a', /b/), () => a.ok(false, 'mine'), () => a.strictEqual(1, 2)]) { try { f(); } catch (e) { console.log(e.generatedMessage, e.code); } }"],
+    ['readFileSync(1.5)', "try { require('fs').readFileSync(1.5); } catch (e) { console.log(e); console.log(e.name, e.code, e.message, String(e)); console.log(e.stack.split('\\n')[0]); }"],
+    ['process.exit, wrong type', "try { process.exit('a'); } catch (e) { console.log(e.name, e.code, e.message); }"],
+    ['process.exit, not an integer', "try { process.exit(1.5); } catch (e) { console.log(e.name, e.code, e.message); }"],
+    ['received values', "const c = (f) => { try { f(); } catch (e) { console.log(e.code, e.message); } }; c(() => process.nextTick(1)); c(() => process.chdir({})); c(() => process.chdir(null)); c(() => setTimeout('x')); c(() => require('path').join(() => {})); c(() => require('path').join(function f() {})); c(() => new (require('events'))().on('x', 'a'.repeat(40))); c(() => process.stdout.write(5));"],
+    ['an unhandled error event', "try { new (require('events'))().emit('error', 'text'); } catch (e) { console.log(e.name, e.code, e.message, e.context, String(e)); }"],
+  ])('%s', async (_, source) => same(source));
+});
+
+describe('009-terminal-node-FR-017: an assertion left uncaught', () => {
+  test("its own form, from the visitor's line, where Node points into its own code", async () => {
+    const source = "require('assert').strictEqual(1, 2);";
+    const here = await runProgram(script(source));
+    const there = underNode({ 'main.js': source }, ['main.js']);
+    const from = (text: string) => comparable(text).slice(comparable(text).indexOf('AssertionError'));
+    expect(from(here.stderr)).toBe(from(there.stderr));
+    expect(here.stderr).toContain(`${HOME}/main.js:1\n${source}\n`);
+    expect(here.exit).toBe(there.status);
+  });
+});
+
+describe('009-terminal-node-FR-010: the ending codes', () => {
+  test.each([
+    ['an error thrown in an uncaughtException handler', "process.on('uncaughtException', () => { throw new Error('again'); }); throw new Error('first');"],
+    ['an error thrown in an exit handler', "process.on('exit', () => { throw new Error('in exit'); });"],
+    ['exitCode in an exit handler, on a natural end', "process.on('exit', (code) => console.log(code, process.exitCode));"],
+    ['exitCode in an exit handler, after process.exit()', "process.on('exit', (code) => console.log(code, process.exitCode)); process.exit();"],
+    ['exitCode in an exit handler, after process.exit(0)', "process.on('exit', (code) => console.log(code, process.exitCode)); process.exit(0);"],
+    ['exitCode in an exit handler, after exitCode is set', "process.on('exit', (code) => console.log(code, process.exitCode)); process.exitCode = 4;"],
+    ['exitCode in an exit handler, after an uncaught error', "process.on('exit', (code) => console.log(code, process.exitCode)); throw new Error('x');"],
+  ])('%s', async (_, source) => same(source));
+});
+
+describe('009-terminal-node-FR-013: Buffer', () => {
+  test.each([
+    ['base64url', "const b = Buffer.from([251, 255, 254]); console.log(b.toString('base64url'), Buffer.from('-__-', 'base64url'), Buffer.byteLength('-__-', 'base64url'), Buffer.isEncoding('base64url'), Buffer.from('hi').toString('base64url'));  const w = Buffer.alloc(3); w.write('-__-', 0, 3, 'base64url'); console.log(w);"],
+    ['codes', "const c = (f) => { try { console.log(f()); } catch (e) { console.log(e.name, e.code); } }; c(() => Buffer.alloc(1).readUInt8(5)); c(() => Buffer.from(5)); c(() => Buffer.alloc(1).toString('nope')); c(() => Buffer.from('a', 'nope')); c(() => Buffer.alloc(-1)); c(() => Buffer.alloc(1).writeUInt8(300, 0));"],
+    ['still a Buffer', "class B extends Uint8Array {} const b = Buffer.from('abc'); console.log(b.slice(1).toString(), Buffer.isBuffer(b.slice(1)), Buffer.concat([b, b]).length, b instanceof Uint8Array, b.toString(), String(b), b.toString('utf8', 1, 2));"],
+  ])('%s', async (_, source) => same(source));
 });
 
 const MODULES: readonly (readonly [string, string])[] = [

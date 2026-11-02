@@ -1,7 +1,7 @@
 // A program split across files (009 FR-014, research R3, R4), compared with the real
 // Node where it can run the same files.
 import { describe, expect, test } from 'vitest';
-import { comparable, HOME, runProgram, script, underNode } from './helpers/harness.ts';
+import { comparable, HOME, runProgram, script, underNode , request} from './helpers/harness.ts';
 
 const same = async (name: string, files: Record<string, string>) => {
   const here = await runProgram(script(files[name]!, name, [], files));
@@ -84,5 +84,13 @@ describe('009-terminal-node-FR-014: other files load by relative path', () => {
     const run = await runProgram(script("import './a.mjs';\n", 'main.mjs', [], { 'a.mjs': "\n\nthrow new Error('here');\n" }));
     expect(run.stderr).toContain(`${HOME}/a.mjs:3\nthrow new Error('here');\n^`);
     expect(run.exit).toBe(1);
+  });
+});
+
+describe('009-terminal-node-FR-011: an imported namespace prints as Node prints it', () => {
+  test('its values, with what it is', async () => {
+    const files = { 'a.mjs': 'export const a = 1;\nexport const b = { c: [1, 2] };\n', 'main.mjs': "import * as m from './a.mjs';\nconsole.log(m);\n" };
+    const run = await runProgram(request(files, { script: `${HOME}/main.mjs` }));
+    expect(run.stdout).toBe(underNode(files, ['main.mjs']).stdout);
   });
 });

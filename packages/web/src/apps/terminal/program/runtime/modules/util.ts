@@ -1,12 +1,13 @@
 // `util` (009 contracts/node-api.md, research R11): `inspect` and `format` from
 // `node-inspect-extracted`, which has no `types`, so those are written here.
+import { invalidArgument } from '../coded.ts';
 import { format, formatWithOptions, inspect } from 'node-inspect-extracted';
 import { isDeepEqual } from './deep.ts';
 
 const CUSTOM = Symbol.for('nodejs.util.promisify.custom');
 
 type Callback = (error: unknown, ...values: unknown[]) => void;
-const invalid = (name: string, kind: string, value: unknown) => Object.assign(new TypeError(`The "${name}" argument must be of type ${kind}. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+const invalid = (name: string, kind: string, value: unknown) => invalidArgument(name, `of type ${kind}`, value);
 
 function promisify(original: (...values: any[]) => unknown): (...values: unknown[]) => Promise<unknown> {
   if (typeof original !== 'function') throw invalid('original', 'function', original);

@@ -2,9 +2,12 @@
 // the common forms; a deep difference's lines are simpler than Node's (Known
 // differences).
 import { inspect } from 'node-inspect-extracted';
+import { coded, invalidArgument } from '../coded.ts';
 import { isDeepEqual } from './deep.ts';
 
 type Options = { message?: string | Error; actual?: unknown; expected?: unknown; operator?: string };
+
+const OWN_WORDS = Symbol('own words');
 
 const show = (value: unknown) => inspect(value, { depth: 1000, sorted: true, compact: false, breakLength: Number.POSITIVE_INFINITY });
 
@@ -14,12 +17,13 @@ export class AssertionError extends Error {
   actual: unknown;
   expected: unknown;
   operator: string | undefined;
+  diff = 'simple';
 
   constructor(options: Options) {
-    if (options === null || typeof options !== 'object') throw Object.assign(new TypeError('The "options" argument must be of type object.'), { code: 'ERR_INVALID_ARG_TYPE' });
+    if (options === null || typeof options !== 'object') throw invalidArgument('options', 'of type object', options);
     super(typeof options.message === 'string' ? options.message : '');
     this.name = 'AssertionError';
-    this.generatedMessage = options.message === undefined;
+    this.generatedMessage = options.message === undefined || OWN_WORDS in options;
     this.actual = options.actual;
     this.expected = options.expected;
     this.operator = options.operator;
@@ -27,6 +31,7 @@ export class AssertionError extends Error {
     // A message of the program's own comes before the difference, as in Node.
     else if (options.operator === 'strictEqual' || options.operator === 'deepStrictEqual') this.message = `${String(options.message)}${difference(options)}`;
     Object.defineProperty(this, 'name', { value: 'AssertionError', enumerable: false, writable: true, configurable: true });
+    coded(this, 'ERR_ASSERTION');
   }
 }
 
@@ -60,9 +65,9 @@ function generated(options: Options): string {
   return `${header}${difference(options)}`;
 }
 
-function fail(actual: unknown, expected: unknown, message: string | Error | undefined, operator: string): never {
+function fail(actual: unknown, expected: unknown, message: string | Error | undefined, operator: string, ownWords = false): never {
   if (message instanceof Error) throw message;
-  const error = new AssertionError({ actual, expected, operator, ...(message === undefined ? {} : { message }) });
+  const error = new AssertionError({ actual, expected, operator, ...(message === undefined ? {} : { message }), ...(ownWords ? { [OWN_WORDS]: true } : {}) });
   throw error;
 }
 
@@ -88,7 +93,7 @@ function matches(error: unknown, expected: unknown, message: string | undefined)
 }
 
 function caught(run: () => unknown, operator: string): { thrown: true; error: unknown } | { thrown: false } {
-  if (typeof run !== 'function') throw Object.assign(new TypeError(`The "fn" argument must be of type function. Received ${run === null ? 'null' : `type ${typeof run}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+  if (typeof run !== 'function') throw invalidArgument('fn', 'of type function', run);
   void operator;
   try {
     run();
@@ -133,7 +138,7 @@ const notDeepStrictEqual = (actual: unknown, expected: unknown, message?: string
   if (isDeepEqual(actual, expected, true)) fail(actual, expected, message, 'notDeepStrictEqual');
 };
 const ok = (...values: [unknown?, (string | Error)?]) => {
-  if (!values[0]) fail(values[0], true, values[1] ?? (values.length === 0 ? 'No value argument passed to `assert.ok()`' : 'The expression evaluated to a falsy value'), '==');
+  if (!values[0]) fail(values[0], true, values[1] ?? (values.length === 0 ? 'No value argument passed to `assert.ok()`' : 'The expression evaluated to a falsy value'), '==', values[1] === undefined);
 };
 
 const shared = {
@@ -167,7 +172,7 @@ const shared = {
     fail(undefined, undefined, message, 'fail');
   },
   match(text: string, pattern: RegExp, message?: string | Error) {
-    if (typeof text !== 'string' || !pattern.test(text)) fail(text, pattern, message ?? `The input did not match the regular expression ${inspect(pattern)}. Input:\n\n${inspect(text)}\n`, 'match');
+    if (typeof text !== 'string' || !pattern.test(text)) fail(text, pattern, message ?? `The input did not match the regular expression ${inspect(pattern)}. Input:\n\n${inspect(text)}\n`, 'match', message === undefined);
   },
   AssertionError,
 };
@@ -175,7 +180,7 @@ const shared = {
 // Both forms hold the same functions, as Node's do: only the loose names differ.
 export function createAssert(strict: boolean) {
   function assert(value?: unknown, message?: string | Error): void {
-    if (!value) fail(value, true, message ?? 'The expression evaluated to a falsy value', '==');
+    if (!value) fail(value, true, message ?? 'The expression evaluated to a falsy value', '==', message === undefined);
   }
 
   return Object.assign(assert, shared, {

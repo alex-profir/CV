@@ -221,7 +221,11 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
     async run(page, shell) {
       const found: Found[] = [];
       await openTerminal(page, shell);
-      const run = await runLine(page, `node -e "while (true) console.log('y')"`);
+      // It waits for the page as it prints, so 1 MB of short lines takes about 10 s.
+      await startLine(page, `node -e "while (true) console.log('y')"`);
+      await programStarted(page);
+      await ended(page);
+      const run = page.locator(TERMINAL.run).last();
       if ((await run.locator(TERMINAL.stopped).count()) !== 1) found.push(problem('limit', 'printing without end', 'no stopped line'));
       await statusIs(page, found, 'printing without end', 130);
       return found;

@@ -4,8 +4,11 @@
 // `import`, `export` and `import.meta` in place, into one wrapper of the same form.
 import { parse } from 'acorn';
 import type { Node, Options, Program } from 'acorn';
+import { inspect } from 'node-inspect-extracted';
+import { coded, invalidArgument } from './coded.ts';
 import { resolveModuleFile } from '../messages.ts';
 import type { Compiled } from '../messages.ts';
+import { sourceName } from './errors.ts';
 import type { Source } from './errors.ts';
 import type { Files } from './files.ts';
 
@@ -15,9 +18,12 @@ const ACORN: Options = { ecmaVersion: 'latest', allowHashBang: true };
 const NOT_OFFERED = new Set(['async_hooks', 'child_process', 'cluster', 'console', 'constants', 'crypto', 'dgram', 'diagnostics_channel', 'dns', 'domain', 'http', 'http2', 'https', 'inspector', 'module', 'net', 'perf_hooks', 'process', 'punycode', 'querystring', 'readline', 'repl', 'sea', 'sqlite', 'stream', 'string_decoder', 'test', 'tls', 'trace_events', 'tty', 'v8', 'vm', 'wasi', 'worker_threads', 'zlib']);
 
 const WRAPPER = '(function (exports, require, module, __filename, __dirname) {';
+const OUTER = '(function (exports, require, module, __filename, __dirname) {return ';
 const TS_EXTENSIONS = /\.[cm]?ts$/;
 
 type Ast = Node & Record<string, any>;
+
+const UNINITIALIZED = { [Symbol.for('nodejs.util.inspect.custom')]: () => '<uninitialized>' };
 
 export type LoadedModule = {
   id: string;
@@ -55,6 +61,8 @@ export type LoaderDeps = {
   // Sets the file being loaded, for the place of an error (research R5).
   loading: (path: string | null) => void;
   mapFor: (map: string) => Source['mapped'];
+  // `ts-node`: a TypeScript file has `require` and the rest, as a module too.
+  commonNames: boolean;
 };
 
 function walk(node: unknown, visit: (node: Ast) => void): void {
@@ -222,7 +230,7 @@ export function createLoader(deps: LoaderDeps) {
     const text = given.get(path) ?? files.get(path)!.text;
     const output = deps.compiled?.[path];
     if (TS_EXTENSIONS.test(path)) {
-      if (output === undefined) throw Object.assign(new Error(`A TypeScript program must start from a TypeScript file, to load ${path}.`), { code: 'ERR_UNKNOWN_FILE_EXTENSION' });
+      if (output === undefined) throw coded(new Error(`A TypeScript program must start from a TypeScript file, to load ${path}.`), 'ERR_UNKNOWN_FILE_EXTENSION');
       if (output.syntax !== undefined) {
         // Stripping types found it: nothing of this file runs (FR-018).
         sources.set(path, { text, prefix: 0 });
@@ -269,7 +277,7 @@ export function createLoader(deps: LoaderDeps) {
 
   function makeRequire(module: LoadedModule): Require {
     const resolve = (specifier: string) => {
-      if (typeof specifier !== 'string') throw Object.assign(new TypeError(`The "id" argument must be of type string. Received ${specifier === null ? 'null' : `type ${typeof specifier}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+      if (typeof specifier !== 'string') throw invalidArgument('id', 'of type string', specifier);
       if (deps.has(builtinName(specifier))) return specifier;
       return resolveFrom(specifier, module.filename, module);
     };
@@ -317,7 +325,7 @@ export function createLoader(deps: LoaderDeps) {
     if (parsed.ast === null) throw syntaxFailure(withoutHashbang(code), path, parsed.error);
     if (parsed.module) {
       const esm = prepare(path, parent === null ? [] : [parent.filename]);
-      if (esm.async) throw Object.assign(new Error('require() cannot be used on an ESM graph with top-level await. Use import() instead.'), { code: 'ERR_REQUIRE_ASYNC_MODULE' });
+      if (esm.async) throw coded(new Error('require() cannot be used on an ESM graph with top-level await. Use import() instead.'), 'ERR_REQUIRE_ASYNC_MODULE');
       runEs(esm);
       module.exports = esm.namespace;
       module.loaded = true;
@@ -330,7 +338,7 @@ export function createLoader(deps: LoaderDeps) {
     let done = false;
     try {
       deps.loading(path);
-      const wrapper = (0, eval)(`${WRAPPER}${body}\n})\n//# sourceURL=${path}`) as (...values: unknown[]) => unknown;
+      const wrapper = (0, eval)(`${WRAPPER}${body}\n})\n//# sourceURL=${sourceName(path)}`) as (...values: unknown[]) => unknown;
       wrapper.call(module.exports, module.exports, module.require, module, path, dirname(path));
       done = true;
     } finally {
@@ -351,7 +359,7 @@ export function createLoader(deps: LoaderDeps) {
     if (found === null) {
       const error = missing(specifier, []);
       error.message = `Cannot find module '${specifier}' imported from ${from}${NOT_OFFERED.has(name) ? `\nThe module ${name} isn't available in this Terminal.` : ''}`;
-      throw Object.assign(error, { code: 'ERR_MODULE_NOT_FOUND' });
+      throw coded(error, 'ERR_MODULE_NOT_FOUND');
     }
     const path = found;
     if (path.endsWith('.json')) return { value: commonNamespace(load(path, null)) };
@@ -385,6 +393,21 @@ export function createLoader(deps: LoaderDeps) {
     if (parsed.ast === null) throw syntaxFailure(text, path, parsed.error);
     const namespace: Record<string, unknown> = Object.create(null);
     Object.defineProperty(namespace, Symbol.toStringTag, { value: 'Module' });
+    // As Node prints a namespace: its values, not the getters they are read through.
+    Object.defineProperty(namespace, Symbol.for('nodejs.util.inspect.custom'), {
+      value: (_: unknown, options: object) => {
+        const values: Record<string, unknown> = {};
+        for (const name of Object.keys(namespace)) {
+          try {
+            values[name] = namespace[name];
+          } catch {
+            values[name] = UNINITIALIZED;
+          }
+        }
+        return `[Module: null prototype] ${inspect(values, options)}`;
+      },
+      enumerable: false,
+    });
     const es: EsModule = { path, namespace, async: hasTopAwait(parsed.ast), state: 'prepared', run: () => undefined, promise: null, statics: [] };
     modules.set(path, es);
     const edits: Edit[] = dynamicEdits(parsed.ast, path);
@@ -460,10 +483,18 @@ export function createLoader(deps: LoaderDeps) {
       }
     }
     const awaited = es.async;
-    const prefix = `(${awaited ? 'async ' : ''}function (__load,__export,__star) {"use strict";${exportsMade.length === 0 ? '' : `__export({${exportsMade.join(',')}});`}${hoisted.join('').replaceAll('__AWAIT__(', awaited ? '(await ' : '(')}`;
+    // `ts-node` gives a TypeScript file the names of a CommonJS file, as it does for
+    // real, whatever its syntax. Outside its function, as the file may declare them.
+    const commonNames = deps.commonNames && /\.c?ts$/.test(path);
+    const prefix = `${commonNames ? OUTER : ''}(${awaited ? 'async ' : ''}function (__load,__export,__star) {"use strict";${exportsMade.length === 0 ? '' : `__export({${exportsMade.join(',')}});`}${hoisted.join('').replaceAll('__AWAIT__(', awaited ? '(await ' : '(')}`;
     source.prefix = prefix.length;
     const body = applyEdits(text, edits);
-    const wrapped = `${prefix}${body}\n})\n//# sourceURL=${path}`;
+    const wrapped = `${prefix}${body}\n})${commonNames ? '})' : ''}\n//# sourceURL=${sourceName(path)}`;
+    const common = commonNames ? makeModule(path, null) : null;
+    if (common !== null) {
+      main ??= common;
+      common.require!.main = main;
+    }
     es.run = () => {
       const lookup = (specifier: string, names: readonly string[]) => {
         const found = namespaceOf(specifier, path, stack);
@@ -487,7 +518,8 @@ export function createLoader(deps: LoaderDeps) {
       };
       deps.loading(path);
       try {
-        const wrapper = (0, eval)(wrapped) as (...values: unknown[]) => unknown;
+        const made = (0, eval)(wrapped) as (...values: unknown[]) => unknown;
+        const wrapper = common === null ? made : (made(common.exports, common.require, common, path, dirname(path)) as (...values: unknown[]) => unknown);
         return wrapper(lookup, define, star);
       } finally {
         deps.loading(null);

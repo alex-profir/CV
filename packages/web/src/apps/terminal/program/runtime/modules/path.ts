@@ -1,10 +1,8 @@
 // `path`: all of `path.posix` (009 contracts/node-api.md), as Node's behaves.
+import { invalidArgument } from '../coded.ts';
+
 const assertString = (value: unknown, name: string) => {
-  if (typeof value !== 'string') {
-    const error = new TypeError(`The "${name}" argument must be of type string. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value}`}`) as TypeError & { code: string };
-    error.code = 'ERR_INVALID_ARG_TYPE';
-    throw error;
-  }
+  if (typeof value !== 'string') throw invalidArgument(name, 'of type string', value);
 };
 
 function normalizeParts(text: string, absolute: boolean): string {

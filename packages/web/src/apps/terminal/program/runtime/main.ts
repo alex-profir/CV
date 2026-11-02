@@ -87,12 +87,13 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
   function exit(code: number, uncaught = false): never {
     if (exiting) stopFor(Number(proc.process['exitCode'] ?? code), uncaught);
     exiting = true;
-    proc.process['exitCode'] = code;
+    // A natural end, with no code set: Node's stays `undefined` for the handlers.
+    if (code !== 0 || proc.process['exitCode'] !== undefined) proc.process['exitCode'] = code;
     try {
       proc.process.emit('exit', code);
     } catch (error) {
       output.write('stderr', errors.uncaughtText(error));
-      stopFor(7, true);
+      stopFor(1, true);
     }
     return stopFor(proc.code(), uncaught);
   }
@@ -108,8 +109,9 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
         proc.process.emit('uncaughtException', error, origin);
         return;
       } catch (again) {
+        // Node's code for a handler of its own that failed.
         output.write('stderr', errors.uncaughtText(again));
-        exitFatal();
+        exit(7, true);
       }
     }
     output.write('stderr', errors.uncaughtText(error));
@@ -154,7 +156,7 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
   const sources = new Map<string, Source>();
   let entryFile: string | null = null;
   let loadingFile: string | null = null;
-  const errors = createErrors(sources, () => entryFile, () => loadingFile);
+  const errors = createErrors(sources, () => entryFile, () => loadingFile, () => ({ [(proc.process.constructor as { name: string }).name]: 'process', [EventEmitter.name]: 'EventEmitter' }));
   errors.install();
 
   const log = createConsole(output, { now, clean: errors.clean, stack: errors.stack });
@@ -189,6 +191,7 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
     files,
     sources,
     compiled,
+    commonNames: request.command === 'ts-node',
     cwd: () => proc.cwd(),
     has: (name) => Object.hasOwn(builtins, name),
     builtin: (name) => builtins[name]!(),

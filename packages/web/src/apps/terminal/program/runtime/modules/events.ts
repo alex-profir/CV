@@ -1,10 +1,11 @@
 // `events` (009 contracts/node-api.md): `EventEmitter`, as Node's behaves.
 import { inspect } from 'node-inspect-extracted';
+import { coded, invalidArgument } from '../coded.ts';
 
 type Listener = ((...values: any[]) => unknown) & { listener?: (...values: any[]) => unknown };
 
 const checkListener = (listener: unknown) => {
-  if (typeof listener !== 'function') throw Object.assign(new TypeError(`The "listener" argument must be of type function. Received ${listener === null ? 'null' : listener === undefined ? 'undefined' : `type ${typeof listener}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+  if (typeof listener !== 'function') throw invalidArgument('listener', 'of type function', listener);
 };
 
 export class EventEmitter {
@@ -95,7 +96,7 @@ export class EventEmitter {
       if (name !== 'error') return false;
       const [error] = values;
       if (error instanceof Error) throw error;
-      throw Object.assign(new Error(`Unhandled error. (${inspect(error)})`), { context: error, code: 'ERR_UNHANDLED_ERROR' });
+      throw Object.assign(coded(new Error(`Unhandled error. (${inspect(error)})`), 'ERR_UNHANDLED_ERROR'), { context: error });
     }
     for (const listener of list) listener.apply(this, values);
     return true;

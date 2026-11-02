@@ -64,6 +64,24 @@ describe('009-terminal-node-FR-017: a thrown error shows its place in this engin
   });
 });
 
+describe('009-terminal-node-FR-017 and 009-terminal-node-FR-020: the file and the names, on the built site', () => {
+  test('a file with a space in its path has the same form', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'my\\ file.js', "console.log('a');\nthrow new Error('sp');\n");
+    const output = await runToEnd(page, "node 'my file.js'");
+    expect(output).toContain("/home/guest/my file.js:2\nthrow new Error('sp');\n^\n\nError: sp");
+    if (placed) expect(output).toContain('/home/guest/my file.js:2:7');
+  });
+
+  test("a handler's frame names process, not the bundle's name for it", async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'h.js', "process.on('z', () => { throw new Error('x'); });\nprocess.emit('z');\n");
+    const output = await runToEnd(page, 'node h.js');
+    expect(output).toContain('Error: x');
+    if (engine() === 'chromium') expect(output).toContain('at process.<anonymous> (/home/guest/h.js:1:');
+  });
+});
+
 describe('009-terminal-node-FR-018: a syntax error shows its place in this engine', () => {
   test('from the parser, in every engine, with nothing run', async () => {
     const page = await openProgramTerminal();

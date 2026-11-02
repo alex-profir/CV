@@ -179,3 +179,31 @@ describe('009-terminal-node-FR-020: what cannot be found', () => {
     expect(run.exit).toBe(1);
   });
 });
+
+describe('009-terminal-node-FR-017 and 009-terminal-node-FR-020: a file with a space in its path', () => {
+  const BAD = "console.log('before');\nthrow new Error('sp');\n";
+
+  test.each([['my file.js'], ["it's %20 here.js"]])('%s shows the same form as any other', async (name) => {
+    const run = await runProgram(script(BAD, name));
+    expect(run.stderr).toBe(`${HOME}/${name}:2\nthrow new Error('sp');\n^\n\nError: sp\n    at Object.<anonymous> (${HOME}/${name}:2:7)\n\n${VERSION}\n`);
+    expect(run.exit).toBe(1);
+  });
+
+  test('as an imported module too', async () => {
+    const run = await runProgram(script("throw new Error('sp');\n", 'my file.mjs'));
+    expect(run.stderr).toContain(`${HOME}/my file.mjs:1\nthrow new Error('sp');\n^\n\nError: sp`);
+  });
+});
+
+describe('009-terminal-node-FR-020: the runtime\'s names stay out of stack lines', () => {
+  test("a SIGINT handler's frame is process's, as Node has it", async () => {
+    const run = await runProgram(evaluate("process.on('SIGINT', () => { throw new Error('x'); }); console.log('ready'); setInterval(() => {}, 1000);"), { signals: [{ afterOutput: 'ready' }] });
+    expect(run.stderr).toMatch(/\n {4}at process\.<anonymous> \(\[eval\]:1:\d+\)/);
+    expect(run.exit).toBe(1);
+  });
+
+  test('a named handler, and an emitter of the program', async () => {
+    const run = await runProgram(script("const E = require('events');\nconst e = new E();\ne.on('x', () => { console.log(new Error('y').stack.split('\\n')[1].replace(/\\(.*/, '')); });\ne.emit('x');\nprocess.on('z', function named() { console.log(new Error('y').stack.split('\\n')[1].replace(/\\(.*/, '')); });\nprocess.emit('z');\n"));
+    expect(run.stdout).toBe('    at EventEmitter.<anonymous> \n    at process.named \n');
+  });
+});

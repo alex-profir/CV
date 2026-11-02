@@ -1,4 +1,5 @@
 // `process` (009 contracts/node-api.md, FR-012, FR-015, FR-016).
+import { coded, invalidArgument } from './coded.ts';
 import { EventEmitter } from './modules/events.ts';
 import type { Loop } from './loop.ts';
 import type { Output } from './console.ts';
@@ -7,7 +8,7 @@ import type { ProgramRequest } from '../messages.ts';
 const VERSION = 'v26.0.0';
 const EXEC_PATH = '/usr/local/bin/node';
 
-const invalid = (name: string, value: unknown, kind: string) => Object.assign(new TypeError(`The "${name}" argument must be ${kind}. Received ${value === null ? 'null' : value === undefined ? 'undefined' : `type ${typeof value}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+const invalid = (name: string, value: unknown, kind: string) => invalidArgument(name, kind, value);
 
 // `process.env`: every value a string, as Node's.
 function envOf(start: Readonly<Record<string, string>>): Record<string, string> {
@@ -56,7 +57,7 @@ export function createProcess(deps: ProcessDeps) {
     columns: 80,
     writable: true,
     write(chunk: unknown, encoding?: unknown, done?: unknown) {
-      if (typeof chunk !== 'string' && !(chunk instanceof Uint8Array)) throw Object.assign(new TypeError(`The "chunk" argument must be of type string or an instance of Buffer, TypedArray, or DataView. Received ${chunk === null ? 'null' : `type ${typeof chunk}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+      if (typeof chunk !== 'string' && !(chunk instanceof Uint8Array)) throw invalidArgument('chunk', 'of type string or an instance of Buffer, TypedArray, or DataView', chunk);
       output.write(name, typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk));
       const callback = typeof encoding === 'function' ? encoding : done;
       if (typeof callback === 'function') loop.nextTick(callback as () => void);
@@ -210,7 +211,8 @@ export function createProcess(deps: ProcessDeps) {
     set(value: unknown) {
       if (value === null || value === undefined) exitCode = undefined;
       else if ((typeof value === 'number' && Number.isInteger(value)) || (typeof value === 'string' && value !== '' && Number.isInteger(Number(value)))) exitCode = value as number | string;
-      else throw Object.assign(new TypeError(`The "code" argument must be of type number. Received ${typeof value === 'number' ? value : `type ${typeof value}`}`), { code: 'ERR_INVALID_ARG_TYPE' });
+      else if (typeof value === 'number') throw coded(new RangeError(`The value of "code" is out of range. It must be an integer. Received ${value}`), 'ERR_OUT_OF_RANGE');
+      else throw invalidArgument('code', 'of type number', value);
     },
   });
 

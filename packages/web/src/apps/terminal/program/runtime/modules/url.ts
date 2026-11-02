@@ -1,5 +1,7 @@
 // `url` (009 contracts/node-api.md).
-const invalid = (code: string, message: string, Kind: ErrorConstructor | TypeErrorConstructor = TypeError) => Object.assign(new Kind(message), { code });
+import { coded } from '../coded.ts';
+
+const invalid = (code: string, message: string, Kind: ErrorConstructor | TypeErrorConstructor = TypeError) => coded(new Kind(message), code);
 
 // Path characters that URL parsing would otherwise read as something else.
 const encodePath = (path: string) => path.replace(/%/g, '%25').replace(/\\/g, '%5C').replace(/\n/g, '%0A').replace(/\r/g, '%0D').replace(/\t/g, '%09').replace(/\?/g, '%3F').replace(/#/g, '%23');

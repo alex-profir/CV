@@ -46,7 +46,7 @@ interface ProcessOffered {
   argv: string[];
   argv0: string;
   execPath: string;
-  env: Record<string, string | undefined>;
+  env: NodeJS.ProcessEnv;
   cwd(): string;
   chdir(path: string): void;
   exit(code?: number | string | null): never;
@@ -207,6 +207,23 @@ interface NodeRequire {
   resolve(name: string): string;
   cache: Record<string, NodeModule>;
   main: NodeModule | undefined;
+}
+declare namespace NodeJS {
+  type Timeout = TimerHandle;
+  type Immediate = TimerHandle;
+  type Timer = TimerHandle;
+  interface ErrnoException extends Error {
+    errno?: number;
+    code?: string;
+    path?: string;
+    dest?: string;
+    syscall?: string;
+  }
+  interface ProcessEnv {
+    [name: string]: string | undefined;
+  }
+  type Signals = 'SIGABRT' | 'SIGALRM' | 'SIGBUS' | 'SIGCHLD' | 'SIGCONT' | 'SIGFPE' | 'SIGHUP' | 'SIGILL' | 'SIGINT' | 'SIGIO' | 'SIGKILL' | 'SIGPIPE' | 'SIGQUIT' | 'SIGSEGV' | 'SIGSTOP' | 'SIGTERM' | 'SIGTRAP' | 'SIGTSTP' | 'SIGTTIN' | 'SIGTTOU' | 'SIGUSR1' | 'SIGUSR2' | 'SIGWINCH';
+  type Process = ProcessOffered;
 }
 declare const require: NodeRequire;
 declare const module: NodeModule;

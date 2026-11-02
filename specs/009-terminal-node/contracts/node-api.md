@@ -50,4 +50,14 @@ With or without `node:`.
   prints without Node's private fields.
 - `assert`'s message for a deep difference lists both values rather than Node's line-by-line difference, and
   `assert.ok`'s doesn't quote the source line.
+- `ts-node` gives a `.ts` or `.cts` file `require`, `module`, `exports`, `__filename` and `__dirname` even if it uses
+  `import`, as the real `ts-node` does by default, and `node file.ts` doesn't, as Node doesn't. A `.mts` file is checked
+  as if it had them, though it doesn't.
+- `Buffer`'s errors have Node's names and codes, and the `buffer` package's words.
+- A `Map` or `Set` iterator prints without its entries, as `[Map Iterator] {  }`, as a page can't read one without
+  using it up.
+- A `Proxy` prints as what its traps give, without `Proxy(…)`, as a page can't tell one. `console.log` runs its traps, so
+  one whose `get` throws ends the program where Node prints it.
+- An uncaught error points at the place it was made, not of its `throw`: `const e = new Error('x');` and a later
+  `throw e`, or a rethrow from a `catch`, show the line of the `new`. An engine says nothing of a `throw`.
 - `util.types` holds the common checks, written here, as the inspect package has none.

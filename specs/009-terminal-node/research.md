@@ -114,7 +114,8 @@ R2, making a classic worker from a `Blob`.
 ## R9: Limits
 
 - **Decision**: output is capped at 1 MB by both the runtime and the page, which doesn't trust the count, and
-  the program is then ended with 006's `stopped.output` words and status 130. There is no time limit. One
+  the program is then ended with 006's `stopped.output` words and status 130. By R7's pace, 1 MB of two-character
+  lines takes about 10 s to reach. There is no time limit. One
   still-running line shows after 5 s with nothing printed. A worker that dies with `memory` in its error gets
   FR-028's message, and any other death a generic one, both status 1.
 - **Rationale**: browsers give pages no memory cap, so a tab crash stays possible (spec Assumptions). 008's
