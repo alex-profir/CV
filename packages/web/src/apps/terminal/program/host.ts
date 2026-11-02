@@ -1,8 +1,11 @@
-// A program's host on the page (009 contracts/program.md, research R2, R14): one
-// sandboxed frame and worker per program, its port and its end. It knows nothing
-// of the session: it takes a request and gives events.
-import { NO_CHANGES, statusOf, workerMessage } from './messages.ts';
-import type { EndReason, ProgramEvents, ProgramHandle, ProgramRequest } from './messages.ts';
+// A program's host on the page (009 contracts/program.md, research R2, R7 to R10,
+// R14): one sandboxed frame and worker per program, its port and its end. It knows
+// nothing of the session: it takes a request and gives events. The worker runs the
+// visitor's code, so nothing it claims is trusted: the page keeps its own count of
+// output and changes, and a second Ctrl+C ends it whatever it says of its handlers.
+import { NO_CHANGES, OUTPUT_LIMIT, statusOf, workerMessage } from './messages.ts';
+import type { EndReason, FileChange, FileChanges, OutputChunk, ProgramEvents, ProgramHandle, ProgramRequest, Stream } from './messages.ts';
+import { QUOTA } from '../shell/protocol.ts';
 
 export type PortLike = { postMessage(message: unknown): void; onmessage: ((event: { data: unknown }) => void) | null; close(): void };
 export type FrameLike = {
@@ -21,23 +24,83 @@ export type HostEnv = {
   listen(listener: (event: { source: unknown; data: unknown }) => void): () => void;
 };
 
+const FLUSH_MS = 100;
+
+// The latest change per path, so memory stays bounded by what the program holds
+// (research R10), with the sum of what they weigh.
+function createChanges() {
+  const files = new Map<string, { change: FileChange; weight: number }>();
+  const folders = new Map<string, { made: boolean }>();
+  let weight = 0;
+  return {
+    file(path: string, change: FileChange): void {
+      const held = files.get(path);
+      if (held !== undefined) weight -= held.weight;
+      // A removal's path costs too: a flood of different paths must also end.
+      const size = path.length + ('removed' in change ? 0 : change.text.length);
+      files.set(path, { change, weight: size });
+      weight += size;
+    },
+    folder(path: string, made: boolean): void {
+      // In order: a later change to a path comes after what it depends on.
+      if (!folders.has(path)) weight += path.length;
+      folders.delete(path);
+      folders.set(path, { made });
+    },
+    over: () => weight > QUOTA,
+    result(): FileChanges {
+      if (files.size === 0 && folders.size === 0) return NO_CHANGES;
+      return { files: Object.fromEntries([...files].map(([path, { change }]) => [path, change])), folders: [...folders].map(([path, { made }]) => ({ path, made })) };
+    },
+  };
+}
+
 export function createHost(env: HostEnv) {
   function start(request: ProgramRequest, events: ProgramEvents): ProgramHandle {
     const nonce = env.nonce();
     const { port1: port, port2 } = env.makeChannel();
     const frame = env.makeFrame();
+    const changes = createChanges();
     let over = false;
     let loads = 0;
     let stopListening = () => {};
+    let handler = false;
+    let interrupted = false;
+    let printed = 0;
+    let chunks: { stream: Stream; text: string }[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function flush(): void {
+      if (flushTimer !== null) clearTimeout(flushTimer);
+      flushTimer = null;
+      if (chunks.length === 0) return;
+      const ready: readonly OutputChunk[] = chunks;
+      chunks = [];
+      events.onOutput(ready);
+    }
+
+    function print(stream: Stream, text: string): void {
+      const room = OUTPUT_LIMIT - printed;
+      const shown = text.length > room ? text.slice(0, room) : text;
+      printed += text.length;
+      const last = chunks.at(-1);
+      if (shown !== '') {
+        if (last !== undefined && last.stream === stream) last.text += shown;
+        else chunks.push({ stream, text: shown });
+      }
+      flushTimer ??= setTimeout(flush, FLUSH_MS);
+    }
 
     function end(status: number, reason: EndReason): void {
       if (over) return;
       over = true;
       stopListening();
+      flush();
       port.onmessage = null;
       port.close();
+      frame.contentWindow?.postMessage({ stop: true, nonce }, '*');
       frame.remove();
-      events.onEnded({ status, reason, changes: NO_CHANGES });
+      events.onEnded({ status, reason, changes: changes.result() });
     }
 
     const died = (message: string) => end(1, /memory/i.test(message) ? 'memory' : 'died');
@@ -47,7 +110,18 @@ export function createHost(env: HostEnv) {
       if (over || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
       const message = workerMessage(data);
       if (message === null) return;
-      if ('exit' in message) end(statusOf(message.exit), message.uncaught === true ? 'uncaught' : 'exit');
+      if ('out' in message) {
+        print(message.out, message.text);
+        if (printed >= OUTPUT_LIMIT) end(130, 'output');
+      } else if ('sigint' in message) handler = message.sigint;
+      else if ('limit' in message) end(130, 'output');
+      else if ('exit' in message) end(statusOf(message.exit), message.uncaught === true ? 'uncaught' : 'exit');
+      else {
+        if ('file' in message) changes.file(message.file, 'removed' in message ? { removed: true } : message.binary === true ? { text: message.text, binary: true } : { text: message.text });
+        else changes.folder(message.folder, message.made);
+        // The runtime holds to the limit itself, so only a forged change gets here.
+        if (changes.over()) end(1, 'died');
+      }
     };
 
     stopListening = env.listen((event) => {
@@ -65,7 +139,13 @@ export function createHost(env: HostEnv) {
     });
 
     return {
-      interrupt: () => end(130, 'interrupted'),
+      interrupt() {
+        // One chance for the handler; the second press ends it however it answers.
+        if (handler && !interrupted) {
+          interrupted = true;
+          port.postMessage({ signal: 'SIGINT', nonce });
+        } else end(130, 'interrupted');
+      },
       close: () => end(130, 'closed'),
     };
   }

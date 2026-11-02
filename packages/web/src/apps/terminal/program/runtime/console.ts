@@ -3,14 +3,13 @@
 // blocked loop never yields; past it, it waits until the allowance refills. Both
 // allowances are 008's. The page's own count is what really stops a program.
 import { format, formatWithOptions, inspect } from 'node-inspect-extracted';
+import { OUTPUT_LIMIT } from '../messages.ts';
 import type { Stream } from '../messages.ts';
 
 const CHARS_PER_MS = 4_000;
 const CHARS_AT_ONCE = 200_000;
 const SENDS_PER_MS = 0.2;
 const SENDS_AT_ONCE = 200;
-// The most a program prints: 1 MB (FR-026, 006 FR-069).
-export const OUTPUT_LIMIT = 1_048_576;
 
 export type OutputDeps = {
   send: (message: Record<string, unknown>) => void;

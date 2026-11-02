@@ -35,7 +35,7 @@ function lastLine(build: { status: number | null; stderr: string }): string {
 const append = (root: string, file: string, code: string) => fs.appendFileSync(path.join(root, file), `\n${code}\n`);
 
 describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded only by the Terminal', () => {
-  test("assets holds one os script and one shell worker, each one file, with no import but the engine's computed one", () => {
+  test("assets holds one os script and one shell worker, each one file, with no import but the engine's and the program's computed ones", () => {
     const { dir } = builtSite();
     const scripts = fs.readdirSync(path.join(dir, 'assets')).filter((name) => name.endsWith('.js'));
     const os = scripts.filter((name) => /^os-[\w-]+\.js$/.test(name));
@@ -51,10 +51,12 @@ describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded o
     };
     expect(read(workers[0]!).dynamicImports).toEqual([]);
     const { code, dynamicImports } = read(os[0]!);
-    expect(dynamicImports).toHaveLength(1);
-    const { start, end } = dynamicImports[0]!.moduleRequest;
-    expect(code.slice(start - 7, start)).toBe('import(');
-    expect(code.slice(start, end)).not.toMatch(/^[`'"]|shell-/);
+    // The Playground's engine and the program bundle, each by a computed address.
+    expect(dynamicImports).toHaveLength(2);
+    for (const { moduleRequest: { start, end } } of dynamicImports) {
+      expect(code.slice(start - 7, start)).toBe('import(');
+      expect(code.slice(start, end)).not.toMatch(/^[`'"]|shell-|program-/);
+    }
   });
 
   test('the worker starts with a comment naming its license file, which names every bundled package with its version and license', () => {

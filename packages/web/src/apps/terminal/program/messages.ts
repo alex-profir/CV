@@ -27,6 +27,9 @@ export type FileChange = { text: string; binary?: true } | { removed: true };
 // Per path, the latest; applied once, at the end.
 export type FileChanges = { files: Readonly<Record<string, FileChange>>; folders: readonly { path: string; made: boolean }[] };
 
+// The most a program prints: 1 MB (FR-026, 006 FR-069).
+export const OUTPUT_LIMIT = 1_048_576;
+
 export const NO_CHANGES: FileChanges = { files: {}, folders: [] };
 
 export type EndReason = 'exit' | 'uncaught' | 'type-error' | 'interrupted' | 'output' | 'memory' | 'died' | 'closed';
