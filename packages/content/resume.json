@@ -225,7 +225,8 @@
       "keywords": [
         "React Native",
         "TypeScript",
-        "Node.js"
+        "Node.js",
+        "AWS"
       ]
     },
     {
@@ -237,6 +238,9 @@
         "Implemented the job creation workflow, including data entry, media uploads and job type selection",
         "Designed the summary and editing screens",
         "Implemented data handling and form validation on mobile"
+      ],
+      "keywords": [
+        "Native iOS/Android"
       ]
     },
     {
@@ -252,7 +256,7 @@
       "keywords": [
         "React",
         "TypeScript",
-        "Tailwind CSS"
+        "Material UI"
       ]
     },
     {
@@ -268,7 +272,8 @@
       "keywords": [
         "React",
         "TypeScript",
-        "Node.js"
+        "Node.js",
+        "AWS"
       ]
     },
     {
