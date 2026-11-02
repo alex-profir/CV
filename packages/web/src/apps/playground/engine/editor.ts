@@ -331,6 +331,9 @@ export function createEditing(init: EngineInit) {
       { keybinding: KeyMod.WinCtrl | KeyMod.Alt | KeyCode.RightArrow, command: '-cursorWordPartRight' },
       // Each has another key, free of all of those (FR-084).
       { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.KeyL), command: 'expandLineSelection', when: 'textInputFocus' },
+      // Run has Monaco's key for this one (FR-083).
+      { keybinding: KeyMod.CtrlCmd | KeyCode.Enter, command: '-editor.action.insertLineAfter' },
+      { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.Enter), command: 'editor.action.insertLineAfter', when: 'editorTextFocus && !editorReadonly' },
       ...(init.mac
         ? [
             { keybinding: KeyMod.chord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.LeftArrow), command: 'cursorWordPartLeft', when: 'textInputFocus' },

@@ -14,8 +14,8 @@ export type KeyCommand = {
   // key has no row.
   keys: { mac: string[]; other: string[]; linux?: string[] };
   vsCode: { mac: string[]; other: string[]; linux?: string[] };
-  differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code';
-  // The key a browser or screen reader keeps, for the note.
+  differs?: 'shell' | 'browser' | 'screen-reader' | 'not-vs-code' | 'run';
+  // The key a browser, screen reader or Run keeps, for the note.
   kept?: { mac: string; other: string };
   // What the list shows for a run of keys, in place of each.
   shown?: { mac: string; other: string };
@@ -67,6 +67,7 @@ export const KEY_COMMANDS: readonly KeyCommand[] = Object.freeze<KeyCommand[]>([
   { id: 'editor.action.copyLinesUpAction', group: 'editing', ...same(['Shift+Option+Up'], ['Shift+Alt+Up']) },
   { id: 'editor.action.copyLinesDownAction', group: 'editing', ...same(['Shift+Option+Down'], ['Shift+Alt+Down']) },
   { id: 'editor.action.insertLineBefore', group: 'editing', ...same(['Shift+Cmd+Enter'], ['Ctrl+Shift+Enter']) },
+  { id: 'editor.action.insertLineAfter', group: 'editing', keys: { mac: ['Cmd+K Enter'], other: ['Ctrl+K Enter'] }, vsCode: { mac: ['Cmd+Enter'], other: ['Ctrl+Enter'] }, differs: 'run', kept: { mac: 'Cmd+Enter', other: 'Ctrl+Enter' } },
   { id: 'editor.action.deleteLines', group: 'editing', ...same(['Shift+Cmd+K'], ['Ctrl+Shift+K']) },
   { id: 'editor.action.indentLines', group: 'editing', ...same(['Cmd+]'], ['Ctrl+]']) },
   { id: 'editor.action.outdentLines', group: 'editing', ...same(['Cmd+['], ['Ctrl+[']) },
