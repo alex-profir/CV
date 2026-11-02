@@ -203,8 +203,10 @@
       ],
       "keywords": [
         "React Native",
+        "Expo",
+        "React",
         "GCP",
-        "AWS",
+        "Firestore",
         "Docker",
         "Cloud Run",
         "Cloud Functions"
