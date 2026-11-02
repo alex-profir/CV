@@ -2,6 +2,11 @@
 
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 
+**Amended 2026-10-31** (noted 2026-11-02): green CI merges, a local run stops at its first failure
+and leaves out the site check, and the ruleset requires neither `local-verify` nor an up-to-date
+branch (spec FR-032, FR-035, FR-038 to FR-041, contracts/ci.md). Anything below that says otherwise
+is superseded.
+
 The check holds everything in memory for one run. Nothing is stored between runs, and nothing is
 written to disk. The amendment of 2026-10-29 adds the local full run and the sign-off, which do
 keep a result on the owner's machine. Their entities are at the end, under

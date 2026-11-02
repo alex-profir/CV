@@ -59,6 +59,8 @@ type EngineInit = {
   onCheck(result: CheckResult): void;  // R7
   onCheckLost(): void;  // a check that was out brought no result, as when a change of the options restarts the worker
   onCommand(id: 'playground.run' | 'playground.keys'): void;  // Run's key, accessibility help (R12)
+  onCursor?(position: { line: number; column: number }): void;  // the status bar's place
+  onTabFocus?(on: boolean): void;      // the status bar, when Tab moves focus
 };
 
 type Engine = {
@@ -67,7 +69,9 @@ type Engine = {
   mountEditor(element: HTMLElement, viewState: unknown | null, description: string): EditorView;
   mountOutput(element: HTMLElement, kind: 'javascript' | 'declarations'): OutputView;
   getCode(): string;
+  version(): number;                   // the model's version, as `onChange` gives it
   replaceCode(code: string): void;     // one undoable edit (FR-027, FR-057, FR-080)
+  undo(): void;                        // Undo on the broken-link message (T238)
   setOptions(options: ChangedOptions): void;   // re-checks at once (FR-025)
   check(): void;                       // ask for a check now (R7)
   reveal(line: number, column: number): void;  // the Errors pane, an error's line (FR-022, FR-035)

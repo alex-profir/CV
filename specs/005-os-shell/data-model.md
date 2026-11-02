@@ -190,8 +190,8 @@ all read it.
 | `dock` | D | Go to the dock | – |
 | `next-window` | N | Next window | – |
 | `close` | W | Close the focused window | a focused window |
-| `minimize` | H | Minimize the focused window | a focused window |
-| `maximize` | F | Maximize or restore the focused window | a focused window |
+| ~~`minimize`~~ | ~~H~~ | Removed 2026-10-29 (008-typescript-playground FR-086) | – |
+| ~~`maximize`~~ | ~~F~~ | Removed 2026-10-29 (008-typescript-playground FR-086) | – |
 | `move` | P | Start a keyboard move | a focused, non-maximized window |
 | `resize` | S | Start a keyboard resize | a focused, non-maximized window |
 

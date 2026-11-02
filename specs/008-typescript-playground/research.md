@@ -702,7 +702,7 @@ F8 and `Shift+F8`, and Monaco's hover on `Cmd+K Cmd+I`, are read through Monaco'
 - **Browser tests on the real build** (`slow`), in `packages/web/test/playground/`, with a
   `playground.ts` helper that opens the Playground, waits for the editor, types, runs and reads the
   logs. Chromium on every pull request's local run; the sandbox, memory and key tests also in
-  Firefox and WebKit (Playwright's own engines) in the owner's local run, which `npm run verify`
+  Firefox and WebKit (Playwright's own engines) in the owner's local run, which `npm run verify:feature`
   includes.
 - **A test for another site** (FR-041, FR-075): a second local server on another host
   (`localhost` against the site's `127.0.0.1`, two sites) that answers with CORS and records the

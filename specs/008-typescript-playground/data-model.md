@@ -198,7 +198,7 @@ type CheckResult = {
   version: number;                    // the model's version the result is for
   diagnostics: Diagnostic[];          // errors and warnings only, in line then column order
   javascript: { text: string; map: string } | { none: 'noEmitOnError' };
-  declarations: { text: string } | { none: 'declaration-off' | 'noEmitOnError' };
+  declarations: { text: string } | { none: 'declaration-off' | 'noEmitOnError' | 'unwritable' };
   imports: { line: number; column: number; specifier: string }[];      // FR-042 (R11)
 };
 ```
@@ -334,7 +334,8 @@ type Message = {
 
 type MessageKey =
   | 'linkCopied' | 'linkField' | 'tooLong' | 'brokenLink' | 'unknownOptions' | 'sharedOpened'
-  | 'sharedReplaced' | 'exampleReplaced' | 'resetDone' | 'cantKeepCode' | 'cantKeepTypeScript';
+  | 'sharedReplaced' | 'exampleReplaced' | 'resetDone' | 'cantKeepCode' | 'cantKeepTypeScript'
+  | 'unknownKeptOptions' | 'codeCopied' | 'codeRefused';
 ```
 
 A new message replaces the one shown. Each is announced politely (FR-052, FR-064). The notices a

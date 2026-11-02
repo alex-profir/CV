@@ -250,8 +250,8 @@ Break one browser test and confirm the run fails and records no passing sign-off
 
 1. **Given** a clean checkout of a pushed commit, **When** the owner runs the local full run and
    every check passes, and signs off, **Then** the commit has a passing `local-verify` check that
-   names the number of tests passed, the site check's result, the runtime's version and the
-   operating system, and the pull request shows it.
+   names the number of tests passed, the runtime's version and the operating system (amended
+   2026-11-02: it also named the site check's result, which left this run), and the pull request shows it.
 2. **Given** a working copy with a changed or untracked file, **When** the owner starts the local
    full run, **Then** it refuses before running anything and names the files.
 3. **Given** one failing test, **When** the local full run ends, **Then** it names the failure and
@@ -486,7 +486,8 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
 - **Local full run**: the full set and every pull-request check, run on the owner's machine on a
   clean checkout of one commit, with a pass or fail result kept on that machine (FR-032, FR-037).
 - **Sign-off**: the passing `local-verify` check a local full run's pass records on its commit,
-  naming what ran. A pull request needs one on its head commit to merge (FR-033 to FR-035).
+  naming what ran (FR-033, FR-034). Amended 2026-11-02: it said a pull request needs one on its
+  head commit to merge, which FR-035 no longer asks.
 
 ## Shell Scope *(mandatory)*
 
@@ -562,12 +563,14 @@ and `/cv` remains a plain server-rendered page.
   even for admins. Turning these on is part of delivering this feature. The repository already
   allows squash merges only. Amended 2026-10-29: the same settings also require the
   `local-verify` sign-off of FR-035, and turning that on is part of delivering the amendment.
+  Amended 2026-10-31: the settings no longer require it (FR-035).
 - **The owner's credentials** (2026-10-29): signing off uses the owner's own login to the
   repository's host, already on their machine. The plan says which tool records it.
 - **Out of scope**:
   - Checking that tests pass, inside the check itself. The normal test run does that. Amended
     2026-10-29: the full run's pass is now a merge requirement through the local full run and
-    its sign-off (FR-030 to FR-037), which stay outside the check.
+    its sign-off (FR-030 to FR-037), which stay outside the check. Amended 2026-10-31: green CI
+    merges, and the daily run holds the full set (FR-035, FR-041).
   - Tests skipped only by a condition checked while the tests run, such as "skip on this
     platform". The code doesn't mark them as skipped, so they count as coverage. The normal test
     run reports those skips.

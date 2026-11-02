@@ -40,7 +40,7 @@ export async function signoff(options: SignoffOptions): Promise<number> {
   const dir = resultDir(root, env, exec);
   const found = dir === null ? ({ reason: 'none' } as const) : readPassingResult(dir, sha);
   if ('reason' in found) {
-    if (found.reason === 'none') return refuse(`sign-off refused: no local full run on ${sha}: run npm run verify`);
+    if (found.reason === 'none') return refuse(`sign-off refused: no local full run on ${sha}: run npm run verify:feature`);
     return refuse(`sign-off refused: the last local full run on ${sha} failed (${found.checks.join(', ')})`);
   }
 

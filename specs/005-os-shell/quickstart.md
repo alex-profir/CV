@@ -106,7 +106,7 @@ Record what was heard in the pull request.
 
 ## 8. Shortcuts in every browser and screen reader (by hand, research R9 Verify)
 
-For each of `Alt+Shift+M`, `D`, `N`, `W`, `H`, `F`, `P`, `S` (`Option+Shift` on a Mac), in the
+For each of `Alt+Shift+M`, `D`, `N`, `W`, `P`, `S` (`Option+Shift` on a Mac; `H` and `F` were removed by 008-typescript-playground FR-086), in the
 current Chrome, Edge, Firefox and Safari, then with NVDA, JAWS and VoiceOver running: press it with
 a window focused.
 

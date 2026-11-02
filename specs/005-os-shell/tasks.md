@@ -540,6 +540,7 @@ message; `npm run site-check` passes on the real build.
   - covers 005-os-shell-FR-060 (`cli.test.ts`): `npm run --silent site-check` and the CI step in `.github/workflows/ci.yml` run the same command; every problem line on `/` has a `<shell>/<state>/<width>px` variant; two runs on the real build give the same report (US7 scenario 3).
 - [X] T105 [P] [US7] Extend `tools/site-check/test/lighthouse.test.ts` with `describe('… (SC-003)')`, off CI (`test.skipIf(process.env.CI)`): on the real build's root under the mobile profile, the CV icon is inside the first contentful paint's viewport and FCP is under 2,500 ms.
 - [X] T106 [P] [US7] Change `tools/site-check/test/performance.test.ts` (SC-010): `npm run site-check` on the real repository exits 0 in under 480,000 ms, with an 9-minute test timeout, still `test.skipIf(process.env.CI)`.
+  - **Superseded in part 2026-11-02, naming 008-typescript-playground**: the time follows the latest feature's budget, now 1,020 s (SC-010, amended 2026-10-30).
 
 ### Implementation for User Story 7
 

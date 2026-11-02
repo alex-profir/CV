@@ -150,7 +150,7 @@ describe('001-requirement-traceability-FR-034: only the owner signs off, and onl
     const head = repo.git(['rev-parse', 'HEAD']);
     expect(head).not.toBe(repo.sha);
     const fake = fakes(repo);
-    expect(await run(repo, fake.env)).toEqual({ code: 1, stdout: '', stderr: `sign-off refused: no local full run on ${head}: run npm run verify\n` });
+    expect(await run(repo, fake.env)).toEqual({ code: 1, stdout: '', stderr: `sign-off refused: no local full run on ${head}: run npm run verify:feature\n` });
     expect(fake.log()).toEqual([]);
   });
 
@@ -158,7 +158,7 @@ describe('001-requirement-traceability-FR-034: only the owner signs off, and onl
     const repo = makeRepo(SAMPLE);
     withOrigin(repo);
     const fake = fakes(repo);
-    const refusal = { code: 1, stdout: '', stderr: `sign-off refused: no local full run on ${repo.sha}: run npm run verify\n` };
+    const refusal = { code: 1, stdout: '', stderr: `sign-off refused: no local full run on ${repo.sha}: run npm run verify:feature\n` };
     fs.mkdirSync(resultDir(repo), { recursive: true });
     fs.writeFileSync(path.join(resultDir(repo), `${repo.sha}.json`), JSON.stringify(result('0'.repeat(40))));
     expect(await run(repo, fake.env)).toEqual(refusal);

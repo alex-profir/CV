@@ -25,14 +25,15 @@ npm run site-check         # builds, then every part, the new `playground` part 
 Expected: every command exits 0. `site-check` prints the `playground` part's variants with no
 problem lines, and `lighthouse` still scores 90+ on `/` and `/cv` in both profiles.
 
-## 2. The full run (the owner's local sign-off)
+## 2. The feature's run
 
 ```sh
-npm run verify
+npm run verify:feature
 ```
 
-Expected: every test passes, the browser tests in Chromium, and the sandbox, memory and key tests
-in Firefox and WebKit too. Then `npm run signoff` posts `local-verify` on the head commit.
+Expected: every test but the site check's own passes, the browser tests in Chromium, and the
+sandbox, memory and key tests in Firefox and WebKit too. Amended 2026-11-02: this said `npm run
+verify`, now the quick run, and asked for a sign-off, which merging no longer needs (001 FR-035).
 
 ## 3. By hand, at a desktop width (1440 × 900)
 

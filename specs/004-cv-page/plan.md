@@ -112,7 +112,7 @@ is stored, which the spec accepts (R4).
 
 - Lighthouse 90 or more in every category on both profiles (SC-002).
 - Name and role visible within 2.5 s under Lighthouse's simulated mobile connection (SC-003).
-- The whole site check under 5 minutes locally (SC-009).
+- The whole site check under 5 minutes locally (SC-009; amended 2026-11-02: within the latest feature's budget, now 1,020 s).
 - Page weight, estimated: HTML about 6 KB and CSS about 3 KB compressed; about 60 KB of font
   subsets above the fold.
 
@@ -232,7 +232,7 @@ Success criteria without an FR of their own:
 - SC-008: quickstart 9, with FR-003 and FR-043 as automated guards.
 - SC-009: check `cli.test.ts`: the seeded fixture's report equals `expected-report.txt`, with
   Lighthouse scores masked. Check `performance.test.ts` runs `npm run site-check` on the real repository in under
-  5 minutes, asserted off CI only, as in 001.
+  5 minutes, asserted off CI only, as in 001. Amended 2026-11-02: within the latest budget, 1,020 s.
 - SC-010: the `self-check` tests above.
 
 ## Dependencies, Skills & Abstractions

@@ -233,7 +233,7 @@ One per family in `packages/web/src/fonts/fonts.json` ([contracts/fonts.md](./co
 | Kind | Path | Answer |
 |------|------|--------|
 | page | `/cv`, `/cv/` | `cv.html`, 200 |
-| redirect | `/` | 307 to `/cv`, query string kept |
+| redirect | `/` | 307 to `/cv`, query string kept. *Amended by 005-os-shell (FR-051): `/` is a page, and no redirect is left* |
 | not found | any other path | `404.html`, 404 |
 
 ### Site manifest

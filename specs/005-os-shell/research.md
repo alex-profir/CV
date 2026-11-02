@@ -331,7 +331,8 @@ instant and exact.
   Down opens a menu. Up and Down move inside it, and Enter chooses. Escape closes it and returns
   focus to its title (FR-015). A pointer click outside, or focus leaving, closes it too.
 - **Shortcuts** (FR-025 to FR-029): `Alt+Shift` (`Option+Shift` on a Mac) with M, D, N, W, H, F,
-  P and S, as the design sets. One `keydown` listener on the document matches them through
+  P and S, as the design sets. Noted 2026-11-02: H and F were removed on 2026-10-29, so six are left,
+  here and below (008-typescript-playground FR-086). One `keydown` listener on the document matches them through
   `os-core`'s `matchShortcut()`:
   - `altKey && shiftKey`, with no Ctrl or Meta;
   - the letter from `event.key` when it is a letter, so the label matches the key on any layout.

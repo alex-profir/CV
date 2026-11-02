@@ -28,6 +28,9 @@ because the page tests and the site check's tests open Chromium **[tested]**. It
 `npm run typecheck` step now covers `packages/web`, including the service worker's own
 `tsconfig.json`.
 
+**Amended 2026-11-02, noting 001's amendment**: the `test` job now runs `npm run test:fast` with no
+browser install, and the full set runs daily (001 FR-030, FR-041).
+
 ## Ruleset: `.github/rulesets/main.json`
 
 `required_status_checks` gains `site` **[tested]**:

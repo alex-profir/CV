@@ -161,7 +161,8 @@ The automated test `tools/traceability/test/test-sets.test.ts` checks the same p
 the traceability check's own file list, and that no fast file needs a browser or the build.
 
 **Amended 2026-10-31**: in scenarios 9 to 13 below, `npm run verify` means `npm run verify:feature`.
-The run has five checks, stops at the first failure and no longer includes the site check. Merging
+The run has six checks, `engines` being the sixth, stops at the first failure and no longer includes
+the site check, and a sign-off's description no longer names it. Merging
 needs no sign-off and no up-to-date branch, so the merge-blocking steps in scenarios 11 and 13 no
 longer apply (FR-035).
 

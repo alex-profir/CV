@@ -12,7 +12,9 @@ protocol and nothing else. Types are in [data-model.md](../data-model.md#run-req
 | `src/apps/terminal/shell/no-network.ts` | the worker | Replaces `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource` and `importScripts` with functions that throw, before just-bash's module body runs (research R39) |
 | `src/apps/terminal/shell/adapter.ts` | the worker, and Node in tests | `createShell(siteInput)`: just-bash with the limits, the allow-list, TerminalFs, the site's commands and two transform plugins (the site's names and pipe mark, research R29; the redirect check, G1); `warm()`, `run(request)`, `reset()`, `restore(state, files)` (research R27) |
 | `src/apps/terminal/shell/fs.ts` | the worker, and Node | TerminalFs (research R28) |
-| `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls`, `rm` and `jq` wrappers (research R29) |
+| `src/apps/terminal/shell/site-commands.ts` | the worker, and Node | The FR-008 commands and the `cat`, `ls` and `rm` wrappers (research R29), and `jq`, which runs `jq.ts` (R53) |
+| `src/apps/terminal/shell/jq.ts` | the worker, and Node | Added 2026-10-31: the site's own `jq` (research R53) |
+| `src/apps/terminal/shell/gnu.ts` | the worker, and Node | GNU's behavior where just-bash's commands differ, in front of the wrappers |
 | `src/apps/terminal/shell/standard.ts` | the worker, and Node | `STANDARD_COMMANDS`, `SHELL_BUILTINS`, and from 2026-10-30 `SHELL_KEYWORDS` (research R32, R43) |
 | `src/apps/terminal/shell/complete.ts` | the worker, and Node | Added 2026-10-30: `complete(request, sources)`, Tab's matches and what readline inserts (research R43) |
 | `src/apps/terminal/shell/no-zlib.ts` | the worker | The `node:zlib` stub (research R34) |
@@ -53,7 +55,7 @@ R49). Types: [data-model.md](../data-model.md#completion-fr-076-to-fr-078-resear
 |-------|-------|-----------------|
 | A line's run time | 5,000 ms | just-bash's `maxExecutionTimeMs` (FR-069) |
 | Commands in a line | 10,000 | `maxCommandCount` |
-| A line's output, stdout and stderr | 1,048,576 bytes | The adapter (`LIMITS.output`); just-bash's `maxOutputSize` is 4,194,304 (`LIMITS.pipe`), what one command may pass on inside the line (research R33, Built) |
+| A line's output, stdout and stderr | 1,048,576 bytes | The adapter (`LIMITS.output`); just-bash's `maxOutputSize` is 33,554,432 (`LIMITS.pipe`; 4,194,304 until T325), what one command may pass on inside the line (research R33, Built) |
 | No answer to `run` | 6,000 ms | The page terminates the worker, starts a new one with `restore`, and shows the "stopped" text |
 | No `ready` after `start` | 10,000 ms | The page shows the failure line with its retry control (FR-070) |
 | Ctrl+C while a line runs | at once | The page terminates the worker and restarts it as above (FR-075) |
@@ -69,7 +71,7 @@ new Bash({
   commands: STANDARD_COMMANDS,          // research R32
   customCommands: [...siteCommands, ...adapterCommands],  // research R27, R28, R29
   executionLimits: { maxExecutionTimeMs: 5000, maxCommandCount: 10000 + overhead, maxCallDepth: 20000,
-                     maxOutputSize: 4 * 1048576,            // LIMITS.pipe, research R33
+                     maxOutputSize: 32 * 1048576,           // LIMITS.pipe, research R33, T325
                      maxLoopIterations: 1_000_000_000 },   // research R33, G15
 });
 // then registerTransformPlugin for the line's tree (R27), sitePlugin, redirectPlugin and the checkpoints

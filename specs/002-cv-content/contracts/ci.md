@@ -24,6 +24,10 @@ A third job. The trigger, permissions, Node version and pinned actions are 001's
 The `test` job is unchanged. Its `npm run typecheck` step now also covers `packages/`, which is
 where FR-027 is enforced, and its `npm test` step runs the shape staleness test (FR-026).
 
+**Amended 2026-11-02, noting 001's amendments**: the `test` job now runs `npm run test:fast`, and
+the full set runs daily (001 FR-030, FR-041). The ruleset's status checks are no longer strict
+(001 FR-035).
+
 ## Ruleset: `.github/rulesets/main.json`
 
 `required_status_checks` gains one entry, so it reads **[tested]**:

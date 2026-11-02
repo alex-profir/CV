@@ -27,7 +27,7 @@ sign-off are in [local-verify.md](./local-verify.md).
 | Permissions | `contents: read`, and nothing else. In particular no `statuses: write`, so the workflow's token can't record a sign-off (FR-034) **[tested]** |
 | Node version | Read from `.nvmrc` (`26`) |
 | Actions | `actions/checkout`, `actions/setup-node` and `actions/cache`, each pinned to a full commit SHA, with the version in a trailing comment **[tested]** |
-| Every job | `timeout-minutes: 6` (SC-008). No `if:`, `strategy`/`matrix` or `continue-on-error` **[tested]** |
+| Every job | `timeout-minutes: 6`, and `site` 20 (SC-008, amended by 006 and 008). No `if:`, `strategy`/`matrix` or `continue-on-error` **[tested]** |
 | Never | A step that runs `npm test`, `vitest` directly, `npm run verify`, `npm run signoff` or `gh`, or names `local-verify` (FR-031, FR-034) **[tested]** |
 
 ### Job `traceability`
@@ -53,8 +53,8 @@ Before 2026-10-29 its steps were checkout → setup-node → `npm ci` → the Pl
 
 ### Jobs `content`, `tokens` and `site`
 
-Defined by 002's, 003's and 004's contracts, unchanged by the amendment apart from the 6-minute
-limit:
+Defined by 002's, 003's and 004's contracts, unchanged by the amendment apart from the time limit:
+6 minutes, and 20 for `site` (SC-008, amended by 006 and 008):
 
 | Job | Steps |
 |-----|-------|
@@ -128,7 +128,7 @@ checks them on the real repository.
 4. `git push origin main` with a new commit is rejected (FR-025).
 5. A pull request with every required job passing can merge, with no `local-verify` status and on
    a branch behind `main` (FR-035, SC-009).
-6. Every job of a pull request's run finishes within 6 minutes (SC-008).
+6. Every job of a pull request's run finishes within its limit: 6 minutes, and 20 for `site` (SC-008).
 
 ## Known limit
 
