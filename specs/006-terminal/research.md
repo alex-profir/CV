@@ -1694,9 +1694,9 @@ lines, each with real `jq`, output and status.
 
 ## R54. What the converge runs decided, kept as built (2026-10-31)
 
-Moved here from the runs' hand-off note, which isn't tracked. The owner has seen this list. FR-067 to
-FR-069 aren't amended for these, so each stays open to amending or fixing. Where it speaks of `jq`'s
-gaps, R53 supersedes it.
+Moved here from the runs' hand-off note, which isn't tracked. The owner has seen this list. FR-068,
+FR-069 and SC-002 were amended on 2026-11-02 to accept it as built. Where it speaks of `jq`'s gaps,
+R53 supersedes it.
 
 - New in Phase 42:
   - Decided for the run, against T397's words, by what bash does: `break 0` ends every loop with status 1 and the line goes on after them.
