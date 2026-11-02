@@ -24,6 +24,9 @@ The amendment approved by the owner 2026-10-30.
 `awk`, `sed` and a negated pattern is accepted and listed (see Clarifications, Session 2026-10-31).
 The owner's decision of 2026-10-31 approves this amendment.
 
+**Amended**: 2026-11-02: the smaller differences research R54 keeps as built are accepted, so the
+spec and what ships agree (FR-068, FR-069, SC-002). The owner's merge approves it (Constitution XI).
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -859,15 +862,18 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   two-digit exponents, string comparison of `"10"<"9"`, a reference creating its element, `CONVFMT`,
   `+inf` and `+nan`, `print > "/dev/stderr"` and `print | "sort"`, and may print a number past 2^53
   as `9.0072e+15`; and `sed` may lack `H`'s first line break, `s/./&&/2g`, `\U`, `\u`, `\L`, `\l`
-  and `\E`, and may word a bad script otherwise and shorten its usage. Each goes once the shell no
-  longer has it. Amended 2026-10-31: four differences were allowed, without `awk`'s and `sed`'s. No command
+  and `\E`, and may word a bad script otherwise and shorten its usage. The smaller differences research R54
+  keeps as built are allowed too. Each goes once the shell no longer has it. Amended 2026-10-31: four
+  differences were allowed, without `awk`'s and `sed`'s. Amended 2026-11-02: R54's weren't allowed. No command
   may reach the network, run a real program or run code in another language, so the shell offers
   no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
   is also a command of FR-008, such as `whoami`, FR-008's meaning wins.
 - **FR-069** (added 2026-10-29): A command line MUST be stopped, with a message in site text that says it ran too
   long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 of its own commands
-  or printed 1 MB, whichever comes first. While a command line runs, the Terminal's screen, the
-  shell's windows and the rest of the page MUST keep responding to input.
+  or printed 1 MB, whichever comes first. The shell's own count may charge a line more than one for
+  a command, and an inner limit may show the same message sooner, as research R54 lists. While a command line runs, the
+  Terminal's screen, the shell's windows and the rest of the page MUST keep responding to input.
+  Amended 2026-11-02: the 10,000 was exact, with no inner limits.
 
 **The file system**
 
@@ -1408,7 +1414,8 @@ plain server-rendered page.
   take 1 tap on a command key.
 - **SC-002**: A command's output appears within 100 ms of pressing Enter at a desktop width, and
   within 300 ms with the CPU slowed as Lighthouse's mobile profile slows it, for every command
-  including `cv`.
+  including `cv`. A pipe that carries a very large output, such as `seq 1000000 | wc -l` at about
+  0.5 s (research R54), is outside this. Amended 2026-11-02: every command was inside it.
 - **SC-003**: In both shells, every CV command shows 100% of the shown fields the CV document holds
   for its section, in the CV document's order, every time the content check runs.
 - **SC-004**: The automated accessibility check finds 0 WCAG 2.2 AA violations in every Terminal
