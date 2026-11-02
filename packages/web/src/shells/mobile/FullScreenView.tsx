@@ -40,12 +40,15 @@ export function FullScreenView({ view, state, dispatch, apps, resume, siteData, 
           {siteText.mobile.home}
         </button>
         <div className="app-title" id={appTitleId(view)} tabIndex={-1} data-req="005-os-shell-FR-040">
-          {name}
-          {/* Named `[view] · Specs`: the suffix shows in capitals, so it is
-              read from the hidden text (007 contracts/inspector.md). */}
-          {specs !== undefined && (
+          {/* Named `[view] · Specs`: the suffix shows in capitals, so the
+              whole title is read from the hidden text (007
+              contracts/inspector.md). */}
+          {specs === undefined ? (
+            name
+          ) : (
             <>
-              <span className="visually-hidden">{viewTitle(view).slice(name.length)}</span>
+              <span aria-hidden="true">{name}</span>
+              <span className="visually-hidden">{viewTitle(view)}</span>
               <span className="title-suffix" aria-hidden="true" data-req="007-requirement-inspector-FR-002">
                 {siteText.inspector.headerSuffix}
               </span>
