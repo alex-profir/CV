@@ -25,9 +25,11 @@ export const TEST_EXCLUDE_GLOBS = [...EXCLUDED_DIR_NAMES.map((name) => `**/${nam
 // out and a feature's local run keeps it (001 FR-041). The parity test compares
 // with that machine's GNU tools and jq, whose versions and error text differ on
 // Linux; Linux has its own browser keys; on Linux the temporary directory is
-// `/tmp`, which the specs' text rightly contains; and the performance test's
-// time limits are for a real machine, not a shared CI one.
-export const OWNER_MAC_TESTS = ['packages/web/test/terminal/shell/bash-parity.test.ts', 'packages/web/test/terminal/line-keys.test.ts', 'packages/web/test/requirement-data/public.test.ts', 'packages/web/test/terminal/performance.test.ts'];
+// `/tmp`, which the specs' text rightly contains; the performance test's time
+// limits are for a real machine, not a shared CI one; and the memory probe
+// grows a worker to the browser's limit, where a shared machine beside other
+// browsers can leave the page frozen, neither answering nor crashed.
+export const OWNER_MAC_TESTS = ['packages/web/test/terminal/shell/bash-parity.test.ts', 'packages/web/test/terminal/line-keys.test.ts', 'packages/web/test/requirement-data/public.test.ts', 'packages/web/test/terminal/performance.test.ts', 'packages/web/test/playground/probe.test.ts'];
 
 // What this machine's test runner leaves out.
 export const LEFT_OUT_HERE = process.platform === 'linux' ? OWNER_MAC_TESTS : [];

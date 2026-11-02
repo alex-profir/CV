@@ -7,7 +7,7 @@ import type { Page } from 'playwright';
 import { forcedColorsProblems } from '../../../../tools/site-check/src/parts/modes.ts';
 import { siteText } from '../../src/site-text.ts';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, menu, onMac, openPlaygroundPage, outputText, PLAYGROUND, POPUP, readLogs, run, running, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { documentStart, EDITOR, focusEditor, menu, onMac, openPlaygroundPage, outputText, PLAYGROUND, POPUP, readLogs, run, running, setCode, showPane, TOOLBAR, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -96,7 +96,7 @@ describe('008-typescript-playground-FR-070: with forced colors every mark, level
     await showCode(page, "const n: number = 'one';\nconsole.log(n);");
     const mod = (await onMac(page)) ? 'Meta' : 'Control';
     await focusEditor(page);
-    await press(page, `${mod}+ArrowUp`, 'End');
+    await press(page, await documentStart(page), 'End');
     const link = await systemColor(page, 'LinkText');
     const text = await systemColor(page, 'CanvasText');
     for (const mark of await edges(page, `${EDITOR} .squiggly-error`)) {

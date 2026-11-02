@@ -95,7 +95,8 @@ describe('008-typescript-playground-FR-049: Keep waiting asks again, and the pop
     await page.waitForSelector(POPUP, { timeout: 8_000 });
     await expect.poll(() => popupShown(page), { timeout: 5_000 }).toBe(0);
     expect(await running(page)).toBe(true);
-    expect(await announcements(page)).toContain(siteText.playground.announce.runningAgain);
+    // The status region sets its text on the frame after the popup closes.
+    await expect.poll(() => announcements(page)).toContain(siteText.playground.announce.runningAgain);
   });
 });
 

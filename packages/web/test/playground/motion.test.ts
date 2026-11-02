@@ -5,7 +5,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, freshProfile, holdEngine, openPlayground, paneTab, PLAYGROUND, POPUP, run, running, setCode, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
+import { documentStart, EDITOR, focusEditor, freshProfile, holdEngine, openPlayground, paneTab, PLAYGROUND, POPUP, run, running, setCode, waitChecked, waitForCode, waitReady } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -121,7 +121,7 @@ describe('008-typescript-playground-FR-069: with reduced motion nothing moves, s
     await press(page, 'F1');
     await page.waitForSelector('.quick-input-widget:not([style*="display: none"])');
     await press(page, 'Escape');
-    await press(page, `${mod}+ArrowUp`, `${mod}+Alt+BracketLeft`);
+    await press(page, await documentStart(page), `${mod}+Alt+BracketLeft`);
     await page.waitForTimeout(500);
     await press(page, `${mod}+Alt+BracketRight`);
     await page.waitForTimeout(800);

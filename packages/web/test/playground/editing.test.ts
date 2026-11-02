@@ -216,6 +216,8 @@ describe('008-typescript-playground-FR-015: the editor works as VS Code does', (
 
   test('the other uses of the name under the cursor are highlighted', async () => {
     await start('const count = 1;\nconsole.log(count, count);');
+    // TypeScript finds them, so it has to have read the code first.
+    await waitChecked(page);
     for (let step = 0; step < 7; step += 1) await page.keyboard.press('ArrowRight');
     await expect.poll(() => page.locator(`${EDITOR} :is(.wordHighlight, .wordHighlightStrong, .wordHighlightText)`).count()).toBeGreaterThanOrEqual(3);
   });

@@ -6,7 +6,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
 import { siteText } from '../../src/site-text.ts';
 import { press } from '../helpers/shell.ts';
-import { EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, run, setCode, showPane, waitChecked, waitForCode } from '../helpers/playground.ts';
+import { documentStart, EDITOR, focusEditor, onMac, openPlaygroundPage, PLAYGROUND, run, setCode, showPane, waitChecked, waitForCode } from '../helpers/playground.ts';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -45,8 +45,7 @@ describe('008-typescript-playground-FR-063: the editor is named, read line by li
     await setCode(page, code);
     await waitForCode(page, code.split('\n')[0]!);
     await focusEditor(page);
-    const key = await mod(page);
-    await press(page, `${key}+ArrowUp`, 'End');
+    await press(page, await documentStart(page), 'End');
     await expect.poll(() => input.inputValue()).toContain('const first = 1;');
     await press(page, 'ArrowDown');
     await expect.poll(() => input.inputValue()).toContain('const second = 2;');
@@ -59,7 +58,7 @@ describe('008-typescript-playground-FR-063: the editor is named, read line by li
     await waitForCode(page, code.split('\n')[0]!);
     await waitChecked(page);
     await focusEditor(page);
-    await press(page, `${await mod(page)}+ArrowUp`);
+    await press(page, await documentStart(page));
     await press(page, 'F8');
     await expect.poll(() => page.locator(`${PLAYGROUND} .playground-status span`).first().textContent()).toMatch(/^Ln 2,/);
     await expect.poll(() => liveText(page)).toMatch(/Type 'string' is not assignable to type 'number'/);
