@@ -415,13 +415,13 @@ remains a plain server-rendered page.
 so the design gate applies to that part (Constitution II). Design artifacts live in
 `specs/009-terminal-node/design/`:
 
-- [ ] ASCII wireframes: a program running and printing, one stopped with `^C`, an uncaught error, a
+- [x] ASCII wireframes: a program running and printing, one stopped with `^C`, an uncaught error, a
   TypeScript download in progress, and the still-running line, on desktop; the same in the pocket
   terminal with the Stop key, at 320 px wide
-- [ ] PNG exports of the approved Penpot mockup, per supported shell (or of the interim local mockup,
+- [x] PNG exports of the approved Penpot mockup, per supported shell (or of the interim local mockup,
   under the constitution's interim provision)
 - [ ] Penpot file link: not needed for an interim local mockup until the provision ends
-- [ ] `review.md` sign-off by the project owner, naming the mockup version and date
+- [x] `review.md` sign-off by the project owner, naming the mockup version and date
 
 ## Success Criteria *(mandatory)*
 

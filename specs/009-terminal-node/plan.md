@@ -16,7 +16,22 @@ it in a sandboxed frame and worker with no network, streams its output into the 
 worker on Ctrl+C. TypeScript reuses the Playground's downloaded copy.
 
 Details in [research.md](./research.md): sandbox R2, running code R3 and R4, errors R5, starting R6, output R7,
-signals R8, limits R9, files R10, APIs R11, TypeScript R12, delivery R13.
+signals R8, limits R9, files R10, APIs R11, TypeScript R12, delivery R13. The list of functions each module
+offers, which FR-013 leaves to this plan, is [contracts/node-api.md](./contracts/node-api.md).
+
+### Corrections
+
+Found by `/speckit-analyze` on 2026-11-02. Where these differ from research.md or data-model.md, these hold.
+
+- **R5, WebKit's place**: a probe in Playwright's WebKit 27.2 shows a thrown error has `line` and `column`, and no
+  `lineNumber` or `sourceURL`. The top place comes from `line` and `column`. For a syntax error those are the place
+  of the `eval` call, not of the mistake, so its place comes from `acorn` in every engine.
+- **R10, applying changes**: a program ended by `close` applies nothing, since closing the Terminal empties the
+  visitor's files (006 FR-021). Every other ending applies them.
+- **R13, what "loads" means**: the page requests nothing of the program before a first program. The service worker's
+  install still fetches the bundle on the first visit, which is how FR-036's offline copy comes to hold it.
+- **Data model, new lines**: a `text` node carries no `req`. Lines that need a `data-req` (FR-027, FR-037) are `line`
+  nodes with a new `req` value.
 
 ## Technical Context
 
@@ -24,13 +39,14 @@ signals R8, limits R9, files R10, APIs R11, TypeScript R12, delivery R13.
 by Vite 8. Visitors' TypeScript uses the TypeScript 5.9.3 in the Playground's engine.
 
 **Primary Dependencies**: three new: `acorn` 8.19.0, `buffer` 6.0.3 and `node-inspect-extracted` 3.3.4, all MIT and
-all only inside the runtime's text. Reused: `just-bash` through the adapter, 008's bootstrap, loader, source map and
+all only inside the runtime's text, and one dev dependency, `rolldown` 1.2.15, for the fast tests' harness. Reused: `just-bash` through the adapter, 008's bootstrap, loader, source map and
 engine cache, 006's session, client, blocks and `TerminalFs`, and 004's service worker.
 
 **Storage**: none new. Program changes go to the Terminal's files for the visit. TypeScript stays in 008's
 `playground-<hash>` cache.
 
-**Testing**: Vitest fast tests, parity tests against the real Node 26 running them, Playwright browser tests in a
+**Testing**: Vitest fast tests, parity tests against the real Node 26 running them, whose harness runs the runtime in
+a `vm` context with only a browser worker's globals and bundles it without `vite`, which the fast set can't reach, Playwright browser tests in a
 new site-check part `program`, with sandbox and stack tests in all three engines in the owner's run (R15).
 
 **Target Platform**: current main browsers, desktop and phone.
@@ -44,7 +60,7 @@ complete visit. TypeScript uses 008's cache and says so when it has none (R12, R
 
 **Performance Goals**: output on screen within 250 ms; Ctrl+C within 1 s; nothing added to first load.
 
-**Constraints**: `os` script at most 149,778 bytes gzipped, with **2,083 bytes left at the last build** (R13). No
+**Constraints**: `os` script at most 149,778 bytes gzipped, with **1,917 bytes left at `2c4906b`** (R13). No
 `SharedArrayBuffer`, so no site-wide isolation headers. One `os` file, enforced by the build.
 
 **Scale/Scope**: 43 requirements. About 50 to 70 tasks expected, the runtime's modules being the largest part.
@@ -109,7 +125,7 @@ are `tools/site-check/test/program.test.ts`. Each test's name carries `009-termi
 | 009-terminal-node-FR-033 | `host.test.ts`, browser: past a handler, past a blocked one | Non-UI |
 | 009-terminal-node-FR-034 | `session.test.ts`, browser: close, reset, `pagehide` | Non-UI |
 | 009-terminal-node-FR-035 | `runtime-loop.test.ts` | Non-UI |
-| 009-terminal-node-FR-036 | Build check and browser: nothing fetched before a program; offline copy | Non-UI |
+| 009-terminal-node-FR-036 | Build check and browser: nothing the page requests before a program, by its resource timing; offline copy | Non-UI |
 | 009-terminal-node-FR-037 | `typescript.test.ts`, browser: shared cache, progress, stop | The progress lines |
 | 009-terminal-node-FR-038 | `compile.test.ts`: every name offered checks clean; one not offered fails | Non-UI |
 | 009-terminal-node-FR-039 | `pocket.test.ts`, site check: 44 px, does Ctrl+C's work | The Stop key |
@@ -125,6 +141,7 @@ are `tools/site-check/test/program.test.ts`. Each test's name carries `009-termi
 | `acorn` | dependency | Syntax-error places in Chromium, and finding `import` and `export` (R4, R5) | The engine gives no place in Chromium; regular expressions can't parse JavaScript | Yes: the acorn project |
 | `buffer` | dependency | `Buffer` (FR-012) | Writing `Buffer` by hand is large and error-prone | No: its author, Feross Aboukhadijeh. Last release is old, but the API it targets is stable; parity tests guard it |
 | `node-inspect-extracted` | dependency | Node's `inspect`, which all console output goes through (FR-011) | 008's formatter makes the Playground's trees, not Node's text | No: Joe Hildebrand. It is Node's own code extracted, and parity tests catch drift |
+| `rolldown` | dev dependency | Bundles the runtime for the fast tests' harness, so `buffer` resolves to the package and not Node's built-in (T012) | `vite`'s build, as `runner-scripts.ts` uses, is forbidden to the fast set by `test-sets.test.ts`; Node's own TypeScript support resolves `buffer` to its built-in | Yes: the Vite project, and the version Vite 8.3.5 already installs |
 | Program host | abstraction | One place that owns a program's frame, port and end, free of the session (R14) | Inside the session, it couldn't be left out of the `os` script (R13) | - |
 | Node runtime | abstraction | The feature itself (R1) | - | - |
 
@@ -150,16 +167,18 @@ specs/009-terminal-node/
 ```text
 packages/web/
 ├── scripts/
-│   ├── build-site.ts              # Builds the program bundle; budget and one-`os` checks stay
+│   ├── build-site.ts              # Builds the program bundle, names it to the one-worker check; budget and one-`os` checks stay
 │   ├── runner-policy.ts           # + programPolicy
 │   └── runner-scripts.ts          # + the runtime's script, shared `scriptText`
 ├── src/
 │   ├── site-text.ts, shell-text.ts # The new words: page's in the first, worker's in the second
+│   ├── pages/ShellPage.tsx         # `data-program`, the bundle's address (R13)
 │   ├── sw/                         # Unchanged: `assets` are precached already
 │   └── apps/
 │       ├── terminal/
 │       │   ├── session.ts, shell-client.ts, Terminal.tsx, Pocket.tsx, CommandLine.tsx
-│       │   ├── shell/{adapter,standard,protocol}.ts   # Commands, `apply`, the effect
+│       │   ├── engine/{block,command-table,commands}.ts # The `program` effect; the commands' rows
+│       │   ├── shell/{adapter,site-commands,standard,protocol}.ts # Commands, out of `LEFT_OUT`; `apply`
 │       │   └── program/
 │       │       ├── host.ts                            # R7, R8, R9, R10; the bundle's entry
 │       │       ├── policy, messages                   # What the page accepts
@@ -168,8 +187,9 @@ packages/web/
 │       │           ├── modules/{fs,path,events,util,assert,os,timers,url}.ts
 │       │           └── node.d.ts                      # For `ts-node` (R12)
 │       └── playground/engine/
-│           ├── compile.worker.ts                      # R12
-│           └── loader.ts, runner/bootstrap.ts         # Used as they are; manifest and api change
+│           ├── ts.worker.ts, compile.ts               # R12: the compile mode, no second TypeScript
+│           ├── contract.ts, loader.ts                 # `api` 2; `loader` exports `browserEnv`, manifest gains `compiler`
+│           └── runner/bootstrap.ts                    # Used as it is
 ├── test/terminal/program/
 tools/site-check/src/parts/program.ts
 specs/006-terminal/spec.md, docs/vision.md             # FR-042; the Terminal's entry
@@ -182,4 +202,4 @@ because of the `os` budget. Nothing moves to `os-core`, since no other app runs 
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Principle II and the workflow's gate order: this plan was written before the Design gate passed | The owner asked for the plan directly after approving the spec, and this plan fixes which states the design must show. Only two things need design: the Stop key's place and the program states in the Terminal | Stopping for design first would delay a plan that has almost no UI in it. **The gate still blocks every UI task**: tasks list `design/review.md` as a prerequisite, and only the owner's sign-off clears it |
+| Principle II and the workflow's gate order: this plan was written before the Design gate passed | The owner asked for the plan directly after approving the spec, and this plan fixes which states the design must show. Only two things need design: the Stop key's place and the program states in the Terminal | Stopping for design first would delay a plan that has almost no UI in it. **Resolved**: no UI work started before the owner signed `design/review.md` on 2026-11-02, so the gate is met, and UI tasks still list it as a prerequisite |

@@ -74,8 +74,9 @@ R2, making a classic worker from a `Blob`.
 
 ## R6: Starting a program
 
-- **Decision**: `node`, `ts-node` and `tsnode` are commands of the shell worker, leaving `LEFT_OUT`. The
-  shell expands the words, so `node $FILE` and `A=1 node a.js` work. The command parses the typed line, and
+- **Decision**: `node`, `ts-node` and `tsnode` are site commands of the shell worker: rows of the command
+  table, which `help` and Tab already read (FR-007), and out of `LEFT_OUT`. They stay out of
+  `STANDARD_COMMANDS`, the list handed to just-bash, whose own `node` is never used. The shell expands the words, so `node $FILE` and `A=1 node a.js` work. The command parses the typed line, and
   it is a program only if the line is one simple command of that name, with no redirect, background,
   or command or process substitution. Otherwise it prints FR-006's message with status 1. `--version`,
   `--help`, no script and bad options are answered there too. A real run returns a new `program` effect with
@@ -141,32 +142,41 @@ R2, making a classic worker from a `Blob`.
 
 ## R12: TypeScript
 
-- **Decision**: a new worker in the Playground's engine bundle, `compile.worker`, using the TypeScript 5.9.3
-  already there. Given the snapshot and a root, it returns diagnostics for the root's program under strict
-  options, unless run by `node`, and JavaScript and a source map for every TypeScript file in the visitor's
-  files. The page gets the engine through 008's loader, reporting progress in its 25% steps as output lines,
-  and starts the worker by address from the manifest. It **does not import the engine's entry**, so Monaco
-  never loads on the page. `ENGINE_API` goes to 2 and the manifest gains `compiler`, so an older copy
-  isn't used for this. Types come from a hand-written `node.d.ts` holding exactly what the runtime offers.
-- **Rationale**: no second copy of TypeScript, and FR-037's sharing comes from the shared cache. Phones
-  download only when a visitor asks. A hand-written `.d.ts` makes something not offered a type error, which is
-  accurate here, where `@types/node` would describe APIs that don't exist.
+- **Decision**: a compile mode in the engine's existing `ts.worker`, chosen by the worker's name: started as
+  `compile`, it answers compile requests instead of starting Monaco's worker. Given the snapshot and a root, it
+  returns diagnostics for the root's program under strict options, unless run by `node`, and JavaScript and a
+  source map for every TypeScript file in the visitor's files. The page gets the engine through 008's
+  `loadEngine`, reporting progress in its 25% steps as output lines, and starts the worker by address from the
+  manifest. It **does not import the engine's entry**, so Monaco never loads on the page: the host gives
+  `loadEngine` the browser's environment with `linkStyle` and `importModule` doing nothing. `loadEngine` waits
+  and retries while offline, as the Playground's window wants, so the host treats its `offline` state as the end
+  of the run: it aborts, and says FR-037's words with the size from `data-playground-bytes`. `ENGINE_API` goes
+  to 2 and the manifest gains `compiler`, so an older copy isn't used for this. Types come from a hand-written
+  `node.d.ts` holding exactly what the runtime offers.
+- **Rationale**: no second copy of TypeScript, and FR-037's sharing comes from the shared cache. Engine workers
+  are built as single `iife` files that share no code, so a separate `compile.worker` would carry its own copy.
+  `ts.worker` is 6.9 MB of the engine's 11.6 MB, so that copy would add about 60% to every Playground download.
+  Phones download only when a visitor asks. A hand-written `.d.ts` makes something not offered a type error,
+  which is accurate here, where `@types/node` would describe APIs that don't exist.
 - **Known cost**: anyone who has the Playground's engine downloads it again once, as the bundle changes
   anyway. A JavaScript program that requires a `.ts` file gets an error saying a TypeScript program must
   start from a TypeScript file, since compiling happens before the program starts.
-- **Alternatives**: importing the engine's entry, which brings Monaco to phones; TypeScript 7, which has no
-  browser build (008 R5).
+- **Alternatives**: importing the engine's entry, which brings Monaco to phones; a separate compile worker, for
+  the size above; TypeScript 7, which has no browser build (008 R5).
 
 ## R13: Delivery
 
 - **Decision**: a separate `assets/program-<hash>.js` holds the page's program host, the bootstrap, the
-  policy and the runtime's text. Like the engine, the `os` script opens it by a computed address, so the build
-  still emits one `os` file. It is precached with the rest of `assets`, which gives offline use after one
-  visit (FR-036), and loads only at a first program. `acorn` and the rest stay inside the runtime's text.
-- **Rationale**: at this branch's last build the `os` script is **147,695 bytes gzipped against a budget of
-  149,778, leaving 2,083 bytes**. Session changes, the Stop key and the words must fit in that; all else lives
-  in this bundle or the shell worker. If they don't fit, the session's program code moves here first, and
-  raising the budget is the owner's call.
+  policy and the runtime's text. Like the engine, the `os` script opens it by a computed address, read from a
+  `data-program` attribute on `#os` as the engine's is from `data-playground`, so the build still emits one `os`
+  file. It is precached with the rest of `assets`, which gives offline use after one visit (FR-036), and loads
+  only at a first program. `acorn` and the rest stay inside the runtime's text. The build's check that `assets`
+  holds one worker script counts every script missing from Vite's manifest, so it must be told this file's
+  name.
+- **Rationale**: a build of `2c4906b` on 2026-11-02 gives an `os` script of **147,861 bytes gzipped, measured
+  as the build's check measures it, against a budget of 149,778, leaving 1,917 bytes**. Session changes, the
+  Stop key and the words must fit in that; all else lives in this bundle or the shell worker. If they don't fit,
+  the session's program code moves here first, and raising the budget is the owner's call.
 
 ## R14: Room for later
 

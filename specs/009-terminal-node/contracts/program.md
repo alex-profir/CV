@@ -48,7 +48,8 @@ The page checks every field: the worker runs the visitor's code.
 `{ kind: 'program'; request: ProgramRequest }`. The client gains `setStatus(state)` so its restart state stays
 current.
 
-## The compile worker (Playground's engine bundle)
+## The compile mode (Playground's `ts.worker`)
 
+Started with `new Worker(manifest.compiler, { name: 'compile' })`. Any other name keeps the worker as Monaco's.
 `{ root, mode: 'check' | 'strip', files }` in, compile result (data model) out. It parses and checks and never
-runs anything. `EngineManifest` gains `compiler: string`, and `api` becomes 2.
+runs anything. `EngineManifest` gains `compiler: string`, the `ts.worker` file's address, and `api` becomes 2.
