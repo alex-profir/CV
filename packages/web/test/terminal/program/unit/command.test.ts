@@ -199,7 +199,7 @@ describe('009-terminal-node-FR-007: help and Tab include them', () => {
   });
 });
 
-describe('009-terminal-node-FR-042: the other names stay left out', () => {
+describe('009-terminal-node-FR-042 and 006-terminal-FR-068: the other names stay left out', () => {
   test.each(['python', 'python3', 'curl', 'sqlite3', 'js-exec'])('%s is still left out', async (name) => {
     expect(LEFT_OUT).toHaveProperty(name);
     const result = await runLine(shellFor(), name);

@@ -23,7 +23,7 @@ function contrast(a: string, b: string): number {
   return (light! + 0.05) / (dark! + 0.05);
 }
 
-describe.each([[375, 812], [320, 568]])('009-terminal-node-FR-039: at %d px', (width, height) => {
+describe.each([[375, 812], [320, 568]])('009-terminal-node-FR-039, 006-terminal-FR-024 and 006-terminal-FR-078: at %d px', (width, height) => {
   const open = () => openProgramTerminal('mobile', { width, height });
 
   test('Stop takes the place of `clear`, the grid does not move, and with nothing running the key is `clear`', async () => {

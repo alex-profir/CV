@@ -27,6 +27,10 @@ The owner's decision of 2026-10-31 approves this amendment.
 **Amended**: 2026-11-02: the smaller differences research R54 keeps as built are accepted, so the
 spec and what ships agree (FR-068, FR-069, SC-002). The owner's merge approves it (Constitution XI).
 
+**Amended**: 2026-11-02 by 009-terminal-node: the Terminal offers `node`, `ts-node` and `tsnode`, running
+only as that spec sets, with the Stop key on the pocket terminal (FR-024, FR-068, FR-069, FR-075, FR-078; see
+Clarifications, Session 2026-11-02 (amended by 009-terminal-node)). The owner's merge approves it (Constitution XI).
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -224,6 +228,19 @@ spec and what ships agree (FR-068, FR-069, SC-002). The owner's merge approves i
 - Q: `!(…)` needs a lookahead just-bash's regular expressions don't have (research G31), and FR-067
   doesn't allow refusing it. Accept, report upstream, or replace the glob matching? → A: Accept, and
   report upstream. The line says so and runs nothing (FR-067).
+
+### Session 2026-11-02 (amended by 009-terminal-node)
+
+- Q: FR-068 says no command may run a real program or code in another language, and names `node`
+  among what the shell doesn't offer. 009-terminal-node runs programs in a sandbox. Which holds?
+  → A: 009's, for its own commands only, running only as it sets. `curl`, `wget`, `ssh`, `python` and
+  the other names stay out, and nothing else changes for the shell's commands (FR-068, 009 FR-042).
+- Q: A program can run for as long as a visitor wants, and print as it runs. Do FR-069's limits apply?
+  → A: No. They are the shell's limits on a command line. A program has its own, in 009's FR-026 and
+  FR-027 (FR-069).
+- Q: What does Ctrl+C do to a program, and how does a phone do it? → A: It stops it as 009's FR-031 to
+  FR-033 set, keeping what it printed (FR-075). The pocket terminal gains the Stop key of 009's FR-039,
+  in the place of `clear` while a program runs (FR-024, FR-078).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -588,7 +605,8 @@ can't merge.
   nothing like any command, such as `sudo`, gets no suggestion besides `help`.
 - **A command nothing like a known one**, such as `sudo`, `ssh`, `curl` or `python`: the same "not
   a command" reply, with no joke reply or hidden command, as easter eggs are a non-goal. Nothing
-  the shell offers reaches the network or runs a program (FR-022, FR-068).
+  the shell offers reaches the network or runs a program, but the commands of 009-terminal-node, in
+  their sandbox (FR-022, FR-068). Amended 2026-11-02 by 009-terminal-node: nothing ran a program.
 - **A command that would change the protected files**, such as `rm -rf ~`, `mv about x`,
   `touch work/new` or `echo hi > about`: bash's "Permission denied", once per path, and the
   protected files and folders don't change (FR-049). Any of the visitor's own files that the
@@ -866,14 +884,19 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   keeps as built are allowed too. Each goes once the shell no longer has it. Amended 2026-10-31: four
   differences were allowed, without `awk`'s and `sed`'s. Amended 2026-11-02: R54's weren't allowed. No command
   may reach the network, run a real program or run code in another language, so the shell offers
-  no `curl`, `wget`, `ssh`, `python`, `node` or the like (FR-022). Where a standard command's name
-  is also a command of FR-008, such as `whoami`, FR-008's meaning wins.
+  no `curl`, `wget`, `ssh`, `python` or the like (FR-022). The one exception is the commands of
+  009-terminal-node, `node`, `ts-node` and `tsnode`, running only as that spec sets. Where a standard
+  command's name is also a command of FR-008, such as `whoami`, FR-008's meaning wins. Amended
+  2026-11-02 by 009-terminal-node: there was no exception, and the names the shell didn't offer
+  included `node`.
 - **FR-069** (added 2026-10-29): A command line MUST be stopped, with a message in site text that says it ran too
   long or printed too much, and a new prompt, once it has run for 5 seconds, run 10,000 of its own commands
   or printed 1 MB, whichever comes first. The shell's own count may charge a line more than one for
   a command, and an inner limit may show the same message sooner, as research R54 lists. While a command line runs, the
   Terminal's screen, the shell's windows and the rest of the page MUST keep responding to input.
-  Amended 2026-11-02: the 10,000 was exact, with no inner limits.
+  These limits don't apply to a program of 009-terminal-node, which has its own (its FR-026, FR-027).
+  Amended 2026-11-02: the 10,000 was exact, with no inner limits. Amended 2026-11-02 by
+  009-terminal-node: the limits applied to every line.
 
 **The file system**
 
@@ -997,7 +1020,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
 - **FR-024**: On mobile, the Terminal MUST be deliberately a little odd: it MUST look like a
   pocket terminal, a small handheld terminal of the site's own design, with a screen that holds
   the prompt, the command line and the output, and command keys below or beside it, as FR-051 to
-  FR-054 set. Every other requirement of this spec MUST still hold.
+  FR-054 set. Every other requirement of this spec MUST still hold. While a program runs, the keys
+  MUST include the Stop key of 009-terminal-node's FR-039. Amended 2026-11-02 by 009-terminal-node: the
+  keys didn't change while a line ran.
 - **FR-025**: On mobile, every CV section, the site's story, the spec list and every file MUST be
   possible to reach without typing, through the command keys (FR-051) and the command controls in
   the output (FR-015, FR-050). When the on-screen keyboard is open, the command line and the newest
@@ -1018,7 +1043,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   button named for completing, at least 44 by 44 CSS px, in the place the approved design sets.
   With text before the cursor it MUST complete as Tab does (FR-076), a second press in a row
   listing the matches; with none it MUST change nothing. Pressing it MUST keep the on-screen
-  keyboard open, and focus in the command line.
+  keyboard open, and focus in the command line. While a program runs, the Stop key of
+  009-terminal-node's FR-039 takes a place among the command keys, and the Tab key's place in the
+  strip above the on-screen keyboard. Amended 2026-11-02 by 009-terminal-node: the Tab key was always there.
 - **FR-054**: The pocket terminal's drawn case MUST be decoration only: it MUST NOT be announced by
   screen readers, take focus or carry meaning. It MUST be of the site's own design and MUST NOT
   copy or trace any real device (Constitution IX). A pressed key MAY show a pressed state, which
@@ -1178,7 +1205,9 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   and nothing outside the Terminal, as a terminal window does. The system's copy then MUST copy
   that text as shown, without the cursor or any control's name added. Ctrl+C with no text
   selected MUST cancel what was typed, showing it with `^C` after it and giving a new prompt, or,
-  while a command line runs, stop it as FR-069 stops one, saying it was stopped. Up and Down keep
+  while a command line runs, stop it as FR-069 stops one, saying it was stopped. While a program of
+  009-terminal-node runs, it MUST stop it as that spec's FR-031 to FR-033 set, keeping what it printed.
+  Amended 2026-11-02 by 009-terminal-node: every running line stopped as FR-069's. Up and Down keep
   stepping through the history (FR-020). No key of this requirement or FR-074 may take over one a
   current main browser or screen reader reserves on the visitor's system (FR-026, 005 FR-029); in
   the vim view, its own keys apply (FR-060).

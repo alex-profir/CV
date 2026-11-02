@@ -1,6 +1,6 @@
-// `npm run test:engines`: the Playground's tests that depend on the browser's
-// engine, its sandbox, memory and keys, run again in Firefox and in WebKit
-// (008 research R25). `npm test` and pull requests run them in Chromium; this
+// `npm run test:engines`: the Playground's and the Terminal's programs' tests that
+// depend on the browser's engine, its sandbox, memory and keys, run again in Firefox
+// and in WebKit (008 research R25). `npm test` and pull requests run them in Chromium; this
 // is the local full run's `engines` check. `PLAYGROUND_ENGINE` tells
 // `packages/web/test/helpers/playground.ts` which engine to launch.
 //
@@ -10,7 +10,11 @@ import { spawnSync } from 'node:child_process';
 
 const ENGINES = ['firefox', 'webkit'];
 
-const ENGINE_TESTS = ['sandbox', 'memory', 'keys', 'probe', 'network', 'stuck', 'errors', 'limits', 'logs', 'stop'].map((name) => `packages/web/test/playground/${name}.test.ts`);
+const ENGINE_TESTS = [
+  ...['sandbox', 'memory', 'keys', 'probe', 'network', 'stuck', 'errors', 'limits', 'logs', 'stop'].map((name) => `packages/web/test/playground/${name}.test.ts`),
+  // A program's sandbox, stacks, stops and memory depend on the engine too (009 research R15).
+  ...['sandbox', 'stacks', 'stop', 'memory'].map((name) => `packages/web/test/terminal/program/${name}.test.ts`),
+];
 
 let failed = false;
 for (const engine of ENGINES) {

@@ -167,7 +167,7 @@ describe('009-terminal-node-FR-036: a bundle that cannot load', () => {
   });
 });
 
-describe('009-terminal-node-FR-031: Ctrl+C on a running program', () => {
+describe('009-terminal-node-FR-031 and 006-terminal-FR-075: Ctrl+C on a running program', () => {
   test('goes to the host, and not the shell worker', async () => {
     const { session, shell, program, flush } = await setUp();
     session.run('node a.js', 'desktop');
@@ -232,7 +232,7 @@ describe('009-terminal-node-FR-028: a program the browser ended', () => {
   });
 });
 
-describe('009-terminal-node-FR-027: no time limit, and one still-running line', () => {
+describe('009-terminal-node-FR-027 and 006-terminal-FR-069: no time limit, and one still-running line', () => {
   const still = (session: ReturnType<typeof createSession>) => shown(session.get().running?.block).filter((text) => text.startsWith('Still running'));
 
   test('after 5 s with nothing printed one line shows, once, and the program goes on', async () => {
