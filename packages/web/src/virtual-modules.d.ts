@@ -23,6 +23,7 @@ declare module 'virtual:terminal-program' {
   export const bootstrap: string;
   export const runtime: string;
   export const policy: string;
+  export const nodeTypes: string;
 }
 
 // The `buffer` package, named so that it isn't Node's built-in (009 research R11).

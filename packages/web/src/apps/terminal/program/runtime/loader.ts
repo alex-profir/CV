@@ -187,6 +187,11 @@ export function createLoader(deps: LoaderDeps) {
   // A file, with the extensions Node tries, or a folder's `index` (FR-014).
   function resolveFile(path: string): string | null {
     if (isFile(path)) return path;
+    // A TypeScript program imports `./b.js` for its `b.ts`, as TypeScript has it.
+    if (deps.compiled !== undefined && /\.[mc]?js$/.test(path)) {
+      const typed = path.replace(/js$/, 'ts');
+      if (isFile(typed)) return typed;
+    }
     for (const extension of ['.js', '.json', '.mjs', '.cjs', '.ts', '.mts', '.cts']) if (isFile(`${path}${extension}`)) return `${path}${extension}`;
     if (files.get(path)?.kind === 'folder') for (const name of ['index.js', 'index.json', 'index.mjs', 'index.ts']) if (isFile(`${path}/${name}`)) return `${path}/${name}`;
     return null;

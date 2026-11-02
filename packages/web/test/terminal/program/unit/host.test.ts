@@ -30,6 +30,7 @@ export function fakeHost(overrides: Partial<HostEnv> = {}) {
     makeFrame: () => frame,
     makeChannel: () => ({ port1: port, port2: 'port2' }),
     nonce: () => 'n',
+    compile: async () => ({ kind: 'failed' }),
     listen: (listener) => {
       heard = listener;
       return () => {

@@ -104,7 +104,7 @@ const CONTENT_TYPES: Record<string, string> = {
 // The Playground's engine (008 research R3, contracts/engine.md): its entry,
 // the contract version it implements, and the bundled TypeScript's version.
 const ENGINE_ENTRY = path.join(WEB_ROOT, 'src/apps/playground/engine/engine.ts');
-export const ENGINE_API = 1;
+export const ENGINE_API = 2;
 
 // Where the engine's files are served, under the site root.
 export const ENGINE_DIR = 'playground';
@@ -244,7 +244,9 @@ function placeEngine(engine: BuiltEngine, siteDir: string): EngineAssets {
   fs.writeFileSync(stylePath, withSitePaths(fs.readFileSync(stylePath, 'utf8'), folder));
   const files = engine.files.map((file) => ({ path: `${folder}/${file}`, bytes: fs.statSync(path.join(target, file)).size }));
   const total = files.reduce((sum, file) => sum + file.bytes, 0);
-  const manifest = { api: ENGINE_API, version: hash, typescript: typescriptVersion, entry: `${folder}/${engine.entry}`, style: `${folder}/${engine.style}`, files, total };
+  const compiler = engine.files.find((file) => /^ts\.worker-[\w-]+\.js$/.test(file));
+  if (compiler === undefined) throw new Error("the engine build has no ts.worker file");
+  const manifest = { api: ENGINE_API, version: hash, typescript: typescriptVersion, entry: `${folder}/${engine.entry}`, style: `${folder}/${engine.style}`, compiler: `${folder}/${compiler}`, files, total };
   fs.writeFileSync(path.join(target, 'files.json'), JSON.stringify(manifest));
   return { manifest: `${folder}/files.json`, bytes: total };
 }

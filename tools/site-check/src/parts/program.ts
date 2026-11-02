@@ -220,6 +220,55 @@ export const PROGRAM_CHECKS: readonly ProgramCheck[] = [
     },
   },
   {
+    name: 'typescript',
+    shells: ['desktop'],
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      await writeFile(page, 'app.ts', "const n: number = 'text';\nconsole.log('ran', n);\n");
+      // A first run in this profile: the engine comes down, with progress.
+      const first = await outputOf(await runLine(page, 'ts-node app.ts'));
+      expectIn(found, 'first run', first, 'Downloading TypeScript, once:', 'progress');
+      expectIn(found, 'ts-node app.ts', first, "TSError: Unable to compile TypeScript:\napp.ts(1,7): error TS2322:", 'type error');
+      if (first.includes('ran')) found.push(problem('type error', 'ts-node app.ts', 'the program ran in spite of its type error'));
+      await statusIs(page, found, 'ts-node app.ts', 1);
+      // `node` runs it past the error, and from here nothing more is fetched.
+      const fetched: string[] = [];
+      page.on('request', (request) => {
+        if (/\/playground\//.test(request.url())) fetched.push(request.url());
+      });
+      const past = await outputOf(await runLine(page, 'node app.ts'));
+      expectIn(found, 'node app.ts', past, 'ran text', 'output');
+      await writeFile(page, 'app.ts', "const n: number = 1;\nconsole.log('fixed', n);\n");
+      expectIn(found, 'tsnode app.ts', await outputOf(await runLine(page, 'tsnode app.ts')), 'fixed 1', 'output');
+      await statusIs(page, found, 'tsnode app.ts', 0);
+      const downloaded = fetched.filter((address) => !/ts\.worker-/.test(address));
+      if (downloaded.length > 0) found.push(problem('shared copy', 'TypeScript', `a later run fetched ${downloaded.join(', ')}`));
+      return found;
+    },
+  },
+  {
+    name: 'typescript-stop',
+    shells: ['desktop'],
+    async run(page, shell) {
+      const found: Found[] = [];
+      await openTerminal(page, shell);
+      await writeFile(page, 'app.ts', "console.log('ran');\n");
+      // Held, so the download is still on its way when Ctrl+C comes.
+      await page.route('**/playground/**', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        await route.continue().catch(() => undefined);
+      });
+      await startLine(page, 'ts-node app.ts');
+      await page.waitForTimeout(300);
+      await page.keyboard.press('Control+C');
+      const took = await ended(page);
+      if (took > 1000) found.push(problem('stop', 'Ctrl+C during the download', `it took ${took} ms to end the line, over 1 s`));
+      await statusIs(page, found, 'Ctrl+C during the download', 130);
+      return found;
+    },
+  },
+  {
     name: 'closed',
     shells: ['desktop'],
     async run(page, shell) {

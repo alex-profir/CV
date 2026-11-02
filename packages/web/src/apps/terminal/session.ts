@@ -313,7 +313,7 @@ export function createSession(client: ShellClient = createShellClient(), openHos
       closing.push(dim(words.replies.cancelMark, 'stop'));
       queue = queue.map((each) => ({ ...each, entry: { ...each.entry, block: [], cancelled: true } }));
     } else if (reason === 'output') closing.push(stoppedLine(words.replies.stopped.output));
-    else if (reason === 'memory' || reason === 'died') closing.push({ kind: 'line', children: [{ kind: 'text', text: reason === 'memory' ? words.program.memory : words.program.died, tone: 'error' }] });
+    else if (reason === 'memory' || reason === 'died' || reason === 'offline') closing.push({ kind: 'line', children: [{ kind: 'text', text: reason === 'memory' ? words.program.memory : reason === 'died' ? words.program.died : fill(words.program.offline, { size: Math.round(bytes() / 1_048_576) }), tone: 'error' }] });
     grow(closing);
     const done = state.running!;
     const shellState: ShellState = { ...state.state, status, pipes: [status] };

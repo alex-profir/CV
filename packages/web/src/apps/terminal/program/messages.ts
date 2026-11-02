@@ -32,7 +32,7 @@ export const OUTPUT_LIMIT = 1_048_576;
 
 export const NO_CHANGES: FileChanges = { files: {}, folders: [] };
 
-export type EndReason = 'exit' | 'uncaught' | 'type-error' | 'interrupted' | 'output' | 'memory' | 'died' | 'closed';
+export type EndReason = 'exit' | 'uncaught' | 'type-error' | 'offline' | 'interrupted' | 'output' | 'memory' | 'died' | 'closed';
 
 export type Stream = 'stdout' | 'stderr';
 

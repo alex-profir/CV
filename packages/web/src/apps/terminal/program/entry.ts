@@ -1,9 +1,12 @@
 // The program bundle's entry (009 research R13): the host with the browser's
 // frame, port and scripts. The `os` script opens this file by a computed
 // address when a first program runs, so nothing here loads before then.
-import { bootstrap, policy, runtime } from 'virtual:terminal-program';
+import { bootstrap, nodeTypes, policy, runtime } from 'virtual:terminal-program';
+import { browserEnv as loaderEnv } from '../../playground/engine/loader.ts';
 import { createHost } from './host.ts';
 import type { FrameLike, HostEnv, PortLike } from './host.ts';
+import { compileProgram } from './typescript.ts';
+import type { CompilerWorker } from './typescript.ts';
 
 const frameDocument = () => `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}"><script>${bootstrap}</script>`;
 
@@ -18,6 +21,8 @@ function runners(): HTMLElement {
   document.body.append(host);
   return host;
 }
+
+const os = () => document.getElementById('os')!.dataset;
 
 const browserEnv: HostEnv = {
   runtime,
@@ -43,6 +48,16 @@ const browserEnv: HostEnv = {
     const heard = (event: MessageEvent) => listener({ source: event.source, data: event.data });
     addEventListener('message', heard);
     return () => removeEventListener('message', heard);
+  },
+  compile(request, onProgress, signal) {
+    const compiler = {
+      manifest: os()['playground']!,
+      bytes: Number(os()['playgroundBytes'] ?? 0),
+      loader: loaderEnv(),
+      nodeTypes,
+      makeWorker: (address: string) => new Worker(address, { name: 'compile' }) as unknown as CompilerWorker,
+    };
+    return compileProgram(compiler, request, onProgress, signal);
   },
 };
 

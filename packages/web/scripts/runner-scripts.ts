@@ -4,6 +4,7 @@
 // the engine build, which imports them from `virtual:playground-runner` with
 // the frame's policy. The policy allows the bootstrap by its hash and
 // nothing else, so the build fails if the two differ.
+import fs from 'node:fs';
 import path from 'node:path';
 import { build } from 'vite';
 import type { Plugin, Rolldown } from 'vite';
@@ -19,6 +20,8 @@ const RESOLVED = `\0${RUNNER_MODULE}`;
 
 const PROGRAM_RUNTIME = path.resolve(import.meta.dirname, '../src/apps/terminal/program/runtime/main.ts');
 
+// The types `ts-node` checks against (research R12), as text.
+const NODE_TYPES_FILE = path.resolve(import.meta.dirname, '../src/apps/terminal/program/runtime/node.d.ts');
 export const PROGRAM_MODULE = 'virtual:terminal-program';
 const PROGRAM_RESOLVED = `\0${PROGRAM_MODULE}`;
 
@@ -58,16 +61,16 @@ export async function bundleRunner(): Promise<RunnerScripts> {
 
 // A program's scripts (009 research R2, R13): 008's bootstrap, unchanged, with
 // the program's policy, and the runtime, with what it bundles for its licenses.
-export async function bundleProgram(): Promise<{ scripts: RunnerScripts; modules: readonly string[] }> {
+export async function bundleProgram(): Promise<{ scripts: RunnerScripts & { nodeTypes: string }; modules: readonly string[] }> {
   const bootstrap = await scriptText('bootstrap.ts');
   const runtime = await scriptBuild(PROGRAM_RUNTIME);
   const scripts = { bootstrap, runtime: runtime.code, policy: programPolicy(bootstrap) };
   checkProgramScripts(scripts);
-  return { scripts, modules: runtime.modules };
+  return { scripts: { ...scripts, nodeTypes: fs.readFileSync(NODE_TYPES_FILE, 'utf8') }, modules: runtime.modules };
 }
 
 // `virtual:terminal-program` for the program bundle's build.
-export function programPlugin(scripts: RunnerScripts): Plugin {
+export function programPlugin(scripts: RunnerScripts & { nodeTypes: string }): Plugin {
   return {
     name: 'cv:terminal-program',
     resolveId: (id) => (id === PROGRAM_MODULE ? PROGRAM_RESOLVED : null),

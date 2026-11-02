@@ -6,7 +6,7 @@ import type { Engine, EngineInit, RunEvents, RunHandle, RunInput } from './contr
 import { CODE_URI, createEditing } from './editor.ts';
 import { startFrame } from './runner/host.ts';
 
-export const api = 1;
+export const api = 2;
 
 export async function createEngine(init: EngineInit): Promise<Engine> {
   const editing = createEditing(init);

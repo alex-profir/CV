@@ -37,7 +37,7 @@ loading ─▶ compiling ─▶ running ─▶ stopping ─▶ ended(status)
 
 `loading` fetches the program bundle, and TypeScript if needed. `compiling` applies to TypeScript only, and a
 type error ends it with status 1 with nothing run. `ended` holds `status` and a `reason`: `exit`, `uncaught`,
-`type-error`, `interrupted`, `output`, `memory`, `died` or `closed`.
+`type-error`, `offline`, `interrupted`, `output`, `memory`, `died` or `closed`.
 
 ## Session additions
 

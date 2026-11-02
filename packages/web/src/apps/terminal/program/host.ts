@@ -4,8 +4,10 @@
 // visitor's code, so nothing it claims is trusted: the page keeps its own count of
 // output and changes, and a second Ctrl+C ends it whatever it says of its handlers.
 import { NO_CHANGES, OUTPUT_LIMIT, statusOf, workerMessage } from './messages.ts';
-import type { EndReason, FileChange, FileChanges, OutputChunk, ProgramEvents, ProgramHandle, ProgramRequest, Stream } from './messages.ts';
+import type { Compiled, EndReason, FileChange, FileChanges, OutputChunk, ProgramEvents, ProgramHandle, ProgramRequest, Stream } from './messages.ts';
 import { QUOTA } from '../shell/protocol.ts';
+import { needsCompiler, typeErrorText } from './typescript.ts';
+import type { CompileOutcome } from './typescript.ts';
 
 export type PortLike = { postMessage(message: unknown): void; onmessage: ((event: { data: unknown }) => void) | null; close(): void };
 export type FrameLike = {
@@ -22,6 +24,8 @@ export type HostEnv = {
   nonce(): string;
   // Messages from frames, until the function it gives back is called.
   listen(listener: (event: { source: unknown; data: unknown }) => void): () => void;
+  // TypeScript's answer for a request that needs it (research R12).
+  compile(request: ProgramRequest, onProgress: ProgramEvents['onProgress'], signal: AbortSignal): Promise<CompileOutcome>;
 };
 
 const FLUSH_MS = 100;
@@ -58,11 +62,11 @@ function createChanges() {
 export function createHost(env: HostEnv) {
   function start(request: ProgramRequest, events: ProgramEvents): ProgramHandle {
     const nonce = env.nonce();
-    const { port1: port, port2 } = env.makeChannel();
-    const frame = env.makeFrame();
     const changes = createChanges();
+    const stopCompiling = new AbortController();
+    let frame: FrameLike | null = null;
+    let port: PortLike | null = null;
     let over = false;
-    let loads = 0;
     let stopListening = () => {};
     let handler = false;
     let interrupted = false;
@@ -94,18 +98,23 @@ export function createHost(env: HostEnv) {
     function end(status: number, reason: EndReason): void {
       if (over) return;
       over = true;
+      stopCompiling.abort();
       stopListening();
       flush();
-      port.onmessage = null;
-      port.close();
-      frame.contentWindow?.postMessage({ stop: true, nonce }, '*');
-      frame.remove();
+      if (port !== null) {
+        port.onmessage = null;
+        port.close();
+      }
+      if (frame !== null) {
+        frame.contentWindow?.postMessage({ stop: true, nonce }, '*');
+        frame.remove();
+      }
       events.onEnded({ status, reason, changes: changes.result() });
     }
 
     const died = (message: string) => end(1, /memory/i.test(message) ? 'memory' : 'died');
 
-    port.onmessage = (event) => {
+    function onWorker(event: { data: unknown }): void {
       const data = event.data as { nonce?: unknown } | null;
       if (over || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
       const message = workerMessage(data);
@@ -122,28 +131,49 @@ export function createHost(env: HostEnv) {
         // The runtime holds to the limit itself, so only a forged change gets here.
         if (changes.over()) end(1, 'died');
       }
-    };
+    }
 
-    stopListening = env.listen((event) => {
-      const data = event.data as { nonce?: unknown; worker?: unknown; message?: unknown } | null;
-      if (over || event.source !== frame.contentWindow || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
-      if (data.worker === 'started') port.postMessage({ run: true, nonce, request });
-      else if (data.worker === 'died' || data.worker === 'failed' || data.worker === 'unreadable' || data.worker === 'refused') died(typeof data.message === 'string' ? data.message : '');
-    });
+    // The frame and worker, once any TypeScript has been compiled.
+    function launch(compiled?: Compiled): void {
+      const channel = env.makeChannel();
+      const made = env.makeFrame();
+      const opened = channel.port1;
+      port = opened;
+      frame = made;
+      let loads = 0;
+      opened.onmessage = onWorker;
+      stopListening = env.listen((event) => {
+        const data = event.data as { nonce?: unknown; worker?: unknown; message?: unknown } | null;
+        if (over || event.source !== made.contentWindow || data === null || typeof data !== 'object' || data.nonce !== nonce) return;
+        if (data.worker === 'started') opened.postMessage({ run: true, nonce, request, ...(compiled === undefined ? {} : { compiled }) });
+        else if (data.worker === 'died' || data.worker === 'failed' || data.worker === 'unreadable' || data.worker === 'refused') died(typeof data.message === 'string' ? data.message : '');
+      });
+      made.addEventListener('load', () => {
+        loads += 1;
+        // A second load is the frame's document lost: the program died with it.
+        if (loads > 1) return died('');
+        made.contentWindow?.postMessage({ start: true, nonce, source: env.runtime, port: channel.port2 }, '*', [channel.port2 as Transferable]);
+      });
+    }
 
-    frame.addEventListener('load', () => {
-      loads += 1;
-      // A second load is the frame's document lost: the program died with it.
-      if (loads > 1) return died('');
-      frame.contentWindow?.postMessage({ start: true, nonce, source: env.runtime, port: port2 }, '*', [port2 as Transferable]);
-    });
+    if (needsCompiler(request)) {
+      void env.compile(request, events.onProgress, stopCompiling.signal).then((outcome) => {
+        if (over) return;
+        if (outcome.kind === 'offline') end(1, 'offline');
+        else if (outcome.kind === 'failed') end(1, 'died');
+        else if (outcome.result.diagnostics.length > 0) {
+          print('stderr', typeErrorText(outcome.result, request.cwd));
+          end(1, 'type-error');
+        } else launch(outcome.result.outputs);
+      });
+    } else launch();
 
     return {
       interrupt() {
         // One chance for the handler; the second press ends it however it answers.
         if (handler && !interrupted) {
           interrupted = true;
-          port.postMessage({ signal: 'SIGINT', nonce });
+          port?.postMessage({ signal: 'SIGINT', nonce });
         } else end(130, 'interrupted');
       },
       close: () => end(130, 'closed'),
