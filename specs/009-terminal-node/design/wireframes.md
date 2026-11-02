@@ -101,6 +101,17 @@ The same nine states in the pocket terminal. Differences:
 └───────┴───────┴───────┴──────────┘
 ```
 
+**With the phone's keyboard open** (amended 2026-11-02), the row above it holds one key, so while a program runs Stop
+takes Tab's place there. Otherwise Stop would be out of reach. With nothing running the key is Tab again.
+
+```text
+┌───────────────────────────────────┐
+│                            ▓Stop ▓│
+├───────────────────────────────────┤
+│         the phone's keyboard      │
+└───────────────────────────────────┘
+```
+
 ## Keyboard and screen readers
 
 - Stop is a button named `Stop the program`, in the keys' toolbar and its arrow-key order, at least 44 by 44 px.

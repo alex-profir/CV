@@ -25,9 +25,13 @@ real Terminal, so only what this feature adds is new.
 - **No new surface**: a program is an ordinary run in the Terminal. Nothing new on desktop but text.
 - **Stop replaces `clear`** while a program runs, in the error color with dark text (10.3:1), so the grid doesn't
   move and the key is plain to find.
+- **Stop with the keyboard open** (amended 2026-11-02): the row above the keyboard holds one key, so Stop takes Tab's
+  place there while a program runs. Export: `mockup/phone-10-keyboard-open-375.png`.
 - **Stderr and errors** use the existing error tone, so a whole Node error reads as one block.
 - **Original design**: the key is text in the site's own key style (Constitution IX).
 
 ## Sign-off
 
 - Reviewed mockup: commit `cb38050`, an interim local mockup. Approved by the owner on 2026-11-02.
+- Amendment: Stop in the keyboard row, built ahead of this review and approved by the owner on 2026-11-02, before the
+  feature's pull request.
