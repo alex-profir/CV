@@ -565,7 +565,6 @@ export class TerminalFs extends InMemoryFs {
   async programFiles(): Promise<FileSnapshot> {
     const entries: SnapshotEntry[] = [];
     for (const path of [...this.getAllPaths()].sort()) {
-      if (path !== HOME && path !== TMP && !path.startsWith(`${HOME}/`) && !path.startsWith(`${TMP}/`)) continue;
       const stat = await super.stat(path).catch(() => null);
       if (stat === null) continue;
       const { owner, protected: locked } = this.info(path, stat.isDirectory ? 'folder' : 'file');

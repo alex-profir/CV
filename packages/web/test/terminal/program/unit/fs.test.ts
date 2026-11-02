@@ -191,3 +191,45 @@ describe('009-terminal-node-FR-030: each change is sent at once, as a whole', ()
     ]);
   });
 });
+
+describe('009-terminal-node-FR-029: a limit reached by honest use', () => {
+  test('making and removing many files holds nothing and ends as it should', async () => {
+    const run = await runProgram(script("const fs = require('fs');\nfor (let i = 0; i < 20000; i++) { fs.writeFileSync('z' + i, ''); fs.unlinkSync('z' + i); }\nconsole.log('done');\n"), { timeoutMs: 30_000 });
+    expect(run.stdout).toBe('done\n');
+    expect(run.exit).toBe(0);
+  }, 40_000);
+
+  test('empty files until an error give ENOSPC, for its catch', async () => {
+    const run = await runProgram(script("const fs = require('fs');\ntry { for (let i = 0; ; i++) fs.writeFileSync('z' + i, ''); } catch (error) { console.log(error.code); }\n"), { timeoutMs: 30_000 });
+    expect(run.stdout).toBe('ENOSPC\n');
+    expect(run.exit).toBe(0);
+  }, 40_000);
+
+  test('folders likewise', async () => {
+    const run = await runProgram(script("const fs = require('fs');\ntry { for (let i = 0; ; i++) fs.mkdirSync('z' + i); } catch (error) { console.log(error.code); }\n"), { timeoutMs: 30_000 });
+    expect(run.stdout).toBe('ENOSPC\n');
+  }, 40_000);
+});
+
+describe('009-terminal-node-FR-029 and 009-terminal-node-FR-013: moving a folder', () => {
+  const SOURCE = "const fs = require('fs');\nfs.mkdirSync('s');\ntry { fs.renameSync('s', 's/t'); } catch (error) { console.log(error.code, error.syscall, error.path, error.dest, error.message); }\nconsole.log(fs.readdirSync('s'));\n";
+
+  test('into itself is refused with EINVAL, as Node refuses it, and changes nothing', async () => {
+    await same(SOURCE);
+  });
+
+  test('into a neighbour named like it still goes', async () => {
+    await same("const fs = require('fs');\nfs.mkdirSync('s');\nfs.renameSync('s', 's2');\nconsole.log(fs.existsSync('s'), fs.existsSync('s2'));\n");
+  });
+});
+
+describe('009-terminal-node-FR-029: outside the home and temporary folders', () => {
+  const BIN: SnapshotEntry = { path: '/bin', kind: 'folder', owner: 'root', protected: true };
+  const LS: SnapshotEntry = { path: '/bin/ls', kind: 'file', owner: 'root', protected: true, text: 'stub' };
+
+  test('a program reads it, from any folder, and can write none of it', async () => {
+    const made = script("const fs = require('fs');\nprocess.chdir('/bin');\nconsole.log(fs.existsSync('/bin'), fs.readdirSync('.'), fs.readFileSync('ls', 'utf8'), fs.readdirSync('/').includes('bin'));\ntry { fs.writeFileSync('/bin/x', 'y'); } catch (error) { console.log(error.code); }\n");
+    const run = await runProgram({ ...made, files: { ...made.files, entries: [...made.files.entries, BIN, LS] } });
+    expect(run.stdout).toBe("true [ 'ls' ] stub true\nEACCES\n");
+  });
+});

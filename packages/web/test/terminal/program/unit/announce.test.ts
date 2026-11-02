@@ -33,20 +33,19 @@ describe('009-terminal-node-FR-040: output is announced in batches, at most once
     expect(heard[0]!.endsWith('end')).toBe(true);
   });
 
-  test('`stop` says what is left, and nothing follows it', () => {
+  test('`stop` gives what is left to go with the end, and nothing follows it', () => {
     const heard: string[] = [];
     const speech = batched((text) => heard.push(text));
     speech.add('left');
-    speech.stop();
-    expect(heard).toEqual(['left']);
+    expect(speech.stop()).toBe('left');
     vi.advanceTimersByTime(2000);
-    expect(heard).toEqual(['left']);
+    expect(heard).toEqual([]);
   });
 
   test('with no output nothing is said', () => {
     const heard: string[] = [];
     const speech = batched((text) => heard.push(text));
-    speech.stop();
+    expect(speech.stop()).toBe('');
     expect(heard).toEqual([]);
   });
 });

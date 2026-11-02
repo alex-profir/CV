@@ -8,6 +8,7 @@ import { NODE_TYPES } from '../../playground/engine/compile.ts';
 import { loadEngine } from '../../playground/engine/loader.ts';
 import type { LoaderEnv } from '../../playground/engine/loader.ts';
 import type { EngineModule } from '../../playground/engine/contract.ts';
+import { resolveModuleFile } from './messages.ts';
 import type { ProgramRequest } from './messages.ts';
 
 export type CompilerWorker = {
@@ -31,13 +32,19 @@ const OPENS_NOTHING = { linkStyle: async () => undefined, importModule: async ()
 
 const TS_FILE = /\.[mc]?ts$/;
 
+// The file the script names, whichever way it's named, as the runtime will find it.
+function scriptFile(request: ProgramRequest): string {
+  const kinds = new Map(request.files.entries.map((entry) => [entry.path, entry.kind]));
+  return resolveModuleFile(request.script!, request.command === 'ts-node', (path) => kinds.get(path)) ?? request.script!;
+}
+
 // Which programs need it: `ts-node` always, and `node` for a TypeScript file.
-export const needsCompiler = (request: ProgramRequest): boolean => request.script !== null && (request.command === 'ts-node' || TS_FILE.test(request.script));
+export const needsCompiler = (request: ProgramRequest): boolean => request.script !== null && (request.command === 'ts-node' || TS_FILE.test(scriptFile(request)));
 
 export function compileRequest(request: ProgramRequest, nodeTypes: string): CompileRequest {
   const files: Record<string, string> = { [NODE_TYPES]: nodeTypes };
   for (const entry of request.files.entries) if (entry.kind === 'file' && entry.binary !== true && entry.text !== undefined) files[entry.path] = entry.text;
-  return { root: request.script!, mode: request.command === 'ts-node' ? 'check' : 'strip', files };
+  return { root: scriptFile(request), mode: request.command === 'ts-node' ? 'check' : 'strip', files };
 }
 
 const relativeTo = (cwd: string, path: string) => (path.startsWith(`${cwd}/`) ? path.slice(cwd.length + 1) : path);

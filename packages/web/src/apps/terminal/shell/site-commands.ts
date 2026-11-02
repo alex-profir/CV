@@ -145,6 +145,19 @@ export function isSoleCommand(script: unknown): boolean {
   return name !== null && PROGRAM_WORDS.has(name.toLowerCase()) && !holdsSubstitution([command!['args'], command!['assignments']]);
 }
 
+// Whether one of these commands is anywhere in a line, in any list, loop, function
+// or substitution, reached or not. A line checks this before any of it runs (FR-006).
+export function holdsProgram(node: unknown): boolean {
+  if (Array.isArray(node)) return node.some(holdsProgram);
+  if (node === null || typeof node !== 'object') return false;
+  const line = node as LineNode;
+  if (line.type === 'SimpleCommand') {
+    const name = literalName(line['name'] as LineNode | undefined);
+    if (name !== null && PROGRAM_WORDS.has(name.toLowerCase())) return true;
+  }
+  return Object.values(line).some(holdsProgram);
+}
+
 type ProgramLine = { answer: Output } | { script: string | null; code: string | null; print: boolean; args: string[] };
 
 // `node`'s and `ts-node`'s words (009 contracts/commands.md). Only `node` takes

@@ -16,6 +16,7 @@ import { createShellClient } from './shell-client.ts';
 import type { ShellClient } from './shell-client.ts';
 import { INITIAL_STATE, NO_FILES } from './shell/protocol.ts';
 import type { Completion, CompletionMatch, Effect, RunResult, ShellState, VisitorFiles, WriteOutcome } from './shell/protocol.ts';
+import { NO_CHANGES } from './program/messages.ts';
 import type { ProgramEnd, ProgramEvents, ProgramHandle, ProgramRequest } from './program/messages.ts';
 
 export type Shell = 'desktop' | 'mobile';
@@ -277,11 +278,11 @@ export function createSession(client: ShellClient = createShellClient(), openHos
     noteOutput();
     const ended = (end: ProgramEnd) => {
       if (at !== generation) return;
-      spoken.stop();
+      const unsaid = spoken.stop();
       if (stillTimer !== null) clearTimeout(stillTimer);
       removeEventListener('pagehide', closeOnLeave);
       handle = null;
-      finishProgram(end);
+      finishProgram(end, unsaid);
     };
     const events: ProgramEvents = {
       onOutput(chunks) {
@@ -299,14 +300,14 @@ export function createSession(client: ShellClient = createShellClient(), openHos
     void openHost().then(
       (host) => {
         if (at !== generation) return;
-        if (stopPressed) ended({ status: 130, reason: 'interrupted', changes: { files: {}, folders: [] } });
+        if (stopPressed) ended({ status: 130, reason: 'interrupted', changes: NO_CHANGES });
         else handle = host.start(request, events);
       },
-      () => ended({ status: 1, reason: 'died', changes: { files: {}, folders: [] } }),
+      () => ended({ status: 1, reason: 'died', changes: NO_CHANGES }),
     );
   }
 
-  function finishProgram({ status, reason, changes }: ProgramEnd): void {
+  function finishProgram({ status, reason, changes }: ProgramEnd, unsaid: string): void {
     const words = siteText.terminal;
     const closing: Node[] = [];
     if (reason === 'interrupted') {
@@ -318,10 +319,9 @@ export function createSession(client: ShellClient = createShellClient(), openHos
     const done = state.running!;
     const shellState: ShellState = { ...state.state, status, pipes: [status] };
     client.setStatus(shellState);
-    set({ ...state, running: null, program: null, entries: [...state.entries, done], state: shellState, waiting: queue.map((each) => each.entry), shell: statusOf(null), announcement: say(fill(words.program.ended, { n: status })) });
+    set({ ...state, running: null, program: null, entries: [...state.entries, done], state: shellState, waiting: queue.map((each) => each.entry), shell: statusOf(null), announcement: say(`${unsaid === '' ? '' : `${unsaid.trimEnd()}\n`}${fill(words.program.ended, { n: status })}`) });
     const at = generation;
-    const hasChanges = Object.keys(changes.files).length > 0 || changes.folders.length > 0;
-    if (!hasChanges) {
+    if (changes.length === 0) {
       pump();
       return;
     }

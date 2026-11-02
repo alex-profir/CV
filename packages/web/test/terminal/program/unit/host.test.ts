@@ -8,7 +8,7 @@ import type { OutputChunk, ProgramEnd, ProgramRequest } from '../../../../src/ap
 export const REQUEST: ProgramRequest = { command: 'node', script: '/home/guest/a.js', code: null, print: false, args: [], cwd: '/home/guest', env: {}, files: { entries: [], bytes: 0 } };
 
 // A host whose frame and port are plain objects the test drives.
-export function fakeHost(overrides: Partial<HostEnv> = {}) {
+export function fakeHost(overrides: Partial<HostEnv> = {}, request: ProgramRequest = REQUEST) {
   const sent: unknown[] = [];
   const toFrame: unknown[] = [];
   let removed = 0;
@@ -41,7 +41,7 @@ export function fakeHost(overrides: Partial<HostEnv> = {}) {
   };
   const ended: ProgramEnd[] = [];
   const flushes: (readonly OutputChunk[])[] = [];
-  const handle = createHost(env).start(REQUEST, { onOutput: (chunks) => void flushes.push(chunks), onProgress: () => {}, onEnded: (end) => void ended.push(end) });
+  const handle = createHost(env).start(request, { onOutput: (chunks) => void flushes.push(chunks), onProgress: () => {}, onEnded: (end) => void ended.push(end) });
   return {
     handle,
     ended,
@@ -72,7 +72,7 @@ describe('009-terminal-node-FR-034: the host starts a program and ends it once',
     host.handle.close();
     host.handle.interrupt();
     host.fromFrame({ worker: 'died', nonce: 'n' });
-    expect(host.ended).toEqual([{ status: 3, reason: 'exit', changes: { files: {}, folders: [] } }]);
+    expect(host.ended).toEqual([{ status: 3, reason: 'exit', changes: [] }]);
     expect(host.listening()).toBe(false);
   });
 
@@ -242,10 +242,7 @@ describe('009-terminal-node-FR-030: what a program changed', () => {
     expect(host.ended[0]).toEqual({
       status: 130,
       reason: 'interrupted',
-      changes: {
-        files: { '/home/guest/a': { text: 'two' }, '/home/guest/b': { text: '\u00ff', binary: true }, '/home/guest/c': { removed: true } },
-        folders: [{ path: '/home/guest/e', made: true }, { path: '/home/guest/d', made: false }],
-      },
+      changes: expect.arrayContaining([{ path: '/home/guest/a', text: 'two' }, { path: '/home/guest/b', text: '\u00ff', binary: true }, { path: '/home/guest/e', made: true }]),
     });
   });
 
@@ -255,7 +252,7 @@ describe('009-terminal-node-FR-030: what a program changed', () => {
     host.fromWorker({ file: '/a', text: 5, nonce: 'n' });
     host.fromWorker({ folder: '/a', made: 'yes', nonce: 'n' });
     host.handle.interrupt();
-    expect(host.ended[0]!.changes).toEqual({ files: {}, folders: [] });
+    expect(host.ended[0]!.changes).toEqual([]);
   });
 
   test('what is held stays bounded: writing one file many times counts once', () => {
@@ -269,13 +266,33 @@ describe('009-terminal-node-FR-030: what a program changed', () => {
     host.fromWorker({ file: '/a', text: 'x'.repeat(600_000), nonce: 'n' });
     host.fromWorker({ file: '/b', text: 'x'.repeat(600_000), nonce: 'n' });
     expect(host.ended.map(({ status, reason }) => [status, reason])).toEqual([[1, 'died']]);
-    expect(Object.keys(host.ended[0]!.changes.files)).toEqual(['/a', '/b']);
+    expect(host.ended[0]!.changes.map(({ path }) => path)).toEqual(['/a', '/b']);
   });
 
-  test('a flood of forged removals ends it too', () => {
+  test('a flood of paths made ends it too', () => {
     const host = fakeHost();
-    for (let at = 0; at < 200_000 && host.ended.length === 0; at += 1) host.fromWorker({ file: `/home/guest/forged-${at}`, removed: true, nonce: 'n' });
+    for (let at = 0; at < 200_000 && host.ended.length === 0; at += 1) host.fromWorker({ file: `/home/guest/forged-${at}`, text: '', nonce: 'n' });
     expect(host.ended[0]!.reason).toBe('died');
+  });
+
+  test('making and removing a path many times holds nothing, and ends nothing', () => {
+    const host = fakeHost();
+    for (let at = 0; at < 200_000; at += 1) {
+      host.fromWorker({ file: `/home/guest/z${at}`, text: '', nonce: 'n' });
+      host.fromWorker({ file: `/home/guest/z${at}`, removed: true, nonce: 'n' });
+    }
+    expect(host.ended).toEqual([]);
+    host.handle.interrupt();
+    expect(host.ended[0]!.changes).toEqual([]);
+  });
+
+  test("a removal of what was there at the start is kept, in the order it happened", () => {
+    const host = fakeHost({}, { ...REQUEST, files: { entries: [{ path: '/home/guest/ff', kind: 'file', owner: 'guest', protected: false, text: 'x' }], bytes: 1 } });
+    host.fromWorker({ file: '/home/guest/ff', removed: true, nonce: 'n' });
+    host.fromWorker({ folder: '/home/guest/ff', made: true, nonce: 'n' });
+    host.fromWorker({ file: '/home/guest/ff/in', text: 'y', nonce: 'n' });
+    host.handle.interrupt();
+    expect(host.ended[0]!.changes).toEqual([{ path: '/home/guest/ff', removed: true }, { path: '/home/guest/ff', made: true }, { path: '/home/guest/ff/in', text: 'y' }]);
   });
 });
 

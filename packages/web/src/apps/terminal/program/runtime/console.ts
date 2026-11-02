@@ -1,62 +1,30 @@
 // `console` and the program's two streams (009 research R7, R9, FR-011): text by
-// stream name on the port. Within an allowance by the clock it goes at once, as a
-// blocked loop never yields; past it, it waits until the allowance refills. Both
-// allowances are 008's. The page's own count is what really stops a program.
+// stream name on the port, at once, as it is written. The page's own count is what
+// really stops a program.
 import { format, formatWithOptions, inspect } from 'node-inspect-extracted';
 import { OUTPUT_LIMIT } from '../messages.ts';
 import type { Stream } from '../messages.ts';
 
-const CHARS_PER_MS = 4_000;
-const CHARS_AT_ONCE = 200_000;
-const SENDS_PER_MS = 0.2;
-const SENDS_AT_ONCE = 200;
-
 export type OutputDeps = {
   send: (message: Record<string, unknown>) => void;
-  now: () => number;
-  // Called once with what was sent, when the limit is reached.
+  // Called once, when the limit is reached.
   limit: () => never;
 };
 
 export function createOutput(deps: OutputDeps) {
-  let held: { stream: Stream; text: string }[] = [];
-  let chars = CHARS_AT_ONCE;
-  let sends = SENDS_AT_ONCE;
-  let earned = deps.now();
   let total = 0;
-
-  const refill = () => {
-    const at = deps.now();
-    chars = Math.min(CHARS_AT_ONCE, chars + (at - earned) * CHARS_PER_MS);
-    sends = Math.min(SENDS_AT_ONCE, sends + (at - earned) * SENDS_PER_MS);
-    earned = at;
-  };
-
-  function flush(force = false): void {
-    refill();
-    while (held.length > 0 && (force || (chars > 0 && sends >= 1))) {
-      const { stream, text } = held.shift()!;
-      chars -= text.length;
-      sends -= 1;
-      deps.send({ out: stream, text });
-    }
-  }
 
   function write(stream: Stream, text: string): void {
     if (text === '') return;
     total += text.length;
-    const last = held.at(-1);
-    if (last !== undefined && last.stream === stream) last.text += text;
-    else held.push({ stream, text });
-    flush();
+    deps.send({ out: stream, text });
     if (total >= OUTPUT_LIMIT) {
-      flush(true);
       deps.send({ limit: 'output' });
       deps.limit();
     }
   }
 
-  return { write, flush };
+  return { write };
 }
 
 export type Output = ReturnType<typeof createOutput>;

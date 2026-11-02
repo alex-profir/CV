@@ -125,6 +125,37 @@ describe('009-terminal-node-FR-037: TypeScript comes from the Playground\'s copy
   });
 });
 
+describe('009-terminal-node-FR-002 and 009-terminal-node-FR-001: the script, whichever way it is named', () => {
+  const entries = (...names: string[]): ProgramRequest['files'] => ({ bytes: 0, entries: names.map((path) => (path.endsWith('/') ? { path: path.slice(0, -1), kind: 'folder' as const, owner: 'guest' as const, protected: false } : { path, kind: 'file' as const, owner: 'guest' as const, protected: false, text: 'x' })) });
+
+  test('ts-node checks the file it runs, named without its extension', () => {
+    const request = { ...REQUEST, script: '/home/guest/app', files: entries('/home/guest/app.ts') };
+    expect(compileRequest(request, '').root).toBe('/home/guest/app.ts');
+    expect(needsCompiler(request)).toBe(true);
+  });
+
+  test("a folder's index.ts likewise", () => {
+    const request = { ...REQUEST, script: '/home/guest/d', files: entries('/home/guest/d/', '/home/guest/d/index.ts') };
+    expect(compileRequest(request, '').root).toBe('/home/guest/d/index.ts');
+  });
+
+  test('ts-node finds app.ts for app.js, as what runs does', () => {
+    const request = { ...REQUEST, script: '/home/guest/app.js', files: entries('/home/guest/app.ts') };
+    expect(compileRequest(request, '').root).toBe('/home/guest/app.ts');
+  });
+
+  test('node needs TypeScript for app.ts named app, and strips it', () => {
+    const request = { ...REQUEST, command: 'node' as const, script: '/home/guest/app', files: entries('/home/guest/app.ts') };
+    expect(needsCompiler(request)).toBe(true);
+    expect(compileRequest(request, '')).toMatchObject({ root: '/home/guest/app.ts', mode: 'strip' });
+  });
+
+  test('node for app.js beside nothing else, or with a .js first, needs none', () => {
+    expect(needsCompiler({ ...REQUEST, command: 'node', script: '/home/guest/app', files: entries('/home/guest/app.js', '/home/guest/app.ts') })).toBe(false);
+    expect(needsCompiler({ ...REQUEST, command: 'node', script: '/home/guest/app.js', files: entries('/home/guest/app.ts') })).toBe(false);
+  });
+});
+
 describe('009-terminal-node-FR-002: what is sent to be compiled', () => {
   test('text files and the types; ts-node checks, node strips', () => {
     const sent = compileRequest(REQUEST, 'the types');

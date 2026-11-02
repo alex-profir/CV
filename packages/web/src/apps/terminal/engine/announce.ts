@@ -58,10 +58,14 @@ export function batched(say: (text: string) => void) {
       if (text.length > BATCH_CHARS) text = text.slice(-BATCH_CHARS);
       timer ??= setTimeout(flush, BATCH_MS);
     },
-    // At the end: nothing more is said of the output.
-    stop() {
+    // At the end: nothing more is said of the output. What's left goes with the
+    // end's own words, as a region says only the last of what a turn gives it.
+    stop(): string {
       if (timer !== null) clearTimeout(timer);
-      flush();
+      timer = null;
+      const left = text.slice(-BATCH_CHARS);
+      text = '';
+      return left;
     },
   };
 }

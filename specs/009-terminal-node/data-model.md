@@ -52,13 +52,17 @@ The client's own restart state takes the same status and files.
 
 ## File changes
 
-Per path, the latest of `{ text, binary? }` or `removed`, and folders made or removed. Sum of written bytes
-is limited to `QUOTA`, on top of what's there. Applied once, at the end, through `TerminalFs`.
+A list, in the order the changes happened, of the latest of each path's file (`{ path, text, binary? }` or
+`{ path, removed }`) and of its folder (`{ path, made }`). Nothing is kept of a removal of a path that wasn't there at the
+start. The sum of written bytes is limited to `QUOTA`, on top of what's there, and the paths of what's made to a quarter
+of that, which the runtime refuses with `ENOSPC`. Applied once, at the end, through `TerminalFs`, in turn, and a write
+refused for space is tried again once the rest has made room.
 
 ## Compile result
 
-`{ diagnostics: { file, line, column, code, message }[], outputs: { path → { js, map } } }`. Empty diagnostics
-for `node`.
+`{ diagnostics: { file, line, column, code, message }[], outputs: { path → { js, map, syntax? } } }`. Empty
+diagnostics for `node`, which checks no types. `syntax` is `{ line, column, message }`, the first syntax error in that
+file under `node`, which the runtime throws in FR-017's form when it loads the file, before any of it runs.
 
 ## Output block
 

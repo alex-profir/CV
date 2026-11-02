@@ -147,7 +147,7 @@ describe('009-terminal-node-FR-006: on a line of its own only', () => {
 
   test('in a function or a script', async () => {
     const shell = shellFor();
-    await runLines(shell, ['f() { node a.js; }', "printf 'node a.js\\n' > s.sh"]);
+    await runLines(shell, ["printf 'f() { node a.js; }\\n' > f.sh", 'source f.sh', "printf 'node a.js\\n' > s.sh"]);
     for (const line of ['f', 'source s.sh']) {
       const result = await runLine(shell, line);
       expect(result.effects).toEqual([]);
@@ -164,6 +164,37 @@ describe('009-terminal-node-FR-006: on a line of its own only', () => {
     expect(redirected.status).toBe(1);
     expect(redirected.stderr).toBe(`${words.ownLine}\n`);
     expect((await runLine(shell, 'true; node a.js')).status).toBe(1);
+  });
+
+  test.each([
+    ['touch made.txt; node a.js'],
+    ['echo hi; node a.js'],
+    ['node a.js; echo ran'],
+    ['node a.js | cat'],
+    ['! node a.js'],
+    ['echo $(node -v)'],
+    ['echo "$(node -v)"'],
+    ['true || node a.js'],
+    ['false && node a.js'],
+    ['if false; then node a.js; fi'],
+    ['for i in 1 2; do node a.js; done'],
+    ['f() { node a.js; }'],
+    ['touch made.txt; tsnode a.ts'],
+    ['touch made.txt; ts-node a.ts'],
+  ])('%s: the whole line is checked first, and none of it runs', async (line) => {
+    const shell = shellFor();
+    const result = await runLine(shell, line);
+    expect(result.effects).toEqual([]);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe(`${words.ownLine}\n`);
+    expect(result.status).toBe(1);
+    expect((await runLine(shell, 'ls made.txt')).status).not.toBe(0);
+  });
+
+  test('$? reads 1 after it, and a word that only names the command is no use of it', async () => {
+    const shell = shellFor();
+    await runLine(shell, 'echo hi; node a.js');
+    expect((await runLine(shell, 'echo node; echo ts-node')).stdout).toBe('node\nts-node\n');
   });
 
   test('assignments before it join the environment, and words expand', async () => {
@@ -213,5 +244,17 @@ describe('009-terminal-node-FR-042 and 006-terminal-FR-068: the other names stay
 
   test('node is out of the list', () => {
     expect(LEFT_OUT).not.toHaveProperty('node');
+  });
+});
+
+describe('009-terminal-node-FR-029: a program reads what the visitor can read', () => {
+  test('the snapshot holds what `ls /` shows, outside the home and temporary folders too', async () => {
+    const shell = shellFor();
+    const { files } = programOf((await runLine(shell, 'node a.js')).effects);
+    const paths = files.entries.map((entry) => entry.path);
+    const top = paths.filter((path) => path !== '/' && path.lastIndexOf('/') === 0).map((path) => path.slice(1));
+    expect(top.sort()).toEqual((await runLine(shell, 'ls /')).stdout.trim().split(/\s+/).sort());
+    expect(paths).toContain('/bin');
+    expect(files.entries.find((entry) => entry.path === '/bin')).toMatchObject({ kind: 'folder' });
   });
 });

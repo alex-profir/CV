@@ -22,15 +22,16 @@ export type ProgramRequest = {
   files: FileSnapshot;
 };
 
-export type FileChange = { text: string; binary?: true } | { removed: true };
+export type FileChange = { path: string; text: string; binary?: true } | { path: string; removed: true } | { path: string; made: boolean };
 
-// Per path, the latest; applied once, at the end.
-export type FileChanges = { files: Readonly<Record<string, FileChange>>; folders: readonly { path: string; made: boolean }[] };
+// The latest of a path's file and of its folder, in the order they happened, so
+// applying them in turn ends where the program did. Applied once, at the end.
+export type FileChanges = readonly FileChange[];
 
 // The most a program prints: 1 MB (FR-026, 006 FR-069).
 export const OUTPUT_LIMIT = 1_048_576;
 
-export const NO_CHANGES: FileChanges = { files: {}, folders: [] };
+export const NO_CHANGES: FileChanges = [];
 
 export type EndReason = 'exit' | 'uncaught' | 'type-error' | 'offline' | 'interrupted' | 'output' | 'memory' | 'died' | 'closed';
 
@@ -48,7 +49,7 @@ export type ProgramEvents = {
 
 export type ProgramHandle = { interrupt(): void; close(): void };
 
-export type Compiled = Readonly<Record<string, { js: string; map: string }>>;
+export type Compiled = Readonly<Record<string, { js: string; map: string; syntax?: { line: number; column: number; message: string } }>>;
 
 export type WorkerMessage =
   | { out: Stream; text: string }
@@ -58,6 +59,20 @@ export type WorkerMessage =
   | { folder: string; made: boolean }
   | { exit: number; uncaught?: true }
   | { limit: 'output' };
+
+// The file a program's script names, as Node looks for it (FR-001, FR-014): itself,
+// with an extension, or a folder's `index`. A TypeScript program also finds `./b.js`
+// for its `b.ts`, as TypeScript has it. Null if there is none.
+export function resolveModuleFile(path: string, typed: boolean, kindOf: (path: string) => 'file' | 'folder' | undefined): string | null {
+  if (kindOf(path) === 'file') return path;
+  if (typed && /\.[mc]?js$/.test(path)) {
+    const named = path.replace(/js$/, 'ts');
+    if (kindOf(named) === 'file') return named;
+  }
+  for (const extension of ['.js', '.json', '.mjs', '.cjs', '.ts', '.mts', '.cts']) if (kindOf(`${path}${extension}`) === 'file') return `${path}${extension}`;
+  if (kindOf(path) === 'folder') for (const name of ['index.js', 'index.json', 'index.mjs', 'index.ts']) if (kindOf(`${path}/${name}`) === 'file') return `${path}/${name}`;
+  return null;
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 

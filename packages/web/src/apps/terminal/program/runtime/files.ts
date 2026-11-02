@@ -1,6 +1,7 @@
 // The program's own copy of the Terminal's files (009 research R10, FR-029): from
 // the snapshot, under the same rules and 1 MB as 006's, seen at once by the
 // program, and every change sent to the page at once.
+import { createChanges } from '../changes.ts';
 import type { FileSnapshot } from '../messages.ts';
 import { QUOTA } from '../../shell/protocol.ts';
 
@@ -36,6 +37,7 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
   if (!nodes.has('/')) nodes.set('/', { kind: 'folder', owner: 'root', protected: true, text: '', binary: false, mtime: now });
   if (!nodes.has(TMP)) nodes.set(TMP, { kind: 'folder', owner: 'root', protected: false, text: '', binary: false, mtime: now });
   let used = snapshot.bytes;
+  const changes = createChanges(new Set(snapshot.entries.map((entry) => entry.path)));
 
   // Where a write is refused: a protected path, or inside a protected folder, as
   // `TerminalFs` refuses it. The home folder is the visitor's, though it's marked.
@@ -69,8 +71,9 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
     writable(path, syscall);
     const size = binary ? text.length : encode(text).length;
     const before = node === undefined ? 0 : bytesOf(node, encode);
-    if (used - before + size > QUOTA) throw fsError('ENOSPC', syscall, path);
+    if (used - before + size > QUOTA || !changes.fits(path, 'file')) throw fsError('ENOSPC', syscall, path);
     used += size - before;
+    changes.add({ path, text: '' });
     nodes.set(path, { kind: 'file', owner: node?.owner ?? 'guest', protected: false, text, binary, mtime: deps.now() });
     deps.send(binary ? { file: path, text, binary: true } : { file: path, text });
   }
@@ -82,6 +85,7 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
     writable(path, syscall);
     used -= bytesOf(node, encode);
     nodes.delete(path);
+    changes.add({ path, removed: true });
     deps.send({ file: path, removed: true });
   }
 
@@ -90,6 +94,8 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
     if (node !== undefined) throw fsError('EEXIST', syscall, path);
     parentChecked(path, syscall);
     writable(path, syscall);
+    if (!changes.fits(path, 'folder')) throw fsError('ENOSPC', syscall, path);
+    changes.add({ path, made: true });
     nodes.set(path, { kind: 'folder', owner: 'guest', protected: false, text: '', binary: false, mtime: deps.now() });
     deps.send({ folder: path, made: true });
   }
@@ -101,12 +107,15 @@ export function createFiles(snapshot: FileSnapshot, deps: { send: (message: Reco
     writable(path, syscall);
     if (children(path).length > 0) throw fsError('ENOTEMPTY', syscall, path);
     nodes.delete(path);
+    changes.add({ path, made: false });
     deps.send({ folder: path, made: false });
   }
 
   // Whether a rename could go through, before anything of it is done.
   function checkMove(from: string, to: string, syscall: string): void {
     writable(from, syscall);
+    // A folder can't go inside itself.
+    if (nodes.get(from)?.kind === 'folder' && to.startsWith(`${from}/`)) throw fsError('EINVAL', syscall, from, to);
     if (nodes.get(to)?.kind === 'folder') throw fsError('EISDIR', syscall, to);
     parentChecked(to, syscall);
     writable(to, syscall);

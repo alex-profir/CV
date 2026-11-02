@@ -7,11 +7,11 @@ import type { ShellClient } from '../../../../src/apps/terminal/shell-client.ts'
 import type { Effect, RunRequest, RunResult, VisitorFiles } from '../../../../src/apps/terminal/shell/protocol.ts';
 import { INITIAL_STATE, NO_FILES } from '../../../../src/apps/terminal/shell/protocol.ts';
 import type { FileChanges, ProgramEnd, ProgramEvents, ProgramRequest } from '../../../../src/apps/terminal/program/messages.ts';
-import { siteText } from '../../../../src/site-text.ts';
+import { fill, siteText } from '../../../../src/site-text.ts';
 import { flatten } from './helpers/nodes.ts';
 
 const REQUEST: ProgramRequest = { command: 'node', script: '/home/guest/a.js', code: null, print: false, args: [], cwd: '/home/guest', env: {}, files: { entries: [], bytes: 0 } };
-const NONE: FileChanges = { files: {}, folders: [] };
+const NONE: FileChanges = [];
 const words = siteText.terminal;
 
 function fakeClient() {
@@ -289,7 +289,7 @@ describe('009-terminal-node-FR-034: closing, resetting and leaving end the progr
     session.reset();
     expect(program.handle.close).toHaveBeenCalledTimes(1);
     program.events().onOutput([{ stream: 'stdout', text: 'late' }]);
-    program.end({ reason: 'closed', status: 130, changes: { files: { '/home/guest/x': { text: 'x' } }, folders: [] } });
+    program.end({ reason: 'closed', status: 130, changes: [{ path: '/home/guest/x', text: 'x' }] });
     await flush();
     expect(session.get().entries).toEqual([]);
     expect(session.get().running).toBeNull();
@@ -321,7 +321,7 @@ describe('009-terminal-node-FR-034: closing, resetting and leaving end the progr
 });
 
 describe('009-terminal-node-FR-030: what a program changed', () => {
-  const CHANGES: FileChanges = { files: { '/home/guest/out.txt': { text: 'x' } }, folders: [] };
+  const CHANGES: FileChanges = [{ path: '/home/guest/out.txt', text: 'x' }];
   const FILES: VisitorFiles = { folders: [], files: { 'out.txt': 'x' }, bytes: 1 };
 
   test('is sent with apply when it ends, and the session takes the files from the answer', async () => {
@@ -393,6 +393,39 @@ describe('009-terminal-node-FR-040: what is announced', () => {
     program.events().onOutput([{ stream: 'stdout', text: 'c\n' }]);
     program.end({ status: 4 });
     await flush();
-    expect(heard).toEqual(['a\nb\n', 'c\n', 'Program ended, status 4.']);
+    expect(heard).toEqual(['a\nb\n', 'c\nProgram ended, status 4.']);
+  });
+});
+
+describe('009-terminal-node-FR-040: what the live region says of a program', () => {
+  const start = async () => {
+    const parts = await setUp();
+    parts.session.run('node a.js', 'desktop');
+    await parts.flush();
+    return parts;
+  };
+
+  test("a program's last batch is said with its end, in one announcement", async () => {
+    const { session, program } = await start();
+    program.events().onOutput([{ stream: 'stdout', text: 'hello\n' }]);
+    program.end({ status: 0 });
+    expect(session.get().announcement!.text).toBe(`hello\n${fill(siteText.terminal.program.ended, { n: 0 })}`);
+  });
+
+  test('an error is heard, with the status', async () => {
+    const { session, program } = await start();
+    program.events().onOutput([{ stream: 'stderr', text: "Error: Cannot find module 'nope'\n" }]);
+    program.end({ status: 1, reason: 'uncaught' });
+    expect(session.get().announcement!.text).toContain("Cannot find module 'nope'");
+    expect(session.get().announcement!.text).toContain(fill(siteText.terminal.program.ended, { n: 1 }));
+  });
+
+  test('with no output left only the end is said, once', async () => {
+    const { session, program } = await start();
+    program.end({ status: 3 });
+    const { id, text } = session.get().announcement!;
+    expect(text).toBe(fill(siteText.terminal.program.ended, { n: 3 }));
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(session.get().announcement!.id).toBe(id);
   });
 });

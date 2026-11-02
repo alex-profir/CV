@@ -2,7 +2,8 @@
 // SC-002, SC-003), in a real browser, in the engine `PLAYGROUND_ENGINE` selects.
 import { describe, expect, test, vi } from 'vitest';
 import { drag } from '../../helpers/shell.ts';
-import { framesHeld, lastOutput, lastRun, openProgramTerminal, running, startLine, statusOf, writeFile } from '../../helpers/program.ts';
+import type { Page } from 'playwright';
+import { framesHeld, lastOutput, lastRun, openProgramTerminal, running, runToEnd, startLine, statusOf, writeFile } from '../../helpers/program.ts';
 import { COMMAND_LINE, linesRun } from '../../helpers/terminal.ts';
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -134,6 +135,89 @@ describe('009-terminal-node-FR-026: a program that prints without end', () => {
     await linesRun(page);
     expect(await lastRun(page).locator('p.run-stopped').count()).toBe(1);
     expect(await statusOf(page)).toBe('130');
+  });
+});
+
+// The longest the page goes without a frame while `work` runs (FR-024).
+const longestFrame = (page: Page, ms: number) =>
+  page.evaluate(
+    (time) =>
+      new Promise<number>((resolve) => {
+        const from = performance.now();
+        let last = from;
+        let longest = 0;
+        const step = () => {
+          const at = performance.now();
+          longest = Math.max(longest, at - last);
+          last = at;
+          if (at - from < time) requestAnimationFrame(step);
+          else resolve(longest);
+        };
+        requestAnimationFrame(step);
+      }),
+    ms,
+  );
+
+describe('009-terminal-node-FR-009 and 009-terminal-node-FR-031: nothing it printed waits', () => {
+  const FIVE_THOUSAND = 'for (let i = 0; i < 5000; i++) console.log(i);\n';
+
+  test('a loop that prints then waits on a timer shows it all within the quarter second of its end', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'p.js', `${FIVE_THOUSAND}setTimeout(() => {}, 4000);\n`);
+    await startLine(page, 'node p.js');
+    await until(async () => (await lastOutput(page)).includes('4999'), 3000);
+    expect(await running(page)).toBe(true);
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+  });
+
+  test('a loop that prints then blocks shows it all, and keeps it after Ctrl+C', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'p.js', `${FIVE_THOUSAND}while (true) {}\n`);
+    await startLine(page, 'node p.js');
+    await until(async () => (await lastOutput(page)).includes('4999'), 3000);
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+    const lines = (await lastOutput(page)).split('\n');
+    expect(lines).toContain('0');
+    expect(lines).toContain('4999');
+    expect(await statusOf(page)).toBe('130');
+  });
+});
+
+describe('009-terminal-node-FR-024 and 009-terminal-node-FR-010: a flood of what is not output', () => {
+  // Far over a blocked loop's frames only for a stall, and well under the seconds
+  // these took with no limit.
+  const LONGEST_FRAME_MS = 400;
+  const TOGGLE = "const f = () => {};\nfor (;;) { process.on('SIGINT', f); process.off('SIGINT', f); }\n";
+
+  test('adding and removing a SIGINT handler in a loop leaves the page live', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'h.js', TOGGLE);
+    await startLine(page, 'node h.js');
+    await until(() => page.evaluate(() => document.querySelector('#terminal-runners iframe') !== null));
+    expect(await longestFrame(page, 2000)).toBeLessThan(LONGEST_FRAME_MS);
+    await page.keyboard.press('Control+C');
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+  });
+
+  test('making and removing a folder in a loop leaves the page live', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'd.js', "const fs = require('fs');\nfor (;;) { fs.mkdirSync('d'); fs.rmdirSync('d'); }\n");
+    await startLine(page, 'node d.js');
+    await until(() => page.evaluate(() => document.querySelector('#terminal-runners iframe') !== null));
+    expect(await longestFrame(page, 2000)).toBeLessThan(LONGEST_FRAME_MS);
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+  });
+
+  test('its output and its exit still arrive, in their order', async () => {
+    const page = await openProgramTerminal();
+    await writeFile(page, 'e.js', "const f = () => {};\nconst from = Date.now();\nwhile (Date.now() - from < 6000) { process.on('SIGINT', f); process.off('SIGINT', f); }\nconsole.log('done');\nprocess.exit(3);\n");
+    const output = await runToEnd(page, 'node e.js');
+    expect(output).toContain('done');
+    expect(await statusOf(page)).toBe('3');
   });
 });
 

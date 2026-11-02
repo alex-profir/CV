@@ -8,7 +8,9 @@ export type CompileRequest = { root: string; mode: 'check' | 'strip'; files: Rea
 
 export type CompileDiagnostic = { file: string; line: number; column: number; code: number; message: string };
 
-export type CompileResult = { diagnostics: CompileDiagnostic[]; outputs: Record<string, { js: string; map: string }> };
+// `syntax`: the first syntax error in a file, for the program to stop on when it loads
+// that file, as stripping types doesn't stop on them by itself (FR-018).
+export type CompileResult = { diagnostics: CompileDiagnostic[]; outputs: Record<string, { js: string; map: string; syntax?: { line: number; column: number; message: string } }> };
 
 // The compiler's types come with the TypeScript it is given, whichever that is.
 type Ts = any;
@@ -18,12 +20,17 @@ export const NODE_TYPES = '/node-runtime/node.d.ts';
 const TS_FILE = /\.[mc]?ts$/;
 const DECLARATIONS = /\.d\.[mc]?ts$/;
 
-function outputOf(ts: Ts, path: string, text: string): { js: string; map: string } {
-  const { outputText, sourceMapText } = ts.transpileModule(text, {
+function outputOf(ts: Ts, path: string, text: string): CompileResult['outputs'][string] {
+  const { outputText, sourceMapText, diagnostics } = ts.transpileModule(text, {
     fileName: path,
+    reportDiagnostics: true,
     compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext, sourceMap: true, inlineSources: false, removeComments: false },
   });
-  return { js: outputText as string, map: (sourceMapText as string | undefined) ?? '' };
+  const output = { js: outputText as string, map: (sourceMapText as string | undefined) ?? '' };
+  const first = ((diagnostics ?? []) as any[]).find((each) => each.category === ts.DiagnosticCategory.Error && each.file !== undefined);
+  if (first === undefined) return output;
+  const at = ts.getLineAndCharacterOfPosition(first.file, first.start ?? 0);
+  return { ...output, syntax: { line: at.line + 1, column: at.character + 1, message: ts.flattenDiagnosticMessageText(first.messageText, '\n') } };
 }
 
 function checked(ts: Ts, libFiles: Readonly<Record<string, string>>, { root, files }: CompileRequest): CompileDiagnostic[] {

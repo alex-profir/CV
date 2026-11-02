@@ -20,6 +20,7 @@ import { createPath } from './modules/path.ts';
 import { createTimers } from './modules/timers.ts';
 import { createUrl } from './modules/url.ts';
 import { createUtil } from './modules/util.ts';
+import { createPace } from './pace.ts';
 import { createProcess } from './process.ts';
 import { removeReaches } from './sandbox.ts';
 
@@ -45,7 +46,13 @@ removeReaches(scope);
 let toPage: ((message: unknown) => void) | null = null;
 let nonce = '';
 
-const send = (message: Record<string, unknown>) => toPage?.({ ...message, nonce });
+const pace = createPace(now);
+
+// Everything the runtime tells the page, as it happens and at a pace it can take.
+const send = (message: Record<string, unknown>) => {
+  pace(typeof message['text'] === 'string' ? message['text'].length : 0);
+  toPage?.({ ...message, nonce });
+};
 
 // Stops here for good: the page terminates the worker on what was just sent.
 const halt = (): never => {
@@ -64,13 +71,12 @@ function run(request: ProgramRequest, compiled: Compiled | undefined): void {
   };
 
   let ended = false;
-  const output = createOutput({ send, now, limit: halt });
+  const output = createOutput({ send, limit: halt });
 
   const stopFor = (code: number, uncaught: boolean): never => {
     if (!ended) {
       ended = true;
       loop.stop();
-      output.flush(true);
       send(uncaught ? { exit: code, uncaught: true } : { exit: code });
     }
     return halt();

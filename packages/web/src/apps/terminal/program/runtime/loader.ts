@@ -4,6 +4,7 @@
 // `import`, `export` and `import.meta` in place, into one wrapper of the same form.
 import { parse } from 'acorn';
 import type { Node, Options, Program } from 'acorn';
+import { resolveModuleFile } from '../messages.ts';
 import type { Compiled } from '../messages.ts';
 import type { Source } from './errors.ts';
 import type { Files } from './files.ts';
@@ -185,17 +186,7 @@ export function createLoader(deps: LoaderDeps) {
   const isFile = (path: string) => files.get(path)?.kind === 'file';
 
   // A file, with the extensions Node tries, or a folder's `index` (FR-014).
-  function resolveFile(path: string): string | null {
-    if (isFile(path)) return path;
-    // A TypeScript program imports `./b.js` for its `b.ts`, as TypeScript has it.
-    if (deps.compiled !== undefined && /\.[mc]?js$/.test(path)) {
-      const typed = path.replace(/js$/, 'ts');
-      if (isFile(typed)) return typed;
-    }
-    for (const extension of ['.js', '.json', '.mjs', '.cjs', '.ts', '.mts', '.cts']) if (isFile(`${path}${extension}`)) return `${path}${extension}`;
-    if (files.get(path)?.kind === 'folder') for (const name of ['index.js', 'index.json', 'index.mjs', 'index.ts']) if (isFile(`${path}/${name}`)) return `${path}/${name}`;
-    return null;
-  }
+  const resolveFile = (path: string): string | null => resolveModuleFile(path, deps.compiled !== undefined, (at) => files.get(at)?.kind);
 
   const isRelative = (specifier: string) => specifier === '.' || specifier === '..' || specifier.startsWith('./') || specifier.startsWith('../') || specifier.startsWith('/');
 
@@ -232,6 +223,11 @@ export function createLoader(deps: LoaderDeps) {
     const output = deps.compiled?.[path];
     if (TS_EXTENSIONS.test(path)) {
       if (output === undefined) throw Object.assign(new Error(`A TypeScript program must start from a TypeScript file, to load ${path}.`), { code: 'ERR_UNKNOWN_FILE_EXTENSION' });
+      if (output.syntax !== undefined) {
+        // Stripping types found it: nothing of this file runs (FR-018).
+        sources.set(path, { text, prefix: 0 });
+        throw Object.defineProperty(new SyntaxError(output.syntax.message), 'place', { value: { file: path, line: output.syntax.line, column: output.syntax.column }, enumerable: false });
+      }
       return { code: output.js.replace(/\n?\/\/# sourceMappingURL=.*\s*$/, '\n'), source: { text, prefix: 0, mapped: deps.mapFor(output.map) } };
     }
     return { code: text, source: { text, prefix: 0 } };

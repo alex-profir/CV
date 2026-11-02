@@ -49,6 +49,37 @@ describe('009-terminal-node-FR-002: ts-node checks a TypeScript or a JavaScript 
   });
 });
 
+describe('009-terminal-node-FR-018: node stops on a TypeScript syntax error', () => {
+  const run = (source: string, name = 'x.ts', more: Record<string, string> = {}) => {
+    const { diagnostics, outputs } = compile(ts, libFileMap, { root: `${HOME}/${name}`, mode: 'strip', files: files({ [name]: source, ...more }) });
+    expect(diagnostics).toEqual([]);
+    return runProgram(script(source, name, [], more), { compiled: outputs });
+  };
+
+  test.each([
+    ['a missing type', "console.log('ran');\nlet y: = 1;\n", 'let y: = 1;', '       ^', 'Type expected.'],
+    ['a function with no name', "console.log('ran');\nfunction (a: number { return a }\n", 'function (a: number { return a }', '         ^', 'Identifier expected.'],
+  ])('%s: none of it runs, in FR-017\'s form at the place', async (_, source, code, marker, words) => {
+    const result = await run(source);
+    expect(result.stdout).toBe('');
+    expect(result.exit).toBe(1);
+    expect(result.stderr).toContain(`${HOME}/x.ts:2\n${code}\n${marker}\n\nSyntaxError: ${words}`);
+  });
+
+  test('a type error still runs: node checks no types', async () => {
+    const result = await run("const n: number = 'text';\nconsole.log(n);\n");
+    expect(result.stdout).toBe('text\n');
+    expect(result.exit).toBe(0);
+  });
+
+  test('an imported file with one stops the program before any of it runs', async () => {
+    const result = await run("console.log('ran');\nimport { b } from './b';\nconsole.log(b);\n", 'x.ts', { 'b.ts': 'export const b: = 1;\n' });
+    expect(result.stdout).toBe('');
+    expect(result.exit).toBe(1);
+    expect(result.stderr).toContain(`${HOME}/b.ts:1\n`);
+  });
+});
+
 describe('009-terminal-node-FR-021: a type error', () => {
   test("prints contracts/commands.md's form", () => {
     const result = check("const n: number = 'text';\n");

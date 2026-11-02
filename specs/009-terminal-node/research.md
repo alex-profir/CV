@@ -91,10 +91,14 @@ R2, making a classic worker from a `Blob`.
 ## R7: Output
 
 - **Decision**: output reaches the page on the program's port and is added to the running entry, each flush
-  a new text node carrying its stream. Within an allowance by the clock the runtime sends at once, so a
-  blocked loop's output still arrives; past it, it holds output until the allowance refills, as 008's runtime
-  does. The page flushes to the session every 100 ms at most.
-- **Rationale**: FR-009 asks for 250 ms. Append-only nodes mean only new output renders.
+  a new text node carrying its stream. The runtime sends each write at once and holds nothing back, so a
+  blocked loop's output still arrives and a stop loses none. Past an allowance by the clock, for everything it
+  tells the page (output, file changes and handler state alike), the program itself waits until the allowance
+  refills, as a program does on a real terminal. The page flushes to the session every 100 ms at most.
+- **Rationale**: FR-009 asks for 250 ms. Append-only nodes mean only new output renders. A worker that blocks
+  can't run a timer, so anything held could be lost for good, which ruled out 008's way of holding output. 100
+  messages a millisecond keep frames under 25 ms in all three engines, and the runtime allows half of that for
+  slower machines; a flood with no limit took the page to 2.2 GB and stalled it for seconds.
 
 ## R8: Ctrl+C and signals
 
@@ -118,10 +122,11 @@ R2, making a classic worker from a `Blob`.
 
 ## R10: Files
 
-- **Decision**: the `program` effect carries a snapshot of the Terminal's readable files, with owners and
-  protection. The runtime keeps its own copy, applies the same rules and 1 MB limit at once, and sends each
-  change as the whole new file or a removal. The page keeps the latest change per path, so its memory stays
-  bounded and it ends the program if the changes exceed the limit. When the program ends, however it ends,
+- **Decision**: the `program` effect carries a snapshot of the Terminal's readable files, all of them and not only
+  the home and temporary folders, with owners and protection. The runtime keeps its own copy, applies the same rules and 1 MB limit at once, and sends each
+  change as the whole new file or a removal. The runtime and the page keep the latest change per path the same way, so memory stays
+  bounded. The runtime refuses a change past the limit with `ENOSPC`, and the page ends a program whose changes exceed it,
+  which only a forged change can. When the program ends, however it ends,
   the page sends them to the shell worker in one `apply` message, through `TerminalFs`, which checks the
   rules again.
 - **Rationale**: `readFileSync` must answer at once and a worker can't wait on the page, so a snapshot is the

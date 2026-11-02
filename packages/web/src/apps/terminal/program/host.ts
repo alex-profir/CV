@@ -3,9 +3,9 @@
 // nothing of the session: it takes a request and gives events. The worker runs the
 // visitor's code, so nothing it claims is trusted: the page keeps its own count of
 // output and changes, and a second Ctrl+C ends it whatever it says of its handlers.
-import { NO_CHANGES, OUTPUT_LIMIT, statusOf, workerMessage } from './messages.ts';
-import type { Compiled, EndReason, FileChange, FileChanges, OutputChunk, ProgramEvents, ProgramHandle, ProgramRequest, Stream } from './messages.ts';
-import { QUOTA } from '../shell/protocol.ts';
+import { createChanges } from './changes.ts';
+import { OUTPUT_LIMIT, statusOf, workerMessage } from './messages.ts';
+import type { Compiled, EndReason, OutputChunk, ProgramEvents, ProgramHandle, ProgramRequest, Stream } from './messages.ts';
 import { needsCompiler, typeErrorText } from './typescript.ts';
 import type { CompileOutcome } from './typescript.ts';
 
@@ -30,39 +30,10 @@ export type HostEnv = {
 
 const FLUSH_MS = 100;
 
-// The latest change per path, so memory stays bounded by what the program holds
-// (research R10), with the sum of what they weigh.
-function createChanges() {
-  const files = new Map<string, { change: FileChange; weight: number }>();
-  const folders = new Map<string, { made: boolean }>();
-  let weight = 0;
-  return {
-    file(path: string, change: FileChange): void {
-      const held = files.get(path);
-      if (held !== undefined) weight -= held.weight;
-      // A removal's path costs too: a flood of different paths must also end.
-      const size = path.length + ('removed' in change ? 0 : change.text.length);
-      files.set(path, { change, weight: size });
-      weight += size;
-    },
-    folder(path: string, made: boolean): void {
-      // In order: a later change to a path comes after what it depends on.
-      if (!folders.has(path)) weight += path.length;
-      folders.delete(path);
-      folders.set(path, { made });
-    },
-    over: () => weight > QUOTA,
-    result(): FileChanges {
-      if (files.size === 0 && folders.size === 0) return NO_CHANGES;
-      return { files: Object.fromEntries([...files].map(([path, { change }]) => [path, change])), folders: [...folders].map(([path, { made }]) => ({ path, made })) };
-    },
-  };
-}
-
 export function createHost(env: HostEnv) {
   function start(request: ProgramRequest, events: ProgramEvents): ProgramHandle {
     const nonce = env.nonce();
-    const changes = createChanges();
+    const changes = createChanges(new Set(request.files.entries.map((entry) => entry.path)));
     const stopCompiling = new AbortController();
     let frame: FrameLike | null = null;
     let port: PortLike | null = null;
@@ -126,8 +97,8 @@ export function createHost(env: HostEnv) {
       else if ('limit' in message) end(130, 'output');
       else if ('exit' in message) end(statusOf(message.exit), message.uncaught === true ? 'uncaught' : 'exit');
       else {
-        if ('file' in message) changes.file(message.file, 'removed' in message ? { removed: true } : message.binary === true ? { text: message.text, binary: true } : { text: message.text });
-        else changes.folder(message.folder, message.made);
+        if ('file' in message) changes.add('removed' in message ? { path: message.file, removed: true } : message.binary === true ? { path: message.file, text: message.text, binary: true } : { path: message.file, text: message.text });
+        else changes.add({ path: message.folder, made: message.made });
         // The runtime holds to the limit itself, so only a forged change gets here.
         if (changes.over()) end(1, 'died');
       }
