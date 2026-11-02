@@ -240,6 +240,15 @@ async function atUse(page: Page): Promise<void> {
 // Monaco keeps a closed list in the page, hidden, beside the one it opens next.
 const ACTIONS = '.action-widget:visible';
 
+// Opens the list of code actions by its key. Monaco asks for the actions itself
+// 250 ms after the cursor moves, and that request can replace a list asked for
+// just before it, which then never opens. No one presses the key that fast.
+async function openActions(page: Page, key: string): Promise<void> {
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 500)));
+  await page.keyboard.press(`${key}+Period`);
+  await page.waitForSelector(ACTIONS, { timeout: 10_000 });
+}
+
 async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<void> {
   // The TypeScript the Playground bundles, loaded only for this check.
   const { bundled, CODE_FILE, ts } = await import('../../../../packages/web/test/helpers/bundled-typescript.ts');
@@ -314,8 +323,7 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
   const fixable = 'interface Job { title: string; years: number }\nconst job: Job = {};';
   await putCode(page, fixable);
   await cursorAt(page, 2, 7);
-  await page.keyboard.press(`${key}+Period`);
-  await page.waitForSelector(ACTIONS, { timeout: 10_000 });
+  await openActions(page, key);
   const fix = page.locator(ACTIONS).getByText('Add missing properties', { exact: true });
   if (!(await until(async () => (await fix.count()) > 0))) found.push(problem('quick-fix', 'Ctrl+.', 'the list holds no Add missing properties'));
   else {
@@ -328,8 +336,7 @@ async function editingProblems(page: Page, { add }: PlaygroundContext): Promise<
   await putCode(page, refactorable);
   await cursorAt(page, 3, 3);
   await page.keyboard.press('Shift+End');
-  await page.keyboard.press(`${key}+Period`);
-  await page.waitForSelector(ACTIONS, { timeout: 10_000 });
+  await openActions(page, key);
   const extract = page.locator(ACTIONS).getByText(/^Extract to function/).first();
   if (!(await until(async () => (await extract.count()) > 0))) found.push(problem('quick-fix', 'Ctrl+.', 'a selected line offers no Extract to function'));
   else {
