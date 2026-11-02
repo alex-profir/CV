@@ -132,7 +132,8 @@ describe('009-terminal-node-FR-026: a program that prints without end', () => {
   test('stops at 1 MB with the stopped line, and the page stays live', async () => {
     const page = await openProgramTerminal();
     await startLine(page, `node -e "while (true) console.log('y')"`);
-    await linesRun(page);
+    // 1 MB of two-character lines is paced (research R7): about 20 s in Firefox, longer on a busy machine.
+    await linesRun(page, 90_000);
     expect(await lastRun(page).locator('p.run-stopped').count()).toBe(1);
     expect(await statusOf(page)).toBe('130');
   });
