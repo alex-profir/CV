@@ -4,7 +4,7 @@
     "name": "Alex Profir",
     "label": "Senior Software Engineer",
     "email": "alexprofir512@gmail.com",
-    "summary": "Senior Software Engineer with 8 years across React, React Native and Node.js, on GCP. Recent focus: spec-driven, agent-assisted delivery.",
+    "summary": "I build applications from the ground up with a strong emphasis on reliability, client satisfaction, and product quality. I agree on what's needed before I start building, and I set up the testing and monitoring that keep the product working once it's live. I'm highly collaborative and enjoy working closely with teams and clients.",
     "location": {
       "city": "Timișoara",
       "countryCode": "RO"
@@ -173,8 +173,8 @@
         "Built feeds, groups and video playback, including offline video caching",
         "Upgraded the app to Expo SDK 55 and React Native 0.83 on the New Architecture",
         "Wrote native iOS and Android modules for audio focus, SMS consent and text input",
-        "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect",
-        "Set up crash reporting and monitoring with Sentry and Crashlytics",
+        "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect, so every update is checked and shipped the same way",
+        "Set up crash reporting and monitoring with Sentry and Crashlytics, so problems are found and fixed before users have to report them",
         "Built a spec-driven, agentic workflow that takes a Jira ticket and its Figma design through to an open pull request",
         "Cut end-to-end feature delivery from at least 2 months to 2–3 weeks using AI, with the UI fully matching Figma"
       ],
