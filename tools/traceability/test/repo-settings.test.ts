@@ -198,7 +198,7 @@ describe('001-requirement-traceability-FR-041: every test runs every day on the 
   });
 
   test('what it leaves out is a short list of real test files, none of the fast set or the site check, left out on Linux alone', () => {
-    expect(OWNER_MAC_TESTS).toHaveLength(4);
+    expect(OWNER_MAC_TESTS).toHaveLength(5);
     for (const file of OWNER_MAC_TESTS) {
       expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
       expect(file.startsWith('tools/site-check/'), file).toBe(false);

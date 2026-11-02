@@ -127,10 +127,12 @@ describe('007-requirement-inspector-FR-015: the requirement data waits for the s
     const fetches = log.fetches.filter((entry) => DATA_FILE.test(new URL(entry.url, 'http://localhost').pathname));
     expect(fetches).toHaveLength(1);
     expect(fetches[0]!.ready).toBe(true);
-    // The resource timing agrees: the request started after the shell was ready.
+    // The resource timing agrees: the request started at that fetch. The
+    // observer's `readyAt` can't stand in for it: its callback runs after the
+    // task that sets `data-ready`, so the fetch can come first by a millisecond.
     const started = await page.evaluate(() => performance.getEntriesByType('resource').filter((entry) => /\/assets\/requirements-[0-9a-f]{8}\.json$/.test(entry.name)).map((entry) => entry.startTime));
     expect(started).toHaveLength(1);
-    expect(started[0]!).toBeGreaterThanOrEqual(log.readyAt! - 1);
+    expect(started[0]!).toBeGreaterThanOrEqual(fetches[0]!.at - 1);
     // The page names the file it fetched.
     expect(await page.locator('#os').getAttribute('data-requirements')).toMatch(DATA_FILE);
   });

@@ -90,6 +90,11 @@ export async function primary(page: Page): Promise<'Meta' | 'Control'> {
   return (await onMac(page)) ? 'Meta' : 'Control';
 }
 
+// The key to the start of the code. Elsewhere than a Mac, Ctrl+Up only scrolls.
+export async function documentStart(page: Page): Promise<string> {
+  return (await onMac(page)) ? 'Meta+ArrowUp' : 'Control+Home';
+}
+
 // Focuses the editor by a click on its text.
 export async function focusEditor(page: Page): Promise<void> {
   await page.locator(`${EDITOR} .view-lines`).click();

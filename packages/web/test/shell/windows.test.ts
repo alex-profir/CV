@@ -57,9 +57,9 @@ describe('005-os-shell-FR-010: windows never cover the menu bar, and pass behind
     expect(meet((await box(page, CV))!, dock)).toBe(true);
     expect(await topAt(page, centre(dock), '.dock')).toContain('dock');
     await page.getByRole('button', { name: 'Maximize CV' }).click();
-    const maximized = (await box(page, CV))!;
-    expect(meet(maximized, menuBar)).toBe(false);
-    expect(meet(maximized, dock)).toBe(false);
+    // On a busy machine the motion can start after the first read's settle.
+    await expect.poll(async () => meet((await box(page, CV))!, dock)).toBe(false);
+    expect(meet((await box(page, CV))!, menuBar)).toBe(false);
   });
 });
 
