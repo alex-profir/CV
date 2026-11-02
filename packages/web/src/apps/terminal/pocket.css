@@ -143,6 +143,13 @@
   touch-action: manipulation;
 }
 
+/* While a program runs (009 FR-039). */
+.pocket-key.pocket-key-stop {
+  background: var(--token-color-terminal-error);
+  color: var(--token-color-terminal-user-text);
+  font-weight: var(--token-font-weight-semibold);
+}
+
 .tab-mark {
   inline-size: var(--token-space-3);
   block-size: var(--token-space-3);

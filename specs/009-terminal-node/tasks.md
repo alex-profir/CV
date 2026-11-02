@@ -251,15 +251,15 @@ host knows nothing of the session, and the sole-command check is one function. D
 
 ### Tests for User Story 6 (REQUIRED) ⚠️
 
-- [ ] T078 [P] [US6] Write `packages/web/test/terminal/program/pocket.test.ts`, covers 009-terminal-node-FR-039, at 375 and 320 px wide: while a program runs, Stop takes the place of `clear`, the grid doesn't move, its name is `Stop the program`, it is at least 44 by 44 CSS px, is in the keys' toolbar and its arrow-key order, and does what Ctrl+C does, including a second press past a handler; with nothing running the key is `clear`; if it has focus when the program ends, it becomes `clear` in place and focus doesn't move; contrast with the error color and dark text is at least 4.5:1.
-- [ ] T079 [P] [US6] Write `packages/web/test/terminal/program/unit/announce.test.ts`, covers 009-terminal-node-FR-040: with a fake clock, a fast-printing program's output is announced in batches at most once a second, and `Program ended, status {n}.` once at the end, including after a stop.
-- [ ] T080 [P] [US6] Write `packages/web/test/terminal/program/scroll.test.ts`, covers 009-terminal-node-FR-041: new output keeps the end in view; after scrolling back, output doesn't pull the view down until the visitor returns to the end; with reduced motion set, nothing animates.
+- [X] T078 [P] [US6] Write `packages/web/test/terminal/program/pocket.test.ts`, covers 009-terminal-node-FR-039, at 375 and 320 px wide: while a program runs, Stop takes the place of `clear`, the grid doesn't move, its name is `Stop the program`, it is at least 44 by 44 CSS px, is in the keys' toolbar and its arrow-key order, and does what Ctrl+C does, including a second press past a handler; with nothing running the key is `clear`; if it has focus when the program ends, it becomes `clear` in place and focus doesn't move; contrast with the error color and dark text is at least 4.5:1.
+- [X] T079 [P] [US6] Write `packages/web/test/terminal/program/unit/announce.test.ts`, covers 009-terminal-node-FR-040: with a fake clock, a fast-printing program's output is announced in batches at most once a second, and `Program ended, status {n}.` once at the end, including after a stop.
+- [X] T080 [P] [US6] Write `packages/web/test/terminal/program/scroll.test.ts`, covers 009-terminal-node-FR-041: new output keeps the end in view; after scrolling back, output doesn't pull the view down until the visitor returns to the end; with reduced motion set, nothing animates.
 
 ### Implementation for User Story 6
 
-- [ ] T081 [US6] Add the Stop key in `apps/terminal/Pocket.tsx` and `apps/terminal/pocket.css`, as design/wireframes.md and `design/mockup/` set, `data-req="009-terminal-node-FR-039"`, on existing key styles and tokens. Make T078 pass.
-- [ ] T082 [US6] Batch the program's output for the live region in `apps/terminal/engine/announce.ts` and `apps/terminal/Terminal.tsx`, `data-req="009-terminal-node-FR-040"` on the Terminal's live region. Make T079 pass.
-- [ ] T083 [US6] Follow the output in `apps/terminal/Output.tsx` and `apps/terminal/Terminal.tsx` on both shells, `data-req="009-terminal-node-FR-041"` on the output. Make T080 pass.
+- [X] T081 [US6] Add the Stop key in `apps/terminal/Pocket.tsx` and `apps/terminal/pocket.css`, as design/wireframes.md and `design/mockup/` set, `data-req="009-terminal-node-FR-039"`, on existing key styles and tokens. Make T078 pass.
+- [X] T082 [US6] Batch the program's output for the live region in `apps/terminal/engine/announce.ts` and `apps/terminal/Terminal.tsx`, `data-req="009-terminal-node-FR-040"` on the Terminal's live region. Make T079 pass.
+- [X] T083 [US6] Follow the output in `apps/terminal/Output.tsx` and `apps/terminal/Terminal.tsx` on both shells, `data-req="009-terminal-node-FR-041"` on the output. Make T080 pass.
 - [ ] T084 [US6] Add quickstart 18 to `tools/site-check/src/parts/program.ts` and `tools/site-check/test/program.test.ts`, covers 009-terminal-node-FR-039, and run the accessibility part with a program running on both shells: the running entry, the still-running line and the Stop key pass axe.
 
 **Checkpoint**: Both shells and WCAG 2.2 AA hold in the new states.

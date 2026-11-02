@@ -101,6 +101,7 @@ export const siteText = deepFreeze({
     program: {
       stillRunning: { desktop: 'Still running. Ctrl+C stops it.', phone: 'Still running. The Stop key stops it.' },
       stop: 'Stop the program',
+      stopKey: 'Stop',
       download: 'Downloading TypeScript, once: {n}% of {size} MB',
       offline: 'ts-node: TypeScript has to be downloaded once with a connection: {size} MB.',
       memory: 'node: the browser ended this program: it ran out of memory.',
