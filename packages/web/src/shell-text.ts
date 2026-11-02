@@ -30,7 +30,7 @@ const shellText = deepFreeze({
     ls: { args: '[path]', description: 'List a folder', help: 'Lists the folder you are in, or the folder or file a path names. Click a name to open it.' },
     cd: { args: '[path]', description: 'Change folder. cd alone goes home', help: 'Changes the folder you are in. cd .. goes up, and cd alone goes back to the home folder, ~.' },
     cat: { args: '<path>', description: 'Show a file', help: 'Shows a file. cat cv.json shows the whole CV as JSON.' },
-    jq: { args: '[path]', description: 'Pretty-print JSON', help: 'Pretty-prints JSON, from a path or from what is piped in, such as cat cv.json | jq.' },
+    jq: { args: '[filter] [path]', description: 'Filter JSON', help: 'Applies a jq filter to JSON and pretty-prints the result, from a path or from what is piped in, such as jq .work cv.json or cat cv.json | jq.' },
     vim: { args: '[path | -]', description: 'Edit a file in vim. - reads what is piped in', help: 'Opens a file in a vim view to read or edit. vim - reads what is piped in. Type :help there for its keys, and :q to leave.' },
     pwd: { args: '', description: 'Show the current folder', help: 'Shows the path of the folder you are in.' },
     open: { args: '<name>', description: 'Open cv, playground or about in the shell', help: 'Opens the CV app with open cv, the Playground with open playground, or About this site with open about.' },

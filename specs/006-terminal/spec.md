@@ -784,7 +784,7 @@ references `006-terminal-FR-###`. UI implementing a requirement carries
   | `ls [path]` | The folders and files of the working folder or of the path (FR-043). |
   | `cd [path]` | Changes the working folder. `cd` alone returns to the home folder. |
   | `cat <path>` | Shows a file. |
-  | `jq [path]` | Pretty-prints JSON from the path or from piped input (FR-056). |
+  | `jq [filter] [path]` | Applies a filter and pretty-prints JSON from the path or from piped input (FR-056). Amended 2026-11-02: it read `jq [path]`, pretty-print only. |
   | `vim <path>`, `vim -` | Opens the file, the piped input, or a new file, in the vim view, to read or edit (FR-058, FR-079). |
   | `pwd` | The working folder's path. |
   | `open <name>` | Opens the CV app (`open cv`), the Playground (`open playground`) or About this site (`open about`) in the shell. |
