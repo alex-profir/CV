@@ -240,7 +240,17 @@ export function createSession(client: ShellClient = createShellClient(), openHos
   let handle: ProgramHandle | null = null;
   let stopPressed = false;
   let stillTimer: ReturnType<typeof setTimeout> | null = null;
-  const closeOnLeave = () => session.closeProgram();
+  // Leaving the page ends the program. The page may come back from the browser's
+  // cache, so the line ends here too, or it would run for ever (009 FR-034).
+  const closeOnLeave = () => {
+    const { running } = state;
+    session.closeProgram();
+    if (running === null) return;
+    const shellState: ShellState = { ...state.state, status: 130, pipes: [130] };
+    client.setStatus(shellState);
+    set({ ...state, running: null, program: null, entries: [...state.entries, running], state: shellState, shell: statusOf(null) });
+    pump();
+  };
 
   const grow = (nodes: readonly Node[]) => {
     if (state.running !== null) set({ ...state, running: { ...state.running, block: [...(state.running.block ?? []), ...nodes] } });
@@ -516,7 +526,7 @@ export function createSession(client: ShellClient = createShellClient(), openHos
       if (stillTimer !== null) clearTimeout(stillTimer);
       handle?.close();
       handle = null;
-      removeEventListener('pagehide', closeOnLeave);
+      if (state.program !== null) removeEventListener('pagehide', closeOnLeave);
     },
     reset: () => {
       session.closeProgram();

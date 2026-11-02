@@ -19,10 +19,10 @@ function generator(seed: number): () => number {
 }
 
 describe("006-terminal-FR-008: help lists every command and alias, and there is no command it doesn't list", () => {
-  test('COMMANDS names exactly the 22 commands the requirement lists, in that order, with the three aliases', () => {
-    expect(COMMANDS.map((command) => command.name)).toEqual(FR_008);
+  test('COMMANDS names exactly the 22 commands the requirement lists, in that order, then the two of 009-terminal-node-FR-007, with the aliases', () => {
+    expect(COMMANDS.map((command) => command.name)).toEqual([...FR_008, 'node', 'ts-node']);
     const aliases = Object.fromEntries(COMMANDS.filter((command) => command.aliases.length > 0).map((command) => [command.name, command.aliases]));
-    expect(aliases).toEqual({ help: ['?'], about: ['whoami'], work: ['experience'] });
+    expect(aliases).toEqual({ help: ['?'], about: ['whoami'], work: ['experience'], 'ts-node': ['tsnode'] });
   });
 
   test('every name and alias is lower case and unique', () => {

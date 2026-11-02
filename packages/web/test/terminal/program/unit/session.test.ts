@@ -313,6 +313,10 @@ describe('009-terminal-node-FR-034: closing, resetting and leaving end the progr
     leave();
     expect(program.handle.close).toHaveBeenCalledTimes(1);
     expect(removed).toEqual(['pagehide']);
+    // Back from the browser's cache, the line is over and the Terminal takes lines.
+    expect(session.get().running).toBeNull();
+    expect(session.get().program).toBeNull();
+    expect(session.get().state.status).toBe(130);
   });
 });
 
