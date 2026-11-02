@@ -127,7 +127,8 @@ describe('004-cv-page-FR-039: a new version shows on the next visit and replaces
     await goOffline(context);
     const offlineB = await visit(context, `${server.url}/cv`);
     expect(await cvPageProblems(offlineB, expectedFields(b.cv))).toEqual([]);
-    expect(await mainText(offlineB)).not.toContain(original);
+    // By its heading: the name is also the CV's LinkedIn username, which every version shows.
+    expect(await offlineB.locator('h1').textContent()).not.toContain(original);
 
     // C, published, with a font answering 500: the visit shows C from the
     // network, its worker fails to install, and B stays stored whole.
