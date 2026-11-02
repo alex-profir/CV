@@ -1,6 +1,6 @@
 # Design Review: Node in the Terminal
 
-**Status**: Draft
+**Status**: Approved (mockup `cb38050`, 2026-11-02)
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -30,6 +30,4 @@ real Terminal, so only what this feature adds is new.
 
 ## Sign-off
 
-The owner sets **Status** to `Approved` above, naming the mockup's commit and the date here.
-
-- Reviewed mockup: not yet signed
+- Reviewed mockup: commit `cb38050`, an interim local mockup. Approved by the owner on 2026-11-02.

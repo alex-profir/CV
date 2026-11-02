@@ -4,7 +4,7 @@
 
 **Input**: Feature specification from `/specs/009-terminal-node/spec.md`
 
-**Design**: [design/review.md](./design/review.md): an interim local mockup, awaiting the owner's sign-off. See
+**Design**: [design/review.md](./design/review.md): an interim local mockup at commit `cb38050`, approved by the owner 2026-11-02. See
 Complexity Tracking.
 
 ## Summary
@@ -56,7 +56,7 @@ complete visit. TypeScript uses 008's cache and says so when it has none (R12, R
 | # | Principle | Check | Status | Evidence |
 |---|-----------|-------|--------|----------|
 | I | Spec First | spec.md `Status: Approved`; this plan holds the "how", the spec holds none | Pass | Approved by the owner 2026-11-02; SC-007 amended in the spec from this plan |
-| II | Design Gate | design/ has wireframe, PNGs, Penpot link, signed review.md; or an interim local mockup with PNGs and signed review.md; or spec says "No UI" | **Fail** | Not made yet. Recorded in Complexity Tracking; must pass before `/speckit-implement` touches UI |
+| II | Design Gate | design/ has wireframe, PNGs, Penpot link, signed review.md; or an interim local mockup with PNGs and signed review.md; or spec says "No UI" | Pass | Signed 2026-11-02, after this plan was first written, as Complexity Tracking records |
 | III | Traceable Requirements | Every FR has a planned test and, if UI, a `data-req` target (see Requirement Traceability) | Pass | Table below |
 | IV | One Source of Truth | CV data read only from `packages/content`; styles use tokens only | Pass | Programs see `cv.json` as the Terminal holds it. The Stop key uses existing key styles and tokens |
 | V | Shared Core, Per-Shell Scope | Apps declare shells; shared logic in `os-core`; matches spec Shell Scope | Pass | All in the Terminal app, which declares both. Stop stays in `Pocket.tsx` |
