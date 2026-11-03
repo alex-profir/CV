@@ -93,7 +93,10 @@ const INSPECTOR_VARIANT = new RegExp(
 // its states, with their conditions.
 const PLAYGROUND_VARIANT = /^(?:desktop|mobile)\/playground-[a-z0-9%/-]+\/\d+px$/;
 
-const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant) || PLAYGROUND_VARIANT.test(variant);
+// The program part's variants (009): its checks.
+const PROGRAM_VARIANT = /^(?:desktop|mobile)\/program-[a-z-]+\/\d+px$/;
+
+const onRootVariant = (variant: string) => ROOT_VARIANT.test(variant) || TERMINAL_VARIANT.test(variant) || INSPECTOR_VARIANT.test(variant) || PLAYGROUND_VARIANT.test(variant) || PROGRAM_VARIANT.test(variant);
 
 const PLAIN_ON_ROOT = new Set(['lighthouse', 'no-script']);
 
@@ -159,7 +162,7 @@ describe("007-requirement-inspector-FR-034: the inspector's checks run in the sa
   test("the local command is the CI step, and the parts run in contracts/cli.md's order, inspector after terminal", () => {
     expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
     expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
-    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
+    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'program', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
   });
 
   test('every inspector problem line names the view, the shell, the width and the requirement or its spec, and an untracked file changes no result', { timeout: 600_000 }, async () => {

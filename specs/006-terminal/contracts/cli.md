@@ -89,6 +89,8 @@ page by real input: clicks, taps and typed keys.
 | desktop | `terminal-vim-readonly` | From `terminal-open`, `vim about`, `o`, a word, Escape, `:w`: `[RO] [+]` and `E45` (FR-081) |
 | mobile | `pocket-tab-key` | From `pocket`, tap the command line, type `cat ~/`, tap the Tab key twice, then make the page 300 px shorter: the list and the strip (FR-078) |
 | mobile | `pocket-vim-insert` | From `pocket`, type `vim notes.txt`, Enter, tap the `i` key, make the page 300 px shorter: the strip's `Esc` (FR-066) |
+| desktop | `terminal-program-running` | From `terminal-open`, `node -e "while (true) {}"`, until the still-running line shows (009-terminal-node FR-027, added 2026-11-02) |
+| mobile | `pocket-program-running` | From `pocket`, the same program, until the still-running line shows, with the Stop key (009-terminal-node FR-027, FR-039, added 2026-11-02) |
 
 ## Variants
 

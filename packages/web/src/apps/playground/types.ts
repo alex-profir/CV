@@ -7,11 +7,13 @@ export type { ChangedOptions };
 
 // data-model.md TypeScript copy.
 export type EngineManifest = {
-  api: 1;
+  api: 2;
   version: string;
   typescript: string;
   entry: string;
   style: string;
+  // The `ts.worker` file's address, for a program's TypeScript (009 research R12).
+  compiler: string;
   files: { path: string; bytes: number }[];
   total: number;
 };

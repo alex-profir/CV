@@ -12,6 +12,7 @@ export const PARTS = [
   'terminal',
   'inspector',
   'playground',
+  'program',
   'accessibility',
   'lighthouse',
   'no-script',

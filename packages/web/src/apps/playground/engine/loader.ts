@@ -9,7 +9,7 @@
 import type { DownloadState, EngineManifest } from '../types.ts';
 import type { EngineModule } from './contract.ts';
 
-export const ENGINE_API = 1;
+export const ENGINE_API = 2;
 
 export type LoaderEvents = { onState(state: DownloadState): void };
 
@@ -95,7 +95,7 @@ const importable = (url: string): string => {
   return failed === 0 ? url : `${url}?retry=${failed}`;
 };
 
-function browserEnv(): LoaderEnv {
+export function browserEnv(): LoaderEnv {
   return {
     fetch: (url, init) => fetch(url, init),
     caches: typeof caches === 'undefined' ? undefined : caches,

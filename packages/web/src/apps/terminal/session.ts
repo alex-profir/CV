@@ -7,14 +7,17 @@
 // (FR-022). Components read it with useSyncExternalStore.
 import { counted, siteText, fill } from '../../site-text.ts';
 import { TERMINAL } from '../../os/metrics.ts';
-import type { Announcement, Block } from './engine/block.ts';
-import { mapOutput } from './engine/output-map.ts';
+import type { Announcement, Block, Node } from './engine/block.ts';
+import { batched } from './engine/announce.ts';
+import { mapOutput, stoppedLine } from './engine/output-map.ts';
 import { openVim, vimReducer } from './engine/vim.ts';
 import type { Message, VimInput, VimSource, VimState } from './engine/vim.ts';
 import { createShellClient } from './shell-client.ts';
 import type { ShellClient } from './shell-client.ts';
 import { INITIAL_STATE, NO_FILES } from './shell/protocol.ts';
 import type { Completion, CompletionMatch, Effect, RunResult, ShellState, VisitorFiles, WriteOutcome } from './shell/protocol.ts';
+import { NO_CHANGES } from './program/messages.ts';
+import type { ProgramEnd, ProgramEvents, ProgramHandle, ProgramRequest } from './program/messages.ts';
 
 export type Shell = 'desktop' | 'mobile';
 
@@ -73,6 +76,8 @@ export type Session = {
   state: ShellState;
   files: VisitorFiles;
   cwd: string;
+  // Whether a program runs, in `running` (009 data-model.md Session additions).
+  program: { interrupts: number; stillShown: boolean } | null;
 };
 
 const EMPTY: Session = {
@@ -93,7 +98,18 @@ const EMPTY: Session = {
   state: INITIAL_STATE,
   files: NO_FILES,
   cwd: INITIAL_STATE.cwd,
+  program: null,
 };
+
+// The program bundle (009 research R13): opened by the address on `#os`, at a first
+// program, so no code for programs loads before then (FR-036).
+export type ProgramHost = { start(request: ProgramRequest, events: ProgramEvents): ProgramHandle };
+
+const STILL_MS = 5000;
+
+const openProgramHost = (): Promise<ProgramHost> => import(/* @vite-ignore */ document.getElementById('os')!.dataset['program']!);
+
+const dim = (value: string, req: 'still' | 'download' | 'stop'): Node => ({ kind: 'line', req, children: [{ kind: 'text', text: value, tone: 'dim' }] });
 
 export const clock = (date: Date) => [date.getHours(), date.getMinutes()].map((part) => String(part).padStart(2, '0')).join(':');
 
@@ -146,7 +162,7 @@ export function messageText(message: Message, state: VimState, shell: Shell = 'd
   }
 }
 
-export function createSession(client: ShellClient = createShellClient()) {
+export function createSession(client: ShellClient = createShellClient(), openHost: () => Promise<ProgramHost> = openProgramHost, bytes: () => number = () => Number(document.getElementById('os')?.dataset['playgroundBytes'] ?? 0)) {
   let state: Session = EMPTY;
   let ids = 0;
   let spoken = 0;
@@ -185,6 +201,11 @@ export function createSession(client: ShellClient = createShellClient()) {
     // What the line printed after its last `clear` stays (T298).
     const shown = block.length > 0 ? [done] : [];
     const views = (result.effects as Effect[]).filter((effect) => effect.kind === 'vim');
+    const asked = (result.effects as Effect[]).find((effect) => effect.kind === 'program');
+    if (asked !== undefined) {
+      startProgram(waiting, asked.request, next);
+      return;
+    }
     for (const effect of result.effects as Effect[]) {
       if (effect.kind === 'clear') {
         const words = siteText.terminal.announce.cleared;
@@ -200,7 +221,7 @@ export function createSession(client: ShellClient = createShellClient()) {
         next = { ...next, entries: next.entries.filter((each) => each !== done) };
         if (next.vim === null) next = { ...next, vim: openVim(source), vimEntry: owner, announcement: say(openedText(source)) };
         else next = { ...next, vimQueue: [...next.vimQueue, { source, entry: owner }] };
-      } else if (waiting.actions !== null) {
+      } else if (effect.kind === 'open' && waiting.actions !== null) {
         const { actions } = waiting;
         acts.push(() => actions.open(effect.view));
       }
@@ -212,6 +233,103 @@ export function createSession(client: ShellClient = createShellClient()) {
     if (shell === 'failed' && state.shell !== 'failed') next = { ...next, announcement: say(siteText.terminal.shellFailed) };
     set({ ...next, shell });
     for (const act of acts) act();
+  }
+
+  // ---- A program (009 research R6) --------------------------------------------
+  // The line is over in the shell, but it stays the running entry, growing, until
+  // the program ends, so later lines wait for it.
+  let handle: ProgramHandle | null = null;
+  let stopPressed = false;
+  let stillTimer: ReturnType<typeof setTimeout> | null = null;
+  // Leaving the page ends the program. The page may come back from the browser's
+  // cache, so the line ends here too, or it would run for ever (009 FR-034).
+  const closeOnLeave = () => {
+    const { running } = state;
+    session.closeProgram();
+    if (running === null) return;
+    const shellState: ShellState = { ...state.state, status: 130, pipes: [130] };
+    client.setStatus(shellState);
+    set({ ...state, running: null, program: null, entries: [...state.entries, running], state: shellState, shell: statusOf(null) });
+    pump();
+  };
+
+  const grow = (nodes: readonly Node[]) => {
+    if (state.running !== null) set({ ...state, running: { ...state.running, block: [...(state.running.block ?? []), ...nodes] } });
+  };
+
+  function startProgram(waiting: Waiting, request: ProgramRequest, next: Session): void {
+    const at = generation;
+    const words = siteText.terminal.program;
+    stopPressed = false;
+    const { block } = next.entries.at(-1)!;
+    set({ ...next, entries: next.entries.slice(0, -1), running: { ...waiting.entry, block }, program: { interrupts: 0, stillShown: false }, shell: 'running', announcement: state.announcement });
+    addEventListener('pagehide', closeOnLeave);
+    const spoken = batched((text) => set({ ...state, announcement: say(text) }));
+    const noteOutput = () => {
+      if (stillTimer !== null) clearTimeout(stillTimer);
+      stillTimer = null;
+      if (state.program?.stillShown !== false) return;
+      stillTimer = setTimeout(() => {
+        if (at !== generation || state.program === null) return;
+        set({ ...state, program: { ...state.program, stillShown: true } });
+        grow([dim(words.stillRunning[waiting.shell === 'mobile' ? 'phone' : 'desktop'], 'still')]);
+      }, STILL_MS);
+    };
+    noteOutput();
+    const ended = (end: ProgramEnd) => {
+      if (at !== generation) return;
+      const unsaid = spoken.stop();
+      if (stillTimer !== null) clearTimeout(stillTimer);
+      removeEventListener('pagehide', closeOnLeave);
+      handle = null;
+      finishProgram(end, unsaid);
+    };
+    const events: ProgramEvents = {
+      onOutput(chunks) {
+        if (at !== generation) return;
+        grow(chunks.map(({ stream, text }): Node => (stream === 'stderr' ? { kind: 'text', text, stream, tone: 'error' } : { kind: 'text', text, stream })));
+        spoken.add(chunks.map(({ text }) => text).join(''));
+        noteOutput();
+      },
+      onProgress(step) {
+        if (at !== generation || step === 0) return;
+        grow([dim(fill(words.download, { n: step * 25, size: Math.round(bytes() / 1_048_576) }), 'download')]);
+      },
+      onEnded: ended,
+    };
+    void openHost().then(
+      (host) => {
+        if (at !== generation) return;
+        if (stopPressed) ended({ status: 130, reason: 'interrupted', changes: NO_CHANGES });
+        else handle = host.start(request, events);
+      },
+      () => ended({ status: 1, reason: 'died', changes: NO_CHANGES }),
+    );
+  }
+
+  function finishProgram({ status, reason, changes }: ProgramEnd, unsaid: string): void {
+    const words = siteText.terminal;
+    const closing: Node[] = [];
+    if (reason === 'interrupted') {
+      closing.push(dim(words.replies.cancelMark, 'stop'));
+      queue = queue.map((each) => ({ ...each, entry: { ...each.entry, block: [], cancelled: true } }));
+    } else if (reason === 'output') closing.push(stoppedLine(words.replies.stopped.output));
+    else if (reason === 'memory' || reason === 'died' || reason === 'offline') closing.push({ kind: 'line', children: [{ kind: 'text', text: reason === 'memory' ? words.program.memory : reason === 'died' ? words.program.died : fill(words.program.offline, { size: Math.round(bytes() / 1_048_576) }), tone: 'error' }] });
+    grow(closing);
+    const done = state.running!;
+    const shellState: ShellState = { ...state.state, status, pipes: [status] };
+    client.setStatus(shellState);
+    set({ ...state, running: null, program: null, entries: [...state.entries, done], state: shellState, waiting: queue.map((each) => each.entry), shell: statusOf(null), announcement: say(`${unsaid === '' ? '' : `${unsaid.trimEnd()}\n`}${fill(words.program.ended, { n: status })}`) });
+    const at = generation;
+    if (changes.length === 0) {
+      pump();
+      return;
+    }
+    void client.apply((ids += 1), changes).then((files) => {
+      if (at !== generation) return;
+      if (files !== null) set({ ...state, files });
+      pump();
+    });
   }
 
   // Runs the next waiting line, when the shell is ready and none runs.
@@ -284,6 +402,14 @@ export function createSession(client: ShellClient = createShellClient()) {
   // draft.
   function cancel() {
     if (state.vim !== null) return;
+    if (state.program !== null) {
+      // The handler decides, or the program ends; lines wait until it does
+      // (009 FR-031, FR-032).
+      set({ ...state, program: { ...state.program, interrupts: state.program.interrupts + 1 } });
+      if (handle === null) stopPressed = true;
+      else handle.interrupt();
+      return;
+    }
     const waited = queue.length > 0;
     queue = queue.map((each) => ({ ...each, entry: { ...each.entry, block: [], cancelled: true } }));
     const waiting = queue.map((each) => each.entry);
@@ -361,7 +487,7 @@ export function createSession(client: ShellClient = createShellClient()) {
     set({ ...state, vim: next, ...(spokenText === '' ? {} : { announcement: say(spokenText) }) });
   }
 
-  return {
+  const session = {
     get: () => state,
     // The Terminal opened: the shell starts loading, once a visit (FR-070).
     start: () => client.start(),
@@ -393,13 +519,23 @@ export function createSession(client: ShellClient = createShellClient()) {
     scrollFor: (shell: Shell) => state.shellScroll[shell] ?? state.scrollTop,
     // On close: as on first open, and the shell's state and the visitor's
     // files emptied (FR-021).
-    reset: () => {
+    // Leaving the page, or a reset: the program ends with `closed`, and nothing it
+    // changed is kept, as closing empties the visitor's files (009 FR-034).
+    closeProgram() {
       generation += 1;
+      if (stillTimer !== null) clearTimeout(stillTimer);
+      handle?.close();
+      handle = null;
+      if (state.program !== null) removeEventListener('pagehide', closeOnLeave);
+    },
+    reset: () => {
+      session.closeProgram();
       queue = [];
       client.reset();
       set({ ...EMPTY, shell: statusOf(null) });
     },
   };
+  return session;
 }
 
 export type TerminalSession = ReturnType<typeof createSession>;

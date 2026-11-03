@@ -102,4 +102,4 @@ export type Engine = {
   dispose(): void;
 };
 
-export type EngineModule = { api: 1; createEngine(init: EngineInit): Promise<Engine> };
+export type EngineModule = { api: 2; createEngine(init: EngineInit): Promise<Engine> };

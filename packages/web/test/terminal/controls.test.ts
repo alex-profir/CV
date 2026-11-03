@@ -47,7 +47,7 @@ describe('006-terminal-FR-050 and 006-terminal-FR-018: a control’s line quotes
 
 const HELP_LINES = [
   'help', '?', 'about', 'whoami', 'work', 'experience', 'projects', 'education', 'skills', 'languages', 'interests', 'contact',
-  'cv', 'site', 'specs', 'ls', 'cd', 'cat', 'jq', 'vim', 'pwd', 'open', 'history', 'clear', 'exit',
+  'cv', 'site', 'specs', 'ls', 'cd', 'cat', 'jq', 'vim', 'node', 'ts-node', 'tsnode', 'pwd', 'open', 'history', 'clear', 'exit',
 ];
 
 type How = 'click' | 'Enter' | 'Space';

@@ -37,14 +37,14 @@ class FakeCaches {
   }
 }
 
-function manifestFor(hash: string, api = 1, typescript = '5.9.3'): EngineManifest {
+function manifestFor(hash: string, api = 2, typescript = '5.9.3'): EngineManifest {
   const folder = `/playground/${hash}`;
   const files = [
     { path: `${folder}/engine-a.js`, bytes: 400 },
     { path: `${folder}/engine-a.css`, bytes: 100 },
     { path: `${folder}/ts.worker-a.js`, bytes: 500 },
   ];
-  return { api: api as 1, version: hash, typescript, entry: files[0]!.path, style: files[1]!.path, files, total: 1000 };
+  return { api: api as 2, version: hash, typescript, entry: files[0]!.path, style: files[1]!.path, compiler: files[0]!.path, files, total: 1000 };
 }
 
 type Net = { online: boolean; fail?: (url: string) => boolean; requests: string[] };
@@ -68,7 +68,7 @@ function env(caches: FakeCaches | undefined, manifests: EngineManifest[], net: N
     },
     importModule: async (url: string) => {
       imported.push(url);
-      return { api: 1, createEngine: async () => ({}) as never };
+      return { api: 2, createEngine: async () => ({}) as never };
     },
     linkStyle: async (url: string) => void styles.push(url),
     waitForRetry: (signal: AbortSignal) =>
@@ -336,8 +336,8 @@ describe('008-typescript-playground-FR-011: a copy that won\'t open shows the st
 describe('008-typescript-playground-FR-013: an older complete copy is used when the current one can\'t be had, and goes once it can', () => {
   test('offline, the newest other complete copy of the same api opens, showing its version; one of another api never does', async () => {
     const caches = new FakeCaches();
-    const old = manifestFor('old1', 1, '5.8.0');
-    const other = manifestFor('old2', 2, '6.0.0');
+    const old = manifestFor('old1', 2, '5.8.0');
+    const other = manifestFor('old2', 3, '6.0.0');
     for (const manifest of [old, other]) {
       const cache = await caches.open(`playground-${manifest.version}`);
       for (const file of manifest.files) await cache.put(file.path, new Response('x'));
@@ -354,11 +354,11 @@ describe('008-typescript-playground-FR-013: an older complete copy is used when 
 
   test('online, an older complete copy opens at once with no download shown; the new one is stored behind it and used from the next open', async () => {
     const caches = new FakeCaches();
-    const old = manifestFor('old1', 1, '5.8.0');
+    const old = manifestFor('old1', 2, '5.8.0');
     const stored = await caches.open('playground-old1');
     for (const file of old.files) await stored.put(file.path, new Response('x'));
     await stored.put('/playground/old1/complete', new Response(JSON.stringify(old)));
-    const next = manifestFor('new1', 1, '5.9.3');
+    const next = manifestFor('new1', 2, '5.9.3');
     const net: Net = { online: true, requests: [] };
     const { states, events } = record();
     const fake = env(caches, [next], net);

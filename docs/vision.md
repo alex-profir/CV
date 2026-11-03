@@ -41,7 +41,7 @@ The site makes the process something a visitor can see, not just read about.
 | App | Shells | What it does |
 |-----|--------|--------------|
 | **CV** | Both | The CV itself, one click or tap from first load. Same content as `/cv`, with a way to download it as a PDF. On phones it also has a home-screen widget. |
-| **Terminal** | Both | Explore the CV and the site through commands. On phones it is deliberately a little odd, as a nice touch. |
+| **Terminal** | Both | Explore the CV and the site through commands, and write and run JavaScript and TypeScript in a sandbox with `node` and `ts-node`. On phones it is deliberately a little odd, as a nice touch. |
 | **TypeScript playground** | Desktop | Write and run TypeScript, with live type errors, types on hover and autocomplete, the compiled output, examples, and sharing code by link. A shared link opens the code but never runs it. Code runs in a sandbox with no access to the site's storage, and it can be stopped. Phones show a "best on desktop" screen with a way to share the link instead, because a code editor on a phone keyboard is a poor experience. |
 | **Files** | Both | Browse the site's files: the CV laid out as files, the specs, and the visitor's own files, and open each one in its app. The Terminal works on the same files. |
 | **Spotlight** | Both | Search apps, CV sections, files, Terminal commands and actions such as downloading the CV. It opens from the keyboard on desktop and by swiping down on the home screen on phones, and it works offline. |

@@ -35,7 +35,7 @@ function lastLine(build: { status: number | null; stderr: string }): string {
 const append = (root: string, file: string, code: string) => fs.appendFileSync(path.join(root, file), `\n${code}\n`);
 
 describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded only by the Terminal', () => {
-  test("assets holds one os script and one shell worker, each one file, with no import but the engine's computed one", () => {
+  test("assets holds one os script and one shell worker, each one file, with no import but the engine's and the program's computed ones", () => {
     const { dir } = builtSite();
     const scripts = fs.readdirSync(path.join(dir, 'assets')).filter((name) => name.endsWith('.js'));
     const os = scripts.filter((name) => /^os-[\w-]+\.js$/.test(name));
@@ -51,10 +51,12 @@ describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded o
     };
     expect(read(workers[0]!).dynamicImports).toEqual([]);
     const { code, dynamicImports } = read(os[0]!);
-    expect(dynamicImports).toHaveLength(1);
-    const { start, end } = dynamicImports[0]!.moduleRequest;
-    expect(code.slice(start - 7, start)).toBe('import(');
-    expect(code.slice(start, end)).not.toMatch(/^[`'"]|shell-/);
+    // The Playground's engine and the program bundle, each by a computed address.
+    expect(dynamicImports).toHaveLength(2);
+    for (const { moduleRequest: { start, end } } of dynamicImports) {
+      expect(code.slice(start - 7, start)).toBe('import(');
+      expect(code.slice(start, end)).not.toMatch(/^[`'"]|shell-|program-/);
+    }
   });
 
   test('the worker starts with a comment naming its license file, which names every bundled package with its version and license', () => {
@@ -78,6 +80,43 @@ describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded o
     const sw = fs.readFileSync(path.join(dir, 'sw.js'), 'utf8');
     expect(sw).toMatch(/"\/assets\/shell-[\w-]+\.js"/);
     expect(sw).toMatch(/"\/assets\/shell-licenses-[\w-]+\.txt"/);
+  });
+
+  test('009-terminal-node-FR-036: one program bundle, on none of the first-load files, named on #os, and precached', () => {
+    const { dir } = builtSite();
+    const assets = fs.readdirSync(path.join(dir, 'assets'));
+    const bundles = assets.filter((name) => /^program-[\da-f]+\.js$/.test(name));
+    expect(bundles).toHaveLength(1);
+    const bundle = fs.readFileSync(path.join(dir, 'assets', bundles[0]!), 'utf8');
+    expect(parseSync(bundles[0]!, bundle, { sourceType: 'module' }).module.staticImports).toEqual([]);
+    expect(assets.filter((name) => /^os-[\w-]+\.js$/.test(name))).toHaveLength(1);
+    expect(assets.filter((name) => /^shell-[\w-]+\.js$/.test(name))).toHaveLength(1);
+    const index = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+    expect(index).toContain(`data-program="/assets/${bundles[0]}"`);
+    // Marks of what the runtime bundles, each only in the bundle: acorn's
+    // parser, buffer's own error, and the inspect package's option name.
+    const marks = ['Unexpected token', 'ERR_BUFFER_OUT_OF_BOUNDS', 'breakLength'];
+    for (const mark of marks) expect(bundle, mark).toContain(mark);
+    for (const name of assets.filter((file) => /^(?:os|register-sw|shell)-[\w-]+\.js$/.test(file))) {
+      const code = fs.readFileSync(path.join(dir, 'assets', name), 'utf8');
+      for (const mark of ['acorn', 'ERR_BUFFER_OUT_OF_BOUNDS', 'breakLength']) if (!(name.startsWith('shell-') && mark === 'acorn')) expect(code.includes(mark), `${name} holds ${mark}`).toBe(false);
+    }
+    const os = assets.find((name) => /^os-[\w-]+\.js$/.test(name))!;
+    expect(fs.readFileSync(path.join(dir, 'assets', os), 'utf8')).not.toContain(bundles[0]!);
+    const sw = fs.readFileSync(path.join(dir, 'sw.js'), 'utf8');
+    expect(sw).toContain(`"/assets/${bundles[0]}"`);
+  });
+
+  test("009-terminal-node-FR-036: the bundle's first line names its license file, which names what it bundles", () => {
+    const { dir } = builtSite();
+    const assets = fs.readdirSync(path.join(dir, 'assets'));
+    const bundle = assets.find((name) => /^program-[\da-f]+\.js$/.test(name))!;
+    const named = /^\/\*![^\n]*\/assets\/(program-licenses-[\da-f]+\.txt) \*\/\n/.exec(fs.readFileSync(path.join(dir, 'assets', bundle), 'utf8'))?.[1];
+    expect(named).toBeDefined();
+    const licenses = fs.readFileSync(path.join(dir, 'assets', named!), 'utf8');
+    for (const name of ['acorn 8.19.0', 'buffer 6.0.3', 'node-inspect-extracted 3.3.4']) expect(licenses).toContain(name);
+    expect(licenses).toContain('License: MIT');
+    expect(fs.readFileSync(path.join(dir, 'sw.js'), 'utf8')).toContain(`"/assets/${named}"`);
   });
 
   test('a worker that imports another file fails the build', () => {

@@ -23,6 +23,7 @@ import { cvAppProblems } from './parts/cv-app.ts';
 import { shellLineProblems, terminalProblems, terminalVariants } from './parts/terminal.ts';
 import { INSPECTOR_VIEWS, elementProblems, inspectorVariants, inspectorViewProblems, readInspectorExpected, sweepProblems } from './parts/inspector.ts';
 import type { InspectorExpected } from './parts/inspector.ts';
+import { PROGRAM_CHECKS, programVariant } from './parts/program.ts';
 import { PLAYGROUND_CHECKS, PLAYGROUND_FORCED_STATES, PLAYGROUND_OTHER_SITE_RUNS, firstLoadProblems, playgroundForcedProblems, playgroundMotionProblems, playgroundOfflineProblems, playgroundSideways, playgroundVariant, readEngineManifest } from './parts/playground.ts';
 import type { PlaygroundExpected } from './parts/playground.ts';
 import { fontProblems } from './parts/fonts.ts';
@@ -116,9 +117,10 @@ const PLAYGROUND_LAYOUTS: readonly { state: string; condition: string; width: nu
 
 // `repository` is where the inspector part reads the requirement data and
 // the site's repository address: the root itself, unless a test checks a
-// built site laid out apart from its repository. `playgroundChecks` runs only
-// those of the Playground part's checks, for a test on a copy with one fault.
-export type CheckOptions = { parts?: readonly Part[]; repository?: string; playgroundChecks?: readonly string[] };
+// built site laid out apart from its repository. `playgroundChecks` and
+// `programChecks` run only those of the two parts' checks, for a test on a copy
+// with one fault.
+export type CheckOptions = { parts?: readonly Part[]; repository?: string; playgroundChecks?: readonly string[]; programChecks?: readonly string[] };
 
 export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
@@ -196,7 +198,7 @@ const siteName = (resume: Resume) => (typeof resume.basics?.name === 'string' &&
 
 const viewport = (width: number, height = 900) => ({ viewport: { width, height } });
 
-export async function runCheck(root: string, { parts = PARTS, repository = root, playgroundChecks }: CheckOptions = {}): Promise<Report> {
+export async function runCheck(root: string, { parts = PARTS, repository = root, playgroundChecks, programChecks }: CheckOptions = {}): Promise<Report> {
   const manifest = readManifest(root);
   const siteDir = path.join(root, SITE_DIR);
   // Read when a part needs it, so an unreadable CV document fails only
@@ -321,6 +323,21 @@ export async function runCheck(root: string, { parts = PARTS, repository = root,
             await withShell(chromium, rootUrl, target, {}, (page) => check.run(page, { expected, add, profile }));
           } catch (error) {
             for (const name of check.names) if (!reported.has(name)) results.push(crashed('playground', ROOT, playgroundVariant(check.shell, name, target.width), error));
+          }
+        }
+      },
+      program: async () => {
+        // As `cv-app`: with no shell at the root, there's no Terminal.
+        if (!shellRoot || PROGRAM_CHECKS.length === 0) {
+          results.push(result('program', '-', '-', []));
+          return;
+        }
+        for (const check of PROGRAM_CHECKS) {
+          if (programChecks !== undefined && !programChecks.includes(check.name)) continue;
+          for (const shell of check.shells) {
+            const target = shellAt(shell);
+            const variant = programVariant(shell, check.name, target.width);
+            results.push(await run('program', ROOT, variant, () => withShell(chromium, rootUrl, target, check.options ?? {}, async (page) => (await check.run(page, shell)).map((found) => ({ part: 'program' as const, page: ROOT, variant, ...found })))));
           }
         }
       },

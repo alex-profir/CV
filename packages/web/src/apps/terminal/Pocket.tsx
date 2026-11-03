@@ -51,6 +51,8 @@ export function Pocket(props: AppProps) {
   const mode = () => session.get().vim?.mode ?? null;
   const vimMode = useSyncExternalStore(session.subscribe, mode, mode);
   const vim = vimMode !== null;
+  const isRunning = () => session.get().program !== null;
+  const running = useSyncExternalStore(session.subscribe, isRunning, isRunning);
   const [active, setActive] = useState(0);
   const name = props.resume.basics?.name;
   const keys = vim ? words.vim.map((each) => ({ line: each.key, label: fill(words.vimKeyName, { name: each.name, key: each.key }) })) : [...words.commands.map((line) => ({ line, label: line })), { line: words.tabKey.key, label: words.tabKey.name }];
@@ -89,6 +91,14 @@ export function Pocket(props: AppProps) {
     </button>
   );
 
+  // While a program runs, Stop takes `clear`'s place, as its line could only wait
+  // (009 FR-039). The same button, so focus stays on it when the program ends.
+  const stopKey = (props: { tabIndex?: number; onFocus?: () => void }) => (
+    <button key="clear" type="button" className="pocket-key pocket-key-stop" aria-label={siteText.terminal.program.stop} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={session.cancel} data-req="009-terminal-node-FR-039" {...props}>
+      {siteText.terminal.program.stopKey}
+    </button>
+  );
+
   // One Tab stop; the arrows, Home and End move between keys.
   const move = (event: KeyboardEvent<HTMLDivElement>) => {
     const last = keys.length - 1;
@@ -116,6 +126,7 @@ export function Pocket(props: AppProps) {
       <div className="pocket-keys" role="toolbar" aria-label={vim ? words.vimKeys : words.commandKeys} onKeyDown={move} data-req="006-terminal-FR-051 006-terminal-FR-066 006-terminal-FR-078">
         {keys.map((key, index) => {
           const roving = { tabIndex: index === Math.min(active, keys.length - 1) ? 0 : -1, onFocus: () => setActive(index) };
+          if (running && key.line === 'clear') return stopKey(roving);
           return key.line === words.tabKey.key ? (
             tabKey(roving)
           ) : (
@@ -131,6 +142,8 @@ export function Pocket(props: AppProps) {
             <button type="button" className="pocket-key" aria-label={words.escKey.name} onPointerDown={keepFocus} onMouseDown={keepFocus} onClick={() => session.vim({ key: 'Escape' })}>
               {words.escKey.key}
             </button>
+          ) : running ? (
+            stopKey({})
           ) : (
             tabKey({})
           )}

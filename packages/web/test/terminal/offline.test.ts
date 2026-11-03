@@ -13,6 +13,7 @@ import { firstPage, goOffline, switchableServer } from '../helpers/offline.ts';
 import { settle, waitForReady } from '../helpers/shell.ts';
 import { builtSite } from '../helpers/site.ts';
 import { COMMAND_LINE, groupText, runGroup } from '../helpers/terminal.ts';
+import { runToEnd, statusOf, writeFile } from '../helpers/program.ts';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -100,4 +101,64 @@ describe('006-terminal-FR-036: the Terminal works offline after one visit', () =
       }
     });
   }
+});
+
+// What the page itself asked for of a program's code or the engine, from its own
+// resource timing: the service worker's install fetches the precached bundle on the
+// same load (T009), which the server's own record would count.
+const programRequests = (page: Page) => page.evaluate(() => performance.getEntriesByType('resource').map((entry) => new URL(entry.name).pathname).filter((pathname) => /^\/assets\/program-/.test(pathname) || pathname.startsWith('/playground/')));
+
+describe('009-terminal-node-FR-036 and 009-terminal-node-FR-037: programs offline, and nothing of them before a first program', () => {
+  test('on a fresh load, the page requests no program script and no engine file at /, at /cv and at the Terminal\'s first open', async () => {
+    const server = await switchableServer();
+    await server.serve(builtSite());
+    const page = await firstPage(`${server.url}/`);
+    expect(await waitForWorker(page)).toBe(true);
+    expect(await programRequests(page)).toEqual([]);
+    const root = await openTerminalIn(page.context(), server.url, SIZES[1]);
+    expect(await programRequests(root)).toEqual([]);
+    // The measure can see one: a first program does request the bundle.
+    await runToEnd(root, 'node -e "1"');
+    expect((await programRequests(root)).filter((pathname) => /^\/assets\/program-.*\.js$/.test(pathname))).toHaveLength(1);
+    await root.goto(`${server.url}/cv`, { waitUntil: 'load' });
+    expect(await programRequests(root)).toEqual([]);
+  });
+
+  for (const size of SIZES) {
+    test(`at ${size.width} px, after one visit with no program run, node runs offline, and ts-node with no copy says so with the size`, async () => {
+      const server = await switchableServer();
+      await server.serve(builtSite());
+      const page = await firstPage(`${server.url}/`);
+      expect(await waitForWorker(page)).toBe(true);
+      await server.close();
+      await goOffline(page.context());
+      const root = await openTerminalIn(page.context(), server.url, size);
+      await writeFile(root, 'hello.js', "console.log('from the stored copy');\n");
+      expect(await runToEnd(root, 'node hello.js')).toContain('from the stored copy');
+      expect(await statusOf(root)).toBe('0');
+      await writeFile(root, 'app.ts', "console.log('typed');\n");
+      const refused = await runToEnd(root, 'ts-node app.ts');
+      expect(refused).toMatch(/TypeScript/);
+      expect(refused).toMatch(/\d+(\.\d+)? MB/);
+      expect(refused).not.toContain('typed');
+      expect(await statusOf(root)).toBe('1');
+    });
+  }
+
+  test('with a copy, downloaded online, ts-node runs offline', async () => {
+    const server = await switchableServer();
+    await server.serve(builtSite());
+    const page = await firstPage(`${server.url}/`);
+    expect(await waitForWorker(page)).toBe(true);
+    const online = await openTerminalIn(page.context(), server.url, SIZES[1]);
+    await writeFile(online, 'app.ts', "const n: number = 1;\nconsole.log('typed', n);\n");
+    expect(await runToEnd(online, 'ts-node app.ts')).toContain('typed 1');
+    await online.close();
+    await server.close();
+    await goOffline(page.context());
+    const root = await openTerminalIn(page.context(), server.url, SIZES[1]);
+    await writeFile(root, 'app.ts', "const n: number = 2;\nconsole.log('typed', n);\n");
+    expect(await runToEnd(root, 'ts-node app.ts')).toContain('typed 2');
+    expect(await statusOf(root)).toBe('0');
+  });
 });

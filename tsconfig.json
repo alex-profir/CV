@@ -23,5 +23,5 @@
     "packages/**/*.tsx",
     "vitest.config.ts"
   ],
-  "exclude": ["**/__fixtures__/**", "packages/web/src/sw/**"]
+  "exclude": ["**/__fixtures__/**", "packages/web/src/sw/**", "packages/web/src/apps/terminal/program/runtime/node.d.ts"]
 }

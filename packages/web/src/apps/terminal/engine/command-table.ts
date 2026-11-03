@@ -9,7 +9,7 @@ import type { Node, Tone } from './block.ts';
 export type CommandName =
   | 'help' | 'about' | 'work' | 'projects' | 'education' | 'skills' | 'languages' | 'interests'
   | 'contact' | 'cv' | 'site' | 'specs' | 'ls' | 'cd' | 'cat' | 'jq' | 'vim' | 'pwd' | 'open'
-  | 'history' | 'clear' | 'exit';
+  | 'history' | 'clear' | 'exit' | 'node' | 'ts-node';
 
 export type ArgKind = keyof FullText['terminal']['takes'];
 
@@ -34,6 +34,8 @@ export const COMMAND_TABLE: readonly CommandRow[] = [
   { name: 'cat', aliases: [], args: 'path' },
   { name: 'jq', aliases: [], args: 'optional-path-or-input' },
   { name: 'vim', aliases: [], args: 'path-or-input' },
+  { name: 'node', aliases: [], args: 'path' },
+  { name: 'ts-node', aliases: ['tsnode'], args: 'path' },
   { name: 'pwd', aliases: [], args: 'none' },
   { name: 'open', aliases: [], args: 'name' },
   { name: 'history', aliases: [], args: 'none' },

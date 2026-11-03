@@ -40,7 +40,6 @@ export const LEFT_OUT: Readonly<Record<string, LeftOutReason>> = {
   python3: 'language',
   python: 'language',
   'js-exec': 'language',
-  node: 'language',
   sqlite3: 'language',
   bash: 'scripts',
   sh: 'scripts',

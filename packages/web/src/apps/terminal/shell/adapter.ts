@@ -13,7 +13,8 @@ import { CASE_MARK, CHECK_FILE, CLEARED, FATAL, GONE, HOME, MARK, OPENING, Termi
 import { INPUT_FILE, OUTPUT_FILE } from './gnu.ts';
 import { INITIAL_STATE, QUOTA } from './protocol.ts';
 import type { CompleteRequest, Completion, Limit, RunRequest, RunResult, ShellOption, ShellState, VisitorFiles, WriteOutcome, WriteRequest } from './protocol.ts';
-import { PIPED, RENAMED, SCREEN_COMMANDS, siteCommands, TYPED } from './site-commands.ts';
+import type { FileChange, FileChanges } from '../program/messages.ts';
+import { holdsProgram, isSoleCommand, PIPED, RENAMED, SCREEN_COMMANDS, siteCommands, TYPED } from './site-commands.ts';
 import type { RunRecord } from './site-commands.ts';
 import { NAMED_NOT_RUN, SHELL_BUILTINS, SHELL_KEYWORDS, STANDARD_COMMANDS } from './standard.ts';
 
@@ -1484,6 +1485,9 @@ export type Shell = {
   write(request: WriteRequest): Promise<WriteOutcome>;
   // Tab (research R43): over TerminalFs and the tables the shell is built from.
   complete(request: CompleteRequest): Promise<Completion>;
+  // What a program changed, when it ended (009 research R10): through TerminalFs,
+  // which checks the rules again; a change it refuses is skipped.
+  apply(changes: FileChanges): Promise<VisitorFiles>;
 };
 
 // `limits` only in tests, to reach one limit before another.
@@ -1975,7 +1979,7 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { stdout: '', stderr: full.map((target) => `bash: ${target}: No space left on device\n`).join(''), exitCode: full.length > 0 ? 1 : Number(args[0] ?? 0) };
   });
 
-  const commands = siteCommands({ context, fs, run: () => record, limits });
+  const commands = siteCommands({ context, fs, run: () => record, limits, parse: (line) => parseOwn(line) });
 
   // The visitor's functions, which win over a site command in another case.
   let functions: ReadonlySet<string> = new Set();
@@ -2261,6 +2265,8 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     if (negated !== null) return { ...base, stdout: '', stderr: `bash: ${negated}: negated patterns aren't supported\n`, status: 1, end: 'done', state: { ...state, status: 1 } };
     const error = syntaxError(ast);
     if (error !== null) return { ...base, stdout: '', stderr: `bash: ${parseMessage(error, line)}\n`, status: 2, end: 'syntax' };
+    // One of the program commands anywhere but alone: none of the line runs (009 FR-006).
+    if (holdsProgram(ast) && !isSoleCommand(ast)) return { ...base, stdout: '', stderr: `${context.text.terminal.nodeCommand.ownLine}\n`, status: 1, end: 'done', state: { ...state, status: 1, pipes: [1] } };
 
     const warning = unterminated(ast);
     const setup = setupOf(state);
@@ -2427,10 +2433,34 @@ export function createShell(input: SiteInput, options: { limits?: Partial<Limits
     return { id, ok: true, path, created: stat === null, lines: text.split('\n').length - 1, bytes: new TextEncoder().encode(text).length, files, ...(own ? { own } : {}) };
   }
 
+  async function apply(changes: FileChanges): Promise<VisitorFiles> {
+    const one = (change: FileChange): Promise<unknown> => {
+      if ('removed' in change) return fs.rm(change.path, { force: true });
+      if ('made' in change) return change.made ? fs.mkdir(change.path, { recursive: true }) : fs.rm(change.path, { recursive: true, force: true });
+      return fs.writeFile(change.path, change.binary === true ? Uint8Array.from(change.text, (character) => character.charCodeAt(0)) : change.text);
+    };
+    // In order, and any other refusal is skipped. A write refused for space can fit
+    // once a later change has made room, as only the latest of each path is here.
+    for (let left = changes; left.length > 0; ) {
+      const full: FileChange[] = [];
+      for (const change of left) {
+        await one(change).catch((error: { code?: string }) => {
+          if (error.code === 'ENOSPC') full.push(change);
+        });
+      }
+      if (full.length === left.length) break;
+      left = full;
+    }
+    const files = await fs.snapshot();
+    lastFiles = JSON.stringify(files);
+    return files;
+  }
+
   return {
     warm,
     run,
     write,
+    apply,
     complete: (request) =>
       complete(request, {
         fs,

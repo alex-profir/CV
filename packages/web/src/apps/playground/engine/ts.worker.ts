@@ -5,6 +5,9 @@
 import { initialize } from 'monaco-editor/internal/common/initialize';
 import { TypeScriptWorker } from 'monaco-editor/languages/features/typescript/tsWorker';
 import { typescript as ts } from 'monaco-editor/languages/features/typescript/lib/typescriptServices';
+import { libFileMap } from 'monaco-editor/languages/features/typescript/lib/lib';
+import { compile } from './compile.ts';
+import type { CompileRequest } from './compile.ts';
 import type { CheckResult, Diagnostic } from '../types.ts';
 
 type Import = { start: number; end: number; specifier: string };
@@ -229,6 +232,12 @@ class PlaygroundWorker extends TypeScriptWorker {
   }
 }
 
-self.onmessage = () => {
-  initialize((ctx, createData) => new PlaygroundWorker(ctx, createData));
-};
+// Started as `compile`, it answers the Terminal's programs and Monaco is never
+// started (009 research R12); any other name keeps the worker as Monaco's.
+if (self.name === 'compile') {
+  self.onmessage = (event: MessageEvent<CompileRequest>) => self.postMessage(compile(ts, libFileMap, event.data));
+} else {
+  self.onmessage = () => {
+    initialize((ctx, createData) => new PlaygroundWorker(ctx, createData));
+  };
+}

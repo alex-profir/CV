@@ -22,6 +22,8 @@ function fakeClient(status: ClientStatus = 'ready'): FakeClient {
     for (const listener of listeners) listener();
   };
   const client: FakeClient = {
+    setStatus: () => undefined,
+    apply: async () => null,
     resets: 0,
     sent: [],
     status: () => now,

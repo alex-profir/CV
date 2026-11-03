@@ -939,7 +939,7 @@ sort tail tee touch tr tree true uniq wc which xargs yes`, and `cat jq ls pwd`
 That is the group the approved design lists ("every command of FR-068, alphabetical"). Every
 other command just-bash has is left out, for one of these reasons, which a test names per command:
 the network (`curl`, `html-to-markdown`, FR-022); another language (`python3`, `python`,
-`js-exec`, `node`, `sqlite3`, FR-068); running scripts (`bash`, `sh`, out of scope); permissions
+`js-exec`, `sqlite3`, FR-068; `node` was here until 009-terminal-node, which offers its own in place of just-bash's, amended 2026-11-02); running scripts (`bash`, `sh`, out of scope); permissions
 and links (`chmod`, `ln`, `readlink`, out of scope, and a link would be a way around R28's checks);
 Node's `zlib` (`gzip`, `gunzip`, `zcat`, `tar`, R34); aliases, which can't be carried between lines
 (`alias`, `unalias`, R27); the site's own (`help`, `history`, `clear`, `whoami`); and the rest

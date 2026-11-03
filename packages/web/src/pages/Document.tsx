@@ -9,7 +9,7 @@ import type { ReactNode } from 'react';
 // `#os` for the inspector to fetch once the shell is ready.
 // `playground`: the Playground engine's manifest and its total size (008
 // contracts/site.md step 4).
-export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: { manifest: string; bytes: number } };
+export type PageAssets = { css: string[]; scripts: string[]; preloadFonts: string[]; requirements?: string; playground?: { manifest: string; bytes: number }; program?: string };
 
 export function Document({ title, description, assets, children }: { title: string; description?: string | undefined; assets: PageAssets; children: ReactNode }) {
   return (

@@ -17,3 +17,19 @@ declare module 'virtual:playground-runner' {
   export const runtime: string;
   export const policy: string;
 }
+
+// The program bundle's scripts (009 research R13).
+declare module 'virtual:terminal-program' {
+  export const bootstrap: string;
+  export const runtime: string;
+  export const policy: string;
+  export const nodeTypes: string;
+}
+
+// The `buffer` package, named so that it isn't Node's built-in (009 research R11).
+declare module 'buffer/' {
+  export const Buffer: typeof import('node:buffer').Buffer;
+  export const SlowBuffer: unknown;
+  export const kMaxLength: number;
+  export const INSPECT_MAX_BYTES: number;
+}

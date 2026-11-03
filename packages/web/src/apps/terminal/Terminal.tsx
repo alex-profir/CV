@@ -52,9 +52,17 @@ function Run({ entry, desktop, run, pending = false }: { entry: Entry; desktop: 
         {entry.cancelled === true && <span className="run-cancel">{words.replies.cancelMark}</span>}
       </h2>
       {entry.block !== null && entry.block.length > 0 && (
-        <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
-          <Output block={entry.block} run={run} />
-        </div>
+        // Each `data-req` is written out, as the inspector and the traceability check
+        // read them from the source.
+        pending ? (
+          <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018 009-terminal-node-FR-009">
+            <Output block={entry.block} run={run} />
+          </div>
+        ) : (
+          <div className="run-output" data-req="006-terminal-FR-009 006-terminal-FR-010 006-terminal-FR-011 006-terminal-FR-018">
+            <Output block={entry.block} run={run} />
+          </div>
+        )
       )}
     </section>
   );
@@ -144,15 +152,32 @@ export function Terminal({ os }: AppProps) {
   // after a run, its heading at the top of the view, as far as it goes.
   const entries = state.entries.length;
   const shown = useRef(entries);
+  // A program's output follows the end of the view, unless the visitor has
+  // scrolled back, until they return to it (009 FR-041).
+  const following = useRef(true);
+  const running = state.program !== null;
+  const ranProgram = useRef(running);
+  const toEnd = () => {
+    const view = screen.current;
+    if (view !== null && following.current) view.scrollTop = view.scrollHeight;
+  };
+  useLayoutEffect(toEnd, [state.running?.block?.length]);
   useLayoutEffect(() => {
     const view = screen.current;
     if (view === null) return;
-    if (entries > shown.current) {
+    if (running && !ranProgram.current) {
+      following.current = true;
+      toEnd();
+    }
+    const fromProgram = ranProgram.current && !running;
+    ranProgram.current = running;
+    if (fromProgram) toEnd();
+    else if (entries > shown.current) {
       const last = view.querySelector<HTMLElement>(':scope > section.run:last-of-type');
       if (last !== null) view.scrollTop = Math.min(last.offsetTop - view.offsetTop, view.scrollHeight - view.clientHeight);
     }
     shown.current = entries;
-  }, [entries]);
+  }, [entries, running]);
 
   // Coming back to a kept session: the scroll position it had, when the
   // screen is drawn again, and when a minimized window is shown again, as a
@@ -181,7 +206,12 @@ export function Terminal({ os }: AppProps) {
         {siteText.os.views.terminal}
       </h1>
       {state.vim === null ? (
-        <div ref={screen} className="terminal-screen" onPointerDown={pointerDown} onPointerUp={pointerUp} onClick={click} data-req="006-terminal-FR-071 006-terminal-FR-075" onScroll={(event) => event.currentTarget.clientHeight > 0 && session.saveScroll(event.currentTarget.scrollTop, os.shell)}>
+        <div ref={screen} className="terminal-screen" onPointerDown={pointerDown} onPointerUp={pointerUp} onClick={click} data-req="006-terminal-FR-071 006-terminal-FR-075 009-terminal-node-FR-041" onScroll={(event) => {
+            const view = event.currentTarget;
+            if (view.clientHeight === 0) return;
+            following.current = view.scrollHeight - view.clientHeight - view.scrollTop < 2;
+            session.saveScroll(view.scrollTop, os.shell);
+          }}>
           {state.starter && (
             <div className="starter" data-req="006-terminal-FR-005 006-terminal-FR-030">
               {words.starter.map((line) => (
@@ -227,7 +257,7 @@ export function Terminal({ os }: AppProps) {
       ) : (
         <VimView state={state.vim} shell={os.shell} send={sendVim} />
       )}
-      <div className="terminal-status visually-hidden" role="status" data-req="006-terminal-FR-028 006-terminal-FR-077">
+      <div className="terminal-status visually-hidden" role="status" data-req="006-terminal-FR-028 006-terminal-FR-077 009-terminal-node-FR-040">
         {state.announcement !== null && <span key={state.announcement.id}>{state.announcement.text}</span>}
       </div>
     </div>

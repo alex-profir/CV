@@ -1,0 +1,6 @@
+/* What this feature adds to the site's style sheets: the Stop key (FR-039). Colors are site tokens. */
+.pocket-key.pocket-key-stop {
+  background: var(--token-color-terminal-error);
+  color: var(--token-color-terminal-user-text);
+  font-weight: 600;
+}

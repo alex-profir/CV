@@ -19,3 +19,15 @@ export function checkRunnerScripts(scripts: RunnerScripts): void {
     if (/<\/script/i.test(text)) throw new Error(`the runner's ${name} holds </script>, which would end its frame's script`);
   }
 }
+
+// A program's frame (009 research R2): its one script is the bootstrap, and it
+// allows `eval` inside this opaque origin, which holds nothing, and no request
+// of any kind (FR-023).
+export const programPolicy = (bootstrap: string): string => `default-src 'none'; script-src '${scriptHash(bootstrap)}' 'unsafe-eval'; worker-src blob:; connect-src 'none'`;
+
+// The policy allows exactly this bootstrap and reaches nothing. The runtime
+// goes to the worker as a message, so only the bootstrap sits in a `<script>`.
+export function checkProgramScripts(scripts: RunnerScripts): void {
+  if (scripts.policy !== programPolicy(scripts.bootstrap)) throw new Error("the program frame's policy doesn't allow its bootstrap script");
+  if (/<\/script/i.test(scripts.bootstrap)) throw new Error("the program's bootstrap holds </script>, which would end its frame's script");
+}

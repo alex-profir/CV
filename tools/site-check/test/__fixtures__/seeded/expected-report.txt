@@ -15,6 +15,7 @@ no-script /cv 1440px out-of-order education[0].institution: appears before skill
 no-script /cv 320px missing-field projects[0].name: "Guided Tours System" is not in the page with scripting off
 no-script /cv 320px out-of-order education[0].institution: appears before skills[0].keywords[0]
 offline / 375px no-redirect /: did not lead to /cv with the network off (got a browser error page)
+offline /cv 375px out-of-order projects[0].name: appears before skills[0].keywords[0]
 offline /missing-page 375px not-available /missing-page: did not open with the network off (got a browser error page)
 keyboard /cv 1440px covered a[href="https://github.com/ada-example/site"]: covered by div.cover when focused
 keyboard /cv 1440px no-focus-indicator a[href="mailto:ada@example.com"] "ada@example.com": no visible change when focused
@@ -54,12 +55,13 @@ Site check: FAILED
   terminal        pass
   inspector       pass
   playground      pass
+  program         pass
   accessibility   fail    /cv 320px fail (1), /cv 375px fail (1), /cv 1440px fail (1),
                           /missing-page 320px fail (1), /missing-page 375px fail (1), /missing-page 1440px fail (1)
   lighthouse      fail    /cv mobile:  performance <n>, accessibility <n>, best-practices <n>, seo <n>, agentic-browsing <n>
                           /cv desktop: performance <n>, accessibility <n>, best-practices <n>, seo <n>, agentic-browsing <n>
   no-script       fail    /cv 320px fail (2), /cv 1440px fail (2)
-  offline         fail    /cv pass,
+  offline         fail    /cv fail (1),
                           / fail (1),
                           /missing-page fail (1)
   keyboard        fail    /cv 375px fail (4), /cv 1440px fail (4),
@@ -74,4 +76,4 @@ Site check: FAILED
   modes           fail    /cv 375px fail (1), /cv 1440px fail (1), /cv forced-colors fail (1), /cv reduced-motion fail (1),
                           /missing-page 375px pass, /missing-page 1440px pass, /missing-page forced-colors pass, /missing-page reduced-motion pass
 
-  45 problems in 11 parts. 4 of 15 parts passed.
+  46 problems in 11 parts. 5 of 16 parts passed.

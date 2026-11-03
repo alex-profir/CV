@@ -73,6 +73,7 @@ export function ShellPage({
           data-requirements={assets.requirements}
           data-playground={assets.playground?.manifest}
           data-playground-bytes={assets.playground?.bytes}
+          data-program={assets.program}
           dangerouslySetInnerHTML={{ __html: osHtml }}
         />
       </body>

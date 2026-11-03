@@ -79,6 +79,62 @@ const lastControls = (page: Page) => idsOf(page, '#os .terminal section.run:last
 const spec = fs.readFileSync(path.join(REPO_ROOT, 'specs/006-terminal/spec.md'), 'utf8');
 const REQUIREMENTS = new Set([...spec.matchAll(/^- \*\*(FR-\d{3})\*\*/gm)].map((match) => `006-terminal-${match[1]}`));
 
+// Each matching element's 009 IDs, sorted.
+const programIds = (page: Page, selector: string) =>
+  page.locator(selector).evaluateAll((list) => list.map((element) => (element.getAttribute('data-req') ?? '').split(/\s+/).filter((id) => id.startsWith('009-')).sort().join(' ')));
+
+const fr = (...numbers: number[]) => numbers.map((number) => `009-terminal-node-FR-${String(number).padStart(3, '0')}`).sort().join(' ');
+
+async function expectProgramRows(page: Page, rows: [string, string][], label: string): Promise<void> {
+  for (const [selector, expected] of rows) {
+    const found = await programIds(page, selector);
+    expect(found.length, `${label}: ${selector}`).toBeGreaterThan(0);
+    for (const value of found) expect(value, `${label}: ${selector}`).toBe(expected);
+  }
+}
+
+// What both shells show of a program: `help`'s rows, its output, its still-running
+// line, the live region, and how it ends.
+async function expectProgramTargets(page: Page, label: string): Promise<void> {
+  await runGroup(page, 'help');
+  await expectProgramRows(page, [['#os .terminal .out-help', fr(7)]], label);
+  await typeLine(page, 'node -e "while (true) console.log(1)"');
+  await page.locator('#os .terminal p.run-stopped').waitFor({ timeout: 30_000 });
+  await linesRun(page);
+  await expectProgramRows(page, [['#os .terminal p.run-stopped', fr(26)]], label);
+  await page.locator('#os .terminal input.command-line').fill('node -e "while (true) {}"');
+  await page.keyboard.press('Enter');
+  await page.locator('#os .terminal section.run[aria-busy="true"] [data-req="009-terminal-node-FR-027"]').waitFor({ timeout: 15_000 });
+  await expectProgramRows(page, [['#os .terminal section.run[aria-busy="true"] div.run-output', fr(9)], ['#os .terminal div.terminal-screen', fr(41)], ['#os .terminal .terminal-status', fr(40)]], label);
+}
+
+describe('009-terminal-node-FR-007, 009-terminal-node-FR-009, 009-terminal-node-FR-026, 009-terminal-node-FR-027, 009-terminal-node-FR-031, 009-terminal-node-FR-037, 009-terminal-node-FR-039, 009-terminal-node-FR-040 and 009-terminal-node-FR-041: every target of a program carries its requirement IDs', () => {
+  test('desktop: the help rows, the output, the stopped and still-running lines, the live region and the ^C mark', async () => {
+    const page = await openTerminalPage('desktop');
+    await expectProgramTargets(page, 'desktop');
+    await page.keyboard.press('Control+C');
+    await linesRun(page);
+    await expectProgramRows(page, [['#os .terminal section.run:last-of-type [data-req="009-terminal-node-FR-031"]', fr(31)]], 'desktop');
+  });
+
+  test('mobile: the same, and the Stop key', async () => {
+    const page = await openTerminalPage('mobile');
+    await expectProgramTargets(page, 'mobile');
+    await expectProgramRows(page, [['#os .pocket-keys button.pocket-key-stop', fr(39)]], 'mobile');
+    await page.locator('#os .pocket-keys button.pocket-key-stop').tap();
+    await linesRun(page);
+    await expectProgramRows(page, [['#os .terminal section.run:last-of-type [data-req="009-terminal-node-FR-031"]', fr(31)]], 'mobile');
+  });
+
+  test('the download line of a first TypeScript run', async () => {
+    const page = await openTerminalPage('desktop');
+    await runGroup(page, "printf 'console.log(1)' > app.ts");
+    await page.locator('#os .terminal input.command-line').fill('ts-node app.ts');
+    await page.keyboard.press('Enter');
+    await page.locator('#os .terminal [data-req="009-terminal-node-FR-037"]').first().waitFor({ timeout: 30_000 });
+  });
+});
+
 describe('006-terminal-FR-037: every Terminal target carries its requirement IDs', () => {
   test('desktop: after help, ls, specs, cat cv.json | jq and cd work, an unknown command and a missing path, and the vim view searched with its help open', async () => {
     const page = await openTerminalPage('desktop');

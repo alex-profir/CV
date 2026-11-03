@@ -3,8 +3,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "acorn": "8.19.0",
+    "buffer": "6.0.3",
     "just-bash": "3.6.0",
     "monaco-editor": "0.57.0",
+    "node-inspect-extracted": "3.3.4",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   }

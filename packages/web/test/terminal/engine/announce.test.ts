@@ -50,8 +50,8 @@ describe('006-terminal-FR-028: each output is announced once, in full or summari
     expect(announcementText({ command: 'history', count: 1, unit: 'lines' })).toBe('history: 1 line');
   });
 
-  test('help: 22 commands and its standard group, aliases not counted; ls: 11 entries, files and folders together', async () => {
-    expect(announced(await run('help', contextFor('every-field')))).toEqual({ command: 'help', count: 22 + STANDARD_GROUP.length, unit: 'commands' });
+  test('help: 24 commands and its standard group, aliases not counted; ls: 11 entries, files and folders together', async () => {
+    expect(announced(await run('help', contextFor('every-field')))).toEqual({ command: 'help', count: 24 + STANDARD_GROUP.length, unit: 'commands' });
     expect(announced(await run('ls', contextFor('every-field')))).toEqual({ command: 'ls', count: 11, unit: 'entries' });
   });
 
@@ -160,6 +160,8 @@ describe('006-terminal-FR-028: opening the vim view says what it opened', () => 
       reset: () => undefined,
       write: (request: Parameters<typeof shell.write>[0]) => shell.write(request),
       complete: async () => null,
+      setStatus: () => undefined,
+      apply: async () => null,
     };
     const session = createSession(client);
     if (first !== '') session.run(first, 'desktop');

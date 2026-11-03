@@ -39,6 +39,8 @@ export const TERMINAL_DESKTOP_STATES = [
   'terminal-tab-list',
   'terminal-vim-insert',
   'terminal-vim-readonly',
+  // 009's: a program running, past its still-running line (T084).
+  'terminal-program-running',
 ] as const;
 
 export const TERMINAL_MOBILE_STATES = [
@@ -57,6 +59,8 @@ export const TERMINAL_MOBILE_STATES = [
   'pocket-stopped',
   'pocket-tab-key',
   'pocket-vim-insert',
+  // 009's: a program running, with the Stop key (T084).
+  'pocket-program-running',
 ] as const;
 
 // The inspector's states (007 contracts/cli.md States) follow the
@@ -204,6 +208,9 @@ export const TERMINAL = Object.freeze({
   shellFailed: '#os .terminal p.shell-failed',
   stopped: 'p.run-stopped',
   standard: 'ul.out-standard',
+  // 009's: the still-running line, and the frames that hold programs.
+  stillRunning: '#os .terminal [data-req="009-terminal-node-FR-027"]',
+  programFrame: '#terminal-runners iframe',
 });
 
 // The shell worker's script, as the check's server serves it (006 FR-070).
@@ -211,6 +218,21 @@ export const SHELL_WORKER = '**/assets/shell-*.js';
 
 // A line that never ends, which the shell stops (006 FR-069).
 export const ENDLESS_LINE = 'while true; do :; done';
+
+// A program that never ends, which only a stop ends (009 FR-024).
+export const ENDLESS_PROGRAM = 'node -e "while (true) {}"';
+
+// How long a program's still-running line may take: its 5 s, and the program's start.
+const STILL_RUNNING_MS = 15_000;
+
+// Types a line and doesn't wait for it to end: for a program that keeps running.
+export async function startLine(page: Page, line: string): Promise<void> {
+  const input = page.locator(TERMINAL.commandLine);
+  await input.focus();
+  await input.fill('');
+  await page.keyboard.type(line);
+  await page.keyboard.press('Enter');
+}
 
 // The inspector's elements (007 contracts/inspector.md): a view's "Show
 // specs", in its window or full-screen view, and its spec view.
@@ -524,6 +546,10 @@ async function driveTerminal(page: Page, shell: Shell, state: string): Promise<v
     case 'terminal-stopped':
       await runCommand(page, ENDLESS_LINE);
       return stoppedRun(page);
+    case 'terminal-program-running':
+    case 'pocket-program-running':
+      await startLine(page, ENDLESS_PROGRAM);
+      return void (await page.waitForSelector(TERMINAL.stillRunning, { timeout: STILL_RUNNING_MS }));
     case 'terminal-selected-all':
       await runCommand(page, 'help');
       await page.locator(TERMINAL.commandLine).focus();

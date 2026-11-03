@@ -120,7 +120,7 @@ function Rows({ node, run, level }: { node: Extract<Node, { kind: 'rows' }>; run
   ));
   if (node.req === 'help')
     return (
-      <ul className="out-rows out-help" data-req="006-terminal-FR-008">
+      <ul className="out-rows out-help" data-req="006-terminal-FR-008 009-terminal-node-FR-007">
         {rows}
       </ul>
     );
@@ -171,7 +171,27 @@ function One({ node, run, level }: { node: Node; run: RunControl; level: number 
         );
       if (node.req === 'stopped')
         return (
-          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075">
+          <p className="out-line run-stopped" data-req="006-terminal-FR-069 006-terminal-FR-075 009-terminal-node-FR-026">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      // A program's own lines. Each `data-req` is written out, as the inspector and
+      // the traceability check read them from the source.
+      if (node.req === 'still')
+        return (
+          <p className="out-line" data-req="009-terminal-node-FR-027">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'download')
+        return (
+          <p className="out-line" data-req="009-terminal-node-FR-037">
+            <Nodes block={node.children} run={run} level={level} />
+          </p>
+        );
+      if (node.req === 'stop')
+        return (
+          <p className="out-line" data-req="009-terminal-node-FR-031">
             <Nodes block={node.children} run={run} level={level} />
           </p>
         );

@@ -67,7 +67,7 @@ export async function openTerminalPage(shell: TerminalShell, options: Partial<Sh
 export const runCount = (page: Page) => page.locator('.terminal section.run').count();
 
 // Until no line waits for the shell or runs (006 FR-070).
-export const linesRun = (page: Page) => page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null);
+export const linesRun = (page: Page, timeout?: number) => page.waitForFunction(() => document.querySelector('.terminal section.run[aria-busy="true"]') === null, undefined, timeout === undefined ? {} : { timeout });
 
 // Types a line into the command line, presses Enter, and waits for it to
 // have run.

@@ -64,6 +64,9 @@ const selection = (page: Page) =>
 
 const STOPPED = expect.stringMatching(/^stopped: it /);
 
+// 009's: a program running, its still-running line, its frame and the phone's Stop key.
+const programRunning = async (page: Page) => ({ busy: await count(page, TERMINAL.busyRun), still: await page.locator(TERMINAL.stillRunning).textContent(), frames: await count(page, TERMINAL.programFrame), stop: await count(page, `${TERMINAL.pocketKey}[aria-label="${siteText.terminal.program.stop}"]`) });
+
 const TERMINAL_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'desktop/terminal-open': async (page) => ({ window: await shown(page, SHELL.terminalWindow), runs: await runs(page), focused: await page.getAttribute('#os .window[aria-current="true"]', 'data-view') }),
   'desktop/terminal-help': async (page) => ({ run: await lastRun(page), help: await shown(page, `${TERMINAL.run} .out-help`) }),
@@ -107,6 +110,8 @@ const TERMINAL_SHOWS: Record<string, (page: Page) => Promise<unknown>> = {
   'desktop/terminal-vim-readonly': async (page) => ({ marks: (await page.locator(`${TERMINAL.vim} :is(.vim-ro, .vim-modified)`).allTextContents()).join(' '), message: (await page.locator(TERMINAL.vimMessage).textContent())?.slice(0, 3) }),
   'mobile/pocket-tab-key': async (page) => ({ list: await shown(page, TERMINAL.completionList), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
   'mobile/pocket-vim-insert': async (page) => ({ mode: await page.locator(`${TERMINAL.vim} .vim-mode`).textContent(), key: await page.locator(`${TERMINAL.pocketStrip} button`).textContent() }),
+  'desktop/terminal-program-running': programRunning,
+  'mobile/pocket-program-running': programRunning,
 };
 
 const TERMINAL_EXPECTED: Record<string, unknown> = {
@@ -149,6 +154,8 @@ const TERMINAL_EXPECTED: Record<string, unknown> = {
   'desktop/terminal-vim-readonly': { marks: '[RO] [+]', message: 'E45' },
   'mobile/pocket-tab-key': { list: true, key: 'Tab' },
   'mobile/pocket-vim-insert': { mode: '-- INSERT --', key: 'Esc' },
+  'desktop/terminal-program-running': { busy: 1, still: siteText.terminal.program.stillRunning.desktop, frames: 1, stop: 0 },
+  'mobile/pocket-program-running': { busy: 1, still: siteText.terminal.program.stillRunning.phone, frames: 1, stop: 1 },
 };
 
 // The inspector's states (007 contracts/cli.md States): which spec view
@@ -340,7 +347,7 @@ const AMENDMENT_STATES = [
 ];
 
 describe("006-terminal-FR-038: the checks measure the Terminal in every state of contracts/cli.md", () => {
-  test('the driver lists 24 desktop states at 1440 × 900 and 15 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
+  test('the driver lists 25 desktop states at 1440 × 900 and 16 mobile states at 375 × 812, the pocket on its side at 812 × 375', () => {
     expect(TERMINAL_STATES.map(({ shell, state, width, height }) => `${stateVariant(shell, state, width)} ${height}`)).toEqual([
       ...[
         'terminal-open',
@@ -367,10 +374,11 @@ describe("006-terminal-FR-038: the checks measure the Terminal in every state of
         'terminal-tab-list',
         'terminal-vim-insert',
         'terminal-vim-readonly',
+        'terminal-program-running',
       ].map((state) => `desktop/${state}/1440px 900`),
       'mobile/pocket/375px 812',
       'mobile/pocket-landscape/812px 375',
-      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help', 'pocket-stopped', 'pocket-tab-key', 'pocket-vim-insert'].map(
+      ...['pocket-keyboard', 'pocket-vim', 'pocket-help', 'pocket-unknown', 'pocket-ls', 'pocket-cat', 'pocket-clear', 'pocket-long-command', 'pocket-vim-search', 'pocket-vim-help', 'pocket-stopped', 'pocket-tab-key', 'pocket-vim-insert', 'pocket-program-running'].map(
         (state) => `mobile/${state}/375px 812`,
       ),
     ]);
