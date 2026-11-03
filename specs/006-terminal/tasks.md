@@ -2283,3 +2283,12 @@ Builds the amendment of Session 2026-10-31 and carries Phases 35 to 42 to `main`
   - Done in part 2026-11-02: #39 merged 2026-10-31. Its head, 83630e4, has no `local-verify` status, and the sign-off is superseded by Constitution 2.0.0, where green CI merges. So the whole suite wasn't rerun on that head; the daily full run covers it.
 
 - Phase 43 result (2026-10-31): on `d0c6caf`, with GNU tools first on PATH, `site-check` 14 of 14, and `npm test` 4,670 passed, 2 skipped, 1 failed: a stopped loop's `(5000ms)` line, which that commit had removed. Put back in `3088fd6`, with `main` merged after it; `typecheck`, the build and the 4 affected test files pass there. The whole suite wasn't run again: the `local-verify` sign-off runs it (T405).
+
+## Phase 44: SC-013 without the CV's text (2026-11-03)
+
+Builds the amendment of Session 2026-11-03.
+
+- [X] T406 Measure the `os` script without the CV's text, in `packages/web/scripts/build-site.ts`, per SC-013: `osScriptSize` takes the CV document's gzipped compact JSON off the script's gzipped size, and `OS_BUDGET` is 154,378, the 147,027 measured that way on `main` at 004e55e plus 5%.
+  - Done 2026-11-03. With the owner's full CV the script is 150,833 bytes gzipped and 147,017 without the CV's text, against `main`'s 149,543 and 147,027: the measure moves by 10 bytes where the CV grew by about 1,300.
+- [X] T407 Test it, in `packages/web/test/terminal/loading.test.ts` and `packages/web/test/build.test.ts`, per SC-013.
+- [X] T408 Record the amendment: spec Session 2026-11-03 and SC-013, and the plan's SC-013 line.

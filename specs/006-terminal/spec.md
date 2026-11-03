@@ -242,6 +242,17 @@ Clarifications, Session 2026-11-02 (amended by 009-terminal-node)). The owner's 
   FR-033 set, keeping what it printed (FR-075). The pocket terminal gains the Stop key of 009's FR-039,
   in the place of `clear` while a program runs (FR-024, FR-078).
 
+### Session 2026-11-03 (owner review of the CV)
+
+- Q: The CV's text is bundled into the page's script, so restoring the owner's full CV puts the
+  script past SC-013's budget, though no code changed. Does the CV's length count? → A: No.
+  SC-013 limits the site's code. The script is measured without the CV's text: its gzipped size
+  less the CV document's, as compact JSON, at the same level (SC-013).
+- Q: Without the CV's text, `main` at 004e55e, with 009's programs, is already about 490 bytes past
+  the old base plus 5%, and passed only because the CV had been shortened. Which base? → A: As 008
+  did, the base is re-measured: 147,027 bytes on that `main`, without the CV's text, so the budget
+  is 154,378 (SC-013).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Explore the CV by typing commands (Priority: P1)
@@ -1471,7 +1482,8 @@ plain server-rendered page.
 - **SC-012**: At 320 px wide and in landscape at 568 by 320 px, the pocket terminal shows its
   screen and every command key with 0 px of horizontal scrolling.
 - **SC-013**: With the shell added, the site root and `/cv` load 0 bytes of the shell's code, and
-  their gzipped script stays within 5% of its size before the amendment. After the Terminal is
+  their gzipped script, not counting the CV's text, stays within 5% of its size at the base the
+  plan records (Session 2026-11-03). After the Terminal is
   opened, the shell is ready within 1 s on a desktop connection and within 3 s with the network
   and CPU slowed as Lighthouse's mobile profile slows them.
 - **SC-014**: For a fixed list of at least 30 command lines that use only the standard commands

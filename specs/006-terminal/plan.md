@@ -327,8 +327,9 @@ Success criteria without an FR of their own:
 - SC-010: design/review.md, with the amendment's sign-off (research R42).
 - SC-012: FR-052 above.
 - SC-013 *(new)*: term `loading.test.ts`: no shell bytes on `/` and `/cv`; the `os` script's
-  gzipped size within 5% of the budget recorded before the amendment (also enforced by
-  `build-site.ts`); ready within 1 s, and within 3 s with Lighthouse's mobile CPU and network
+  gzipped size, less the CV document's as compact JSON, within 5% of its base (also enforced by
+  `build-site.ts`). The base is 147,027 bytes, measured without the CV's text on `main` at 004e55e
+  (Session 2026-11-03), so `OS_BUDGET` is 154,378; ready within 1 s, and within 3 s with Lighthouse's mobile CPU and network
   slowdown over CDP.
 - SC-014 *(new)*: shell `bash-parity.test.ts` (research R38): at least 30 lines, every FR-067
   feature and FR-068 command, the same stdout, stderr and status as bash with GNU tools, except

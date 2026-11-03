@@ -64,12 +64,20 @@ const SHELL_ENTRY = 'src/client/os.tsx';
 
 const SSR_ENTRY = 'src/render.tsx';
 
-// The os script's gzipped size may grow by at most 5% with the shell (006
-// SC-013): 142,646 bytes at `gzip -9` before the amendment, measured with
-// 008's Playground interface (008 at afe2bc2, before it was rebased on the
-// amendment), plus 5%. Before 008 the base was 113,581, on `main` at a3f9532
-// with 007's inspector; T127 measured 108,962 on the `main` it branched from.
-export const OS_BUDGET = 149_778;
+// The os script's gzipped size, not counting the CV's text, may grow by at
+// most 5% with the shell (006 SC-013, amended 2026-11-03): 147,027 bytes at
+// `gzip -9` without the CV's text, measured on `main` at 004e55e with 009's
+// programs, plus 5%. Earlier bases counted the CV: 142,646 with 008's
+// Playground interface (afe2bc2), 113,581 on `main` at a3f9532 with 007's
+// inspector, and T127's 108,962 on the `main` it branched from.
+export const OS_BUDGET = 154_378;
+
+// The os script's gzipped size without the CV's text (SC-013): the script at
+// `gzip -9`, less the CV document as compact JSON at `gzip -9`, so a longer
+// or shorter CV never moves the measure.
+export function osScriptSize(script: string | Buffer, cv: Resume = resume): number {
+  return zlib.gzipSync(script, { level: 9 }).length - zlib.gzipSync(JSON.stringify(cv), { level: 9 }).length;
+}
 
 // The shell worker's file, and the words only the worker's code holds
 // (no-network.ts, no-zlib.ts): the os script holding them has the shell
@@ -362,8 +370,8 @@ function checkScripts(siteDir: string, manifest: Manifest): void {
   if (entry === undefined) throw new Error(`Vite's manifest has no entry for ${SHELL_ENTRY}`);
   const os = fs.readFileSync(path.join(siteDir, entry.file), 'utf8');
   if (os.includes(SHELL_MARK) || (entry.dynamicImports ?? []).length > 0) throw new Error('the os script loads the shell');
-  const gzipped = zlib.gzipSync(os, { level: 9 }).length;
-  if (gzipped > OS_BUDGET) throw new Error(`the os script is ${gzipped} bytes gzipped, over its budget of ${OS_BUDGET} bytes (SC-013)`);
+  const size = osScriptSize(os);
+  if (size > OS_BUDGET) throw new Error(`the os script is ${size} bytes gzipped without the CV's text, over its budget of ${OS_BUDGET} bytes (SC-013)`);
 }
 
 // The root page holds what the shell needs before and without its script
