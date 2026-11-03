@@ -21,21 +21,27 @@ const SECTIONS = 'const sections = SUPPORTED_SECTIONS.map(';
 
 const resume = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, RESUME_FILE), 'utf8'));
 
+// The first work entry whose role no other field shows: one that repeats the
+// label, as the current role does, would still be found, out of order.
+const shownTexts = expectedFields(resume).flatMap((field) => ('text' in field ? [field.text] : []));
+const UNIQUE_ROLE = resume.work.findIndex((entry: { position: string }) => shownTexts.filter((text) => text === entry.position).length === 1);
+
 describe('005-os-shell-FR-058: the CV app check opens the CV app in each shell and finds every field, in order', () => {
   test('on the real build the part passes in both shells', async () => {
     const report = await runCheck(realSiteProject(), { parts: ['cv-app'] });
     expect(report.results.map(({ page, variant, status }) => `${page} ${variant} ${status}`)).toEqual(['/ desktop/cv-app/1440px pass', '/ mobile/cv-app/375px pass']);
   });
 
-  test("a copy whose CV app leaves out work[0].position fails with missing-field in both shells", async () => {
-    const position: string = resume.work[0].position;
+  test("a copy whose CV app leaves out a work entry's position fails with missing-field in both shells", async () => {
+    expect(UNIQUE_ROLE).not.toBe(-1);
+    const position: string = resume.work[UNIQUE_ROLE].position;
     const root = seededCopy((copy) =>
-      replaceIn(copy, DOCUMENT, SECTIONS, `if (Root === 'div') resume = { ...resume, work: resume.work?.map((entry, index) => (index === 0 ? { ...entry, position: undefined } : entry)) };\n  ${SECTIONS}`),
+      replaceIn(copy, DOCUMENT, SECTIONS, `if (Root === 'div') resume = { ...resume, work: resume.work?.map((entry, index) => (index === ${UNIQUE_ROLE} ? { ...entry, position: undefined } : entry)) };\n  ${SECTIONS}`),
     );
     const report = await runCheck(root, { parts: ['cv-app'] });
     expect(report.problems.map(renderProblem)).toEqual([
-      `cv-app / desktop/cv-app/1440px missing-field work[0].position: ${JSON.stringify(position)} is not in the CV app`,
-      `cv-app / mobile/cv-app/375px missing-field work[0].position: ${JSON.stringify(position)} is not in the CV app`,
+      `cv-app / desktop/cv-app/1440px missing-field work[${UNIQUE_ROLE}].position: ${JSON.stringify(position)} is not in the CV app`,
+      `cv-app / mobile/cv-app/375px missing-field work[${UNIQUE_ROLE}].position: ${JSON.stringify(position)} is not in the CV app`,
     ]);
   });
 
