@@ -80,5 +80,6 @@ npm run serve   # http://127.0.0.1:4173, or set PORT
 `npm run site-check` and `npm test` need Chromium: run `npx playwright install chromium` first.
 
 Pull requests run the checks above `npm test` in CI, and green CI is what merges them. `npm test`
-runs daily on `main` and can be started by hand. The few tests that hold only on the owner's Mac
-run in `npm run verify:feature` instead. Pushes to `main` deploy to production on Vercel.
+runs nightly on `main` when it has new commits, and always when started by hand. The few tests that
+hold only on the owner's Mac run in `npm run verify:feature` instead. Pushes to `main` deploy to
+production on Vercel.

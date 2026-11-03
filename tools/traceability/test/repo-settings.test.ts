@@ -180,7 +180,7 @@ describe('001-requirement-traceability-FR-035: green CI is what merges a pull re
   });
 });
 
-describe('001-requirement-traceability-FR-041: every test runs every day on the default branch, but those bound to the owner\'s Mac', () => {
+describe('001-requirement-traceability-FR-041: every test runs once a day on the default branch when it has new commits, but those bound to the owner\'s Mac', () => {
   const FULL = fs.readFileSync(path.join(REPO_ROOT, '.github/workflows/full.yml'), 'utf8');
   const lines = FULL.split('\n');
 
@@ -188,6 +188,17 @@ describe('001-requirement-traceability-FR-041: every test runs every day on the 
     expect(lines).toContain("    - cron: '17 3 * * *'");
     expect(lines).toContain('  workflow_dispatch:');
     expect(FULL).not.toMatch(/pull_request|^\s+push:/m);
+  });
+
+  test("on its schedule it skips the tests when the commit is the last finished run's; by hand it always tests", () => {
+    const changes = block(lines, /^ {2}changes:\s*$/);
+    expect(changes).toContain('          if [ "$GITHUB_EVENT_NAME" != schedule ]; then');
+    expect(changes).toContain('          if [ "$tested" = "$GITHUB_SHA" ]; then');
+    expect(changes.join('\n')).toContain('select(.conclusion == "success" or .conclusion == "failure")');
+    expect(block(changes, /^ {4}permissions:\s*$/).filter((line) => line.trim() !== '')).toEqual(['      actions: read']);
+    const full = block(lines, /^ {2}full:\s*$/);
+    expect(full).toContain('    needs: changes');
+    expect(full).toContain("    if: needs.changes.outputs.test == 'true'");
   });
 
   test('it runs the whole test set with no filter, with a read-only token', () => {

@@ -20,6 +20,10 @@ minutes (see Clarifications, Session 2026-10-30). Approved by the owner 2026-10-
 **Amended**: 2026-11-02: the daily full run leaves out the Playground's memory probe, which froze a
 shared CI machine's page (FR-041). The owner's merge approves it (Constitution XI).
 
+**Amended**: 2026-11-03: the daily full run tests only when `main` has a commit no full run has
+finished testing; a run by hand always tests (FR-041, Constitution 2.1.0). Asked for by the owner
+on 2026-11-03; the owner's merge approves it (Constitution XI).
+
 **Amended**: 2026-10-31: green CI is what merges a pull request. The local run becomes a quick run
 of the tests a change touches, a new feature's run once per pull request, and a daily full run in
 CI (see Clarifications, Session 2026-10-31, and Constitution 2.0.0, Speed First). Approved by the
@@ -462,9 +466,10 @@ references `001-requirement-traceability-FR-###`. UI implementing a requirement 
   run, the commit it ended on MUST be able to be signed off, without running again what passed.
 - **FR-040** *(added 2026-10-31)*: A local run MUST stop at the first failing check, and its test
   check at the first failing test.
-- **FR-041** *(added 2026-10-31; Amended 2026-11-02; the exceptions didn't list the memory probe)*:
-  Every test MUST run every day on the main branch, in CI, and it MUST be possible to start that
-  run by hand. The only exceptions are tests that hold only on the owner's Mac, which a feature's
+- **FR-041** *(added 2026-10-31; Amended 2026-11-02; the exceptions didn't list the memory probe;
+  Amended 2026-11-03; it ran every day, with or without new commits)*:
+  Every test MUST run once a day on the main branch, in CI, when the branch has a commit no full
+  run has finished testing, and it MUST be possible to start that run by hand, which always tests. The only exceptions are tests that hold only on the owner's Mac, which a feature's
   local run MUST still cover: the parity test against real commands, the line-keys test, the
   public-data test, the Terminal's performance test and the Playground's memory probe.
 

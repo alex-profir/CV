@@ -281,8 +281,9 @@ Merge requirements:
   its commits, and its description names the commit and the result. It leaves out the site check's
   own tests. A failure is fixed and picked up with `--failed`, which reruns only what failed, what
   never ran and the test files that changed. Later commits don't need another run.
-- **Daily full run**: every test runs on the default branch every day, in CI, except the few that
-  only hold on the owner's machine, which a new feature's run covers. When it fails, fixing or
+- **Daily full run**: every test runs on the default branch once a day, in CI, when it has a commit
+  no full run has tested yet, except the few that only hold on the owner's machine, which a new
+  feature's run covers. A run started by hand always tests. When it fails, fixing or
   reverting comes before merging anything else.
 - Until the interim provision on deferred manual checks ends, checks that only a person can do
   may be done after merge (see that section).
@@ -374,4 +375,4 @@ Ending the provision:
 - A justified exception is recorded in the plan's Complexity Tracking table, with the
   simpler alternative that was rejected. An unrecorded exception is a violation.
 
-**Version**: 2.0.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-10-31
+**Version**: 2.1.0 | **Ratified**: 2026-10-21 | **Last Amended**: 2026-11-03

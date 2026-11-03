@@ -16,6 +16,7 @@ import { renderProblem } from '../src/report.ts';
 import { startServer } from '../src/server.ts';
 import { ENDLESS_LINE, openTerminal, runCommand, shellContext, SHELL_SIZES, waitForShell } from '../src/shell-states.ts';
 import type { Shell } from '../src/shell-states.ts';
+import { fileName, folderNames } from '../../../packages/web/src/apps/terminal/engine/files.ts';
 import { repoCopy } from '../../../packages/web/test/helpers/copy.ts';
 import { runCli as runContentCheck } from '../../content-check/test/helpers/cli.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
@@ -28,6 +29,9 @@ const resume = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, RESUME_FILE), 'ut
 const SHELLS: readonly Shell[] = ['desktop', 'mobile'];
 
 const variants = (name: string) => SHELLS.map((shell) => terminalVariant(shell, name, SHELL_SIZES[shell].width));
+
+// The first work entry with an end date: the current one has none.
+const ENDED = resume.work.findIndex((entry: { endDate?: string }) => entry.endDate !== undefined);
 
 const writeResume = (root: string, edit: (cv: typeof resume) => void) => {
   const cv = structuredClone(resume);
@@ -65,17 +69,30 @@ describe('006-terminal-FR-040: the terminal part runs every CV command, the JSON
   });
 
   test("a copy whose work entry drops its end date fails with missing-field, naming the command, the field and the shell", async () => {
-    const end = resume.work[0].endDate as string;
-    const root = seededCopy((copy) =>
-      replaceIn(copy, 'packages/web/src/apps/terminal/engine/cv.ts', '    range: input.format.dateRange(work.startDate, work.endDate),', '    range: input.format.dateRange(work.startDate, undefined),'),
-    );
+    expect(ENDED).not.toBe(-1);
+    // An end month no other date in the CV shows: one shared with the next
+    // role's start would still be found, out of order.
+    const used = new Set(JSON.stringify(resume).match(/\d{4}-\d{2}/g));
+    let end = resume.work[ENDED].endDate.slice(0, 7) as string;
+    while (used.has(end)) {
+      const date = new Date(`${end}-01T00:00:00Z`);
+      date.setUTCMonth(date.getUTCMonth() - 1);
+      end = date.toISOString().slice(0, 7);
+    }
+    const folder = folderNames(resume.work.map((entry: { name: string; startDate?: string }) => ({ name: fileName(entry.name, 'job'), start: entry.startDate })))[ENDED];
+    const root = seededCopy((copy) => {
+      writeResume(copy, (cv) => {
+        cv.work[ENDED].endDate = end;
+      });
+      replaceIn(copy, 'packages/web/src/apps/terminal/engine/cv.ts', '    range: input.format.dateRange(work.startDate, work.endDate),', '    range: input.format.dateRange(work.startDate, undefined),');
+    });
     const report = await runCheck(root, { parts: ['terminal'] });
     const lines = report.problems.map(renderProblem);
     const [year, month] = end.split('-');
     const visible = `${new Date(Date.UTC(Number(year), Number(month) - 1)).toLocaleString('en', { month: 'short', timeZone: 'UTC' })} ${year}`;
-    for (const variant of variants('work')) expect(lines).toContain(`terminal / ${variant} missing-field work[0].endDate: "${visible}" is not in the output of work`);
+    for (const variant of variants('work')) expect(lines).toContain(`terminal / ${variant} missing-field work[${ENDED}].endDate: "${visible}" is not in the output of work`);
     // `cat` builds a file with the same builder, so the file fails too.
-    for (const variant of variants('files')) expect(lines).toContain(`terminal / ${variant} file-mismatch ~/work/sc-moredevs-srl: cat differs from work's entry at "${visible}"`);
+    for (const variant of variants('files')) expect(lines).toContain(`terminal / ${variant} file-mismatch ~/work/${folder}: cat differs from work's entry at "${visible}"`);
   });
 
   test('a copy with no file for a project fails with missing-file, naming the folder and the entry', async () => {
@@ -190,11 +207,13 @@ describe('006-terminal-FR-009: every CV command shows /cv\'s fields, in order, i
   });
 
   test("terminalFields heads an entry with its title before its dates, and splits the basics into about and contact", () => {
-    const work = terminalFields(resume, 'work').filter((field) => field.path.startsWith('work[0].')).map((field) => field.path);
-    expect(work.slice(0, 4)).toEqual(['work[0].position', 'work[0].name', 'work[0].startDate', 'work[0].endDate']);
+    const entry = `work[${ENDED}]`;
+    const work = terminalFields(resume, 'work').filter((field) => field.path.startsWith(`${entry}.`)).map((field) => field.path);
+    expect(work.slice(0, 4)).toEqual([`${entry}.position`, `${entry}.name`, `${entry}.startDate`, `${entry}.endDate`]);
     expect(terminalFields(resume, 'about').map((field) => field.path)).toEqual(expect.arrayContaining(['basics.name', 'basics.label', 'basics.summary']));
     expect(terminalFields(resume, 'about').some((field) => field.path === 'basics.email')).toBe(false);
-    expect(terminalFields(resume, 'contact').map((field) => field.path)).toEqual(['basics.email', 'basics.profiles[0].url', 'basics.profiles[0].network', 'basics.profiles[0].username']);
+    const profiles = resume.basics.profiles.flatMap((_: unknown, index: number) => ['url', 'network', 'username'].map((key) => `basics.profiles[${index}].${key}`));
+    expect(terminalFields(resume, 'contact').map((field) => field.path)).toEqual(['basics.email', ...profiles]);
   });
 });
 

@@ -11,7 +11,8 @@ workflow.
 
 **Amended 2026-10-31**: green CI is what merges a pull request. The ruleset requires neither
 `local-verify` nor an up-to-date branch, and `full.yml` runs every test daily on `main`, but
-those bound to the owner's Mac (FR-035, FR-041). Anything below that says otherwise is superseded.
+those bound to the owner's Mac (FR-035, FR-041). **Amended 2026-11-03**: the daily run skips the tests
+when `main` has no commit since the last finished full run; a run by hand always tests. Anything below that says otherwise is superseded.
 
 This contract fixes what the repository promises to reviewers: which checks run on every pull
 request, under which names, and what blocks a merge. The automated tests assert every point
