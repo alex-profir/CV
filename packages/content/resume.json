@@ -27,19 +27,14 @@
       "name": "Independent Contractor",
       "position": "Senior Full-Stack Engineer",
       "startDate": "2025-04",
-      "summary": "Web, mobile and backend development, including microservices, on scalable cloud infrastructure, through my own company. Clients include MoreDevs, where I continued work on its cybersecurity platform until Oct 2026, and a faith-based social network, where I am technical lead. I combine hands-on coding with spec-driven development and agentic coding.",
-      "highlights": [
-        "Adopted spec-driven development and agentic coding at MoreDevs and for my own clients, delivering features with higher velocity and better quality",
-        "Technical lead for the faith-based social network app, with a team of 4–6 engineers",
-        "Built notification and device management microservices for the cybersecurity platform to start replacing its monolith, and maintained the auth microservice with teammates"
-      ]
+      "summary": "Web, mobile and backend development, including microservices, on scalable cloud infrastructure, through my own company. Clients include MoreDevs, where I continued work on its cybersecurity platform until Oct 2026, and a faith-based social network. I combine hands-on coding with spec-driven development and agentic coding, delivering features with higher velocity and better quality."
     },
     {
       "name": "MoreDevs",
       "position": "Software Developer",
       "startDate": "2018-07",
       "endDate": "2025-04",
-      "summary": "Built web and mobile applications and backend services for MoreDevs clients, working mainly on a cybersecurity platform from 2022.",
+      "summary": "Client projects, working mainly on a cybersecurity platform from 2022.",
       "highlights": [
         "Developed cross-platform mobile applications for iOS and Android, improving user engagement",
         "Built and maintained responsive web applications in React and TypeScript",
@@ -213,8 +208,7 @@
         "Wrote native iOS and Android modules for audio focus, SMS consent and text input",
         "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect, so every update is checked and shipped the same way",
         "Set up crash reporting and monitoring with Sentry and Crashlytics, so problems are found and fixed before users have to report them",
-        "Built a spec-driven, agentic workflow that takes a Jira ticket and its Figma design through to an open pull request",
-        "Delivered features in 2–3 weeks with this workflow, against an estimated 2 months or more without AI, with the UI matching Figma"
+        "Built a spec-driven, agentic workflow that takes a Jira ticket and its Figma design through to an open pull request, delivering features in 2–3 weeks against an estimated 2 months or more without AI, with the UI matching Figma"
       ],
       "keywords": [
         "Expo",
@@ -232,10 +226,9 @@
       "description": "Cross-platform cybersecurity product for secure device management and threat detection, with a mobile app, a web admin UI and a cloud backend. Built by a team of 4–6 engineers, first as a MoreDevs employee and from Apr 2025 as a contractor.",
       "highlights": [
         "Developed the React Native mobile app and the web admin UI end to end",
-        "Built threat detection, device management and authentication features, including man-in-the-middle detection on the device",
+        "Built threat detection features, including man-in-the-middle detection on the device",
         "Built two JavaScript SDKs connecting the mobile app, web and backend services",
-        "Built notification and device management microservices using spec-driven development, to start replacing the monolith that held all the logic",
-        "Implemented and maintained the auth microservice with teammates using spec-driven development",
+        "Built notification and device management microservices to start replacing the monolith that held all the logic, and implemented and maintained the auth microservice with teammates, using spec-driven development",
         "Delivered features at least 2x faster with spec-driven, agentic development, as reported by the team lead",
         "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
         "Migrated infrastructure from Cloud Functions to Cloud Run, cutting costs by at least 25% according to billing and improving scalability",
