@@ -1,7 +1,8 @@
 name: Full run
 
-# Every test, every day, on the default branch (Constitution, Merge
-# requirements). Pull requests run only the fast checks (ci.yml). The few tests
+# Every test, once a day, on the default branch when it has a commit no full
+# run has tested yet (Constitution, Merge requirements). A run started by hand
+# always tests. Pull requests run only the fast checks (ci.yml). The few tests
 # that only hold on the owner's Mac stay in that Mac's npm run verify:feature
 # (OWNER_MAC_TESTS in tools/traceability/src/files.ts).
 on:
@@ -13,8 +14,42 @@ permissions:
   contents: read
 
 jobs:
+  # The scheduled run skips the tests when the branch's commit is the one the
+  # last finished full run was on, whether it passed or failed. A cancelled run
+  # doesn't count, and a skipped run carries the commit it skipped.
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      test: ${{ steps.last.outputs.test }}
+    steps:
+      - id: last
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
+            echo test=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tested=$(gh run list --workflow full.yml --branch "$GITHUB_REF_NAME" --status completed --limit 50 \
+            --json headSha,conclusion \
+            --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].headSha // ""')
+          if [ "$tested" = "$GITHUB_SHA" ]; then
+            echo "No new commits since the last full run, on $tested: skipping the tests."
+            echo test=false >> "$GITHUB_OUTPUT"
+          else
+            echo "Testing $GITHUB_SHA; the last full run was on ${tested:-no commit}."
+            echo test=true >> "$GITHUB_OUTPUT"
+          fi
+
   full:
     name: full
+    needs: changes
+    if: needs.changes.outputs.test == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
