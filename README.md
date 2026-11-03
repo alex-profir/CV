@@ -75,5 +75,5 @@ npm run serve   # http://127.0.0.1:4173, or set PORT
 
 `npm run site-check` and `npm test` need Chromium: run `npx playwright install chromium` first.
 
-Pull requests run all of these in CI except `npm test`, which runs nightly. Pushes to `main` deploy
-to production on Vercel.
+Pull requests run all of these in CI except `npm test`, which runs nightly when `main` has new
+commits. Pushes to `main` deploy to production on Vercel.
