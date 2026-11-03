@@ -4,10 +4,9 @@
 // and it is ready quickly, even on a slow phone.
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import type { Page } from 'playwright';
-import { OS_BUDGET } from '../../scripts/build-site.ts';
+import { OS_BUDGET, osScriptSize } from '../../scripts/build-site.ts';
 import { openPage } from '../helpers/browser.ts';
 import { openShell, settle } from '../helpers/shell.ts';
 import { builtSite, serveBuilt } from '../helpers/site.ts';
@@ -102,12 +101,12 @@ describe('006-terminal-FR-070: the shell loads when the Terminal first opens (SC
     expect(await page.locator('.terminal p.shell-failed').count()).toBe(0);
   });
 
-  test('the os script stays within its gzip budget', () => {
+  test("the os script stays within its gzip budget, not counting the CV's text", () => {
     const site = builtSite();
     const assets = path.join(site.dir, 'assets');
     const os = fs.readdirSync(assets).filter((name) => /^os-[\w-]+\.js$/.test(name));
     expect(os).toHaveLength(1);
-    expect(zlib.gzipSync(fs.readFileSync(path.join(assets, os[0]!)), { level: 9 }).length).toBeLessThanOrEqual(OS_BUDGET);
+    expect(osScriptSize(fs.readFileSync(path.join(assets, os[0]!)))).toBeLessThanOrEqual(OS_BUDGET);
   });
 
   // From the dock click until the shell is ready.

@@ -135,6 +135,6 @@ describe('006-terminal-FR-070 and SC-013: the shell is a second script, loaded o
   test('an os script past its gzip budget fails the build, naming the budget', () => {
     const root = repoCopy();
     append(root, OS_SOURCE, `(globalThis as Record<string, unknown>).padding = '${crypto.randomBytes(12_000).toString('base64')}';`);
-    expect(failure(buildCopy(root))).toMatch(new RegExp(`^site build failed: the os script is \\d+ bytes gzipped, over its budget of ${OS_BUDGET} bytes`));
+    expect(failure(buildCopy(root))).toMatch(new RegExp(`^site build failed: the os script is \\d+ bytes gzipped without the CV's text, over its budget of ${OS_BUDGET} bytes`));
   });
 });
