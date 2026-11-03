@@ -15,7 +15,7 @@ full without JavaScript.
 | Part | What it does |
 |------|--------------|
 | **CV** | The CV as an app, with the same content as `/cv` |
-| **Terminal** | Explore the CV and the site through commands |
+| **Terminal** | Explore the CV and the site through commands, and write and run JavaScript and TypeScript with `node` and `ts-node` in a sandbox, where Ctrl+C stops a runaway program |
 | **TypeScript playground** | Write and run TypeScript in a sandbox, with live type errors and the compiled output. Desktop only |
 | **Requirement inspector** | Each app's "Show specs" control lists the requirements it implements, each linked to its spec in this repository |
 
@@ -37,6 +37,7 @@ test. The rules for how features are built are in
 | The Terminal | [specs/006](specs/006-terminal/spec.md) |
 | The Requirement Inspector | [specs/007](specs/007-requirement-inspector/spec.md) |
 | The TypeScript playground | [specs/008](specs/008-typescript-playground/spec.md) |
+| Node in the Terminal | [specs/009](specs/009-terminal-node/spec.md) |
 
 ## Repository layout
 
@@ -72,8 +73,12 @@ npm run serve   # http://127.0.0.1:4173, or set PORT
 | `npm run test:fast` | The fast test suite |
 | `npm run site-check` | Builds the site and checks it in a browser, including accessibility and Lighthouse |
 | `npm test` | The full test suite |
+| `npm run verify` | The quick checks and the tests of the areas a change touches. Add `-- --failed` to rerun only what failed |
+| `npm run verify:feature` | A new feature's run before its pull request merges: every check and test but the site check's |
+| `npm run signoff` | Signs off the commit a passing `verify:feature` ended on |
 
 `npm run site-check` and `npm test` need Chromium: run `npx playwright install chromium` first.
 
-Pull requests run all of these in CI except `npm test`, which runs nightly. Pushes to `main` deploy
-to production on Vercel.
+Pull requests run the checks above `npm test` in CI, and green CI is what merges them. `npm test`
+runs daily on `main` and can be started by hand. The few tests that hold only on the owner's Mac
+run in `npm run verify:feature` instead. Pushes to `main` deploy to production on Vercel.
