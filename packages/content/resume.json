@@ -4,7 +4,7 @@
     "name": "Alex Profir",
     "label": "Senior Full-Stack Engineer",
     "email": "alexprofir512@gmail.com",
-    "summary": "I build applications from the ground up with a strong emphasis on reliability, client satisfaction, and product quality. I work closely with stakeholders to turn early ideas into clear requirements, then deliver them with the testing and monitoring that keep the product working once it's live. I'm highly collaborative and enjoy working in team environments, and I'm open to remote or hybrid roles.",
+    "summary": "Hi, I'm Alex. I like making apps that people are excited to use, most of them from the ground up. Open to remote or hybrid work.",
     "location": {
       "city": "Timișoara",
       "countryCode": "RO"
@@ -27,20 +27,20 @@
       "name": "Independent Contractor",
       "position": "Senior Full-Stack Engineer",
       "startDate": "2025-04",
-      "summary": "Web, mobile and backend development, including microservices, on scalable cloud infrastructure, through my own company. Clients include MoreDevs, where I continued work on its cybersecurity platform until Oct 2026, and a faith-based social network. I combine hands-on coding with spec-driven development and agentic coding, delivering features with higher velocity and better quality."
+      "summary": "Since April 2025 I've been working through my own company, on web, mobile and backend, microservices too, all on scalable cloud infrastructure. Clients include MoreDevs, where I stayed on their cybersecurity platform until October 2026, and a faith-based social network, where I'm building their app. I still write a lot of the code myself, but I also lean on spec-driven development and agentic coding. The numbers are in the projects below."
     },
     {
       "name": "MoreDevs",
       "position": "Software Developer",
       "startDate": "2018-07",
       "endDate": "2025-04",
-      "summary": "Client projects, working mainly on a cybersecurity platform from 2022.",
+      "summary": "Client projects. From 2022 my main one was a cybersecurity platform.",
       "highlights": [
-        "Developed cross-platform mobile applications for iOS and Android, improving user engagement",
-        "Built and maintained responsive web applications in React and TypeScript",
-        "Designed and implemented RESTful APIs powering multiple services",
-        "Optimized and maintained website infrastructure for reliability and performance",
-        "Built scalable cloud solutions on GCP, AWS and proprietary cloud platforms"
+        "I made cross-platform iOS and Android apps, and user engagement went up",
+        "I built responsive web apps in React and TypeScript, and kept maintaining them",
+        "I designed and built REST APIs that several services depend on",
+        "I took care of website infrastructure, so it stayed fast and reliable",
+        "I set up scalable cloud solutions on GCP, AWS and a few proprietary platforms"
       ]
     }
   ],
@@ -200,15 +200,15 @@
       "name": "Faith-Based Social Network Mobile App",
       "entity": "Independent Contractor",
       "startDate": "2025-12",
-      "description": "iOS and Android app for a faith-based social network.",
+      "description": "An iOS and Android app for a faith-based social network.",
       "highlights": [
-        "Technical lead for a team of 4–6 engineers, responsible for architecture, planning, code review and mentoring",
-        "Built feeds, groups and video playback, including offline video caching",
-        "Kept the app up to date with the latest Expo SDK versions",
-        "Wrote native iOS and Android modules for audio focus, SMS consent and text input",
-        "Set up CI with linting, type checks, tests and secret scanning, and scripted Fastlane releases to Firebase App Distribution and App Store Connect, so every update is checked and shipped the same way",
-        "Set up crash reporting and monitoring with Sentry and Crashlytics, so problems are found and fixed before users have to report them",
-        "Built a spec-driven, agentic workflow that takes a Jira ticket and its Figma design through to an open pull request, delivering features in 2–3 weeks against an estimated 2 months or more without AI, with the UI matching Figma"
+        "I'm the technical lead, for a team of 4–6 engineers. Architecture, planning, code review and mentoring, that's my part",
+        "I built the feeds and groups, and the video playback. The videos get cached, so you can watch them offline",
+        "When a new Expo SDK comes out, I move the app to it",
+        "Some things needed native code, so I wrote modules on iOS and Android for audio focus, SMS consent and text input",
+        "I set up the CI. It runs linting, type checks, tests and secret scanning, and my Fastlane scripts release to Firebase App Distribution and App Store Connect, so a release is always done the same way",
+        "I added Sentry and Crashlytics. We see the crashes and fix them before users need to tell us",
+        "I also made a workflow with specs and AI agents. It goes from a Jira ticket and the Figma design to a pull request, and the UI matches Figma. We had features estimated at 2 months or more without AI, now we do them in 2–3 weeks"
       ],
       "keywords": [
         "Expo",
@@ -223,16 +223,16 @@
       "entity": "MoreDevs",
       "startDate": "2022-01",
       "endDate": "2026-10",
-      "description": "Cross-platform cybersecurity product for secure device management and threat detection, with a mobile app, a web admin UI and a cloud backend. Built by a team of 4–6 engineers, first as a MoreDevs employee and from Apr 2025 as a contractor.",
+      "description": "A cross-platform product for secure device management and threat detection. It has a mobile app, a web admin UI and a cloud backend. We were 4–6 engineers. I was on it as a MoreDevs employee first, and from April 2025 as a contractor.",
       "highlights": [
-        "Developed the React Native mobile app and the web admin UI end to end",
-        "Built threat detection features, including man-in-the-middle detection on the device",
-        "Built two JavaScript SDKs connecting the mobile app, web and backend services",
-        "Built notification and device management microservices to start replacing the monolith that held all the logic, and implemented and maintained the auth microservice with teammates, using spec-driven development",
-        "Delivered features at least 2x faster with spec-driven, agentic development, as reported by the team lead",
-        "Developed integrations with multiple third-party systems using webhooks and Cloud Run tasks for reliable asynchronous processing",
-        "Migrated infrastructure from Cloud Functions to Cloud Run, cutting costs by at least 25% according to billing and improving scalability",
-        "Reviewed code and optimized performance across frontend and backend"
+        "I built the React Native app and the web admin UI end to end",
+        "I built threat detection features too, for example catching man-in-the-middle attacks on the device",
+        "I wrote two JavaScript SDKs that the mobile app, the web and the backend services use to talk to each other",
+        "All the logic was in one monolith, so we started to split it. I built the notification and device management microservices, and the auth one I built with my teammates and kept maintaining, all spec-driven",
+        "With spec-driven, agentic development I was shipping features at least 2x faster. That's my team lead's number, not mine",
+        "I built integrations with several third-party systems. They send webhooks, and Cloud Run tasks process them reliably in the background",
+        "I moved us from Cloud Functions to Cloud Run. The bill went down at least 25% and it scales better",
+        "I also did code reviews and performance work, on frontend and backend"
       ],
       "keywords": [
         "React Native",
@@ -250,11 +250,11 @@
       "entity": "MoreDevs",
       "startDate": "2021-10",
       "endDate": "2022-09",
-      "description": "Mobile app for creating, searching and managing guided city tours.",
+      "description": "A mobile app for creating, searching and managing guided city tours.",
       "highlights": [
-        "Built the mobile app for creating and searching city tours",
-        "Implemented tour management and guided workflows across frontend and backend",
-        "Integrated AI-based image moderation for content safety"
+        "I built the mobile app, where people make tours and search for them",
+        "I worked on tour management and the guided flows, on frontend and backend",
+        "I added AI-based image moderation, so unsafe images get caught before they go live"
       ],
       "keywords": [
         "React Native",
@@ -269,11 +269,11 @@
       "entity": "MoreDevs",
       "startDate": "2021-04",
       "endDate": "2021-07",
-      "description": "Mobile app for posting and tracking jobs.",
+      "description": "A mobile app for posting jobs and keeping track of them.",
       "highlights": [
-        "Implemented the job creation workflow, including data entry, media uploads and job type selection",
-        "Designed the summary and editing screens",
-        "Implemented data handling and form validation on mobile"
+        "I built the job creation flow: data entry, media uploads, picking the job type",
+        "I designed the summary and edit screens",
+        "I did the data handling and form validation on mobile"
       ],
       "keywords": [
         "Native Android/iOS"
@@ -284,11 +284,11 @@
       "entity": "MoreDevs",
       "startDate": "2020-09",
       "endDate": "2021-12",
-      "description": "Web platform for accessibility management.",
+      "description": "A web platform for managing accessibility.",
       "highlights": [
-        "Developed responsive layouts and optimized frontend performance",
-        "Fixed memory leaks and removed inefficient code to improve system stability",
-        "Built an embeddable data visualization widget showing accessibility data for hotels"
+        "I made the layouts work on all screen sizes, and made the frontend faster",
+        "There were memory leaks and some inefficient code. I fixed them and the system got more stable",
+        "I built a widget that hotels can put on their site to show their accessibility data"
       ],
       "keywords": [
         "React",
@@ -301,11 +301,11 @@
       "entity": "MoreDevs",
       "startDate": "2020-08",
       "endDate": "2020-12",
-      "description": "Content management platform for video metadata and assets.",
+      "description": "A content management platform for video metadata and assets.",
       "highlights": [
-        "Implemented content management over a RESTful API",
-        "Customized table components to match the design system",
-        "Improved frontend responsiveness"
+        "I did the content management on top of a RESTful API",
+        "I customized the table components so they fit the design system",
+        "I made the frontend more responsive"
       ],
       "keywords": [
         "React",
@@ -320,11 +320,11 @@
       "entity": "MoreDevs",
       "startDate": "2020-01",
       "endDate": "2020-09",
-      "description": "Platform for managing incidents and tracking vehicles in real time.",
+      "description": "A platform for managing incidents and tracking vehicles in real time.",
       "highlights": [
-        "Developed the user and account management modules",
-        "Integrated real-time maps with vehicle location tracking",
-        "Fixed performance bottlenecks and memory leaks in frontend rendering"
+        "I built the user and account management modules",
+        "I added live maps where you can see where each vehicle is",
+        "I fixed performance bottlenecks and memory leaks in the frontend rendering"
       ],
       "keywords": [
         "React",
@@ -336,11 +336,11 @@
       "entity": "MoreDevs",
       "startDate": "2019-06",
       "endDate": "2020-02",
-      "description": "Web platform for tracking sales data across organizations.",
+      "description": "A web platform for tracking sales data across organizations.",
       "highlights": [
-        "Built the admin UI for managing sales data by organization",
-        "Implemented custom data tables highlighting key sales metrics",
-        "Built a responsive UI"
+        "I built the admin UI where sales data is managed per organization",
+        "I made custom data tables that show the key sales metrics",
+        "I made the UI responsive"
       ],
       "keywords": [
         "React",
@@ -353,11 +353,11 @@
       "entity": "MoreDevs",
       "startDate": "2019-06",
       "endDate": "2021-10",
-      "description": "Web application for managing fitness courses.",
+      "description": "A web app for managing fitness courses.",
       "highlights": [
-        "Set up the project and designed its architecture",
-        "Implemented course management across frontend and backend",
-        "Worked with backend engineers on data synchronization"
+        "I set up the project and designed its architecture",
+        "I did course management on frontend and backend",
+        "I worked with the backend engineers to keep the data in sync"
       ],
       "keywords": [
         "React",
@@ -371,11 +371,11 @@
       "entity": "MoreDevs",
       "startDate": "2018-08",
       "endDate": "2019-08",
-      "description": "Web platform for managing art galleries and artworks.",
+      "description": "A web platform for managing art galleries and their artworks.",
       "highlights": [
-        "Developed the admin UI for managing gallery items and users",
-        "Implemented autocomplete fields fetching real-time data from backend APIs",
-        "Optimized workflows for transferring items between galleries"
+        "I built the admin UI for gallery items and users",
+        "I made autocomplete fields that get live data from the backend APIs",
+        "I made it easier to move items from one gallery to another"
       ],
       "keywords": [
         "React",
@@ -388,11 +388,11 @@
       "entity": "MoreDevs",
       "startDate": "2018-07",
       "endDate": "2018-11",
-      "description": "Web dashboard for real-time retail analytics and performance visualization.",
+      "description": "A web dashboard that shows retail analytics and performance in real time.",
       "highlights": [
-        "Implemented analytics pages with real-time graphs and filters",
-        "Added CSV export for data analysis and reporting",
-        "Optimized dashboard performance for high data throughput"
+        "I did analytics pages with live graphs and filters",
+        "I added CSV export, so the data can be analyzed and used in reports",
+        "I made the dashboard faster, so it handles a lot of data"
       ],
       "keywords": [
         "Angular"
