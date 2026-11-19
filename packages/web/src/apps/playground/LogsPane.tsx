@@ -3,7 +3,7 @@
 // word and glyph, its values as text, and for an uncaught error a button to
 // its line. Values reach the page only as React text: nothing the code
 // prints is ever markup.
-import { memo, useLayoutEffect, useRef } from 'react';
+import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react';
 import { counted, fill, siteText } from '../../site-text.ts';
 import { currentEngine } from './controller.ts';
 import { ErrorMark, InfoMark, WarnMark } from './Glyphs.tsx';
@@ -96,11 +96,23 @@ function Level({ level }: { level: LogEntry['level'] }) {
   );
 }
 
+// Characters to a line in the narrowest Logs pane, a phone's.
+const LINE_CHARS = 40;
+
+// How many lines a row's text takes at most. A row out of view keeps that
+// height until it is first drawn: a batch of 1,000 rows of 10,000 characters
+// had the height of one line each, so the rows laid out in view held up a key
+// past 100 ms (SC-005).
+export function shownLines(text: string): number {
+  return text.split('\n').reduce((lines, line) => lines + Math.max(1, Math.ceil(line.length / LINE_CHARS)), 0);
+}
+
 // An entry never changes, so a new batch draws only the new rows.
 const Entry = memo(function Entry({ entry }: { entry: LogEntry }) {
   const text = entry.note !== undefined ? noteText(entry.note) : entry.values.map((value) => shownText(value)).join(' ');
+  const lines = shownLines(text);
   return (
-    <li className="log" data-level={entry.level}>
+    <li className="log" data-level={entry.level} style={lines > 1 ? ({ '--lines': lines } as CSSProperties) : undefined}>
       <Level level={entry.level} />
       <span className="value">
         {text}

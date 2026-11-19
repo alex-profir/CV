@@ -533,9 +533,11 @@
   padding-block: var(--token-space-1);
   border-block-end: var(--token-border-thin) solid var(--token-color-shell-rule);
   /* A batch can add 1,000 long rows: only those in view are laid out, so
-     drawing them doesn't hold up a key (SC-005). */
+     drawing them doesn't hold up a key (SC-005). Until a row is first drawn
+     it is as tall as its text's lines at most (`--lines`, LogsPane.tsx), so
+     few new rows are ever in view at once. */
   content-visibility: auto;
-  contain-intrinsic-block-size: auto var(--token-space-8);
+  contain-intrinsic-block-size: auto max(var(--token-space-8), calc(var(--lines, 1) * var(--token-typography-small-line-height) * var(--token-typography-small-font-size)));
 }
 
 .playground .log .level {

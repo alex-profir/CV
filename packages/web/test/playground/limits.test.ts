@@ -86,6 +86,19 @@ describe('008-typescript-playground-FR-044: the logs keep the latest 1,000 entri
       expect(Math.max(...ages.slice(4))).toBeLessThan(4_000);
       expect(heap).toBeLessThan(400e6);
       expect(Math.max(...delays)).toBeLessThan(100);
+      // What keeps the keys answering on a slower machine than this one: a row
+      // not yet drawn is about as tall as a drawn one, so a batch lays out only
+      // the few rows in view, and the newest of them stays in view.
+      const rows = await page.evaluate((selector) => {
+        const all = [...document.querySelectorAll(selector)];
+        const drawn = (row: Element) => row.querySelector('.value')?.checkVisibility({ contentVisibilityAuto: true }) === true;
+        const height = (row: Element | undefined) => row?.getBoundingClientRect().height ?? 0;
+        const pane = all[0]?.closest('.pane')?.getBoundingClientRect();
+        const newest = all.at(-1)?.getBoundingClientRect();
+        return { undrawn: height(all.find((row) => !drawn(row))), drawn: height(all.find(drawn)), newestInView: pane !== undefined && newest !== undefined && newest.top < pane.bottom && newest.bottom > pane.top };
+      }, `${PLAYGROUND} .pane-logs ol.logs > li.log`);
+      expect(rows.undrawn).toBeGreaterThan(rows.drawn / 2);
+      expect(rows.newestInView).toBe(true);
       // The stuck popup is up by now: its Stop still works and the page lived.
       await page.click(`${POPUP} button.danger`);
       await page.waitForFunction((selector) => document.querySelector(selector)?.getAttribute('aria-disabled') === 'true', `${PLAYGROUND} .playground-toolbar button.stop`);
