@@ -88,7 +88,7 @@ describe('005-os-shell-FR-059: offline, the root opens in both shells after one 
     ]);
     const lines = report.problems.filter((problem) => problem.page === '/').map(renderProblem);
     expect(lines).toHaveLength(rootOfflineVariants().length);
-    for (const line of lines) expect(line).toMatch(/^offline \/ (?:desktop|mobile)\/[a-z-]+(?:\/[a-z]+)?\/\d+px error offline: the part crashed: /);
+    for (const line of lines) expect(line).toMatch(/^offline \/ (?:desktop|mobile)\/[a-z-]+(?:\/[a-z-]+)?\/\d+px error offline: the part crashed: /);
   });
 });
 
