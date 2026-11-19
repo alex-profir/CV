@@ -384,7 +384,9 @@ embedded in the engine (with the bootstrap, whose hash the build computes). Befo
   characters have had their time, keeping at most the latest 1,000 and counting the rest as dropped,
   so a printing loop still shows its latest output; what's waiting when the code blocks stays unsent,
   and the end sends what's left. The page draws the logs at most every 250 ms, and only the rows in
-  view are laid out (T193);
+  view are laid out (T193). Until a row is first drawn it is as tall as its text at 40 characters a
+  line: at one line's height, a batch of 1,000 rows of 10,000 characters put about 140 of them in
+  view at once, and laying those out held a key for 104 ms on the full run's machine;
 - starts `fetch` and asynchronous `XMLHttpRequest`s by the clock too, 100 at once and then one a
   millisecond (contracts/runner.md, T243), as a loop of starts stopped the page answering: with
   this off, in Chromium, a loop of them to a closed port left the page taking over 30 s to answer;
