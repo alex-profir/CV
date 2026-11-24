@@ -15,6 +15,7 @@ import type { Browser, BrowserContext, BrowserContextOptions, Page } from 'playw
 import type { Resume } from '@cv/content';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
 import { CV_PDF } from '../../../packages/web/src/routes.ts';
+import { downloadName } from '../../../packages/web/src/format/file-name.ts';
 import { launchChromium } from './browser.ts';
 import { siteText } from '../../../packages/web/src/site-text.ts';
 import { expectedFields } from './expected.ts';
@@ -399,7 +400,8 @@ export async function runCheck(root: string, { parts = PARTS, repository = root,
         const targets = [cvPath, rootPath, NOT_FOUND_PATH];
         try {
           const fields = expectedFields(readResume());
-          const outcome = await offlineProblems(chromium, { siteDir, manifest, fields, families, cvPath, rootPath, notFoundPath: NOT_FOUND_PATH, shellRoot });
+          const pdfName = downloadName(readResume().basics?.name);
+          const outcome = await offlineProblems(chromium, { siteDir, manifest, fields, families, pdfName, cvPath, rootPath, notFoundPath: NOT_FOUND_PATH, shellRoot });
           for (const { page, variant, problems } of outcome) results.push(result('offline', page, variant, problems));
         } catch (error) {
           // The shell root's lines keep their `<shell>/<state>/<width>px`.
