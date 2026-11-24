@@ -76,6 +76,7 @@
       "name": "Web Frameworks & Libraries",
       "keywords": [
         "React",
+        "Next.js",
         "Material UI",
         "TanStack Query",
         "Zustand"
@@ -150,7 +151,6 @@
     {
       "name": "Also Familiar With",
       "keywords": [
-        "Next.js",
         "Vue.js",
         "Nuxt.js",
         "Angular",
@@ -202,7 +202,7 @@
       "startDate": "2025-12",
       "description": "An iOS and Android app for a faith-based social network.",
       "highlights": [
-        "I'm the technical lead, for a team of 4–6 engineers. Architecture, planning, code review and mentoring, that's my part",
+        "I'm the technical lead for a team of 4–6 engineers, responsible for architecture, planning, code review and mentoring",
         "I built the feeds and groups, and the video playback. The videos get cached, so you can watch them offline",
         "When a new Expo SDK comes out, I move the app to it",
         "Some things needed native code, so I wrote modules on iOS and Android for audio focus, SMS consent and text input",
@@ -228,8 +228,8 @@
         "I built the React Native app and the web admin UI end to end",
         "I built threat detection features too, for example catching man-in-the-middle attacks on the device",
         "I wrote two JavaScript SDKs that the mobile app, the web and the backend services use to talk to each other",
-        "All the logic was in one monolith, so we started to split it. I built the notification and device management microservices, and the auth one I built with my teammates and kept maintaining, all spec-driven",
-        "With spec-driven, agentic development I was shipping features at least 2x faster. That's my team lead's number, not mine",
+        "We split the monolith into microservices. I built the notification and device management services, built auth with my teammates and maintained it, all spec-driven",
+        "With spec-driven, agentic development I shipped features at least 2x faster, by my team lead's measure",
         "I built integrations with several third-party systems. They send webhooks, and Cloud Run tasks process them reliably in the background",
         "I moved us from Cloud Functions to Cloud Run. The bill went down at least 25% and it scales better",
         "I also did code reviews and performance work, on frontend and backend"
@@ -396,6 +396,53 @@
       ],
       "keywords": [
         "Angular"
+      ]
+    },
+    {
+      "name": "Agentic Development Toolkit",
+      "entity": "Personal project",
+      "description": "Claude Code tooling that takes a ticket to a reviewed pull request through a plan, questions, automated checks and review.",
+      "highlights": [
+        "I approve work from a planning console, and agents build it unattended"
+      ],
+      "keywords": [
+        "TypeScript",
+        "Node.js",
+        "Claude Code",
+        "Spec-Driven Development"
+      ]
+    },
+    {
+      "name": "Restaurant Management Platform",
+      "entity": "Personal project",
+      "description": "A multi-tenant platform for restaurants: venues, staff, owner accounts and a shared tablet mode.",
+      "keywords": [
+        "Next.js",
+        "TypeScript",
+        "Supabase"
+      ]
+    },
+    {
+      "name": "Workout App",
+      "entity": "Personal project",
+      "description": "A phone-first workout app with programs, a video workout player and progress tracking, on the web and Android.",
+      "keywords": [
+        "React",
+        "React Native",
+        "Supabase"
+      ]
+    },
+    {
+      "name": "Ride Offer Rater",
+      "entity": "Personal project",
+      "description": "An Android app that reads ride offers from driver apps and rates them on the spot.",
+      "highlights": [
+        "A native Kotlin module captures the offers and shows the rating over the driver app"
+      ],
+      "keywords": [
+        "Expo",
+        "Kotlin",
+        "Firebase"
       ]
     }
   ]
