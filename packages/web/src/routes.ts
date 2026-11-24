@@ -38,6 +38,11 @@ export const ROUTES: Routes = deepFreeze({
   notFound: { file: '404.html', status: 404 },
 });
 
+// The CV as a PDF, made by the build from the built /cv (011 research R8).
+// A served file, not a page: `ROUTES.pages` doesn't list it. The build, the
+// page, the worker and the checks all read the path from here.
+export const CV_PDF = { path: '/cv.pdf', file: 'cv.pdf' } as const;
+
 // What a path answers. `pathname` has no query string or fragment: the
 // caller strips them. Matching is exact, so `/cv.html` and `/cv/x` are
 // not found.

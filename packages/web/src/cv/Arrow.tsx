@@ -8,6 +8,8 @@ const PATHS = {
   right: 'M1 5h8M5.5 1.5 9 5 5.5 8.5',
   // ↗, after a link that leaves the site.
   'up-right': 'M2 8 8 2M3 2h5v5',
+  // ↓, after the intro's "Download PDF" (011 wireframes.md).
+  down: 'M5 1v8M1.5 5.5 5 9l3.5-3.5',
 } as const;
 
 export type ArrowKind = keyof typeof PATHS;

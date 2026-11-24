@@ -57,7 +57,8 @@ PDF or fingerprint (FR-021 removed), no `@page` rule in `print.css`, no US Lette
 
 **Purpose**: The renderer the build will need, everywhere the site is built
 
-- [ ] T001 Confirm Playwright's Chromium is installed locally (`npx playwright install chromium`), and that every CI job that builds the site installs it before building: `.github/workflows/ci.yml`'s `site` job and `.github/workflows/full.yml`'s `full` job run `npx playwright install --with-deps chromium` before `npm run site-check` / `npm test`; the `test`, `traceability`, `content` and `tokens` jobs don't build. Also check `tools/local-verify/` (`npm run verify:feature`) builds only after the browser is present. No change is expected; record the result here.
+- [X] T001 Confirm Playwright's Chromium is installed locally (`npx playwright install chromium`), and that every CI job that builds the site installs it before building: `.github/workflows/ci.yml`'s `site` job and `.github/workflows/full.yml`'s `full` job run `npx playwright install --with-deps chromium` before `npm run site-check` / `npm test`; the `test`, `traceability`, `content` and `tokens` jobs don't build. Also check `tools/local-verify/` (`npm run verify:feature`) builds only after the browser is present. No change is expected; record the result here.
+  - **Result (2026-11-24)**: no change needed. Local: `~/Library/Caches/ms-playwright` holds `chromium-1248` and `chromium_headless_shell-1248` (Playwright 1.64.1). CI: `ci.yml`'s `site` job and `full.yml`'s `full` job run `npx playwright install --with-deps chromium` before `npm run site-check` / `npm test`; `traceability`, `test` (typecheck, `test:fast`, which never starts the slow project's build), `content` and `tokens` don't build. `tools/local-verify/src/verify.ts` refuses to start (`site check needs Chromium: run npx playwright install chromium`) before any build when Chromium is missing.
 
 ---
 
@@ -67,10 +68,11 @@ PDF or fingerprint (FR-021 removed), no `@page` rule in `print.css`, no US Lette
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Confirm the design gate (Constitution II): `specs/011-cv-pdf/design/` has `wireframes.md`, the interim local mockup in `design/mockup/` with its PNG exports at 1440, 375 and 320 px (`desktop-1-intro-1440.png`, `desktop-2-link-focused-1440.png`, `phone-1-intro-375.png`, `phone-2-intro-narrow-320.png`) and `review.md` signed by the owner at `27606f2` on 2026-11-24. No task that creates or changes UI (T014, T015) starts before this.
-- [ ] T003 [P] Add `export const CV_PDF = { path: '/cv.pdf', file: 'cv.pdf' } as const` to `web/src/routes.ts` (research R8). It is not a page: `ROUTES.pages` is unchanged. The build, the page, the worker and the checks all read the path from it.
-- [ ] T004 [P] Add the `download` group to `web/src/site-text.ts`, beside the contact row labels, with exactly these values from data-model.md: `rowLabel: 'CV'`, `link: 'Download PDF'`, `suffix: '-CV.pdf'`, `fallbackName: 'CV.pdf'`. No CV fact goes in this file (the content check searches it); fix `web/test/site-text.test.ts` if it lists the groups.
-- [ ] T005 [P] Add the `down` arrow to `web/src/cv/Arrow.tsx`, path `M5 1v8M1.5 5.5 5 9l3.5-3.5` (wireframes.md, research R11), rendered as the other arrows are: `class="arrow arrow-down"`, `aria-hidden="true"`, `focusable="false"`, `viewBox="0 0 10 10"`, `fill="none"`, `stroke="currentColor"`.
+- [X] T002 Confirm the design gate (Constitution II): `specs/011-cv-pdf/design/` has `wireframes.md`, the interim local mockup in `design/mockup/` with its PNG exports at 1440, 375 and 320 px (`desktop-1-intro-1440.png`, `desktop-2-link-focused-1440.png`, `phone-1-intro-375.png`, `phone-2-intro-narrow-320.png`) and `review.md` signed by the owner at `27606f2` on 2026-11-24. No task that creates or changes UI (T014, T015) starts before this.
+  - **Result (2026-11-24)**: present. `design/wireframes.md`, `design/mockup/` (build.mjs, HTML and the four PNGs) and `design/review.md` with `**Status**: Approved (mockup 27606f2, 2026-11-24)`.
+- [X] T003 [P] Add `export const CV_PDF = { path: '/cv.pdf', file: 'cv.pdf' } as const` to `web/src/routes.ts` (research R8). It is not a page: `ROUTES.pages` is unchanged. The build, the page, the worker and the checks all read the path from it.
+- [X] T004 [P] Add the `download` group to `web/src/site-text.ts`, beside the contact row labels, with exactly these values from data-model.md: `rowLabel: 'CV'`, `link: 'Download PDF'`, `suffix: '-CV.pdf'`, `fallbackName: 'CV.pdf'`. No CV fact goes in this file (the content check searches it); fix `web/test/site-text.test.ts` if it lists the groups.
+- [X] T005 [P] Add the `down` arrow to `web/src/cv/Arrow.tsx`, path `M5 1v8M1.5 5.5 5 9l3.5-3.5` (wireframes.md, research R11), rendered as the other arrows are: `class="arrow arrow-down"`, `aria-hidden="true"`, `focusable="false"`, `viewBox="0 0 10 10"`, `fill="none"`, `stroke="currentColor"`.
 
 **Checkpoint**: Foundation ready. User story work can begin.
 

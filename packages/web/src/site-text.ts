@@ -22,6 +22,15 @@ export const siteText = deepFreeze({
   basedIn: 'Based in',
   email: 'Email',
   website: 'Website',
+  // The intro's last contact row, the CV as a file (011 data-model.md Site
+  // text additions). The suggested file name is the CV document's name, its
+  // words joined by hyphens, then `suffix`; `fallbackName` when it has none.
+  download: {
+    rowLabel: 'CV',
+    link: 'Download PDF',
+    suffix: '-CV.pdf',
+    fallbackName: 'CV.pdf',
+  },
   // An ongoing entry's end: shown, and read by screen readers.
   present: { visible: 'Present', spoken: 'present' },
   // Read by screen readers between a start and an end date.
