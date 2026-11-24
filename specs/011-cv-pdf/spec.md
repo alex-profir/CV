@@ -235,11 +235,13 @@ FR-021 when it fails; the other is then marked removed, with the trial as its re
   no separate step for the owner. When it can't be produced (the renderer can't start, the page
   fails to render, or the result is missing or empty), the build MUST fail with a message naming
   the cause, so a site with a dead link is never published.
-- **FR-021**: Fallback, built only if the trial fails: the PDF MUST be kept in the repository and
-  regenerated with one command. The PDF MUST record a fingerprint of every input that changes its
-  content or look: the CV document, the site text, and the styles and fonts the print view uses.
-  The checks on every pull request MUST fail when the recorded fingerprint differs from the
-  current inputs', naming the command that regenerates it.
+- ~~**FR-021**~~: Removed 2026-11-24 - the trial on the host's preview build succeeded (see
+  Clarifications), so FR-020 is built. It said: fallback, built only if the trial fails: the PDF
+  MUST be kept in the repository and regenerated with one command. The PDF MUST record a
+  fingerprint of every input that changes its content or look: the CV document, the site text,
+  and the styles and fonts the print view uses. The checks on every pull request MUST fail when
+  the recorded fingerprint differs from the current inputs', naming the command that regenerates
+  it.
 
 **Serving and offline**
 
