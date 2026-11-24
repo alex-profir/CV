@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "git update-index --assume-unchanged vercel.json && npm run build && npx playwright install chromium && node spike-pdf.mjs",
+  "buildCommand": "git update-index --assume-unchanged vercel.json && npm run build && dnf install -y -q nss nspr atk at-spi2-atk cups-libs libdrm libxkbcommon libXcomposite libXdamage libXfixes libXrandr mesa-libgbm pango cairo alsa-lib && npx playwright install chromium && node spike-pdf.mjs",
   "outputDirectory": "packages/web/dist/site",
   "routes": [
     {
