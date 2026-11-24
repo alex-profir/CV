@@ -1,6 +1,6 @@
 # Design Review: CV PDF Download
 
-**Status**: Draft
+**Status**: Approved (mockup `27606f2`, 2026-11-24)
 
 <!--
   Status moves from Draft to Approved only when the project owner signs off the design
@@ -30,4 +30,5 @@ built from the real `/cv` page, so only the download row is new.
 
 ## Sign-off
 
-- Reviewed mockup: pending the owner's review.
+- Reviewed mockup: commit `27606f2`, an interim local mockup. Approved by the owner on 2026-11-24.
+- The PDF stays complete, matching /cv (7 A4 pages today); a shorter print is not part of this feature (owner, 2026-11-24).
