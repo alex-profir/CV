@@ -49,6 +49,12 @@
 - Q: The intro block is inside the main landmark, where 004 FR-025 allows no site elements. Amend
   004 FR-025, or keep it and place the link just outside the main landmark? → A: Amend 004 FR-025:
   the download link alone sits in the intro block (FR-006).
+- Trial on a Vercel preview build (2026-11-24, throwaway branch `spike/vercel-chromium`): Chromium
+  fails to launch on Vercel's build image (Amazon Linux 2023) for lack of `libnspr4.so`; after
+  `dnf install nss nspr` in the build, Playwright's Chromium prints `/cv` to a 300 KB A4 PDF in about
+  1 s, adding about 50 s to the build (library install and browser download). Playwright warns the
+  OS is not officially supported and uses its Ubuntu build. → The build-time PDF (FR-020) is built;
+  the committed-PDF fallback (FR-021) is not.
 
 ## User Scenarios & Testing *(mandatory)*
 
