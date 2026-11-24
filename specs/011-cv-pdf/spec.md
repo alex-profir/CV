@@ -42,6 +42,14 @@
 > link is hidden. UI feature: interim local mockup of the intro with the link, desktop and phone,
 > for the design gate.
 
+## Clarifications
+
+### Session 2026-11-24
+
+- Q: The intro block is inside the main landmark, where 004 FR-025 allows no site elements. Amend
+  004 FR-025, or keep it and place the link just outside the main landmark? → A: Amend 004 FR-025:
+  the download link alone sits in the intro block (FR-006).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - A recruiter downloads the CV as a file (Priority: P1)
@@ -190,10 +198,7 @@ references `011-cv-pdf-FR-###`. UI implementing a requirement carries
   outside the main landmark; it becomes "site elements sit outside the main landmark, except the
   download link (011-cv-pdf-FR-001), which sits in the intro block". 004's **Site element** entity
   is amended the same way, and its out-of-scope line for the PDF download names this feature.
-  Approved with this spec. [NEEDS CLARIFICATION: The intro block is inside the main landmark, where
-  004 FR-025 allows no site elements. Amend 004 FR-025 as written here (the link in the intro, as
-  asked), or keep FR-025 and place the link just outside the main landmark, above or below the
-  CV?]
+  Approved with this spec.
 
 **The PDF**
 
