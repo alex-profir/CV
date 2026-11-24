@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-24
 
-**Status**: Draft
+**Status**: Approved (owner, 2026-11-24)
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
@@ -49,6 +49,18 @@
 > (sections and order), 005 and 006, each named in a requirement. Print: both sections print in the
 > one-column print layout. Offline: unchanged, all static. UI feature: interim local mockup for
 > the design gate.
+
+## Clarifications
+
+### Session 2026-11-24
+
+- Q: Should personal projects' files in the Terminal sit in `~/projects` beside the client
+  projects, or in a folder of their own? → A: A folder of their own, `~/projects/personal`, matching
+  the separate section on /cv (FR-019).
+- Q: How are the AI-writing detectors used on the drafts? → A: As a filter only. They flag terse CV
+  text whoever wrote it (the CV as it was scored 98% AI on one detector), so drafts drop the
+  patterns they react to most and keep the short voice; scores are recorded in `content.md`, with
+  no target score, and the owner's approval wins over a flag.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -295,8 +307,8 @@ references `010-cv-pitch-FR-###`. UI implementing a requirement carries
   `projects` MUST give the reply 006 FR-011 sets.
 - **FR-019**: The Terminal's file system MUST hold a file for every personal project, named as 006
   FR-044 names a project's file, and `cat` on it MUST show what `projects` shows for that entry.
-  [NEEDS CLARIFICATION: should personal projects' files sit in `~/projects` beside the client
-  projects (the default assumed here), or in a folder of their own, such as `~/projects/personal`?]
+  Personal projects' files sit in a folder of their own, `~/projects/personal`; client projects'
+  files stay in `~/projects`.
 
 **Print and accessibility**
 
