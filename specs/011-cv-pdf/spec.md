@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-24
 
-**Status**: Approved (owner, 2026-11-24)
+**Status**: Approved
 
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.

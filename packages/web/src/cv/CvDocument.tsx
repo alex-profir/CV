@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { Resume } from '@cv/content';
 import { Interests, shownInterests } from './Interests.tsx';
 import { Intro } from './Intro.tsx';
+import type { DownloadLink } from './Intro.tsx';
 import { Languages, shownLanguages } from './Languages.tsx';
 import { Section } from './Section.tsx';
 import { Skills, shownSkills } from './Skills.tsx';
@@ -48,11 +49,12 @@ function sectionContent(resume: Resume, section: SupportedSection): ReactNode | 
   }
 }
 
-export function CvDocument({ resume, as: Root }: { resume: Resume; as: 'main' | 'div' }) {
+// `download` is the intro's download row, which only /cv gives (011 FR-005).
+export function CvDocument({ resume, as: Root, download }: { resume: Resume; as: 'main' | 'div'; download?: DownloadLink }) {
   const sections = SUPPORTED_SECTIONS.map((section) => ({ section, content: sectionContent(resume, section) })).filter(({ content }) => content !== null);
   return (
     <Root className="cv" data-req="004-cv-page-FR-001 004-cv-page-FR-014 004-cv-page-FR-025 004-cv-page-FR-027">
-      <Intro basics={resume.basics ?? {}} />
+      <Intro basics={resume.basics ?? {}} download={download} />
       {sections.map(({ section, content }, index) => (
         <Section key={section} id={section} number={index + 1} heading={siteText.sections[section]}>
           {content}

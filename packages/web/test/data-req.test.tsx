@@ -24,7 +24,10 @@ const CV_TARGETS: [string, string][] = [
   ['h1', ids(23)],
   ['p.date', ids(9, 10, 11)],
   ['dl.contact dd.location', ids(8)],
-  ['main a[href]', ids(12, 13, 29)],
+  // The CV document's links. The download link is a site element and
+  // carries its own row's IDs on its row (011-cv-pdf contracts/page.md).
+  ['main a[href]:not([href="/cv.pdf"])', ids(12, 13, 29)],
+  ['div.contact-row.download', '011-cv-pdf-FR-001 011-cv-pdf-FR-002 011-cv-pdf-FR-003 011-cv-pdf-FR-004 011-cv-pdf-FR-006'],
   ['body > footer', ids(25, 32)],
 ];
 
@@ -58,7 +61,7 @@ async function check(html: string, targets: [string, string][]) {
   expect(unexpected).toEqual([]);
 }
 
-describe('004-cv-page-FR-047: every element implementing a requirement carries its requirement IDs', () => {
+describe('004-cv-page-FR-047, 011-cv-pdf-FR-001, 011-cv-pdf-FR-002, 011-cv-pdf-FR-003, 011-cv-pdf-FR-004, 011-cv-pdf-FR-006: every element implementing a requirement carries its requirement IDs', () => {
   test('/cv with every-field.json carries the IDs of every row, and no other element carries any', async () => {
     await check(renderFixtureHtml(fixture('every-field')), CV_TARGETS);
   });

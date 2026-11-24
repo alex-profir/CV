@@ -11,11 +11,12 @@ vi.setConfig({ testTimeout: 180_000 });
 
 const WIDTHS = [320, 375, 1440];
 
-describe('004-cv-page-FR-028: /cv and the not-found page conform to WCAG 2.2 AA at every width', () => {
-  test('axe finds no violation on /cv with the real CV', async () => {
+describe('004-cv-page-FR-028, 011-cv-pdf-FR-042: /cv and the not-found page conform to WCAG 2.2 AA at every width', () => {
+  test('axe finds no violation on /cv with the real CV, its download link included', async () => {
     const { url } = await serveBuilt();
     for (const width of WIDTHS) {
       const page = await openPage(`${url}/cv`, { width });
+      expect(await page.locator('a[href="/cv.pdf"]').count(), `${width}px`).toBe(1);
       expect(await axeProblems(page, '/cv', `${width}px`), `${width}px`).toEqual([]);
       await page.context().close();
     }

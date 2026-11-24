@@ -1,7 +1,7 @@
 // Keyboard reach, order and a visible focus indicator for every link, using
 // the site check's keyboard part (research R15).
 import { describe, expect, test, vi } from 'vitest';
-import { keyboardProblems } from '../../../tools/site-check/src/parts/keyboard.ts';
+import { indicatorProblem, keyboardProblems } from '../../../tools/site-check/src/parts/keyboard.ts';
 import { focusSelectors } from '../src/os/focus.ts';
 import type { App } from '../src/apps/index.ts';
 import { APPS } from '../src/apps/index.ts';
@@ -42,6 +42,30 @@ describe('004-cv-page-FR-029: every link is reached by keyboard in reading order
     expect(missing).toHaveLength(links);
     expect(missing[0]).toMatchObject({ part: 'keyboard', page: '/cv', variant: '1440px' });
     expect(missing.map((problem) => problem.subject)).toContain('a[href="https://github.com/alex-profir"] "GitHub: alex-profir"');
+  });
+});
+
+describe('011-cv-pdf-FR-042: the download link in the tab order', () => {
+  test('one Tab from the last profile link reaches the download link, with the focus ring, and the next the link after it in the document, at 375 and 1440 px', async () => {
+    const { url } = await serveBuilt();
+    for (const width of [375, 1440]) {
+      const page = await openPage(`${url}/cv`, { width });
+      const href = () => page.evaluate(() => document.activeElement?.getAttribute('href') ?? null);
+      await page.locator('main .profiles a[href]').last().focus();
+      await page.keyboard.press('Tab');
+      expect(await href(), `${width}px`).toBe('/cv.pdf');
+      expect(await indicatorProblem(page), `${width}px`).toBeNull();
+      // The first link in the sections, or the footer's when the CV's
+      // sections hold none, as the real one's don't.
+      const next = await page.evaluate(() => {
+        const links = [...document.querySelectorAll('a[href]')];
+        return links[links.findIndex((link) => link.getAttribute('href') === '/cv.pdf') + 1]?.getAttribute('href') ?? null;
+      });
+      expect(next, `${width}px`).not.toBeNull();
+      await page.keyboard.press('Tab');
+      expect(await href(), `${width}px`).toBe(next);
+      await page.context().close();
+    }
   });
 });
 

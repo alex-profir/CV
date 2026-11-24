@@ -330,6 +330,7 @@ heading list is `Alex Profir`, then one heading per section (spec US1, quickstar
   - FR-023: exactly one `h1`, `Alex Profir`. With `no-name.json`, `CV`.
   - FR-024: the heading outline is `h1`, then one `h2` per shown section, with an `h3` per work, project and education entry under its section; no level is skipped (US1 scenario 6). In `entry-without-heading.json`, the `h3` falls back to the organization, then the date, and the empty entry isn't rendered.
   - FR-025: one `main`; every section is a `region` named by its `h2`; the footer is outside `main`.
+  - **Superseded in part 2026-11-24, naming 011-cv-pdf (its T006)**: the download row is the one site element inside main (011-cv-pdf-FR-006); the footer stays outside.
   - FR-026: highlights, keywords, courses, profiles, skills, languages and interests are `list` and `listitem`.
   - FR-027: `html` has `lang="en"`.
 - [X] T024 [P] [US1] Write `packages/web/test/server-html.test.ts`, covering 004-cv-page-FR-014, 004-cv-page-FR-015 and 004-cv-page-FR-016, on the built `cv.html` and `404.html` files:
