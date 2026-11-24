@@ -43,6 +43,11 @@ export const ROUTES: Routes = deepFreeze({
 // page, the worker and the checks all read the path from here.
 export const CV_PDF = { path: '/cv.pdf', file: 'cv.pdf' } as const;
 
+// The PDF's margin on every side, in inches: Chromium's own print default, a
+// renderer setting rather than a design value (011 research R3). The build
+// prints with it, and the site check's pdf part measures against it.
+export const CV_PDF_MARGIN_INCHES = 0.4;
+
 // What a path answers. `pathname` has no query string or fragment: the
 // caller strips them. Matching is exact, so `/cv.html` and `/cv/x` are
 // not found.

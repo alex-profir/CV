@@ -69,7 +69,7 @@ export async function pdfText(buffer: Uint8Array): Promise<PdfPage[]> {
   }
 }
 
-const compact = (text: string) => text.replace(/\s+/g, '');
+export const compact = (text: string) => text.replace(/\s+/g, '');
 
 function occurrences(haystack: string, needle: string): number {
   if (needle === '') return 0;
@@ -78,12 +78,12 @@ function occurrences(haystack: string, needle: string): number {
   return count;
 }
 
-const quote = (text: string, max = 60) => JSON.stringify(text.length > max ? `${text.slice(0, max - 1)}…` : text);
+export const quote = (text: string, max = 60) => JSON.stringify(text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 type PageFacts = {
   siteElements: { selector: string; text: string }[];
   links: { text: string; href: string }[];
-  headings: { tag: string; text: string }[];
+  headings: PageHeading[];
   colors: { selector: string; color: string }[];
 };
 
@@ -123,15 +123,27 @@ function onWhite(color: string): [number, number, number] | null {
   return [blend(match[1]!), blend(match[2]!), blend(match[3]!)];
 }
 
+// A section or entry heading on the page: `h2` or `h3`, and its text.
+export type PageHeading = { tag: string; text: string };
+
 // Whether the last lines of a page are a heading: the heading's text taking
 // the last one to three lines, possibly after its section number.
-function endingHeading(lines: readonly string[], headings: PageFacts['headings']): PageFacts['headings'][number] | undefined {
+function endingHeading(lines: readonly string[], headings: readonly PageHeading[]): PageHeading | undefined {
   for (let count = 1; count <= Math.min(3, lines.length); count += 1) {
     const tail = lines.slice(-count).join(' ');
     const heading = headings.find(({ text }) => text !== '' && (tail === text || new RegExp(`^\\d+ ${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).test(tail)));
     if (heading !== undefined) return heading;
   }
   return undefined;
+}
+
+// Every page but the last that ends on a section or entry heading, as a
+// problem's subject and detail (the print and pdf parts' rule, FR-034).
+export function headingsAtPageEnd(pages: readonly PdfPage[], headings: readonly PageHeading[]): { subject: string; detail: string }[] {
+  return pages.slice(0, -1).flatMap((pdfPage) => {
+    const heading = endingHeading(pdfPage.lines, headings);
+    return heading === undefined ? [] : [{ subject: `${heading.tag} ${quote(heading.text)}`, detail: `last line of page ${pdfPage.number}` }];
+  });
 }
 
 export async function printProblems(page: Page, pageLabel: string, paper: PaperSize): Promise<Problem[]> {
@@ -177,11 +189,7 @@ export async function printProblems(page: Page, pageLabel: string, paper: PaperS
     }
   }
 
-  // A heading on the last line of a page, the last page aside.
-  for (const pdfPage of pages.slice(0, -1)) {
-    const heading = endingHeading(pdfPage.lines, facts.headings);
-    if (heading !== undefined) problem('heading-at-page-end', `${heading.tag} ${quote(heading.text)}`, `last line of page ${pdfPage.number}`);
-  }
+  for (const { subject, detail } of headingsAtPageEnd(pages, facts.headings)) problem('heading-at-page-end', subject, detail);
 
   // Text colors in print, against white.
   const seen = new Set<string>();

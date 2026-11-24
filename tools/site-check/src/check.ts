@@ -14,6 +14,7 @@ import path from 'node:path';
 import type { Browser, BrowserContext, BrowserContextOptions, Page } from 'playwright';
 import type { Resume } from '@cv/content';
 import type { SiteManifest } from '../../../packages/web/src/routes.ts';
+import { CV_PDF } from '../../../packages/web/src/routes.ts';
 import { launchChromium } from './browser.ts';
 import { siteText } from '../../../packages/web/src/site-text.ts';
 import { expectedFields } from './expected.ts';
@@ -34,6 +35,7 @@ import { cursorBlinkProblems, forcedColorsProblems, inspectorForcedColorsProblem
 import { noScriptProblems, rootNoScriptProblems } from './parts/no-script.ts';
 import { OFFLINE_VARIANT, offlineProblems, rootOfflineVariants, terminalRows, waitForWorker } from './parts/offline.ts';
 import { otherSiteProblems, recordRequests } from './parts/other-sites.ts';
+import { pdfProblems } from './parts/pdf.ts';
 import { PAPER_SIZES, printProblems } from './parts/print.ts';
 import { PARTS } from './report.ts';
 import type { CheckResult, Part, Problem, Report } from './report.ts';
@@ -126,7 +128,7 @@ export function readManifest(root: string): SiteManifest {
   return JSON.parse(fs.readFileSync(path.join(root, MANIFEST_FILE), 'utf8'));
 }
 
-function readFamilies(): string[] {
+export function readFamilies(): string[] {
   const fonts: { families: { family: string }[] } = JSON.parse(fs.readFileSync(FONTS_FILE, 'utf8'));
   return fonts.families.map((entry) => entry.family);
 }
@@ -685,6 +687,16 @@ export async function runCheck(root: string, { parts = PARTS, repository = root,
         for (const paper of PAPER_SIZES) {
           results.push(await run('print', cvPath, paper, () => withPage(chromium, url(cvPath), viewport(1440), (page) => printProblems(page, cvPath, paper))));
         }
+      },
+      pdf: async () => {
+        // Once, on the built file /cv links to (011 contracts/site.md).
+        results.push(
+          await run('pdf', CV_PDF.path, '-', () => {
+            const name = readResume().basics?.name;
+            const input = { url: server.url, fields: expectedFields(readResume()), author: typeof name === 'string' && name !== '' ? name : undefined, families, listed: manifest.files.some((file) => file.path === CV_PDF.path) };
+            return withPage(chromium, url(cvPath), viewport(1440), (page) => pdfProblems(page, input));
+          }),
+        );
       },
       modes: async () => {
         for (const pagePath of allPaths) {
