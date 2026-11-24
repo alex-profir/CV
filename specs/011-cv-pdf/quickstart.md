@@ -20,7 +20,7 @@ Expected:
 
 - The build prints nothing and exits 0.
 - `cv.pdf` exists and is under 1,000,000 bytes (about 300 KB).
-- It holds 7 A4 pages today, the same as printing `/cv`, with margins, no header or footer, and no
+- It holds 8 A4 pages today (7 when the design was reviewed), the same as printing `/cv`, with margins, no header or footer, and no
   "Download PDF" or footer text.
 - The reader's document properties show the title (name and role), the author (the CV's name) and
   English.
