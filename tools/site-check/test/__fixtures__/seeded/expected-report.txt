@@ -73,7 +73,8 @@ Site check: FAILED
   layout          fail    /cv 320px fail (1), /cv 375px pass, /cv 768px pass, /cv 1024px pass, /cv 1440px pass, /cv 2560px pass, /cv 200%-zoom pass, /cv 400%-zoom fail (1), /cv text-spacing fail (1),
                           /missing-page 320px pass, /missing-page 375px pass, /missing-page 768px pass, /missing-page 1024px pass, /missing-page 1440px pass, /missing-page 2560px pass, /missing-page 200%-zoom pass, /missing-page 400%-zoom pass, /missing-page text-spacing pass
   print           fail    /cv A4 fail (3), /cv Letter fail (3)
+  pdf             pass    /cv.pdf
   modes           fail    /cv 375px fail (1), /cv 1440px fail (1), /cv forced-colors fail (1), /cv reduced-motion fail (1),
                           /missing-page 375px pass, /missing-page 1440px pass, /missing-page forced-colors pass, /missing-page reduced-motion pass
 
-  46 problems in 11 parts. 5 of 16 parts passed.
+  46 problems in 11 parts. 6 of 17 parts passed.

@@ -1,14 +1,18 @@
 // The page's structure as assistive technology reads it, from Chromium's
 // accessibility tree (contracts/page.md /cv structure, research R8).
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
 import { resume } from '@cv/content';
 import type { Resume } from '@cv/content';
 import { dateRange } from '../src/format/dates.ts';
+import { downloadName } from '../src/format/file-name.ts';
 import { siteText } from '../src/site-text.ts';
 import { axNodes, axText, headingOutline } from './helpers/ax.ts';
-import { openPage } from './helpers/browser.ts';
+import { openHtml, openPage } from './helpers/browser.ts';
 import { fixture } from './helpers/fixtures.ts';
-import { serveBuilt, serveFixture } from './helpers/site.ts';
+import { openShell } from './helpers/shell.ts';
+import { builtSite, serveBuilt, serveFixture } from './helpers/site.ts';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -119,14 +123,16 @@ describe('004-cv-page-FR-024: a heading per section and per entry, one level bel
   });
 });
 
-describe('004-cv-page-FR-025: one main landmark, a named region per section, and the footer outside main', () => {
+describe('004-cv-page-FR-025 (amended by 011-cv-pdf-FR-006): one main landmark, a named region per section, and the footer outside main', () => {
   test('the real page has one main, a region per section named by its heading, and the footer outside main', async () => {
     const page = await realPage();
     expect((await axNodes(page, 'main')).map((node) => node.role)).toEqual(['main']);
     const regions = await axNodes(page, 'main > section');
     expect(regions.map((region) => region.role)).toEqual(Array(6).fill('region'));
     expect(regions.map((region) => region.name)).toEqual(['Experience', 'Skills', 'Projects', 'Education', 'Languages', 'Interests']);
-    expect(await page.locator('main footer, main [data-site-element]').count()).toBe(0);
+    // The download row is the one site element inside main (011-cv-pdf-FR-006).
+    expect(await page.locator('main [data-site-element]').evaluateAll((elements) => elements.map((element) => element.className))).toEqual(['contact-row download']);
+    expect(await page.locator('main footer').count()).toBe(0);
     expect(await page.locator('body > footer[data-site-element]').count()).toBe(1);
     expect((await axNodes(page, 'body > footer'))[0]?.role).toBe('contentinfo');
   });
@@ -153,5 +159,55 @@ describe('004-cv-page-FR-027: the page declares English', () => {
       const page = await openPage(`${url}${target}`, { width: 375 });
       expect(await page.locator('html').getAttribute('lang')).toBe('en');
     }
+  });
+});
+
+describe('011-cv-pdf-FR-001, 011-cv-pdf-FR-002, 011-cv-pdf-FR-003, 011-cv-pdf-FR-006: the download row', () => {
+  test("the server HTML of /cv ends the intro's contact block with a plain download link inside main", async () => {
+    const page = await openHtml(fs.readFileSync(path.join(builtSite().dir, 'cv.html'), 'utf8'));
+    const row = page.locator('main .intro .contact-block > :last-child');
+    expect(await row.evaluate((element) => `${element.tagName.toLowerCase()}.${element.className.split(' ').join('.')}`)).toBe('div.contact-row.download');
+    expect(await row.getAttribute('data-site-element')).toBe('');
+    expect(await page.locator('main .contact-row.download').count()).toBe(1);
+    const label = row.locator('span.contact-label');
+    expect(await label.textContent()).toBe('CV');
+    expect(await label.getAttribute('aria-hidden')).toBe('true');
+    const link = row.locator('a.contact-link');
+    expect(await link.count()).toBe(1);
+    expect(await link.getAttribute('href')).toBe('/cv.pdf');
+    expect(await link.getAttribute('download')).toBe('Alex-Profir-CV.pdf');
+    expect(await link.textContent()).toBe('Download PDF');
+    expect(await link.evaluate((element) => ['target', 'rel', 'type'].filter((name) => element.hasAttribute(name)))).toEqual([]);
+  });
+});
+
+describe('011-cv-pdf-FR-003: downloadName', () => {
+  test("a name's words joined by hyphens, before -CV.pdf", () => {
+    expect(downloadName('Alex Profir')).toBe('Alex-Profir-CV.pdf');
+    expect(downloadName('  Jos\u00e9   Mar\u00eda ')).toBe('Jos\u00e9-Mar\u00eda-CV.pdf');
+  });
+
+  test('rejected characters are dropped', () => {
+    expect(downloadName('A/B: C')).toBe('AB-C-CV.pdf');
+  });
+
+  test('no usable name gives CV.pdf', () => {
+    for (const name of [undefined, '', '   ', '/:']) expect(downloadName(name), String(name)).toBe('CV.pdf');
+  });
+
+  test('a decomposed name gives the composed file name', () => {
+    expect(downloadName('Jose\u0301')).toBe('Jos\u00e9-CV.pdf');
+  });
+});
+
+describe('011-cv-pdf-FR-005: no download in the OS shells', () => {
+  test("the CV app shows no download link, in the desktop window and the phone's view", async () => {
+    const desktop = await openShell({ width: 1440, height: 900 });
+    await desktop.locator('#os .window[data-view="cv"] .cv').waitFor();
+    expect(await desktop.locator('#os a[href="/cv.pdf"], #os .contact-row.download').count()).toBe(0);
+    const phone = await openShell({ width: 375, height: 812, hasTouch: true });
+    await phone.locator('#os .app-icon[data-view="cv"]').tap();
+    await phone.locator('#os .full-screen[data-view="cv"] .cv').waitFor();
+    expect(await phone.locator('#os a[href="/cv.pdf"], #os .contact-row.download').count()).toBe(0);
   });
 });

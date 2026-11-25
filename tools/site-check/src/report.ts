@@ -22,6 +22,7 @@ export const PARTS = [
   'fonts',
   'layout',
   'print',
+  'pdf',
   'modes',
 ] as const;
 

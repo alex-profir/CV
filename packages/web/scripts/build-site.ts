@@ -6,9 +6,11 @@
 //   3. the requirement data, `<out>/site/assets/requirements-<hash>.json`
 //      (007 contracts/requirement-data.md), then each route rendered to
 //      `<out>/site/<file>`, with asset links from Vite's manifest;
-//   4. the service worker, `<out>/site/sw.js`, with its precache list,
+//   4. the CV's PDF, `<out>/site/cv.pdf`: /cv, served from `<out>/site/`,
+//      printed by Playwright's Chromium (011 contracts/pdf.md);
+//   5. the service worker, `<out>/site/sw.js`, with its precache list,
 //      version and route table;
-//   5. `<out>/site-manifest.json`: the routes and every served file.
+//   6. `<out>/site-manifest.json`: the routes and every served file.
 //
 // Before step 1, the fonts are checked against the font tokens
 // (contracts/fonts.md), and the Playground's engine is built into a
@@ -34,6 +36,7 @@ import { resume, siteData } from '@cv/content';
 import type { Resume, SiteData } from '@cv/content';
 import { compare } from '../../../tools/traceability/src/report.ts';
 import { ROUTES } from '../src/routes.ts';
+import { writeCvPdf } from './cv-pdf.ts';
 import { BREAKPOINT_PREFIX } from './container-breakpoints.ts';
 import { checkFonts, preloadSources, readFonts } from './fonts-plugin.ts';
 import { bundleProgram, bundleRunner, programPlugin, runnerPlugin } from './runner-scripts.ts';
@@ -105,6 +108,8 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
   '.txt': 'text/plain',
+  // The CV as a file (011 research R8).
+  '.pdf': 'application/pdf',
   // The Playground editor's icon font, loaded only with the engine (008 R22).
   '.ttf': 'font/ttf',
 };
@@ -524,10 +529,16 @@ export async function buildSite(out: string): Promise<SiteManifest> {
     fs.rmSync(ssrDir, { recursive: true, force: true });
   }
 
-  // 4. The service worker.
+  // 4. The CV's PDF, from the /cv just written, before the worker so its
+  // precache and version cover it (011 research R2).
+  // The author is the CV document's name, when it has one (FR-014).
+  const name = resume.basics?.name;
+  await writeCvPdf(siteDir, name !== undefined && name !== '' ? name : undefined);
+
+  // 5. The service worker.
   writeServiceWorker(siteDir);
 
-  // 5. The site manifest, outside what's served.
+  // 6. The site manifest, outside what's served.
   const manifest = siteManifest(siteDir);
   fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;

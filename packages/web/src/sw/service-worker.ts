@@ -124,6 +124,12 @@ async function activate(): Promise<void> {
   await self.clients.claim();
 }
 
+// Precached files at fixed addresses outside `/assets/`, which aren't pages
+// or the not-found page: today `/cv.pdf` (011 research R7). Their content
+// changes under the same name, so they're fetched network first, and a
+// navigation to one offline gets its stored copy.
+const FIXED_FILES = new Set(PRECACHE.filter((path) => !path.startsWith('/assets/') && !path.startsWith(ENGINE_PATH) && path !== notFoundKey() && precacheEntry(path).key === path));
+
 async function fromCache(key: string | Request): Promise<Response | undefined> {
   const cache = await caches.open(CACHE_NAME);
   return cache.match(key, { ignoreVary: true });
@@ -158,14 +164,24 @@ function withinLimit(request: Request): Promise<Response> {
   });
 }
 
-// The stored answer to a navigation, by the route table. The query string
-// doesn't choose the page, and a redirect keeps it, as the server's does.
+// The stored answer to a navigation, by the route table, then a fixed file
+// at that path, then the not-found page. The query string doesn't choose
+// the page, and a redirect keeps it, as the server's does.
 async function storedAnswer(url: URL): Promise<Response> {
   const page = ROUTES.pages.find((route) => route.path === url.pathname || route.aliases.includes(url.pathname));
   const redirect = ROUTES.redirects.find((route) => route.from === url.pathname);
   if (redirect !== undefined && page === undefined) return Response.redirect(new URL(`${redirect.to}${url.search}`, url.origin).href, redirect.status);
-  const stored = await fromCache(page === undefined ? notFoundKey() : page.path);
+  const stored = await fromCache(page !== undefined ? page.path : FIXED_FILES.has(url.pathname) ? url.pathname : notFoundKey());
   return stored ?? Response.error();
+}
+
+// A fixed file: the network within the limit, then this version's copy.
+async function networkFirst(request: Request, url: URL): Promise<Response> {
+  try {
+    return await withinLimit(request);
+  } catch {
+    return (await fromCache(url.pathname)) ?? Response.error();
+  }
 }
 
 async function cacheFirst(request: Request, url: URL): Promise<Response> {
@@ -197,5 +213,6 @@ self.addEventListener('fetch', (event) => {
   event.waitUntil(dropClosed());
   if (request.mode === 'navigate') event.respondWith(withinLimit(request).catch(() => storedAnswer(url)));
   else if (url.pathname.startsWith(ENGINE_PATH)) event.respondWith(engineFile(request));
+  else if (FIXED_FILES.has(url.pathname)) event.respondWith(networkFirst(request, url));
   else event.respondWith(cacheFirst(request, url));
 });

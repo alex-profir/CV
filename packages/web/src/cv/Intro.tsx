@@ -1,6 +1,7 @@
 // The basics block (contracts/page.md /cv structure): the role, the name as
-// the page's one h1, the summary, and the contact rows and profiles. A row,
-// label or list is left out when its field is (FR-004).
+// the page's one h1, the summary, and the contact rows and profiles, then
+// on /cv the download row (011). A row, label or list is left out when its
+// field is (FR-004).
 import type { ResumeBasics, ResumeProfile } from '@cv/content';
 import { locationLine } from '../format/location.ts';
 import { siteText } from '../site-text.ts';
@@ -44,12 +45,16 @@ function Profile({ profile }: { profile: ResumeProfile }) {
   );
 }
 
-export function Intro({ basics }: { basics: ResumeBasics }) {
+// The CV as a file (011 contracts/page.md): a site element, so hidden in
+// print, and given only by /cv, never by the OS shell's CV app (011 FR-005).
+export type DownloadLink = { href: string; name: string };
+
+export function Intro({ basics, download }: { basics: ResumeBasics; download?: DownloadLink }) {
   const { label, name, summary, email, url } = basics;
   const location = basics.location === undefined ? null : locationLine(basics.location);
   const profiles = (basics.profiles ?? []).filter((profile) => present(profile.username) || present(profile.network) || present(profile.url));
   const rows = location !== null || present(email) || present(url);
-  const contact = rows || profiles.length > 0;
+  const contact = rows || profiles.length > 0 || download !== undefined;
   return (
     <div className="intro" data-req="004-cv-page-FR-003 004-cv-page-FR-007 004-cv-page-FR-022">
       {present(label) && <p className="role">{label}</p>}
@@ -98,6 +103,17 @@ export function Intro({ basics }: { basics: ResumeBasics }) {
                     <Profile key={index} profile={profile} />
                   ))}
                 </ul>
+              )}
+              {download !== undefined && (
+                <div className="contact-row download" data-site-element="" data-req="011-cv-pdf-FR-001 011-cv-pdf-FR-002 011-cv-pdf-FR-003 011-cv-pdf-FR-004 011-cv-pdf-FR-006">
+                  <span className="contact-label" aria-hidden="true">
+                    {siteText.download.rowLabel}
+                  </span>
+                  <a className="contact-link" href={download.href} download={download.name}>
+                    {siteText.download.link}
+                    <Arrow kind="down" />
+                  </a>
+                </div>
               )}
             </div>
           )}

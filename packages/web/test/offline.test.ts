@@ -18,6 +18,8 @@ import { fieldProblems, mainSequence, unstyledDetail } from '../../../tools/site
 import { waitForWorker } from '../../../tools/site-check/src/parts/offline.ts';
 import { openHtml } from './helpers/browser.ts';
 import { HANG_MS, cacheNames, firstPage, goOffline, keptRecord, settled, switchableServer, until, version, visit } from './helpers/offline.ts';
+import { writeCvPdf } from '../scripts/cv-pdf.ts';
+import { siteManifest, writeServiceWorker } from '../scripts/build-site.ts';
 import { builtSite } from './helpers/site.ts';
 import type { BuiltSite } from './helpers/site.ts';
 
@@ -320,5 +322,70 @@ describe('006-terminal-FR-070: a page from an older version still loads its shel
     expect(left).toHaveLength(1);
     expect(left[0]).not.toBe(storedA);
     await server.close();
+  });
+});
+
+// The built site with its PDF printed again from its own /cv, and its worker
+// and manifest written again, so the version differs from the real build's.
+async function withOwnPdf(site: BuiltSite): Promise<BuiltSite> {
+  await writeCvPdf(site.dir, undefined);
+  writeServiceWorker(site.dir);
+  return { dir: site.dir, manifest: siteManifest(site.dir) };
+}
+
+// Activates the download link on a page and gives the saved file's name and
+// bytes, or null when no download started or it failed.
+async function download(page: Page): Promise<{ name: string; bytes: Buffer } | null> {
+  const started = page.waitForEvent('download', { timeout: 10_000 }).catch(() => null);
+  await page.locator('a[href="/cv.pdf"]').click();
+  const saved = await started;
+  if (saved === null || (await saved.failure()) !== null) return null;
+  return { name: saved.suggestedFilename(), bytes: fs.readFileSync((await saved.path())!) };
+}
+
+describe('011-cv-pdf-FR-002, 011-cv-pdf-FR-030, 011-cv-pdf-FR-031: the download through the worker', () => {
+  test("online and then offline it saves the built PDF under its name; online after a new version, the new PDF", async () => {
+    const site = builtSite();
+    const built = fs.readFileSync(path.join(site.dir, 'cv.pdf'));
+    const server = await switchableServer();
+    await server.serve(site);
+    const first = await firstPage(`${server.url}/cv`);
+    const context = first.context();
+    expect(await waitForWorker(first)).toBe(true);
+
+    // (a) Online, the worker controlling /cv.
+    const online = await visit(context, `${server.url}/cv`);
+    expect(await download(online)).toEqual({ name: 'Alex-Profir-CV.pdf', bytes: built });
+
+    // (b) Offline, with the server dropping every connection.
+    server.setMode('drop');
+    await goOffline(context);
+    const offline = await visit(context, `${server.url}/cv`);
+    expect(await download(offline)).toEqual({ name: 'Alex-Profir-CV.pdf', bytes: built });
+
+    // (c) A new version with a different PDF, online.
+    const next = await withOwnPdf(version('Version Bee Name').site);
+    const nextPdf = fs.readFileSync(path.join(next.dir, 'cv.pdf'));
+    expect(nextPdf.equals(built)).toBe(false);
+    await context.setOffline(false);
+    server.setMode('normal');
+    await server.serve(next);
+    const updated = await visit(context, `${server.url}/cv`);
+    expect((await download(updated))?.bytes.equals(nextPdf)).toBe(true);
+  });
+});
+
+describe('011-cv-pdf-FR-032: no stored PDF', () => {
+  test('offline with no worker, activating the link leaves /cv as it was', async () => {
+    const server = await switchableServer();
+    await server.serve(builtSite());
+    const page = await firstPage(`${server.url}/cv`, { serviceWorkers: 'block' });
+    const before = { url: page.url(), text: await mainText(page) };
+    await goOffline(page.context());
+    // The plain link starts a download that fails, and nothing else.
+    const started = page.waitForEvent('download', { timeout: 10_000 }).catch(() => null);
+    await page.locator('a[href="/cv.pdf"]').click();
+    await started;
+    expect({ url: page.url(), text: await mainText(page) }).toEqual(before);
   });
 });

@@ -13,6 +13,10 @@ Approved with 005's spec.
 **Amended**: 2026-11-02, following 008-typescript-playground's chain: SC-009's time for the whole
 site check follows the latest feature's budget, as 005 SC-010 does. Approved with 008's spec.
 
+**Amended**: 2026-11-24 by 011-cv-pdf: the download link alone, a site element, sits in the intro
+block inside the main landmark (FR-025, the Site element entity; see Clarifications, Session
+2026-11-24). Approved with 011's spec.
+
 <!--
   Status moves from Draft to Approved only when the project owner approves the spec.
   No code is written for this feature before then (Constitution I).
@@ -70,7 +74,7 @@ site check follows the latest feature's budget, as 005 SC-010 does. Approved wit
 > with no highlights; non-ASCII characters in names and places; forced colors (high-contrast
 > mode); reduced motion; /cv/ with a trailing slash; an unknown path.
 >
-> Out of scope: the PDF download (a later feature); publishing the site at a public URL, pull
+> Out of scope: the PDF download (a later feature) [now 011-cv-pdf]; publishing the site at a public URL, pull
 > request previews and choosing the domain (a later feature); the shells, os-core and the CV app;
 > the requirement inspector; a dark theme and theme switching (Settings); a contact form
 > (Contact); a profile photo; link preview images; translations (a non-goal).
@@ -115,6 +119,13 @@ site check follows the latest feature's budget, as 005 SC-010 does. Approved wit
 - Q: The whole site check takes longer than SC-009's 5 minutes. Which holds? → A: The chain of 008's
   clarification: it stays within the latest feature's budget, now 1,020 s (SC-009). Approving 008's
   spec approved it.
+
+### Session 2026-11-24 (recording the amendment of 011-cv-pdf)
+
+- Q: 011-cv-pdf puts a download link, a site element, in the intro block, inside the main
+  landmark. What does that change here? → A: FR-025 and the Site element entity allow that one
+  link inside the main landmark (011-cv-pdf-FR-006). The footer stays outside. Approving 011's
+  spec approved it (Constitution XI).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -509,7 +520,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
   Every work, project and education entry MUST have its own heading, one level below its
   section's heading. Heading levels MUST NOT skip.
 - **FR-025**: The CV MUST sit inside one main landmark. Every shown section MUST be a region
-  named by its heading. Site elements that aren't CV content MUST sit outside the main landmark.
+  named by its heading. Site elements that aren't CV content MUST sit outside the main landmark,
+  except the download link (011-cv-pdf-FR-001), which sits in the intro block. Amended 2026-11-24
+  (011-cv-pdf): it said every site element sits outside the main landmark.
 - **FR-026**: Lists in the CV, such as highlights, keywords, courses, profiles and languages,
   MUST be marked as lists.
 - **FR-027**: The page MUST declare English as its language. The reading order of the page MUST
@@ -653,7 +666,9 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **Site text**: text on the page that isn't CV content, such as section headings, the word for
   an ongoing date and the not-found message. Set by the design, in English, with no CV fact.
 - **Site element**: anything on the page that isn't CV content, such as a link to the site's
-  repository. It sits outside the main landmark and is left out of print.
+  repository. It sits outside the main landmark, except the download link (011-cv-pdf-FR-001),
+  which sits in the intro block, and it is left out of print. Amended 2026-11-24 (011-cv-pdf): it
+  said every site element sits outside the main landmark.
 - **Stored copy**: the version of the site's pages, styles and fonts kept by the visitor's
   browser after one visit, used when the network is unavailable.
 - **Token export**: the site's tokens as Penpot exports them (003), replaced by the approved
@@ -783,7 +798,7 @@ references `004-cv-page-FR-###`. UI implementing a requirement carries
 - **Blocking merge** reuses the repository rules set up by the requirement traceability feature:
   required checks, no direct pushes to the main branch, and no bypass.
 - **Out of scope**:
-  - The PDF download, a later feature.
+  - The PDF download, a later feature: 011-cv-pdf.
   - Publishing the site at a public URL, pull request previews and choosing the domain, a later
     feature.
   - The shells, `os-core` and the CV app.

@@ -7,7 +7,9 @@ import { runCheck } from '../src/check.ts';
 import { TERMINAL_COMMANDS, inspectorOfflineVariants, rootOfflineVariants, terminalOfflineVariants } from '../src/parts/offline.ts';
 import { renderProblem } from '../src/report.ts';
 import { realSiteProject, replaceIn, seededCopy } from './helpers/root.ts';
-import { fixture } from './helpers/sites.ts';
+import { fixture, siteProject } from './helpers/sites.ts';
+
+const CV_HTML = 'packages/web/dist/site/cv.html';
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -148,5 +150,18 @@ describe('008-typescript-playground-FR-078: offline, the Playground says why it 
     const root = seededCopy((copy) => replaceIn(copy, 'packages/web/src/sw/service-worker.ts', 'else if (url.pathname.startsWith(ENGINE_PATH)) event.respondWith(engineFile(request));', 'else if (url.pathname.startsWith(ENGINE_PATH)) return;'));
     const report = await runCheck(root, { parts: ['offline'] });
     expect(report.problems.filter((problem) => problem.variant === 'desktop/playground-offline/1440px').map(renderProblem)).toEqual([expect.stringMatching(/^offline \/ desktop\/playground-offline\/1440px not-available stored editor: the editor did not show with the network off after one open$/)]);
+  });
+});
+
+describe('011-cv-pdf-FR-041: the offline download step', () => {
+  // The real build's /cv passes this step: 005-os-shell-FR-059's test above
+  // expects `/cv 375px pass` from the same part.
+  test("on a site whose worker doesn't store /cv.pdf, the download link reports offline-pdf", async () => {
+    const page = fs.readFileSync(path.join(fixture('minimal'), CV_HTML), 'utf8');
+    const linked = page.replace('</main>', '<p><a href="/cv.pdf" download="Ada-Example-CV.pdf">Download PDF</a></p></main>');
+    expect(linked).not.toBe(page);
+    const root = siteProject({ [CV_HTML]: linked, 'packages/web/dist/site/cv.pdf': '%PDF-1.4\n%%EOF\n' });
+    const report = await runCheck(root, { parts: ['offline'] });
+    expect(report.problems.map(renderProblem)).toEqual(['offline /cv 375px offline-pdf a[href="/cv.pdf"]: no download with the network off']);
   });
 });

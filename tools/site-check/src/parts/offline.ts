@@ -28,10 +28,17 @@
 // are `<shell>/<view>-specs/<width>px` after the visit to the root and
 // `<shell>/<view>-specs-after-cv/<width>px` after the visit to the CV page.
 //
+// Offline, on the CV page, the download link must save the built PDF under
+// its suggested name (011 FR-041), with the server stopped: setting the
+// browser offline alone doesn't stop a download (011 research R6).
+//
 // The part serves the site on a server of its own, so stopping it leaves the
 // check's other parts alone.
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Browser, BrowserContext, Page } from 'playwright';
 import { COMMANDS } from '../../../../packages/web/src/apps/terminal/engine/commands.ts';
+import { CV_PDF } from '../../../../packages/web/src/routes.ts';
 import type { SiteManifest } from '../../../../packages/web/src/routes.ts';
 import type { ExpectedField } from '../expected.ts';
 import type { Problem } from '../report.ts';
@@ -86,6 +93,8 @@ export type OfflineInput = OfflineTargets & {
   manifest: SiteManifest;
   fields: readonly ExpectedField[];
   families: readonly string[];
+  // The CV PDF's suggested file name, from the CV document's name (011).
+  pdfName: string;
 };
 
 const WHEN = 'with the network off';
@@ -437,6 +446,29 @@ function noWorker(shell: Shell, state: 'terminal' | 'terminal-after-cv', page: s
 
 const mainText = (page: Page) => page.evaluate(() => (document.querySelector('main')?.textContent ?? '').replace(/\s+/g, ' ').trim());
 
+// How long the download may take to start from the stored copy.
+const DOWNLOAD_WAIT_MS = 10_000;
+
+// The download link on the CV page offline (011 FR-041): with the server
+// stopped, activating it must save the built PDF under its suggested name.
+// A page without the link (004's fixture sites) has nothing to download.
+async function pdfDownloadProblems(page: Page, input: OfflineInput, add: Add): Promise<void> {
+  const link = page.locator(`a[href="${CV_PDF.path}"]`);
+  if ((await link.count()) === 0) return;
+  const subject = `a[href="${CV_PDF.path}"]`;
+  const started = page.waitForEvent('download', { timeout: DOWNLOAD_WAIT_MS }).catch(() => null);
+  await link.first().click();
+  const download = await started;
+  const file = download === null || (await download.failure()) !== null ? null : await download.path();
+  if (download === null || file === null) {
+    add('offline-pdf', subject, `no download ${WHEN}`);
+    return;
+  }
+  const saved = fs.readFileSync(file);
+  if (!saved.equals(fs.readFileSync(path.join(input.siteDir, CV_PDF.file)))) add('offline-pdf', subject, `downloaded ${saved.length} bytes that differ from the built ${CV_PDF.file}`);
+  if (download.suggestedFilename() !== input.pdfName) add('offline-pdf', subject, `suggested name ${JSON.stringify(download.suggestedFilename())}, expected ${JSON.stringify(input.pdfName)}`);
+}
+
 export async function offlineProblems(browser: Browser, input: OfflineInput): Promise<OfflineResult[]> {
   const { cvPath, rootPath, notFoundPath, fields, families, shellRoot = false } = input;
   const online = shellRoot ? await onlineTerminalRows(browser, input) : null;
@@ -498,6 +530,8 @@ export async function offlineProblems(browser: Browser, input: OfflineInput): Pr
       if (unstyled !== null) problem(target, 'unstyled', 'body', `${unstyled} ${WHEN}`);
       // Fonts: each family that didn't load, named once per page.
       await fontProblems(page, families, (type, subject, detail) => problem(target, type, subject, detail));
+      // The PDF, last: the download may leave the page.
+      if (target === cvPath) await pdfDownloadProblems(page, input, (type, subject, detail) => problem(target, type, subject, detail));
     }
     if (shellRoot) {
       for (const { shell, result } of afterCv) {

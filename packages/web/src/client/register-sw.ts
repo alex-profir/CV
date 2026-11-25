@@ -4,6 +4,11 @@
 // workers, or one that refuses the registration (some private modes), gets
 // the site online as before: the failure is ignored, and nothing is shown or
 // logged (FR-041).
+
+// Downloads through the worker, so the CV's PDF saves offline (011 research
+// R6).
+import './download.ts';
+
 const WORKER_URL = '/sw.js';
 
 const SCOPE = '/';

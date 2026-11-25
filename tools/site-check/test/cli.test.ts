@@ -162,7 +162,7 @@ describe("007-requirement-inspector-FR-034: the inspector's checks run in the sa
   test("the local command is the CI step, and the parts run in contracts/cli.md's order, inspector after terminal", () => {
     expect(PACKAGE.scripts['site-check']).toBe('npm run build && node tools/site-check/src/main.js');
     expect(WORKFLOW).toMatch(/^\s*(?:-\s+)?run: .*\bnpm run --silent site-check\b/m);
-    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'program', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'modes']);
+    expect(PARTS).toEqual(['content', 'cv-app', 'terminal', 'inspector', 'playground', 'program', 'accessibility', 'lighthouse', 'no-script', 'offline', 'keyboard', 'other-sites', 'fonts', 'layout', 'print', 'pdf', 'modes']);
   });
 
   test('every inspector problem line names the view, the shell, the width and the requirement or its spec, and an untracked file changes no result', { timeout: 600_000 }, async () => {
@@ -320,7 +320,8 @@ describe('004-cv-page-FR-058: the check exits 2 with one stderr line when it can
 // `cv-app`, `terminal` and `inspector` parts pass: the sample's root
 // redirects, so there's no CV app, no Terminal and no inspector (005's
 // broken cases are in `cv-app.test.ts`, 006's in `terminal.test.ts`, 007's
-// in `inspector.test.ts`).
+// in `inspector.test.ts`). The `pdf` part passes too: the sample has no
+// PDF and no download link (011's broken cases are in `pdf.test.ts`).
 describe('seeded sample (SC-009)', () => {
   test('the check on seeded/ exits 1 and its report, scores masked, is expected-report.txt byte for byte', () => {
     const root = fixture('seeded');

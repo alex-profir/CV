@@ -7,6 +7,7 @@ import zlib from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import { builtSite, serveBuilt } from './helpers/site.ts';
 import { openPage } from './helpers/browser.ts';
+import { REPO_ROOT } from './helpers/copy.ts';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -130,5 +131,21 @@ describe('HTTP behavior (contracts/site.md)', () => {
     const response = await request(url, '/cv', { headers: { 'Accept-Encoding': 'br' } });
     expect(response.headers['content-encoding']).toBe('br');
     expect(zlib.brotliDecompressSync(response.body).equals(builtFile('cv.html'))).toBe(true);
+  });
+});
+
+type VercelRoute = { src?: string; handle?: string; status?: number; headers?: Record<string, string>; continue?: boolean; dest?: string };
+
+describe('011-cv-pdf-FR-010, 011-cv-pdf-FR-030: /cv.pdf on the host', () => {
+  test('vercel.json serves /cv.pdf revalidated, before the filesystem handler and the not-found catch-all, and builds with the host script', () => {
+    const config = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'vercel.json'), 'utf8')) as { buildCommand: string; routes: VercelRoute[] };
+    expect(config.buildCommand).toBe('bash packages/web/scripts/vercel-build.sh');
+    const pdf = config.routes.findIndex((route) => route.src === '/cv\\.pdf');
+    expect(pdf).toBeGreaterThanOrEqual(0);
+    expect(config.routes[pdf]).toEqual({ src: '/cv\\.pdf', headers: { 'Cache-Control': 'no-cache' }, continue: true });
+    const filesystem = config.routes.findIndex((route) => route.handle === 'filesystem');
+    const catchAll = config.routes.findIndex((route) => route.src === '/.*' && route.status === 404);
+    expect(filesystem).toBeGreaterThan(pdf);
+    expect(catchAll).toBeGreaterThan(filesystem);
   });
 });

@@ -41,6 +41,9 @@ The not-found page has `<title>` `404 · Not found`, no description, and no CV f
 
 ## /cv: structure
 
+Amended 2026-11-24 by 011-cv-pdf: `dl.contact`'s block ends with the download row, the one site
+element inside `main`. Its markup is in `specs/011-cv-pdf/contracts/page.md`.
+
 ```text
 main
 ├── div.intro                                  (basics block, no heading of its own)

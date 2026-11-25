@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm ci",
-  "buildCommand": "git update-index --assume-unchanged vercel.json && npm run build",
+  "buildCommand": "bash packages/web/scripts/vercel-build.sh",
   "outputDirectory": "packages/web/dist/site",
   "routes": [
     {
@@ -19,6 +19,7 @@
     { "src": "/", "headers": { "Cache-Control": "no-cache" }, "dest": "/index.html" },
     { "src": "/cv/?", "headers": { "Cache-Control": "no-cache" }, "dest": "/cv.html" },
     { "src": "/sw\\.js", "headers": { "Cache-Control": "no-cache" }, "continue": true },
+    { "src": "/cv\\.pdf", "headers": { "Cache-Control": "no-cache" }, "continue": true },
     { "handle": "filesystem" },
     {
       "src": "/.*",

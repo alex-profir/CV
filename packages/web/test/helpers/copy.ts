@@ -17,9 +17,10 @@ export { REPO_ROOT };
 const ROOT_FILES = ['package.json', 'package-lock.json', 'tsconfig.json', 'vitest.config.ts', '.nvmrc'];
 
 // Outside `packages/`, the build reads only 001's shared sort and spec
-// reader, 002's date form, and each spec, for the Terminal's spec list (006
-// research R10).
-const TOOL_PATHS = ['tools/traceability/src', 'tools/content-check/src/dates.ts'];
+// reader, 002's date form, each spec, for the Terminal's spec list (006
+// research R10), and the site check's server and browser launch, which
+// print the CV's PDF (011 research R2).
+const TOOL_PATHS = ['tools/traceability/src', 'tools/content-check/src/dates.ts', 'tools/site-check/src/server.ts', 'tools/site-check/src/browser.ts'];
 
 // What a copy leaves out: dependencies (linked instead) and build output.
 const SKIPPED_DIRS = new Set(['node_modules', 'dist']);
