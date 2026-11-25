@@ -177,8 +177,8 @@ PDF or fingerprint (FR-021 removed), no `@page` rule in `print.css`, no US Lette
 
 **Purpose**: Research R9's trimmed library list, proved on a real preview deploy
 
-- [ ] T037 Trim the `dnf install` list in `web/scripts/vercel-build.sh` on the pull request's Vercel preview: start from `nss nspr`, add back only what Chromium's launch proves it needs, and keep the build green. Record the final list and the deploy's added time against `main`'s last deploy in research.md R9 and here. Check quickstart §7 on the preview (`curl -sI …/cv.pdf` 200, `application/pdf`, `no-cache`; `…/CV.pdf` 404; the link downloads). Pushing to get a preview is outward-facing: do it only if the run allows it, else mark `BLOCKED:` for the owner and keep the trial's full list.
-  - BLOCKED: getting a Vercel preview needs the branch pushed, an outward-facing step this unattended run wasn't cleared for. The owner pushes (or allows a push), then trims the `dnf` list on the preview. Until then `vercel-build.sh` keeps the trial's full list.
+- [X] T037 Trim the `dnf install` list in `web/scripts/vercel-build.sh` on the pull request's Vercel preview: start from `nss nspr`, add back only what Chromium's launch proves it needs, and keep the build green. Record the final list and the deploy's added time against `main`'s last deploy in research.md R9 and here. Check quickstart §7 on the preview (`curl -sI …/cv.pdf` 200, `application/pdf`, `no-cache`; `…/CV.pdf` 404; the link downloads). Pushing to get a preview is outward-facing: do it only if the run allows it, else mark `BLOCKED:` for the owner and keep the trial's full list.
+  - **Result (2026-11-25)**: the list is `nss nspr` (2830d95); the trial's dnf run had installed nothing else. PR #61's preview built green: `/cv.pdf` 200, `application/pdf`, `cache-control: no-cache`, 302,184 bytes; `/cv` has the download row. Host build 70.7 s against `main`'s last production deploy (d8c69de) at 28.2 s, so about 42 s more: `dnf install` 33 s, the headless shell download 6 s, the site build with the PDF 10 s. The PDF step itself stays about 1 s (SC-008); the host's setup is the rest.
 
 ---
 
