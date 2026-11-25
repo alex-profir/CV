@@ -10,8 +10,9 @@ set -euo pipefail
 # deploy's dirty check, as before.
 git update-index --assume-unchanged vercel.json
 
-# Chromium's libraries: the host trial's working list (research R1).
-dnf install -y -q nss nspr atk at-spi2-atk cups-libs libdrm libxkbcommon libXcomposite libXdamage libXfixes libXrandr mesa-libgbm pango cairo alsa-lib
+# Chromium's libraries: the only two the build image lacks (research R1,
+# R9: the trial's dnf run installed nothing else from its longer list).
+dnf install -y -q nss nspr
 
 # The headless shell, the binary a headless launch uses.
 npx playwright install --only-shell chromium
